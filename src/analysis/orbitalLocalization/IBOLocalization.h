@@ -1,0 +1,72 @@
+/**
+ * @file IBOLocalization.h
+ *
+ * @date Jun 15, 2016
+ * @author Jan Unsleber
+ * @copyright \n
+ *  This file is part of the program Serenity.\n\n
+ *  Serenity is free software: you can redistribute it and/or modify
+ *  it under the terms of the LGNU Lesser General Public License as
+ *  published by the Free Software Foundation, either version 3 of
+ *  the License, or (at your option) any later version.\n\n
+ *  Serenity is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.\n\n
+ *  You should have received a copy of the LGNU Lesser General
+ *  Public License along with Serenity.
+ *  If not, see <http://www.gnu.org/licenses/>.\n
+ */
+
+#ifndef IBOLOCALIZATION_H_
+#define IBOLOCALIZATION_H_
+
+/* Include Serenity Internal Headers */
+#include "analysis/orbitalLocalization/Localization.h"
+/* Include Std and External Headers */
+#include <memory>
+
+
+namespace Serenity {
+/* Forward declarations */
+template<Options::SCF_MODES T>class OrbitalController;
+class SystemController;
+
+/**
+ * @class IBOLocalization IBOLocalization.h
+ * @brief Performs IBO and IAO Localizations
+ *
+ * Ref.:
+ * Intrinsic Atomic Orbitals: An Unbiased Bridge between Quantum Theory and Chemical Concepts
+ * Gerald Knizia, J. Chem. Theory Comput., 2013, 9 (11), pp 4834–4843
+ */
+template<Options::SCF_MODES SCFMode>
+class IBOLocalization : public Localization<SCFMode>{
+public:
+  /**
+   * @brief Constructor
+   * @param systemController The system to of which the orbitals are to be localized.
+   * @param IAOsOnly Switch to stop after the generation of IAOs.
+   */
+  IBOLocalization(std::shared_ptr<SystemController> systemController,
+                  bool IAOsOnly=false);
+  /**
+   * @brief Destructor
+   */
+  virtual ~IBOLocalization() = default;
+
+  /**
+   * @brief @see Localization::localizeOrbitals()
+   * @param orbitals The orbitals to be localized (They are changed in place!)
+   */
+  virtual void localizeOrbitals(OrbitalController<SCFMode>& orbitals,
+      unsigned int maxSweeps) override final;
+
+private:
+  std::shared_ptr<SystemController> _system;
+  const bool _IAOsOnly;
+};
+
+} /* namespace Serenity */
+
+#endif /* IBOLOCALIZATION_H_ */

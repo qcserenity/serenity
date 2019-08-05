@@ -1,0 +1,161 @@
+/**
+ * @file HelperFunctions.h
+ *
+ * @date Juli 11, 2015
+ * @author Thomas Dresselhaus, Michael Boeckers
+ * @copyright \n
+ *  This file is part of the program Serenity.\n\n
+ *  Serenity is free software: you can redistribute it and/or modify
+ *  it under the terms of the LGNU Lesser General Public License as
+ *  published by the Free Software Foundation, either version 3 of
+ *  the License, or (at your option) any later version.\n\n
+ *  Serenity is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.\n\n
+ *  You should have received a copy of the LGNU Lesser General
+ *  Public License along with Serenity.
+ *  If not, see <http://www.gnu.org/licenses/>.\n
+ */
+#ifndef HELPERFUNCTIONS_H
+#define	HELPERFUNCTIONS_H
+
+/* Include Serenity Internal Headers */
+#include "math/Matrix.h"
+
+
+namespace Serenity {
+/**
+ * @param target a container of the data from which the result is produced
+ * @returns a container of reference_wrappers holding references to the objects in target
+ */
+template<class ContentT>
+inline std::vector<std::reference_wrapper<ContentT> >
+makeReferenceContainer(std::vector<ContentT>& target) {
+  return std::vector<std::reference_wrapper<ContentT> >(target.begin(), target.end());
+}
+/**
+ * @brief analog to makeReferenceContainer, which takes a vector of shared_pointers
+ */
+template<class ContentT>
+inline std::vector<std::reference_wrapper<ContentT> >
+makeReferenceContainerFromPtr(std::vector<std::shared_ptr<ContentT> >& target) {
+  std::vector<std::reference_wrapper<ContentT> > result;
+  for (const auto& element : target) result.push_back(*element);
+  return result;
+}
+/**
+ * @brief analog to makeReferenceContainer, which takes a vector of unique_pointers
+ */
+template<class ContentT>
+inline std::vector<std::reference_wrapper<ContentT> >
+makeReferenceContainerFromPtr(std::vector<std::unique_ptr<ContentT> >& target) {
+  std::vector<std::reference_wrapper<ContentT> > result;
+  for (const auto& element : target) result.push_back(*element);
+  return result;
+}
+
+
+/// @cond false
+template<class It>
+inline void _advance_ (It& it) {
+  ++it;
+}
+template<class It, class... Its>
+inline void _advance_(It& it, Its&... its) {
+  ++it;
+  _advance_(its...);
+}
+template<class FuncType, class It, class... Its>
+inline void _zipIts_(const FuncType& func, It& it, const It& end, Its&... its) {
+  for (; it != end; _advance_(it, its...)) {
+    func(*it, *its...);
+  }
+}
+/// @endcond
+/**
+ * @brief a python-like zip based on the lambda function func. Two arguments (t, u).
+ * @param t
+ * @param u
+ * @param func
+ */
+template<class T, class U, class FuncType>
+inline void zip(T& t, U& u, const FuncType& func) {
+  auto tIter = t.begin();
+  auto uIter = u.begin();
+  _zipIts_(func, tIter, t.end(), uIter);
+  assert(!(uIter != u.end()));
+}
+/**
+ * @brief a python-like zip based on the lambda function func. Three arguments (t, u, v).
+ * @param t
+ * @param u
+ * @param v
+ * @param func
+ */
+template<class T, class U, class V, class FuncType>
+inline void zip(T& t, U& u, V& v, const FuncType& func) {
+  auto tIter = t.begin();
+  auto uIter = u.begin();
+  auto vIter = v.begin();
+  _zipIts_(func, tIter, t.end(), uIter, vIter);
+  assert(!(uIter != u.end()));
+  assert(!(vIter != v.end()));
+}
+/**
+ * @brief a python-like zip based on the lambda function func. Four arguments (t, u, v, w).
+ * @param t
+ * @param u
+ * @param v
+ * @param w
+ * @param func
+ */
+template<class T, class U, class V, class W, class FuncType>
+inline void zip(T& t, U& u, V& v, W& w, const FuncType& func) {
+  auto tIter = t.begin();
+  auto uIter = u.begin();
+  auto vIter = v.begin();
+  auto wIter = w.begin();
+  _zipIts_(func, tIter, t.end(), uIter, vIter, wIter);
+  assert(!(uIter == u.end()));
+  assert(!(vIter == v.end()));
+  assert(!(wIter == w.end()));
+}
+/**
+ * @brief  Writes a lower triagnular matrix to a vector
+ * @param  matrixL A lower triagnular matrix
+ * @return Returns the corresponding vector. Note that this routine will not check
+ *         whether matrixL is a upper triangular matrix or if it is symmetric or not.
+ *         It will just take the lower triangular matrix of any matrixL you give to it and
+ *         store this in a vector of appropriate length.
+ */
+inline Eigen::VectorXd triangularMatrix2Vector(Matrix<double>& matrixL) {
+  Eigen::VectorXd triagonalVector(matrixL.cols()*(matrixL.cols()+1)/2);
+  for (int i = 0,ij=0; i < matrixL.cols(); ++i) {
+    for (int j = 0; j <= i; ++j,++ij) {
+      triagonalVector(ij) = matrixL(i,j);
+    }
+  }
+  return triagonalVector;
+}
+ /**
+  *
+  * @param triangularVector A vector
+  * @return                 Returns the corresponding lower triangular matrix
+  */
+inline Matrix<double> vector2triangularMatrix(Eigen::VectorXd triangularVector) {
+  int nDimension = int(-0.5 + std::sqrt(0.25 + 2.0 * triangularVector.rows()));
+  Matrix<double> triangularMatrix(nDimension,nDimension);
+  triangularMatrix.setZero();
+  for (int i = 0,ij=0; i < nDimension; ++i) {
+    for (int j = 0; j <= i;++j,++ij) {
+      triangularMatrix(i,j) = triangularVector(ij);
+    }
+  }
+  return triangularMatrix;
+}
+
+
+} /* namespace Serenity */
+
+#endif	/* HELPERFUNCTIONS_H */

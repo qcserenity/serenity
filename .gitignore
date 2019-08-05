@@ -1,0 +1,49 @@
+# Generated Documentation
+doc/html
+
+# Folders gnerated on build
+bin
+lib
+include
+build*
+gmon\.out
+ext
+
+# Manual build files
+/manual/
+manual/SerenityUserManual.aux
+manual/SerenityUserManual.toc
+manual/SerenityUserManual.tex.backup
+manual/SerenityUserManual.run.xml
+manual/SerenityUserManual.pdf
+manual/SerenityUserManual.out
+manual/SerenityUserManual.log
+manual/SerenityUserManual.bcf
+manual/tmp
+
+# Auto generated source files
+serenity.sh
+src/tasks/DummyTask.cpp
+src/tasks/DummyTask.h
+test.input
+
+# Output files
+*.input
+*.inp
+*.out
+*.err
+*.cube
+*.swp
+temp
+
+# IDE stuff
+.clang-format
+.vscode/
+.pydevproject 
+.cproject
+.project
+.settings
+.launchConfig
+.kdev4/
+*.kdev4
+

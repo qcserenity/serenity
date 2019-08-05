@@ -1,0 +1,137 @@
+/**
+ * @file   DensityInitialGuessCalculator.cpp
+ * @author Thomas Dresselhaus
+ * 
+ * @date   11. Juli 2014, 17:22
+ * @copyright \n
+ *  This file is part of the program Serenity.\n\n
+ *  Serenity is free software: you can redistribute it and/or modify
+ *  it under the terms of the LGNU Lesser General Public License as
+ *  published by the Free Software Foundation, either version 3 of
+ *  the License, or (at your option) any later version.\n\n
+ *  Serenity is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.\n\n
+ *  You should have received a copy of the LGNU Lesser General
+ *  Public License along with Serenity.
+ *  If not, see <http://www.gnu.org/licenses/>.\n
+ */
+/* Include Class Header*/
+#include "scf/initialGuess/DensityInitialGuessCalculator.h"
+/* Include Serenity Internal Headers */
+#include "potentials/CoulombPotential.h"
+#include "potentials/bundles/DFTPotentials.h"
+#include "data/matrices/DensityMatrix.h"
+#include "data/matrices/DensityMatrixController.h"
+#include "data/ElectronicStructure.h"
+#include "potentials/FuncPotential.h"
+#include "potentials/HCorePotential.h"
+#include "potentials/HFPotential.h"
+#include "potentials/bundles/HFPotentials.h"
+#include "potentials/EffectiveCorePotential.h"
+#include "data/OrbitalController.h"
+#include "system/SystemController.h"
+/* Include Std and External Headers */
+#include <cassert>
+
+namespace Serenity {
+using namespace std;
+
+unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED> >
+DensityInitialGuessCalculator::calculateInitialGuess(
+    shared_ptr<SystemController> systemController) {
+  assert(systemController);
+  /*
+   * Perform the density guess
+   * The guessed density is not needed any more once the orbitals are created
+   */
+  auto guessDensity(calculateInitialDensity(systemController));
+
+  auto guessOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED> >(
+      guessDensity->getBasisController());
+  guessOrbitals->setCanOrthTh(systemController->getSettings().scf.canOrthThreshold);
+  std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED> > elecStruct (
+      new ElectronicStructure<Options::SCF_MODES::RESTRICTED>(
+          guessOrbitals,
+          systemController->getOneElectronIntegralController(),
+          systemController->getNOccupiedOrbitals<Options::SCF_MODES::RESTRICTED>()));
+  auto dMatController=elecStruct->getDensityMatrixController();
+  auto occupations=dMatController->getOccupations(true);
+  dMatController->setDensityMatrix(*guessDensity);
+  dMatController->attachOrbitals(guessOrbitals,occupations,false);
+
+  /*
+   * Create Fockmatrix from guessdensity
+   */
+  std::shared_ptr<PotentialBundle<Options::SCF_MODES::RESTRICTED> > pot;
+
+  if(systemController->getSettings().method==Options::ELECTRONIC_STRUCTURE_THEORIES::HF){
+    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> > hcore
+    (new HCorePotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr()));
+    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> > hf
+    (new HFPotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr(),
+        dMatController,
+        1.0,
+        systemController->getSettings().basis.integralThreshold));
+    pot=std::make_shared<HFPotentials<Options::SCF_MODES::RESTRICTED>>(hcore,hf,systemController->getGeometry());
+  }else{
+
+    // Hcore
+    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> > hcore
+    (new HCorePotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr()));
+    // XC Func
+    auto functional = FunctionalClassResolver::resolveFunctional(systemController->getSettings().dft.functional);
+    std::shared_ptr<FuncPotential<Options::SCF_MODES::RESTRICTED> > Vxc
+    (new FuncPotential<Options::SCF_MODES::RESTRICTED>(
+        systemController,
+        dMatController,
+        systemController->getGridController(),
+        functional));
+    // J
+    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> > J;
+    if (!functional.isHybrid()){
+      double thresh = systemController->getSettings().basis.integralThreshold;
+      if (systemController->getSettings().dft.densityFitting == Options::DENS_FITS::RI){
+        J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> >(
+            new CoulombPotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr(),
+                dMatController,
+                RI_J_IntegralControllerFactory::getInstance().produce(
+                    systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                    systemController->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)),
+                    thresh));
+      } else {
+        J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> >(
+            new HFPotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr(),
+                dMatController,
+                0.0,
+                thresh));
+      }
+    } else {
+      double thresh = systemController->getSettings().basis.integralThreshold;
+      J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED> >(
+          new HFPotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr(),
+              dMatController,
+              functional.getHfExchangeRatio(),
+              thresh));
+    }
+
+    // Bundle
+    pot=std::make_shared<DFTPotentials<Options::SCF_MODES::RESTRICTED>>(
+            hcore,
+            J,
+            Vxc,
+            systemController->getGeometry(),
+            dMatController,
+            systemController->getSettings().basis.integralThreshold);
+  }
+  /*
+   * Create orbitals from Fockmatrix
+   */
+  guessOrbitals->updateOrbitals(pot->getFockMatrix(*guessDensity,elecStruct->getEnergyComponentController()),systemController->getOneElectronIntegralController());
+
+  return elecStruct;
+}
+
+
+} /* namespace Serenity */

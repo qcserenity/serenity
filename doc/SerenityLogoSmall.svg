@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="84.15625"
+   height="55.005238"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.5 r10040"
+   sodipodi:docname="SerenityLogoSmall.svg"
+   inkscape:export-filename="/home/j/j_unsl01/Documents/Serenity/Logo/SerenityLogo.png"
+   inkscape:export-xdpi="325.84"
+   inkscape:export-ydpi="325.84">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.9271746"
+     inkscape:cx="-48.698592"
+     inkscape:cy="-69.712228"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="2560"
+     inkscape:window-height="1337"
+     inkscape:window-x="0"
+     inkscape:window-y="55"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0">
+    <inkscape:grid
+       type="xygrid"
+       id="grid2997"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true"
+       originx="-387.59375px"
+       originy="-901.8134px" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-387.59375,-95.543551)">
+    <text
+       xml:space="preserve"
+       style="font-size:41.7743988px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#307800;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Adobe Helvetica"
+       x="437.44217"
+       y="145.34843"
+       id="text3767-2"
+       sodipodi:linespacing="125%"
+       transform="scale(0.97043851,1.030462)"><tspan
+         sodipodi:role="line"
+         id="tspan3769-0"
+         x="437.44217"
+         y="145.34843"
+         style="font-weight:bold;line-height:125%;word-spacing:0px;fill:#307800;fill-opacity:1;-inkscape-font-specification:Sans Bold"
+         dx="0"
+         dy="0"><tspan
+           style="font-size:52.95904922px;fill:#307800;fill-opacity:1"
+           id="tspan3816-9"
+           dx="3.8956246">S</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Adobe Helvetica"
+       x="-283.99121"
+       y="229.74165"
+       id="text4167"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4169"
+         x="-283.99121"
+         y="229.74165" /><tspan
+         sodipodi:role="line"
+         x="-283.99121"
+         y="254.74165"
+         id="tspan4171" /></text>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot4177"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Adobe Helvetica"><flowRegion
+         id="flowRegion4179"><rect
+           id="rect4181"
+           width="592.19873"
+           height="99.066704"
+           x="-12.475066"
+           y="317.80093" /></flowRegion><flowPara
+         id="flowPara4183" /></flowRoot>    <path
+       sodipodi:type="arc"
+       style="fill:#47b400;fill-opacity:1;stroke:#338000;stroke-width:0;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="path3028"
+       sodipodi:cx="456.44067"
+       sodipodi:cy="269.73523"
+       sodipodi:rx="24.216305"
+       sodipodi:ry="20.914082"
+       d="m 480.65698,269.73523 c 0,11.55053 -10.84201,20.91408 -24.21631,20.91408 -13.37429,0 -24.2163,-9.36355 -24.2163,-20.91408 0,-11.55053 10.84201,-20.91408 24.2163,-20.91408 13.3743,0 24.21631,9.36355 24.21631,20.91408 z"
+       transform="matrix(0.38276021,0,0,0.443196,241.77602,21.331104)" />
+    <path
+       sodipodi:type="arc"
+       style="fill:#3c9600;fill-opacity:1;stroke:#3d9900;stroke-width:0;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="path3028-2"
+       sodipodi:cx="456.44067"
+       sodipodi:cy="269.73523"
+       sodipodi:rx="24.216305"
+       sodipodi:ry="20.914082"
+       d="m 480.65698,269.73523 c 0,11.55053 -10.84201,20.91408 -24.21631,20.91408 -13.37429,0 -24.2163,-9.36355 -24.2163,-20.91408 0,-11.55053 10.84201,-20.91408 24.2163,-20.91408 13.3743,0 24.21631,9.36355 24.21631,20.91408 z"
+       transform="matrix(0.19291544,0,0,0.22337576,313.08585,85.30232)" />
+    <path
+       style="fill:none;stroke:#333333;stroke-width:10.27217388;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       d="m 390.01113,137.99956 c 42.52192,-22.59367 29.83971,-48.88723 80.08441,-31.87041"
+       id="path2991-0"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc" />
+  </g>
+</svg>
