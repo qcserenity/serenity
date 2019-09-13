@@ -314,6 +314,17 @@ Functional FunctionalClassResolver::resolveFunctional(FUNCTIONALS functional) {
           1.0,
           1.0);
       break;
+    case FUNCTIONALS::LCBLYP_047:
+      return Functional(
+          {BASIC_FUNCTIONALS::BECKECAMX, BASIC_FUNCTIONALS::LYPC},
+          {1.0,1.0},
+          0.0,
+          0.0,
+          1.0,
+          0.47,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::PW91K:
       return Functional(
           {BASIC_FUNCTIONALS::PW91K},
@@ -480,98 +491,98 @@ Functional FunctionalClassResolver::resolveFunctional(FUNCTIONALS functional) {
               0.53);
           break;
     case FUNCTIONALS::PWPB95:
-          return Functional(
-              //ToDo implement B95C in XCFUN and use it for PWPB95
-              {BASIC_FUNCTIONALS::PW91X, BASIC_FUNCTIONALS::B97C},
-              {0.50,0.731},
-              0.50,
-              1.0,
-              0.0,
-              0.0,
-              0.00,
-              0.269);
-          break;
+      return Functional(
+          //ToDo implement B95C in XCFUN and use it for PWPB95
+          {BASIC_FUNCTIONALS::PW91X, BASIC_FUNCTIONALS::B97C},
+          {0.50,0.731},
+          0.50,
+          1.0,
+          0.0,
+          0.0,
+          0.00,
+          0.269);
+      break;
     case FUNCTIONALS::SAOP:
       return Functional(
           {BASIC_FUNCTIONALS::SAOP});
       break;
     case FUNCTIONALS::LLP91K:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::LLP91K},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::LLP91K},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::LLP91KS:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::LLP91KS},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::LLP91KS},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::PBE2K:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::PBE2K},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::PBE2K},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::PBE2KS:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::PBE2KS},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::PBE2KS},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::PBE3K:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::PBE3K},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::PBE3K},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::PBE4K:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::PBE4K},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::PBE4K},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     case FUNCTIONALS::E2000K:
-    	return Functional(
-    			{BASIC_FUNCTIONALS::E2000K},
-				{1.0},
-				0.0,
-				0.0,
-				0.0,
-				0.0,
-        		1.0,
-        		1.0);
-    	break;
+      return Functional(
+          {BASIC_FUNCTIONALS::E2000K},
+          {1.0},
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0);
+      break;
     default:
       assert(false && "Functional can not be resolved, missing resolve function");
       return Functional({BASIC_FUNCTIONALS::NONE},{1.0},0.0,0.0,0.0);
@@ -591,6 +602,7 @@ FUNCTIONAL_CLASSES FunctionalClassResolver::resolveFunctionalClass(
     BASIC_FUNCTIONALS functional) {
   switch(functional) {
     case BASIC_FUNCTIONALS::NONE:
+    case BASIC_FUNCTIONALS::EXX:
       return FUNCTIONAL_CLASSES::NONE;
       break;
     case BASIC_FUNCTIONALS::SLATERX:

@@ -75,7 +75,6 @@ protected:
   std::shared_ptr<ProductT> getOrProduce(Identifier... id) {
     std::tuple<Identifier...> idTuple(id...);
     std::lock_guard<std::mutex> lock(_lock);
-
     if (!(_producedInstances.find(idTuple) != _producedInstances.end())) {
       /*
        * Lets explain the madness happening in the line below:

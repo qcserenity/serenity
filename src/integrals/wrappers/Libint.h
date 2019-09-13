@@ -194,6 +194,18 @@ public:
       double mu = 0.0);
 
   /**
+   * @brief Initializes the engines for a specific type of integral.
+   * @param op The kernel/operator as libint enum.
+   * @param deriv The derivative level.
+   * @param nCenter The number of centers (2-4).
+   * @param multipoleOrigin The gauge-origin for multipole integrals.
+   */
+  void initialize(libint2::Operator op,
+    const unsigned int deriv,
+    const unsigned int nCenter,
+    const Point multipoleOrigin);
+
+  /**
    * @brief Cleans the engines for a specific type of integral.
    * @param op The kernel/operator as libint enum.
    * @param deriv The derivative level.

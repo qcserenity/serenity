@@ -65,34 +65,39 @@ ExchangeInteractionPotential<SCFMode>::getMatrix(){
 #endif
       const auto& envMat = _dMatControllers[i]->getDensityMatrix();
 
-              ExchangeInteractionIntLooper excLooper(libint2::Operator::coulomb, 0, _basis, envMat.getBasisController(),_prescreeningThreshold);
 
-              auto const excLooperFunction = [&]
-                                           (const unsigned int&  i,
-                                               const unsigned int&  a,
-                                               const unsigned int&  j,
-                                               const unsigned int&  b,
-                                               Eigen::VectorXd& intValues,
-                                               const unsigned int& threadID) {
-                double perm = 1.0;
-                // res has to be 0.5 in the restricted case to compensate double counting
-                double res = 1.0;
-                if (SCFMode == Options::SCF_MODES::RESTRICTED) res *= 0.5;
-//                if (a!=b && i==j) perm *= 2.0;
-                auto& reference = eriContr[threadID];
-                for_spin(reference, envMat){
+      //Looper function
+      auto const excLooperFunction = [&]
+                                   (const unsigned int&  i,
+                                       const unsigned int&  a,
+                                       const unsigned int&  j,
+                                       const unsigned int&  b,
+                                       Eigen::VectorXd& intValues,
+                                       const unsigned int& threadID) {
+        double perm = 1.0;
+        // perm has to be 0.5 in the restricted case to compensate double counting
+        if (SCFMode == Options::SCF_MODES::RESTRICTED) perm *= 0.5;
+        auto& reference = eriContr[threadID];
+        for_spin(reference, envMat){
+          const double exc = perm * envMat_spin(a,b) * intValues(0) * _exc;
+          (reference_spin)(i,j) -= exc;
+        };
+      };
 
-                /*
-                 * Exchange contribution
-                 */
-
-                  const double exc = res * perm * envMat_spin(a,b) * intValues(0) * _exc;
-                  (reference_spin)(i,j) -= exc;
-//                  if (i!=j) eriContr[threadID](j,i) -= exc;
-                };
-              };
-              excLooper.loop(excLooperFunction);
-
+      //Add Exchange if desired
+      if (fabs(_exc) > 0.0) {
+        ExchangeInteractionIntLooper excLooper(libint2::Operator::coulomb, 0, _basis, envMat.getBasisController(),_prescreeningThreshold);
+        excLooper.loop(excLooperFunction);
+      }
+      //Add LR Exchange if desired
+      if (fabs(_lrexc) > 0.0) {
+        //overwrite old exchange ratio to reuse excLooperFunction
+        double tmp = _exc;
+        _exc = _lrexc;
+        ExchangeInteractionIntLooper excLooper(libint2::Operator::erf_coulomb, 0, _basis, envMat.getBasisController(),_prescreeningThreshold,_mu);
+        excLooper.loop(excLooperFunction);
+        _exc = tmp;
+      }
 
 #ifdef _OPENMP
       // sum over all threads
@@ -112,6 +117,7 @@ ExchangeInteractionPotential<SCFMode>::getMatrix(){
   }
   return *_potential;
 }
+
 
 
 template <Options::SCF_MODES SCFMode> Eigen::MatrixXd

@@ -745,6 +745,7 @@ void SystemController::produceBasisController(const Options::BASIS_PURPOSES basi
 }
 
 void SystemController::produceGridController(const Options::GRID_PURPOSES gridPurpose) const {
+  _system->_geometry->deleteIdenticalAtoms();
   _system->_gridControllers[gridPurpose] = GridControllerFactory::produce(_system->_geometry, _system->_settings, gridPurpose);
 }
 

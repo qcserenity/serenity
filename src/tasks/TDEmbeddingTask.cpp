@@ -40,6 +40,8 @@
 #include "postHF/MPn/RIMP2.h"
 #include "scf/Scf.h"
 #include "system/SystemController.h"
+#include "potentials/bundles/FDEPotentialBundleFactory.h"
+
 /* Tasks */
 #include "tasks/BasisSetTruncationTask.h"
 #include "tasks/LocalizationTask.h"
@@ -86,6 +88,10 @@ void TDEmbeddingTask<SCFMode>::run() {
    * This may trigger a supersystem SCF.
    */
   std::shared_ptr<SystemController> supersystem = setUpSupersystem();
+  if(settings.useFermiLevel
+      &&settings.embedding.embeddingMode==Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA) {
+    settings.embedding.fermiShift = getFermiLevel(supersystem);
+  }
   /*
    * Funny enough the "supersystemGrid" is build with the settings of the active system while the
    * grid of the supersystem is build with the settings of the environment.
@@ -106,9 +112,9 @@ void TDEmbeddingTask<SCFMode>::run() {
 
   // Print some information about the picked orbitals and
   //   the level shift parameter
-  if (settings.embeddingMode == Options::KIN_EMBEDDING_MODES::LEVELSHIFT){
+  if (settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::LEVELSHIFT){
     std::cout <<std::endl;
-    std::cout<< "Levelshifting/projectiong active orbitals by: "<<settings.levelShiftParameter<<" Hartree."<<std::endl;
+    std::cout<< "Levelshifting/projectiong active orbitals by: "<<settings.embedding.levelShiftParameter<<" Hartree."<<std::endl;
   }
   std::cout <<std::endl;
   auto listOfActiveOrbs = SystemSplittingTools<SCFMode>::partitionOrbitals(
@@ -256,149 +262,25 @@ void TDEmbeddingTask<SCFMode>::run() {
   /*
    * Create Potentials
    */
-  const auto& actsettings = _activeSystem->getSettings();
-  std::shared_ptr<PotentialBundle<SCFMode> > activeSysPot;
-  if (actsettings.method==Options::ELECTRONIC_STRUCTURE_THEORIES::HF){
-    activeSysPot = _activeSystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
-  } else if (actsettings.method==Options::ELECTRONIC_STRUCTURE_THEORIES::DFT){
-    activeSysPot = _activeSystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
-  } else {
-    std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
-    assert(false);
-  }
-  std::vector<std::shared_ptr<const Geometry> > envGeometries = {_environmentSystem->getGeometry()};
-  std::shared_ptr<PotentialBundle<SCFMode> > esiPot;
-  if (actsettings.dft.densityFitting!=Options::DENS_FITS::RI){
-    esiPot = std::shared_ptr<PotentialBundle<SCFMode> >(
-        new ESIPotentials<SCFMode>(
-            _activeSystem,
-            {_environmentSystem},
-            _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-            _activeSystem->getGeometry(),
-            envDensMats,
-            envGeometries));
-  } else {
-    esiPot = std::shared_ptr<PotentialBundle<SCFMode> >(
-        new ESIPotentials<SCFMode>(
-            _activeSystem,
-            {_environmentSystem},
-            _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-            _activeSystem->getGeometry(),
-            envDensMats,
-            envGeometries,
-            _activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB),
-            {_environmentSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)}));
-  }
-
-  auto naddXCPot = std::shared_ptr<NAddFuncPotential<SCFMode> >( new NAddFuncPotential<SCFMode>(
+  auto pbePot = FDEPotentialBundleFactory<SCFMode>::produce(
       _activeSystem,
       _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+      {_environmentSystem},
       envDensMats,
+      std::make_shared<EmbeddingSettings>(settings.embedding),
       supersystemGrid,
-      FunctionalClassResolver::resolveFunctional(settings.naddXCFunc),
-      {true , std::vector<std::shared_ptr<EnergyComponentController> >(0)},
+      supersystem,
       true,
-      settings.embeddingMode!=Options::KIN_EMBEDDING_MODES::RECONSTRUCTION));
+      settings.noSupRec);
 
-  std::shared_ptr<Potential<SCFMode> > kin;
-  if (settings.embeddingMode==Options::KIN_EMBEDDING_MODES::NONE){
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new ZeroPotential<SCFMode>(_activeSystem->getBasisController()));
-  } else if (settings.embeddingMode==Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new NAddFuncPotential<SCFMode>(
-            _activeSystem,
-            _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-            envDensMats,
-            supersystemGrid,
-            FunctionalClassResolver::resolveFunctional(settings.naddKinFunc)));
-  } else if (settings.embeddingMode==Options::KIN_EMBEDDING_MODES::HUZINAGA) {
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new HuzinagaFDEProjectionPotential<SCFMode> (
-          _activeSystem,
-          {_environmentSystem},
-          FunctionalClassResolver::resolveFunctional(settings.naddXCFunc),
-          false,
-          0.0,
-          false,
-          true,
-          settings.nonOrthogonalCrit != Options::NON_ORTHOGONAL_CRITERION::NONE
-            && settings.basisFunctionRatio != 0.0,
-          settings.basisFunctionRatio,
-          settings.borderAtomThreshold,
-          supersystemGrid,
-          settings.longRangeNaddKinFunc));
-  } else if (settings.embeddingMode==Options::KIN_EMBEDDING_MODES::HOFFMANN) {
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new HuzinagaFDEProjectionPotential<SCFMode> (
-          _activeSystem,
-          {_environmentSystem},
-          FunctionalClassResolver::resolveFunctional(settings.naddXCFunc),
-          false,
-          0.0,
-          true,
-          true,
-          settings.nonOrthogonalCrit != Options::NON_ORTHOGONAL_CRITERION::NONE
-            && settings.basisFunctionRatio != 0.0,
-          settings.basisFunctionRatio,
-          settings.borderAtomThreshold,
-          supersystemGrid,
-          settings.longRangeNaddKinFunc));
-  }else if (settings.embeddingMode==Options::KIN_EMBEDDING_MODES::RECONSTRUCTION){
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new TDReconstructionPotential<SCFMode>(
-            _activeSystem,
-            supersystem,
-            {_environmentSystem},
-            settings.smoothFactor,
-            settings.potentialBasis.empty()?
-                _environmentSystem->getBasisController()->getBasisString() : settings.potentialBasis,
-                settings.singValThreshold,
-                settings.lbDamping,
-                settings.lbCycles,
-                settings.carterCycles,
-                settings.noSupRec));
-  } else {
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new LevelshiftHybridPotential<SCFMode>(
-            _activeSystem,
-            {_environmentSystem},
-            settings.levelShiftParameter,
-            settings.nonOrthogonalCrit != Options::NON_ORTHOGONAL_CRITERION::NONE,
-            settings.basisFunctionRatio,
-            settings.borderAtomThreshold,
-            supersystemGrid,
-            FunctionalClassResolver::resolveFunctional(settings.longRangeNaddKinFunc),
-            true));
-  }
-
-  // ECP TODO: Check consistency!
-  std::shared_ptr<Potential<SCFMode> > ecpInt
-  (new ECPInteractionPotential<SCFMode>(
-      _activeSystem,
-      _activeSystem->getGeometry()->getAtoms(),
-      _environmentSystem->getGeometry()->getAtoms(),
-      envDensMats,
-      _activeSystem->getBasisController()));
-
-  /*
-   * Bundle potentials
-   */
-  auto pbePot = std::shared_ptr<PotentialBundle<SCFMode> >(
-      new PBEPotentials<SCFMode>(
-          activeSysPot,
-          esiPot,
-          naddXCPot,
-          kin,
-          ecpInt));
-
+  const auto& actsettings = _activeSystem->getSettings();
   // non-additive Dispersion correction
-  auto nadDispCorrection = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.dispersion,
-      supersystem->getGeometry(),settings.naddXCFunc);
-  nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.dispersion,
-      _environmentSystem->getGeometry(),settings.naddXCFunc);
-  nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.dispersion,
-      _activeSystem->getGeometry(),settings.naddXCFunc);
+  auto nadDispCorrection = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.embedding.dispersion,
+      supersystem->getGeometry(),settings.embedding.naddXCFunc);
+  nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.embedding.dispersion,
+      _environmentSystem->getGeometry(),settings.embedding.naddXCFunc);
+  nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(settings.embedding.dispersion,
+      _activeSystem->getGeometry(),settings.embedding.naddXCFunc);
   auto actSysDisp = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(actsettings.dft.dispersion,
       _activeSystem->getGeometry(),_activeSystem->getSettings().dft.functional);
 
@@ -433,10 +315,6 @@ void TDEmbeddingTask<SCFMode>::run() {
     std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
     assert(false);
   }
-
-
-
-//  const double frozenEnvEnergy = envEnergies->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY);
 
   // Everything is set in environment ElectronicStructure -> save to file
   _environmentSystem->template getElectronicStructure<SCFMode>()->toHDF5(
@@ -525,7 +403,7 @@ void TDEmbeddingTask<SCFMode>::setActiveSystemBasis(){
 
 template<Options::SCF_MODES SCFMode>
 inline void TDEmbeddingTask<SCFMode>::checkInput() {
-  if(settings.carterCycles!=0 and !settings.noSupRec){
+  if(settings.embedding.carterCycles!=0 and !settings.noSupRec){
     throw SerenityError(
         (string)"Zhang-Carter reconstruction does not support the double reconstruction feature!");
   }
@@ -675,7 +553,31 @@ TDEmbeddingTask<Options::SCF_MODES::UNRESTRICTED>::getDensityNameSuffix() {
   suffix.beta = "beta";
   return suffix;
 }
-
+template<Options::SCF_MODES SCFMode>
+inline double TDEmbeddingTask<SCFMode>::getFermiLevel(
+    std::shared_ptr<SystemController> supersystem) {
+  std::shared_ptr<PotentialBundle<SCFMode> > potBundle;
+  if (supersystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+    potBundle=supersystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+  } else if (supersystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+    potBundle=supersystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+  } else {
+    throw SerenityError("None existing electronicStructureTheory requested. Options are HF and DFT.");
+  }
+  const FockMatrix<SCFMode> fockMatrix = potBundle->getFockMatrix(
+      supersystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
+      supersystem->getElectronicStructure<SCFMode>()->getEnergyComponentController());
+  const CoefficientMatrix<SCFMode> coefficients = supersystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  const auto nOcc = supersystem->getNOccupiedOrbitals<SCFMode>();
+  double fermiLevel = 0.0;
+  for_spin(fockMatrix,coefficients,nOcc) {
+    double newMaxCoefficient = (coefficients_spin.leftCols(nOcc_spin).transpose() * fockMatrix_spin * coefficients_spin.leftCols(nOcc_spin))
+        .diagonal().array().maxCoeff();
+    std::cout << newMaxCoefficient<<" NewMax"<<std::endl;
+    if(newMaxCoefficient > fermiLevel) fermiLevel = newMaxCoefficient;
+  };
+  return fermiLevel;
+}
 
 template class TDEmbeddingTask<Options::SCF_MODES::RESTRICTED>;
 template class TDEmbeddingTask<Options::SCF_MODES::UNRESTRICTED>;

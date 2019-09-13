@@ -38,11 +38,11 @@ struct MultipoleMomentTaskSettings {
   MultipoleMomentTaskSettings():
     highestOrder(2),
     numerical(false),
-    origin(Options::REFERENCE_POINT::ORIGIN) { }
+    origin(Options::GAUGE_ORIGIN::ORIGIN) { }
   REFLECTABLE(
     (unsigned int) highestOrder,
     (bool) numerical,
-    (Options::REFERENCE_POINT) origin
+    (Options::GAUGE_ORIGIN) origin
   )
 };
 

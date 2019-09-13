@@ -37,19 +37,17 @@ using namespace Serenity::Reflection;
 
 struct CubeFileTaskSettings {
   CubeFileTaskSettings():
-    cubeSpacing(0.1),
-    cubeBorder(5.0),
+    cubeSpacing(0.2),
+    cubeBorder(4.0),
     density(false),
     allOrbitals(false),
     occOrbitals(false),
     electrostaticPot(false),
-    ntos(false),
     sedd(false),
     dori(false),
     elf(false),
     elfts(false),
     signedDensity(false),
-    ntoPlotThreshold(0.1),
     orbitals(std::vector<unsigned int>(0)){
   };
   REFLECTABLE(
@@ -59,13 +57,11 @@ struct CubeFileTaskSettings {
     (bool) allOrbitals,
     (bool) occOrbitals,
     (bool) electrostaticPot,
-    (bool) ntos,
     (bool) sedd,
     (bool) dori,
     (bool) elf,
     (bool) elfts,
     (bool) signedDensity,
-    (double) ntoPlotThreshold,
     (std::vector<unsigned int>) orbitals
   )
 };
@@ -99,14 +95,12 @@ public:
    *        - allOrbitals
    *        - occOrbitals
    *        - electrostaticPot
-   *        - NTOs (Natural Transition Orbitals)
    *        - sedd (Electron localization method)
-   * 	    - dori (Electron localization method)
-   *	    - signedDensity (density multiplied by the sign of the density Laplacian, for more SEDD.h)
-   *	    - orbital (specify, which orbital to print)
-   *	    - ntoPlotThreshold (threshold for which eigenvalues in the NTO evaluation are taken into account)
-   *	    - cubeSpacing (Sets the step sizes for the three vectors spanning the cube mesh)
-   * 	    - cubeBorder(Sets the border width around the geometry for which the cube grid is created)
+   *        - dori (Electron localization method)
+   *        - signedDensity (density multiplied by the sign of the density Laplacian, for more SEDD.h)
+   *        - orbital (specify, which orbital to print)
+   *        - cubeSpacing (Sets the step sizes for the three vectors spanning the cube mesh)
+   *        - cubeBorder(Sets the border width around the geometry for which the cube grid is created)
    */
   CubeFileTaskSettings settings;
 

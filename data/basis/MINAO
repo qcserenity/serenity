@@ -1648,7 +1648,7 @@ br   MINAO
 1.7636              0.273774
 0.70619             0.074397
 *
-# This is called MINAO-PP in Molpro. Techniqually this is larger than a minimal basis set for 18e.
+# This basis is called MINAO-PP in Molpro. Technically this is larger than a minimal basis set for 18e.
 pd   MINAO
 *
 9    s
@@ -1689,7 +1689,7 @@ pd   MINAO
 0.425675            0.306456
 0.187727            0.166629
 *
-# This is called MINAO-PP in Molpro. Techniqually this is larger than a minimal basis set for 16e.
+# This basis is called MINAO-PP in Molpro. Technically this is larger than a minimal basis set for 16e.
 ru   MINAO
 *
 9    s
@@ -1729,5 +1729,46 @@ ru   MINAO
 0.682565            0.362044
 0.319378            0.297514
 0.141781            0.161037
+*
+# This basis is called MINAO-PP in Molpro. Technically this is larger than a minimal basis set for 16e.
+ir   MINAO
+*
+9    s
+34.2048             0.01733
+21.3768             -0.153203
+13.3624             0.441933
+8.34835             -0.188692
+4.73163             -0.712225
+1.30785             0.852905
+0.624334            0.499746
+0.193871            0.035249
+0.087949            -0.007078
+9    s
+34.2048             -0.006001
+21.3768             0.053885
+13.3624             -0.160602
+8.34835             0.080395
+4.73163             0.257594
+1.30785             -0.423751
+0.624334            -0.348354
+0.193871            0.280031
+0.087949            0.654557
+8    p
+20.7204             -0.013202
+12.9677             0.073952
+5.72224             -0.284312
+1.55038             0.510223
+0.78266             0.479502
+0.385515            0.169772
+0.170609            0.016668
+0.072829            0.001242
+7    d
+91.4125             2.4e-05
+9.73013             0.015217
+6.07712             -0.065724
+1.6882              0.234005
+0.823786            0.384535
+0.382068            0.355849
+0.166965            0.211976
 *
 $end   MINAO

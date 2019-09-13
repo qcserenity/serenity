@@ -376,6 +376,69 @@ int SystemSplittingTools<Options::SCF_MODES::UNRESTRICTED>::getSpin(
   return (int)nOcc.alpha - (int)nOcc.beta;
 }
 
+template<Options::SCF_MODES SCFMode> std::vector<std::shared_ptr<Eigen::MatrixXd> >
+SystemSplittingTools<SCFMode>::getProjectedSubsystems(
+    std::shared_ptr<SystemController> activeSystem,
+    std::vector<std::shared_ptr<SystemController> > environmentSystems,
+    double truncationThreshold) {
+  std::vector<std::shared_ptr<Eigen::MatrixXd> > overlapMatrices;
+  auto basisContA = activeSystem->getBasisController();
+  for(auto env : environmentSystems) {
+    auto& libint = Libint::getInstance();
+    auto s_AB = std::make_shared<Eigen::MatrixXd> (
+        libint.compute1eInts(libint2::Operator::overlap, env->getBasisController(),basisContA));
+    double totalInterSystemBasisOverlap = 0.0;
+    for(unsigned int k = 0; k < s_AB->rows(); ++k) {
+      for (unsigned int l = 0; l < s_AB->cols(); ++l) {
+        totalInterSystemBasisOverlap += std::abs((*s_AB)(k,l));
+      }// for l
+    }// for k
+    if (totalInterSystemBasisOverlap <= truncationThreshold) {
+      // If the system does not get projected, forget the basis overlap.
+      s_AB = nullptr;
+    }
+    overlapMatrices.push_back(s_AB);
+  }// for env
+  return overlapMatrices;
+}
+
+template<Options::SCF_MODES SCFMode> std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > >
+SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(
+    std::vector<std::shared_ptr<SystemController> > environmentSystems,
+    bool topDown) {
+  // Build the density matrix controllers of the environment systems in the same
+  // spin-polarization as the active system.
+  // These are needed for the Coulomb and exchange contribution to the supersystem fock operator of systems,
+  // which are not in the system pair.
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > environmentDensityControllers;
+  for (auto sys : environmentSystems){
+    if (sys->getSettings().scfMode == SCFMode || topDown) {
+      assert(sys->hasElectronicStructure<SCFMode>());
+      environmentDensityControllers.push_back(sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController());
+    } else {
+      if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+        //Build unrestricted DensityMatrixController
+        DensityMatrix<SCFMode> uDensMat(sys->getBasisController());
+        for_spin(uDensMat) {
+          uDensMat_spin = 0.5 * sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix();
+        };
+        environmentDensityControllers.push_back(std::make_shared<DensityMatrixController<SCFMode>>(uDensMat));
+      } else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+        //Build restricted DensityMatrixController
+        DensityMatrix<SCFMode> rDensMat(sys->getBasisController());
+        for_spin(rDensMat) {
+          rDensMat_spin = sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix().total();
+        };
+        environmentDensityControllers.push_back(std::make_shared<DensityMatrixController<SCFMode>>(rDensMat));
+      } else {
+        assert(false);
+      }
+    }
+  }// for sys
+  return environmentDensityControllers;
+}
+
+
 template class SystemSplittingTools<Options::SCF_MODES::RESTRICTED>;
 template class SystemSplittingTools<Options::SCF_MODES::UNRESTRICTED>;
 } /* namespace Serenity */

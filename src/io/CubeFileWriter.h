@@ -103,23 +103,23 @@ public:
       std::shared_ptr<const Geometry> geometry,
       const std::vector<std::reference_wrapper<const MatrixInBasis<RESTRICTED> > >& matrices);
   /**
-   * @brief Prints dot product of inVector and basis into a cube file (e.g. MOs)
+   * @brief Prints dot product of inVectorSet and basis into a cube file (e.g. MOs)
    *
    * This method prints the sum of all products of a basis functions its
-   * corresponding coefficient in the vector onto a grid in a cube file
+   * corresponding coefficient in the vectors onto a grid in a cube file
    * \f$\sum_{a} Vec_{a}|a(r)>\f$
    * An example for this are the MOs.
    *
-   * @param filename the file name for the generated cube file
+   * @param filenames the file names for the generated cube files
    * @param geometry the geometry that shall be printed into the header
    * @param basis the corresponding basis for the coefficients in the vector
-   * @param inVector the vector holding the coefficients of the property that shall be printed
+   * @param inVectorSet the vectors holding the coefficients of the property that shall be printed
    */
-  void writeVectorToCube(
-      const std::string& filename,
-      std::shared_ptr<const Geometry> geometry,
-      std::shared_ptr<BasisController> basisController,
-      Eigen::VectorXd& inVector);
+  void writeVectorSetToCube(
+      const std::vector<string>& filenames,
+      shared_ptr<const Geometry> geometry,
+      shared_ptr<BasisController> basisController,
+      Eigen::MatrixXd& inVectorSet);
 
   /*
    * Getters and setters
@@ -129,7 +129,6 @@ public:
    * @brief Returns the border width around the geometry for which the cube grid is created.
    *
    * Returns the border width around the geometry for which the cube grid is created.
-   * The default is 5.0 bohr
    *
    * @return grid border width
    */
@@ -269,8 +268,11 @@ public:
   void writeCube(
       const std::vector<std::string>& filenames,
       std::shared_ptr<const Geometry> geometry,
-      std::function<std::vector<Eigen::VectorXd>(std::shared_ptr<GridController>)>
-        calcPropetries);
+      std::function<std::vector<Eigen::VectorXd>(std::shared_ptr<GridController>)>calcPropetries);
+  void writeCube(
+      const vector<string>& filenames,
+      shared_ptr<const Geometry> geometry,
+      std::function<Eigen::MatrixXd(shared_ptr<GridController>)> calcProperties);
 
 private:
 

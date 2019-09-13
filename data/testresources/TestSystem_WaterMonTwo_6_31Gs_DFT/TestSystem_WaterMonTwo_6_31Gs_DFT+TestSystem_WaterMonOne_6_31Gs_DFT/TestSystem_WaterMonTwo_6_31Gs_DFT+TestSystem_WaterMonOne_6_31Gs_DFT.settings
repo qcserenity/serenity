@@ -48,7 +48,6 @@ LABEL 6-31GS
 AUXLABEL RI_J_WEIGEND
 MAKESPHERICALBASIS true
 INTEGRALTHRESHOLD 1e-10
-BASISLIBPATH /scratch/m_bens05/workspace/TruncationSchemesInProjectionBasedEmbedding/DFTinDFT/TruncationBenchmark/Def2-SVP/Calculations/NETT_POPULATION_NONORTHOGONAL/1e-4/D/../../../../../../../../serenity/data/basis/
 -basis
 +grid
 GRIDTYPE BECKE

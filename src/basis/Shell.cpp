@@ -68,7 +68,38 @@ Shell::Shell(const Shell& other): libint2::Shell(other),
   }
 }
 
-
+bool Shell::operator==(const Shell& other) const{
+  //Check angular momentum
+  if(getAngularMomentum()!=other.getAngularMomentum()) return false;
+  //Check origin
+  bool diffO = ( std::fabs(this->O[0] - other.O[0])
+               + std::fabs(this->O[1] - other.O[1])
+               + std::fabs(this->O[2] - other.O[2])) > 5e-6;
+  if(diffO) return false;
+  //Check exponents and contractions.
+  const auto otherExponents = other.getExponents();
+  const auto otherContractions = other.getContractions();
+  bool diffExpCont = _exponents.size()==otherExponents.size();
+  if(diffExpCont) {
+    assert(otherExponents == otherContractions);
+    for(unsigned int iPrim=0; iPrim < _exponents.size();++iPrim) {
+      double diffExp = std::fabs(_exponents[iPrim]-otherExponents[iPrim]);
+      double diffCont = std::fabs(_contractions[iPrim]-otherContractions[iPrim]);
+      if(diffExp > 1e-12 || diffCont > 1e-12) {
+        return false;
+      }// if diffExp > 1e-12 || diffCont > 1e-12
+    }// for unsigned int iPrim=0; iPrim < _exponents.size();++iPrim
+  }// if diffExpCont
+  else {
+    return false;
+  }
+  //Check norm factors
+  if((*_normFactors - other.getNormFactors()).norm() > 1e-12) return false;
+  //Check for spherical or cartesian function.
+  if(isSpherical()!=other.isSpherical()) return false;
+  //If all checks were fine, these shells are the same.
+  return true;
+};
 
 
 

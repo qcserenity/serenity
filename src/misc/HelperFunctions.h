@@ -22,6 +22,7 @@
 
 /* Include Serenity Internal Headers */
 #include "math/Matrix.h"
+#include <Eigen/SparseCore>
 
 
 namespace Serenity {
@@ -153,6 +154,74 @@ inline Matrix<double> vector2triangularMatrix(Eigen::VectorXd triangularVector) 
     }
   }
   return triangularMatrix;
+}
+/**
+ * @brief A helper function that constructs a projection matrix from a prescreening
+ *        vector <negligible>.\n
+ *        The task of the projection matrix \f$ \mathbf{P} \f$ is to transform a large matrix
+ *        \f$ \mathbf{M} \f$ with many redundant or negligible entries to a smaller matrix
+ *        \f$ \mathbf{M}^\mathrm{sig}\f$ that only contains the important contributions.\n
+ *        For example consider the basis function values on a grid for a given block
+ *        of grid points. For the block only a small number of basis functions will
+ *        have values different from zero. In the code only these values are calculated.
+ *        However, the resulting matrix \f$ \mathbf{B} \f$ (block size x N-basis functions)
+ *        will contain columns for all basis functions. The important columns can now
+ *        be easily obtained by multiplying with the sparse projection matrix:\n\n
+ *
+ *               \f$ \mathbf{BP} = \mathbf{B}^\mathrm{sig} \f$\n\n
+ *
+ *        After evaluation in the reduced dimension the result can be easily projected back
+ *        into the original dimension by multiplying with \f$ \mathbf{P}^\dagger \f$.\n\n
+ *
+ *        Note that this multiplication is extremely efficient since the sparse nature
+ *        of the projection matrix is fully exploited.
+ * @param negligible The prescreening vector.
+ * @return The projection matrix.
+ */
+inline Eigen::SparseMatrix<double> constructProjectionMatrix(
+    Eigen::VectorXi negligible) {
+  negligible -= Eigen::VectorXi::Constant(negligible.rows(),1);
+  negligible = negligible.array().abs();
+  Eigen::SparseVector<int> blockToBasis (negligible.rows());
+  blockToBasis = negligible.sparseView();
+  unsigned int nBasisFunctions = negligible.size();
+
+  std::vector<Eigen::Triplet<double> > projectionTriplets;
+  unsigned int col = 0;
+  for(Eigen::SparseVector<int>::InnerIterator itMu(blockToBasis); itMu; ++itMu) {
+    projectionTriplets.push_back(Eigen::Triplet<double>(itMu.row(),col,1.0));
+    col++;
+  }// for itMu
+  Eigen::SparseMatrix<double> projectionMatrix(
+      nBasisFunctions,blockToBasis.nonZeros());
+  projectionMatrix.setFromTriplets(projectionTriplets.begin(),projectionTriplets.end());
+  return projectionMatrix;
+}
+
+/**
+ * @brief Performs Mulliken net population based prescreening and constructs the associated
+ *        projection matrix.
+ * @param coefficients  The coefficients to be prescreened.
+ * @param mnpThreshold  The prescreening threshold.
+ * @return The projection matrix.
+ */
+inline Eigen::SparseMatrix<double> constructSignificantMnPProjectionMatrix(
+    Eigen::VectorXd coefficients,
+    double mnpThreshold) {
+  unsigned int nC2s = coefficients.size();
+  Eigen::VectorXd c2s = coefficients.cwiseProduct(coefficients);
+  std::vector<Eigen::Triplet<double> > projectionTriplets;
+  unsigned int col = 0;
+  for(unsigned int iC2 = 0; iC2 < nC2s; ++iC2) {
+    if(c2s(iC2) > mnpThreshold) {
+      projectionTriplets.push_back(Eigen::Triplet<double>(iC2,col,1.0));
+      col++;
+    }
+  }// for itMu
+  Eigen::SparseMatrix<double> projectionMatrix(
+      nC2s,col);
+  projectionMatrix.setFromTriplets(projectionTriplets.begin(),projectionTriplets.end());
+  return projectionMatrix;
 }
 
 

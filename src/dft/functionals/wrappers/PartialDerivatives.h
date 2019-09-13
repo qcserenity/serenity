@@ -28,6 +28,7 @@
 #include "data/grid/GridData.h"
 #include "data/grid/GridPotential.h"
 #include "settings/Options.h"
+#include "data/DoublySpinPolarizedData.h"
 
 
 namespace Serenity {
@@ -278,7 +279,10 @@ public:
     dFdSigma(nullptr),
     d2FdSigma2(nullptr),
     d2FdRhodSigma(nullptr),
-    dFdGradRho(nullptr){
+    dFdGradRho(nullptr),
+    d2FdRhodGradRho(nullptr),
+    d2FdGradRho2(nullptr){
+    //ToDo: For higher derivatives, this gets really messy...
     assert(order <= 2 && "Partial derivatives only implemented up to second order");
     assert(_gridController);
     //Initialize objects
@@ -304,9 +308,12 @@ public:
             }
             break;
           case FUNCTIONAL_DATA_TYPE::GRADIENTS :
-            assert (order < 2 && "GRADIENTS type only implemented up to first order");
             if (_order >= 1) {
               dFdGradRho = makeGradientPtr<GridPotential<T> >(_gridController);
+            }
+            if (_order >= 2) {
+              d2FdRhodGradRho = makeGradientPtr<DoublySpinPolarizedData<T, GridData<RESTRICTED> > >(_gridController);
+              d2FdGradRho2 = makeHessianPtr<DoublySpinPolarizedData<T,GridData<RESTRICTED > > >(_gridController);
             }
             break;
           case FUNCTIONAL_DATA_TYPE::POTENTIAL :
@@ -354,6 +361,10 @@ public:
   std::shared_ptr<d2F_dSigma2<T> > d2FdSigma2;
   std::shared_ptr<d2F_dRhodSigma<T> > d2FdRhodSigma;
   std::shared_ptr<Gradient<GridPotential<T> > > dFdGradRho;
+  //First index of DoublySpinPolarizedData corresponds to spin index of Rho.
+  //Second index of DoublySpinPolarizedData corresponds to spin index of GradRho.
+  std::shared_ptr<Gradient<DoublySpinPolarizedData<T,GridData<RESTRICTED> > > > d2FdRhodGradRho;
+  std::shared_ptr<Hessian<DoublySpinPolarizedData<T,GridData<RESTRICTED> > > >  d2FdGradRho2;
 };
 
 } /* namespace Serenity */

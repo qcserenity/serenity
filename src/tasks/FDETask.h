@@ -25,6 +25,7 @@
 #include "data/grid/GridPotential.h"
 #include "settings/Reflection.h"
 #include "tasks/Task.h"
+#include "settings/EmbeddingSettings.h"
 /* Include Std and External Headers */
 #include <memory>
 #include <vector>
@@ -37,48 +38,22 @@ using namespace Serenity::Reflection;
 
 struct FDETaskSettings {
   FDETaskSettings():
-    naddKinFunc(Options::KINFUNCTIONALS::PW91K),
-    naddXCFunc(Options::XCFUNCTIONALS::PW91),
-    dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE),
-    embeddingMode(Options::KIN_EMBEDDING_MODES::NADD_FUNC),
-    smoothFactor(0.0),
-    potentialBasis(""),
-    singValThreshold(0.0),
-    lbDamping(0.995),
-    lbCycles(0),
-    carterCycles(0),
     locType(Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO),
     gridCutOff(-1.0),
     smallSupersystemGrid(false),
-    finalGrid(true),
-    truncateProjector(false),
-    projecTruncThresh(1.0e+1),
-    distantKinFunc(false),
-    levelShiftParameter(1e+6),
-    basisFunctionRatio(0.0),
-    borderAtomThreshold(0.02){}
+    finalGrid(true)
+  {
+    embedding.naddXCFunc = Options::XCFUNCTIONALS::PW91;
+    embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  }
   REFLECTABLE(
-      (Options::KINFUNCTIONALS) naddKinFunc,
-      (Options::XCFUNCTIONALS) naddXCFunc,
-      (Options::DFT_DISPERSION_CORRECTIONS) dispersion,
-      (Options::KIN_EMBEDDING_MODES) embeddingMode,
-      (double) smoothFactor,
-      (std::string) potentialBasis,
-      (double) singValThreshold,
-      (double) lbDamping,
-      (unsigned int) lbCycles,
-      (unsigned int) carterCycles,
       (Options::ORBITAL_LOCALIZATION_ALGORITHMS) locType,
       (double) gridCutOff,
       (bool) smallSupersystemGrid,
-      (bool) finalGrid,
-      (bool) truncateProjector,
-      (double) projecTruncThresh,
-      (bool) distantKinFunc,
-      (double) levelShiftParameter,
-      (double) basisFunctionRatio,
-      (double) borderAtomThreshold
+      (bool) finalGrid
   )
+public:
+  EmbeddingSettings embedding;
 
 };
 
@@ -109,22 +84,32 @@ public:
    * @see Task
    */
   void run();
+  /**
+   * @brief Parse the settings to the task settings.
+   * @param c The task settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  void visit(FDETaskSettings& c, set_visitor v, std::string blockname) {
+    if (!blockname.compare("")){
+      visit_each(c, v);
+    } else if(!c.embedding.visitSettings(v,blockname)){
+      throw SerenityError((string)"Unknown block in FDETaskSettings: "+blockname);
+    }
+  }
 
   /**
    * @brief The settings/keywords for the FDETask: \n
-   *        -naddKinFunc: The non-additive kinetic energy functional (Default: TF)
-   *        -naddXCFunc: The non-additive exchange-correlation functional (Default: BP86)
-   *        -calculateGradients: If true, calculate FDE gradients (Default: false)
-   *        -exactNaddKin: If true, use reconstructed non-additive kinetic FDE potential (ignores the naddKinFunc keyword, Default: false)
+   *        -locType: Localization type used in hybrid projection/functional approaches.
    *        -gridCutOff: Modifies the super-system grid used to evaluate the FDE potential.
    *                     Only atoms within gridCutOff distance (in Angstrom) from any atom of the active
    *                     system are used to construct the super-system grid (Default: 5.0).
+   *        -smallSupersystemGrid: use a small supersystem grid.
+   *        -finalGrid: use a final supersystem grid for the energy evaluation.
    *        -truncateProjector: A flag whether the projector should be truncated (default: false). See HuzinagaFDEProjectionPotential.h.
    *        -projectionTruncThreshold: The projection truncation threshold (default: 1.0e+1). See HuzinagaFDEProjectionPotential.h.
    *        -distantKinFunc: A flag whether not projected subsystems should be treated with a non additive kin. energy func. See HuzinagaFDEProjectionPotential.h.
-   *        -levelShiftParameter: The level-shift of environment orbitals.
-   *        -basisFunctionRatio: The retained basis function ratio for hybrid-projection methods.
-   *        -borderAtomThreshold: The mulliken population threshold for projecting an environment orbital.
+   *        -embedding: The embedding settings. See settings/EmbeddingSettings.h for details.
    */
   FDETaskSettings settings;
 

@@ -87,6 +87,10 @@ template<Options::SCF_MODES T> void LocalizationTask::runByLastSCFMode() {
       localizationRoutine = std::make_shared<NonOrthogonalLocalization<T> >(_systemController);
       printSubSectionTitle("Running Non-Orthogonal Localization");
       break;
+    case Options::ORBITAL_LOCALIZATION_ALGORITHMS::NONE:
+      //Do nothing
+      printSubSectionTitle("Skip localization...");
+      return;
   }
 
   auto densMatrix(

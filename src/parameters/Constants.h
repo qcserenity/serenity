@@ -70,6 +70,9 @@ constexpr double BOLTZMANN_CONSTANT = 1.38064852E-23;
 constexpr double ELEMENTARY_CHARGE = 1.602176634E-019;
 constexpr double PLANCK_CONSTANT = 6.62607015E-34;
 constexpr double UNIVERSALGAS_CONSTANT = 8.314462618;
+constexpr double VAC_ELEC_PERMITTIVITY = 8.8541878128E-12;
+constexpr double SPEEDOFLIGHT_AU = 2 * VAC_ELEC_PERMITTIVITY * SPEEDOFLIGHT * PLANCK_CONSTANT / (ELEMENTARY_CHARGE * ELEMENTARY_CHARGE);
+
 
 /*
  * Conversion factors
@@ -107,6 +110,9 @@ constexpr double DEBYE_TO_AU = 0.393430307;
 constexpr double AU_TO_DEBYE = 1.0 / DEBYE_TO_AU;
 /// inHartree * HARTREE_TO_KCAL_PER_MOL = inKcalPerMol
 constexpr double HARTREE_TO_KCAL_PER_MOL = 627.5095;
+
+/// AU to 10^{-40 cgs} (needed for rotatory strengths)
+constexpr double AU_TO_CGS = 64604.8164;
 
 } /* namespace Serenity */
 #endif /* CONSTANTS_H_ */

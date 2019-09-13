@@ -162,8 +162,71 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
       settings.basis.basisLibPath = basisPath;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = Options::XCFUNCTIONALS::PBE;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
       _testSystemControllers[kind] =
-            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP), settings);
+            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE), settings);
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI:
+    {
+      Settings settings;
+      settings.basis.label = "DEF2-TZVP";
+      settings.name = "TestSystem_H2_DEF2_TZVP_PBE_NORI";
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::PBE;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI), settings);
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_CAMB3LYP:
+    {
+      Settings settings;
+      settings.basis.label = "DEF2-TZVP";
+      settings.name = "TestSystem_H2_DEF2_TZVP_CAMB3LYP";
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::CAMB3LYP;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_CAMB3LYP), settings);
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF:
+    {
+      Settings settings;
+      settings.basis.label = "DEF2-TZVP";
+      settings.name = "TestSystem_H2_DEF2_TZVP_HF";
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF), settings);
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF_UNRESTRICTED:
+    {
+      Settings settings;
+      settings.basis.label = "DEF2-TZVP";
+      settings.name = "TestSystem_H2_DEF2_TZVP_HF_UNRESTRICTED";
+      settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF_UNRESTRICTED), settings);
     }
     break;
     case TEST_SYSTEM_CONTROLLERS::H2_DEF2_SV_P_PBE:
@@ -250,6 +313,8 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
          settings.name = "TestSystem_WaterMonTwo_6_31Gs_DFT";
          settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
          settings.basis.basisLibPath = basisPath;
+         settings.grid.smallGridAccuracy = 4;
+         settings.grid.accuracy = 4;
          if(fromScratch){
            _testSystemControllers[kind] =
                make_shared<SystemController>(getGeometry(kind), settings);
@@ -266,6 +331,8 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
          settings.name = "TestSystem_WaterMonOne_6_31Gs_DFT";
          settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
          settings.basis.basisLibPath = basisPath;
+         settings.grid.smallGridAccuracy = 4;
+         settings.grid.accuracy = 4;
          if(fromScratch){
            _testSystemControllers[kind] =
                make_shared<SystemController>(getGeometry(kind), settings);
@@ -399,6 +466,150 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
       }
     }
     break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::LDA;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE";
+      settings.basis.basisLibPath = basisPath;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.label = "6-31GS";
+      settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE_BP86";
+      settings.basis.basisLibPath = basisPath;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_H2_def2_SVP_ACTIVE_FDE_BP86";
+      settings.basis.basisLibPath = basisPath;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_H2_def2_SVP_ENVIRONMENT_FDE_BP86";
+            settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_PBE0_UNRESTRICTED:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::PBE0;
+      settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_H2_def2_SVP_ACTIVE_FDE_PBE0_UNRESTRICTED";
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_PBE0_UNRESTRICTED:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::PBE0;
+      settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_H2_def2_SVP_ENVIRONMENT_FDE_PBE0_UNRESTRICTED";
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_B3LYP:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::B3LYP;
+      settings.basis.label = "6-31GS";
+      settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE_B3LYP";
+      settings.basis.basisLibPath = basisPath;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
     case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE:
     {
       Settings settings;
@@ -406,6 +617,68 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
       settings.dft.functional = Options::XCFUNCTIONALS::LDA;
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.label = "6-31GS";
+      settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE_BP86";
+            settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_B3LYP:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::B3LYP;
+      settings.basis.label = "6-31GS";
+      settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE_B3LYP";
+      settings.dft.densityFitting = Options::DENS_FITS::NONE;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::He2_6_31Gs_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.basis.label = "6-31GS";
+      settings.name = "TestSystem_He2_6_31Gs_BP86";
+            settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
       if(fromScratch){
         _testSystemControllers[kind] =
             make_shared<SystemController>(getGeometry(kind), settings);
@@ -461,7 +734,26 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
     {
       Settings settings;
       settings.basis.label = "STO-3G";
-      settings.name = "OH_MINBAS_PBE";
+      settings.name = "TestSystem_OH_MINBAS_PBE";
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::PBE;
+      settings.basis.basisLibPath = basisPath;
+      settings.spin = 1;
+      settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE:
+    {
+      Settings settings;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_MethylRad_def2_SVP_PBE";
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = Options::XCFUNCTIONALS::PBE;
       settings.basis.basisLibPath = basisPath;
@@ -568,6 +860,44 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind,
       }
     }
     break;
+    case TEST_SYSTEM_CONTROLLERS::PHENOLATE_O_DEF2_SVP_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.basis.label = "DEF2-SVP";
+      settings.name = "TestSystem_Phenolate_O_Def2_SVP_BP86";
+      settings.grid.accuracy = 4;
+      settings.grid.smallGridAccuracy = 4;
+      settings.charge = -2;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::PHENOLATE_PHENYL_DEF2_SVP_BP86:
+    {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = Options::XCFUNCTIONALS::BP86;
+      settings.basis.label = "DEF2-SVP";
+      settings.name = "TestSystem_Phenolate_Phenyl_Def2_SVP_BP86";
+      settings.grid.accuracy = 4;
+      settings.grid.smallGridAccuracy = 4;
+      settings.charge = +1;
+      if(fromScratch){
+        _testSystemControllers[kind] =
+            make_shared<SystemController>(getGeometry(kind), settings);
+      }else{
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = make_shared<SystemController>(settings);
+      }
+    }
+    break;
   }
 }
 
@@ -654,6 +984,38 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
        auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
        auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
        _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE] =
+             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+     }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI:
+     {
+       auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
+       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
+       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI] =
+             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+     }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_CAMB3LYP:
+     {
+       auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
+       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
+       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_CAMB3LYP] =
+             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+     }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF:
+     {
+       auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
+       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
+       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF] =
+             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+     }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF_UNRESTRICTED:
+     {
+       auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
+       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
+       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF_UNRESTRICTED] =
              make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
      }
     break;
@@ -1007,6 +1369,7 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
              make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
      }
     break;
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE:
     case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE:
     {
       // TODO this is not actually the structural minimum (not even for the given basis.)
@@ -1014,6 +1377,26 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE] =
             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_B3LYP:
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86:
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86:
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_PBE0_UNRESTRICTED:
+    {
+      // TODO this is not actually the structural minimum (not even for the given basis.)
+      auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
+      auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_B3LYP] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_PBE0_UNRESTRICTED] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});             
     }
     break;
     case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE:
@@ -1023,6 +1406,33 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 2.4);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE] =
             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_B3LYP:
+    case TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86:
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86:
+    case TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_PBE0_UNRESTRICTED:
+    {
+      // TODO this is not actually the structural minimum (not even for the given basis.)
+      auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 1.7);
+      auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 2.4);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_B3LYP] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_PBE0_UNRESTRICTED] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});             
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::He2_6_31Gs_BP86:
+    {
+      // TODO this is not actually the structural minimum (not even for the given basis.)
+      auto He1 = make_shared<Atom>(AtomTypeFactory::getAtomType("He"), 0.0, 0.0, 0.0);
+      auto He2 = make_shared<Atom>(AtomTypeFactory::getAtomType("He"), 0.0, 0.0, 1.0*ANGSTROM_TO_BOHR);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::He2_6_31Gs_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{He1, He2});
     }
     break;
     case TEST_SYSTEM_CONTROLLERS::O2_MINBAS_SING:
@@ -1054,6 +1464,16 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       auto H = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.97);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::OH_MINBAS_PBE] =
           make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{O,H});
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE:
+    {
+      auto C  = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), -4.55140536955085*ANGSTROM_TO_BOHR, 2.81558128447117*ANGSTROM_TO_BOHR, -0.04650481068098*ANGSTROM_TO_BOHR);
+      auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -3.53420848990172*ANGSTROM_TO_BOHR, 3.16961934366078*ANGSTROM_TO_BOHR,  0.01972807283118*ANGSTROM_TO_BOHR);
+      auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -5.06110516479103*ANGSTROM_TO_BOHR, 2.46787734641333*ANGSTROM_TO_BOHR,  0.83903751909563*ANGSTROM_TO_BOHR);
+      auto H3 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -5.06106097575639*ANGSTROM_TO_BOHR, 2.81228202545472*ANGSTROM_TO_BOHR, -0.99807078124583*ANGSTROM_TO_BOHR);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE] =
+          make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{C,H1,H2,H3});
     }
     break;
     case TEST_SYSTEM_CONTROLLERS::HI_Def2_SVP_PBE:
@@ -1097,6 +1517,34 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 2.4);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_HYBRID] =
             make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{H1, H2});
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::PHENOLATE_O_DEF2_SVP_BP86:
+    {
+      // TODO this is not actually the structural minimum (not even for the given basis.)
+
+      auto O = make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 2.341566*ANGSTROM_TO_BOHR, 0.0, -0.000016*ANGSTROM_TO_BOHR);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::PHENOLATE_O_DEF2_SVP_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{O});
+    }
+    break;
+    case TEST_SYSTEM_CONTROLLERS::PHENOLATE_PHENYL_DEF2_SVP_BP86:
+    {
+      // TODO this is not actually the structural minimum (not even for the given basis.)
+      auto C1 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), 1.077309*ANGSTROM_TO_BOHR, 0.0, -0.000014*ANGSTROM_TO_BOHR);
+      auto C2 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), 0.286113*ANGSTROM_TO_BOHR, 1.209101*ANGSTROM_TO_BOHR, -0.000003*ANGSTROM_TO_BOHR);
+      auto C3 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), -1.097619*ANGSTROM_TO_BOHR, 1.196760*ANGSTROM_TO_BOHR, 0.000012*ANGSTROM_TO_BOHR);
+      auto C4 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), -1.823396*ANGSTROM_TO_BOHR, 0.0, 0.000013*ANGSTROM_TO_BOHR);
+      auto C5 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), -1.097619*ANGSTROM_TO_BOHR, -1.196759*ANGSTROM_TO_BOHR, 0.000010*ANGSTROM_TO_BOHR);
+      auto C6 = make_shared<Atom>(AtomTypeFactory::getAtomType("C"), 0.286113*ANGSTROM_TO_BOHR, -1.209102*ANGSTROM_TO_BOHR, -0.000005*ANGSTROM_TO_BOHR);
+
+      auto H1 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.829304*ANGSTROM_TO_BOHR, 2.149743*ANGSTROM_TO_BOHR, -0.000005*ANGSTROM_TO_BOHR);
+      auto H2 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -1.634545*ANGSTROM_TO_BOHR, 2.143825*ANGSTROM_TO_BOHR, -.000017*ANGSTROM_TO_BOHR);
+      auto H3 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -2.907447*ANGSTROM_TO_BOHR, 0.0, 0.000035*ANGSTROM_TO_BOHR);
+      auto H4 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -1.634545*ANGSTROM_TO_BOHR, -2.143825*ANGSTROM_TO_BOHR, -0.000013*ANGSTROM_TO_BOHR);
+      auto H5 = make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.829303*ANGSTROM_TO_BOHR, -2.149744*ANGSTROM_TO_BOHR, -0.000009*ANGSTROM_TO_BOHR);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::PHENOLATE_PHENYL_DEF2_SVP_BP86] =
+            make_shared<Geometry>(std::vector<std::shared_ptr<Atom> >{C1,C2,C3,C4,C5,C6, H1, H2, H3, H4, H5});
     }
   }
 }

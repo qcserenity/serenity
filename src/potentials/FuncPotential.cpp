@@ -109,7 +109,9 @@ FuncPotential<SCFMode>::getMatrix(){
         pot_spin.setZero();
       };
 
-      if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::LDA){
+      if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::NONE) {
+        //Nothing to be done here
+      } else if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::LDA){
         _gridToMatrix->addScalarOperatorToMatrix(pot,*funcData.dFdRho);
       } else if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::GGA) {
         _gridToMatrix->addScalarOperatorToMatrix(pot,*funcData.dFdRho,*funcData.dFdGradRho);

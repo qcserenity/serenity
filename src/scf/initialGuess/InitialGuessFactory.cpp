@@ -22,6 +22,7 @@
 #include "scf/initialGuess/InitialGuessFactory.h"
 /* Include Serenity Internal Headers */
 #include "scf/initialGuess/AtomicDensityGuessCalculator.h"
+#include "scf/initialGuess/SuperpositionOfAtomicPotentials.h"
 #include "scf/initialGuess/ExtendedHueckel.h"
 #include "scf/initialGuess/HCoreGuessCalculator.h"
 
@@ -39,10 +40,13 @@ std::unique_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED> >
     Options::INITIAL_GUESSES flavor) {
   switch (flavor) {
     case INITIAL_GUESSES::H_CORE:
-      return std::unique_ptr<HCoreGuessCalculator<Options::SCF_MODES::RESTRICTED>>(new HCoreGuessCalculator<Options::SCF_MODES::RESTRICTED>());
+      return std::make_unique<HCoreGuessCalculator<RESTRICTED>>();
       break;
     case INITIAL_GUESSES::EHT:
-      return std::unique_ptr<ExtendedHueckel>(new ExtendedHueckel());
+      return std::make_unique<ExtendedHueckel>();
+      break;
+    case INITIAL_GUESSES::SAP:
+      return std::make_unique<SuperpositionOfAtomicPotentials>();
       break;
     case INITIAL_GUESSES::ATOM_DENS:
       return std::unique_ptr<AtomicDensityGuessCalculator>(
@@ -68,11 +72,15 @@ std::unique_ptr<InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED> >
     Options::INITIAL_GUESSES flavor)  {
   switch (flavor) {
     case INITIAL_GUESSES::H_CORE:
-      return std::unique_ptr<HCoreGuessCalculator<Options::SCF_MODES::UNRESTRICTED>>(new HCoreGuessCalculator<Options::SCF_MODES::UNRESTRICTED>());
+      return std::make_unique<HCoreGuessCalculator<UNRESTRICTED>>();
       break;
     case INITIAL_GUESSES::EHT:
-      return std::unique_ptr<UnrestrictedFromRestrictedGuess>(new UnrestrictedFromRestrictedGuess(
-          std::make_shared<ExtendedHueckel>()));
+      return std::make_unique<UnrestrictedFromRestrictedGuess>(
+          std::make_shared<ExtendedHueckel>());
+      break;
+    case INITIAL_GUESSES::SAP:
+      return std::make_unique<UnrestrictedFromRestrictedGuess>(
+          std::make_shared<SuperpositionOfAtomicPotentials>());
       break;
     case INITIAL_GUESSES::ATOM_DENS:
       return std::unique_ptr<UnrestrictedFromRestrictedGuess>(new UnrestrictedFromRestrictedGuess(

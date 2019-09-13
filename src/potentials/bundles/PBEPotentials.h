@@ -48,8 +48,7 @@ public:
       std::shared_ptr<PotentialBundle<SCFMode> >esiPot,
       std::shared_ptr<Potential<SCFMode> > naddXC,
       std::shared_ptr<Potential<SCFMode> > projection,
-      std::shared_ptr<Potential<SCFMode> > ecp,
-      std::shared_ptr<Potential<SCFMode> > naddKin = nullptr);
+      std::shared_ptr<Potential<SCFMode> > ecp);
   /// @brief Default destructor.
   virtual ~PBEPotentials() = default;
 
@@ -84,8 +83,6 @@ private:
   std::shared_ptr<Potential<SCFMode> > _projection;
   ///@brief The ECP potential from the environment.
   std::shared_ptr<Potential<SCFMode> > _ecp;
-  ///@brief An optional non-additive kinetic energy contribution for hybrid methods.
-  std::shared_ptr<Potential<SCFMode> > _naddKin;
 };
 
 } /* namespace Serenity */

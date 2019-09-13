@@ -34,13 +34,13 @@ namespace py = pybind11;
 void export_Settings(py::module &spy) {
 
   py::class_<DFT>(spy,"DFTSettings",
-      "@SCF settings all set to their default values.")
+      "DFT settings all set to their default values.")
               .def_readwrite("functional",&DFT::functional)
               .def_readwrite("densityFitting",&DFT::densityFitting)
               .def_readwrite("dispersion",&DFT::dispersion);
 
   py::class_<SCF>(spy,"SCFSettings",
-      "DFT settings all set to their default values.")
+      "SCF settings all set to their default values.")
       .def_readwrite("initialguess",&SCF::initialguess)
       .def_readwrite("maxCycles",&SCF::maxCycles)
       .def_readwrite("writeRestart",&SCF::writeRestart)

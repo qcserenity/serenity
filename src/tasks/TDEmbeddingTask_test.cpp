@@ -121,7 +121,7 @@ TEST_F(TDEmbeddingTaskTest, unrestricted) {
 
 /**
  * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy when relaxing to precalc environment.
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy when relaxing to precalculated environment.
  */
 TEST_F(TDEmbeddingTaskTest, useEnvSys) {
   auto act =
@@ -164,30 +164,29 @@ TEST_F(TDEmbeddingTaskTest, useEnvSys) {
  */
 TEST_F(TDEmbeddingTaskTest, unrestricted_hoffmann) {
 
-	auto act =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
-	auto env =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
-	auto task = TDEmbeddingTask<UNRESTRICTED>(act,env);
-	task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
-	task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
-	task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
-	task.run();
-	EXPECT_NEAR(-1.8155881852554803,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
+  auto act =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+  auto task = TDEmbeddingTask<UNRESTRICTED>(act,env);
+  task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
+  task.run();
+  EXPECT_NEAR(-1.8155881852554803,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
 
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.unres.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.unres.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.unres.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
-	SystemController__TEST_SUPPLY::cleanUp();
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.unres.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.unres.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.unres.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
  * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test unrestricted energy with Huzinagas projection operator.
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test unrestricted energy with Huzinaga's projection operator.
  */
 TEST_F(TDEmbeddingTaskTest, unrestricted_huzinaga) {
 
@@ -197,8 +196,7 @@ TEST_F(TDEmbeddingTaskTest, unrestricted_huzinaga) {
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<UNRESTRICTED>(act,env);
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   task.run();
   EXPECT_NEAR(-1.8155881852542037,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
 
@@ -214,7 +212,7 @@ TEST_F(TDEmbeddingTaskTest, unrestricted_huzinaga) {
 
 /**
  * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with Huzinagas projection operator.
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with Huzinaga's projection operator.
  */
 TEST_F(TDEmbeddingTaskTest, restricted_huzinaga) {
 
@@ -224,8 +222,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_huzinaga) {
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   task.run();
   EXPECT_NEAR(-1.8155881853192255,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
@@ -241,7 +238,62 @@ TEST_F(TDEmbeddingTaskTest, restricted_huzinaga) {
 
 /**
  * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with Huzinagas projection operator for hybrid functionals.
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with a fermi-shifted Huzinaga projection operator.
+ */
+TEST_F(TDEmbeddingTaskTest, restricted_fermi_huzinaga) {
+  auto act =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PHENOLATE_PHENYL_DEF2_SVP_BP86,true);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PHENOLATE_O_DEF2_SVP_BP86,true);
+  auto task = TDEmbeddingTask<RESTRICTED>(act,env);
+  task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.run();
+  EXPECT_NEAR(-306.6721662019,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  EXPECT_NEAR(task.settings.embedding.fermiShift,3.430175862028e-02,1e-7);
+
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.settings").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.xyz").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.energies.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.orbs.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.dmat.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/out").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86").c_str());
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with a shifted Huzinaga projection operator.
+ */
+TEST_F(TDEmbeddingTaskTest, restricted_shifted_huzinaga) {
+  auto act =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PHENOLATE_PHENYL_DEF2_SVP_BP86,true);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PHENOLATE_O_DEF2_SVP_BP86,true);
+  auto task = TDEmbeddingTask<RESTRICTED>(act,env);
+  task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.useFermiLevel = false;
+  task.run();
+  EXPECT_NEAR(-306.6721662019,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  EXPECT_NEAR(task.settings.embedding.fermiShift,1.0,1e-7);
+
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.settings").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.xyz").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.energies.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.orbs.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86.dmat.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86/out").c_str());
+  std::remove((env->getSettings().path+"TestSystem_Phenolate_Phenyl_Def2_SVP_BP86+TestSystem_Phenolate_O_Def2_SVP_BP86").c_str());
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with Huzinaga's projection operator for hybrid functionals.
  */
 TEST_F(TDEmbeddingTaskTest, restricted_huzinaga_hybrid) {
 
@@ -252,9 +304,8 @@ TEST_F(TDEmbeddingTaskTest, restricted_huzinaga_hybrid) {
 
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::PBE0;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::PBE0;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   task.run();
   auto supersystem = *act+*env;
   ScfTask<Options::SCF_MODES::RESTRICTED> supersystemSCF(supersystem);
@@ -285,8 +336,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift) {
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.netThreshold = 1e-4;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.run();
   EXPECT_NEAR(-152.42058006269133,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
@@ -301,7 +351,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift) {
 }
 /**
  * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with levelshift + net population truncation and subsquent restart.
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with levelshift + net population truncation and subsequent restart.
  */
 TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_restart) {
   auto act =
@@ -312,8 +362,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_restar
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.netThreshold = 1e-4;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.run();
 
   auto loadSettings(act->getSettings());
@@ -350,8 +399,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_restar
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.netThreshold = 1e-3;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.run();
 
   auto loadSettings(act->getSettings());
@@ -387,8 +435,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_levelshift_restart_basisChange) {
   auto act =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs_DFT,true);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.run();
 
   auto loadSettings(act->getSettings());
@@ -419,26 +466,25 @@ TEST_F(TDEmbeddingTaskTest, restricted_levelshift_restart_basisChange) {
  */
 TEST_F(TDEmbeddingTaskTest, restricted_truncated_primNetPop_levelshift) {
 
-	auto act =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
-	auto env =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
-	auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-	task.settings.truncationFactor = 0.5;
-	task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::PRIMITIVE_NET_POPULATION;
-	task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-	task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
-	task.run();
-	EXPECT_NEAR(-1.8133391420948282,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  auto act =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+  auto task = TDEmbeddingTask<RESTRICTED>(act,env);
+  task.settings.truncationFactor = 0.5;
+  task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::PRIMITIVE_NET_POPULATION;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  task.run();
+  EXPECT_NEAR(-1.8133391420948282,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
-	SystemController__TEST_SUPPLY::cleanUp();
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -447,55 +493,24 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_primNetPop_levelshift) {
  */
 TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_huzinaga) {
 
-	auto act =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
-	auto env =
-			SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
-	auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-	task.settings.netThreshold = 8e-2;
-	task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-	task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-	task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::NONE;
-	task.run();
-	EXPECT_NEAR(-1.8189844336164807,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
-
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-	std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
-	SystemController__TEST_SUPPLY::cleanUp();
-}
-
-/**
- * @test
- * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with levelshift + net population + non. ortho distant.
- */
-TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_nonortho_distant) {
-
   auto act =
-      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT,true);
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   auto env =
-      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs_DFT,true);
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.netThreshold = 1e-3;
+  task.settings.netThreshold = 8e-2;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::DISTANT_ATOM;
-  task.settings.borderAtomThreshold = 0.8;
-  task.settings.basisFunctionRatio = 0.4;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   task.run();
-  EXPECT_NEAR(-152.83433268453118,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  EXPECT_NEAR(-1.8189844336164807,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.settings").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.xyz").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.energies.res.h5").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.orbs.res.h5").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.dmat.res.h5").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/out").c_str());
-  std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -512,13 +527,12 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_nonort
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
   task.settings.netThreshold = 1e-3;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  task.settings.nonOrthogonalCrit = Options::NON_ORTHOGONAL_CRITERION::DISTANT_ATOM;
-  task.settings.longRangeNaddKinFunc = Options::KINFUNCTIONALS::LLP91K;
-  task.settings.borderAtomThreshold = 0.8;
-  task.settings.basisFunctionRatio = 0.4;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  task.settings.embedding.longRangeNaddKinFunc = Options::KINFUNCTIONALS::LLP91K;
+  task.settings.embedding.borderAtomThreshold = 0.8;
+  task.settings.embedding.basisFunctionRatio = 0.4;
   task.run();
-  EXPECT_NEAR(-152.8156906320088,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  EXPECT_NEAR(-152.8156966216045,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
   std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.settings").c_str());
   std::remove((env->getSettings().path+"TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT/TestSystem_WaterMonOne_6_31Gs_DFT+TestSystem_WaterMonTwo_6_31Gs_DFT.xyz").c_str());
@@ -541,8 +555,8 @@ TEST_F(TDEmbeddingTaskTest, unrestricted_Carter) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<UNRESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::RECONSTRUCTION;
-  task.settings.carterCycles = 5000;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::RECONSTRUCTION;
+  task.settings.embedding.carterCycles = 5000;
   task.run();
   EXPECT_NEAR(-1.8155881842923347,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
 
@@ -567,8 +581,8 @@ TEST_F(TDEmbeddingTaskTest, restricted_WYLB) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::RECONSTRUCTION;
-  task.settings.lbCycles = 5000;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::RECONSTRUCTION;
+  task.settings.embedding.lbCycles = 5000;
   task.settings.noSupRec = false;
   task.run();
   EXPECT_NEAR(-1.8062078106336934,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-5);
@@ -589,7 +603,7 @@ TEST_F(TDEmbeddingTaskTest, embeddingMode_NONE) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
   task.run();
   EXPECT_NEAR(-2.4352547558648183,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
@@ -609,7 +623,7 @@ TEST_F(TDEmbeddingTaskTest, embeddingMode_NADDFUNC) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   task.run();
   EXPECT_NEAR(-1.7947783381675915,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 
@@ -632,10 +646,10 @@ TEST_F(TDEmbeddingTaskTest, embeddingMode_Huzinaga_ECPs) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   // There is (currently) no MINAO basis for I.
   task.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::PIPEK_MEZEY;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::PBE;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::PBE;
   task.run();
   // Perform supersystem calculations
   auto supersystem = *act+*env;
@@ -671,10 +685,10 @@ TEST_F(TDEmbeddingTaskTest, embeddingMode_HuzinagaTruncated_ECPs) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE);
   auto task = TDEmbeddingTask<RESTRICTED>(act,env);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   // There is (currently) no MINAO basis for I.
   task.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::PIPEK_MEZEY;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::PBE;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::PBE;
   task.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
   task.settings.netThreshold = 0.0;
   task.run();

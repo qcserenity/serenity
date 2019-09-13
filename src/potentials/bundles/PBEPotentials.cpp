@@ -31,14 +31,12 @@ PBEPotentials<SCFMode>::PBEPotentials(
     std::shared_ptr<PotentialBundle<SCFMode> >esiPot,
     std::shared_ptr<Potential<SCFMode> > naddXC,
     std::shared_ptr<Potential<SCFMode> > projection,
-    std::shared_ptr<Potential<SCFMode> > ecp,
-    std::shared_ptr<Potential<SCFMode> > naddKin):
+    std::shared_ptr<Potential<SCFMode> > ecp):
     _activeSystemPot(activeSystemPot),
     _esiPot(esiPot),
     _naddXC(naddXC),
     _projection(projection),
-    _ecp(ecp),
-    _naddKin(naddKin){
+    _ecp(ecp){
   assert(_activeSystemPot);
   assert(_esiPot);
   assert(_naddXC);
@@ -61,12 +59,6 @@ PBEPotentials<SCFMode>::getFockMatrix(const DensityMatrix<SCFMode>& P,
   energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_XC,eXC);
   double eKin = _projection->getEnergy(P);
   energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::PBE_LINEAR_CORRECTION,eKin);
-  if (_naddKin) {
-	  F += _naddKin->getMatrix();
-	  double nonOrthoKin = _naddKin->getEnergy(P);
-	  energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC,nonOrthoKin);
-
-  }
   // ECP
   F += _ecp->getMatrix();
   double eECP = _ecp->getEnergy(P);
@@ -81,6 +73,7 @@ Eigen::MatrixXd PBEPotentials<SCFMode>::getGradients(){
   gradients += _esiPot->getGradients();
   gradients += _naddXC->getGeomGradients();
   gradients += _projection->getGeomGradients();
+  gradients += _ecp->getGeomGradients();
   return gradients;
 }
 

@@ -178,10 +178,24 @@ public:
   const std::vector<double> getContractions() const{
     return _contractions;
   }
-
+  /**
+   * @return Returns the exponents of the basis functions.
+   */
   const std::vector<double> getExponents() const{
     return _exponents;
   }
+  /**
+   * @brief Equal operator. Comparison is done by:\n
+   *          origin,
+   *          angular momentum,
+   *          exponents,
+   *          contractions,
+   *          norm factors,
+   *          spherical/cartesian
+   * @param other The other shell.
+   * @return True if considered to be equal, else false.
+   */
+  bool operator==(const Shell& other) const;
 
 private:
   ///@brief Normalization factors for the basis functions.

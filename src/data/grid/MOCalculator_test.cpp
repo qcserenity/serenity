@@ -69,7 +69,7 @@ TEST_F(MOCalculatorTest, MOValidate) {
    * Get the MOs on a grid. Call calcAllMOValues since it calls the other two
    * functions and tests them as well.
    */
-  auto allMos=moCalc.calcAllMOValuesOnGrid<Options::SCF_MODES::RESTRICTED>(coeffs);
+  auto allMos=moCalc.calcAllMOValuesOnGrid<Options::SCF_MODES::RESTRICTED>(coeffs,1e-9);
 
   //Build integrals <1|1> and <1|2>
   double intMo=0.0;

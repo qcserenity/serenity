@@ -80,6 +80,98 @@ TEST_F(CubeFileTaskTest, DensityRestricted) {
 
 /**
  * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print density to file with environment system.
+ */
+TEST_F(CubeFileTaskTest, DensityRestrictedEnvironmentSystem) {
+  auto systemControllerA =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  auto systemControllerB =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+  systemControllerA->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemControllerA},{systemControllerB});
+  task.settings.density =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemControllerA->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemControllerA->getSettings().path+"TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
+}
+
+/**
+ * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print ELF to file.
+ */
+TEST_F(CubeFileTaskTest, ELFRestricted) {
+  auto systemController =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemController},{});
+  task.settings.elf =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemController->getSettings().path+"TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemController->getSettings().path+"TestSystem_H2_MINBAS_ELF.cube").c_str()));
+}
+
+/**
+ * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print ELFTS to file.
+ */
+TEST_F(CubeFileTaskTest, ELFTSRestricted) {
+  auto systemController =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemController},{});
+  task.settings.elfts =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemController->getSettings().path+"TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemController->getSettings().path+"TestSystem_H2_MINBAS_ELF.cube").c_str()));
+}
+
+/**
+ * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print SEDD to file.
+ */
+TEST_F(CubeFileTaskTest, SEDDRestricted) {
+  auto systemController =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemController},{});
+  task.settings.sedd =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemController->getSettings().path+"TestSystem_H2_MINBAS_SEDD.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemController->getSettings().path+"TestSystem_H2_MINBAS_SEDD.cube").c_str()));
+}
+
+/**
+ * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print DORI to file.
+ */
+TEST_F(CubeFileTaskTest, DORIRestricted) {
+  auto systemController =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemController},{});
+  task.settings.dori =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemController->getSettings().path+"TestSystem_H2_MINBAS_DORI.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemController->getSettings().path+"TestSystem_H2_MINBAS_DORI.cube").c_str()));
+}
+
+/**
+ * @test
+ * @brief Tests CubeFileTask.h/.cpp: Print DORI to file.
+ */
+TEST_F(CubeFileTaskTest, SignedDensityRestricted) {
+  auto systemController =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto task =   CubeFileTask<RESTRICTED>({systemController},{});
+  task.settings.signedDensity =true;
+  task.run();
+  EXPECT_TRUE(fileExists((systemController->getSettings().path+"TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
+  EXPECT_EQ(0,std::remove((systemController->getSettings().path+"TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
+}
+
+/**
+ * @test
  * @brief Tests CubeFileTask.h/.cpp: Print density to file.
  */
 TEST_F(CubeFileTaskTest, DensityUnrestricted) {

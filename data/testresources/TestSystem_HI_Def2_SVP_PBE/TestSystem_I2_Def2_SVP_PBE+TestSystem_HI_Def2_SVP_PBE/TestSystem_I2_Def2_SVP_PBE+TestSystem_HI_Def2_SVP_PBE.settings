@@ -48,7 +48,6 @@ LABEL DEF2-SVP
 AUXJLABEL RI_J_WEIGEND
 MAKESPHERICALBASIS false
 INTEGRALTHRESHOLD 1e-10
-BASISLIBPATH /scratch/m_bens05/workspace/ECPs/Tests/I2/Serenity/../../../../serenity/data/basis/
 FIRSTECP 37
 -basis
 +grid

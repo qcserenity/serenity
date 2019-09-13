@@ -32,27 +32,15 @@ void export_ProjectionBasedEmbTask(py::module &spy){
 
   py::class_<TDEmbeddingTaskSettings>(spy, "TDEmbeddingTaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("levelShiftParameter",&TDEmbeddingTaskSettings::levelShiftParameter)
+    .def_readwrite("levelShiftParameter",&TDEmbeddingTaskSettings::embedding)
     .def_readwrite("locType",&TDEmbeddingTaskSettings::locType)
-    .def_readwrite("naddXCFunc",&TDEmbeddingTaskSettings::naddXCFunc)
-    .def_readwrite("naddKinFunc",&TDEmbeddingTaskSettings::naddKinFunc)
-    .def_readwrite("longRangeNaddKinFunc",&TDEmbeddingTaskSettings::longRangeNaddKinFunc)
-    .def_readwrite("embeddingMode",&TDEmbeddingTaskSettings::embeddingMode)
     .def_readwrite("useEnvSys",&TDEmbeddingTaskSettings::useEnvSys)
     .def_readwrite("orbitalThreshold",&TDEmbeddingTaskSettings::orbitalThreshold)
     .def_readwrite("enforceCharges",&TDEmbeddingTaskSettings::enforceCharges)
-    .def_readwrite("smoothFactor",&TDEmbeddingTaskSettings::smoothFactor)
-    .def_readwrite("singValThreshold",&TDEmbeddingTaskSettings::singValThreshold)
-    .def_readwrite("lbDamping",&TDEmbeddingTaskSettings::lbDamping)
-    .def_readwrite("lbCycles",&TDEmbeddingTaskSettings::lbCycles)
-    .def_readwrite("carterCycles",&TDEmbeddingTaskSettings::carterCycles)
     .def_readwrite("noSupRec",&TDEmbeddingTaskSettings::noSupRec)
     .def_readwrite("truncationFactor",&TDEmbeddingTaskSettings::truncationFactor)
     .def_readwrite("truncAlgorithm",&TDEmbeddingTaskSettings::truncAlgorithm)
     .def_readwrite("netThreshold",&TDEmbeddingTaskSettings::netThreshold)
-    .def_readwrite("borderAtomThreshold",&TDEmbeddingTaskSettings::borderAtomThreshold)
-    .def_readwrite("basisFunctionRatio",&TDEmbeddingTaskSettings::basisFunctionRatio)
-    .def_readwrite("nonOrthogonalCrit",&TDEmbeddingTaskSettings::nonOrthogonalCrit)
     .def_readwrite("load",&TDEmbeddingTaskSettings::load)
     .def_readwrite("name",&TDEmbeddingTaskSettings::name);
 

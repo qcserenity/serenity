@@ -191,11 +191,11 @@ void GeometryOptimizationTask<SCFMode>::run() {
      */
 
     FreezeAndThawTask<SCFMode> task(_activeSystems,_passiveSystems);
-    task.settings.naddKinFunc = settings.naddKinFunc;
-    task.settings.naddXCFunc = settings.naddXCFunc;
+    task.settings.embedding.naddKinFunc = settings.naddKinFunc;
+    task.settings.embedding.naddXCFunc = settings.naddXCFunc;
     task.settings.gridCutOff = settings.FaTgridCutOff;
     task.settings.printLevel = settings.printLevel;
-    task.settings.dispersion = settings.dispersion;
+    task.settings.embedding.dispersion = settings.dispersion;
     task.run();
 
     Geometry SupersystemGeometry;

@@ -23,7 +23,6 @@
 #include "geometry/Atom.h"
 #include "geometry/AtomType.h"
 #include "parameters/Constants.h"
-#include "postHF/LRSCF/Solver/DavidsonSolver.h"
 #include "data/ElectronicStructure.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "geometry/Geometry.h"
@@ -36,6 +35,7 @@
 #include "tasks/ScfTask.h"
 #include "system/SystemController.h"
 #include <unistd.h>
+#include <iomanip>
 
 namespace Serenity {
 using namespace std;

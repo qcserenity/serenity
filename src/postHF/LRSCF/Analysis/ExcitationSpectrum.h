@@ -1,7 +1,7 @@
 /**
  * @file ExcitationSpectrum.h
  *
- * @date Nov 02, 2017
+ * @date Dec. 17, 2018
  * @author Michael Boeckers
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
@@ -17,59 +17,39 @@
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-#ifndef POSTHF_LRSCF_ANALYSIS_EXCITATIONSPECTRUM_H_
-#define POSTHF_LRSCF_ANALYSIS_EXCITATIONSPECTRUM_H_
+
+#ifndef LRSCF_EXCITATIONSPECTRUM
+#define LRSCF_EXCITATIONSPECTRUM
 
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
-#include "system/SystemController.h"
+#include "postHF/LRSCF/LRSCFController.h"
+#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
 
 namespace Serenity {
 
-template<Options::SCF_MODES T> class ExcitationSpectrum {
+template<Options::SCF_MODES SCFMode>
+/**
+ * @class ExcitationSpectrum
+ * 
+ * Prints the oscillator and rotatory strengths and corresponding transition dipole moments
+ * for the excitation energies obtained earlier.
+ */
+class ExcitationSpectrum {
+
 public:
   /**
-   * @brief Calculates oscillator strengths and transition dipole moments according to
+   * @brief Calculates oscillator and rotatory strengths and transition dipole moments according to
    *        J. Am. Chem. Soc. 122, 1717 (2000)
-   * @param systemController
-   * @param eigenvectors
-   * @param eigenvalues
+   * @param dipoles All property integrals needed (electric length/velocity and magnetic). 
+   * @param eigenvecors Eigenvectors of the response problem.
+   * @param eigenvalues Eigenvalues of the response problem.
    */
-  ExcitationSpectrum(
-      std::shared_ptr<SystemController> systemController,
-      std::vector<Eigen::MatrixXd >& eigenvectors,
-      Eigen::VectorXd& eigenvalues);
-
-  virtual ~ExcitationSpectrum() = default;
-
-  /**
-   * @brief Prints excitation spectrum
-   */
-  void printSpectrum();
-private:
-  //Calculates MO dipole integrals
-  Eigen::MatrixXd dipoleIntegrals();
-
-  //Calculates MO momentum integrals
-  Eigen::MatrixXd momentumIntegrals();
-
-  //Transforms AO matrix to MO vector
-  Eigen::MatrixXd ao2mo(std::vector<Eigen::MatrixXd>& ao_xyz);
-
-  //The system controller
-  std::shared_ptr<SystemController> _systemController;
-
-  //A vector holding the CI coefficients
-  std::vector<Eigen::MatrixXd> _eigenvectors;
-
-  //A vector holding the excitation energies
-  Eigen::VectorXd _eigenvalues;
-
-
-
+  static void printSpectrum(const std::shared_ptr<DipoleIntegrals<SCFMode> > dipoles,
+                            const std::vector<Eigen::MatrixXd>& eigenvectors,
+                            const Eigen::VectorXd& eigenvalues);
 
 };
 
 } /* namespace Serenity */
-
-#endif /* POSTHF_LRSCF_ANALYSIS_EXCITATIONSPECTRUM_H_ */
+#endif /* LRSCF_EXCITATIONSPECTRUM */

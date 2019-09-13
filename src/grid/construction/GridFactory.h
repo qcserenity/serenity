@@ -23,7 +23,6 @@
 #include "grid/AtomCenteredGrid.h"
 #include "settings/Options.h"
 
-
 namespace Serenity {
 /* Forward declarations */
 class AtomGridAccuracyDeterminator;

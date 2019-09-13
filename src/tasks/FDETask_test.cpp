@@ -54,8 +54,8 @@ TEST_F(FDETaskTest, restricted) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = FDETask<Options::SCF_MODES::RESTRICTED>(act,{env});
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.run();
   EXPECT_NEAR(-1.8129554924421183,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 }
@@ -70,8 +70,8 @@ TEST_F(FDETaskTest, restricted_cut_grid) {
   auto env =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
   auto task = FDETask<Options::SCF_MODES::RESTRICTED>(act,{env});
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.gridCutOff = 5.0;
   task.run();
   EXPECT_NEAR(-1.8129555447384618,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
@@ -89,8 +89,8 @@ TEST_F(FDETaskTest, unrestricted) {
   act->setSCFMode(UNRESTRICTED);
   env->setSCFMode(UNRESTRICTED);
   auto task = FDETask<Options::SCF_MODES::UNRESTRICTED>(act,{env});
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.run();
   EXPECT_NEAR(-1.8081854183941235,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
 }
@@ -107,8 +107,8 @@ TEST_F(FDETaskTest, restricted_unrestricted) {
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(UNRESTRICTED);
   auto task = FDETask<Options::SCF_MODES::RESTRICTED>(act,{env});
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.run();
   EXPECT_NEAR(-1.8081854183941235,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
 }
@@ -125,8 +125,8 @@ TEST_F(FDETaskTest, unrestricted_restricted) {
   act->setSCFMode(UNRESTRICTED);
   env->setSCFMode(RESTRICTED);
   auto task = FDETask<Options::SCF_MODES::UNRESTRICTED>(act,{env});
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.run();
   EXPECT_NEAR(-1.8197910340741406,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-7);
 }

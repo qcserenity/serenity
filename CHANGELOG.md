@@ -1,13 +1,29 @@
 Changelog
 ===============================
 
-Release 1.3.0 (development)
+Release 1.3.0 (under development)
 -------------------------------
  - Added SCINE Interface (Jan Unsleber)
+ - Added MCSCF solver(s) (Jan Unsleber, Stefan Knecht)
+ - Added DMRG-CI and DMRG-SCF capabilities via a QCMaquis Interface (Jan Unsleber)
 
-Release 1.2.0 (development)
+Release 1.2.0 (13.09.2019)
 -------------------------------
+ - Various small improvements and unit tests
  - TDDFT rework (Michael Boeckers, Johannes Toelle, Niklas Niemeyer)
+   - Rework of the eigenvalue solver (Niklas Niemeyer)
+   - Rework numerical integration (Johannes Toelle)
+   - Sigma Vector rework and RI implementation (Johannes Toelle)
+   - Coupled TDDFT calculation with root-following (Michael Boeckers)
+   - Exact subsystem TDDFT with root-following (Johannes Toelle, Michael Boeckers)
+   - Various orbital space selection tools (Johannes Toelle, Niklas Niemeyer)
+   - LMO - TDDFT (Johannes Toelle)
+   - Rotatory strengths, analytical electric (velocity-gauge) and magnetic dipole integrals, manually settable gauge-origin (Niklas Niemeyer)
+   - Added unit tests and stability improvements (Johannes Toelle, Niklas Niemeyer)
+ - Huzinaga/Hoffmann projection operator rework, Fermi-shifted Huzinaga operator (Moritz Bensberg)
+ - Rework of task input structure (Moritz Bensberg)
+ - Speed up basis function in real space evaluation using sparse matrices (Moritz Bensberg)
+ - Added superposition of atomic potentials as initial guess option (Jan Unsleber)
 
 Release 1.1.0 (05.08.2019)
 -------------------------------

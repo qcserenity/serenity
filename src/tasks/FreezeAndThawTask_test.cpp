@@ -80,8 +80,8 @@ TEST_F(FreezeAndThawTaskTest, restricted) {
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE,true);
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
 
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 0;
   task.run();
   EXPECT_NEAR(-1.7189271379482964,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-6);
@@ -90,6 +90,27 @@ TEST_F(FreezeAndThawTaskTest, restricted) {
 
 
 }
+
+
+/**
+ * @test
+ * @brief Tests FDETask.h/.cpp: Test restricted energy.
+ */
+TEST_F(FreezeAndThawTaskTest, restrictedPassive) {
+  auto act =
+    SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE,true);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE,true);
+  auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act},{env});
+
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.printLevel = 0;
+  task.run();
+  EXPECT_NEAR(-1.7139541221231887,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-6);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 
 /**
  * @test
@@ -102,8 +123,8 @@ TEST_F(FreezeAndThawTaskTest, restricted_cut_grid) {
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE,true);
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
 
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.gridCutOff = 5.0;
   task.settings.printLevel = 0;
   task.run();
@@ -127,8 +148,8 @@ TEST_F(FreezeAndThawTaskTest, unrestricted) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::UNRESTRICTED>({act,env},{});
   act->setSCFMode(UNRESTRICTED);
   env->setSCFMode(UNRESTRICTED);
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 1;
   task.run();
   EXPECT_NEAR(-1.812956512024005,act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(),1e-6);
@@ -147,8 +168,8 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::UNRESTRICTED>({act,env},{});
   act->setSCFMode(UNRESTRICTED);
   env->setSCFMode(UNRESTRICTED);
-  task.settings.naddKinFunc = Options::KINFUNCTIONALS::TF;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddKinFunc = Options::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.settings.makeSuperSystemBasis = true;
   task.run();
@@ -168,10 +189,10 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Hoffmann) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
   task.settings.basisExtThresh = 0.0;
   task.settings.extendBasis = true;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.run();
 
@@ -191,12 +212,12 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Huzinaga_DIIS) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   task.settings.useConvAcceleration = true;
   task.settings.diisStart = 0.1;
   task.settings.basisExtThresh = 0.0;
   task.settings.extendBasis = true;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   iOOptions.printDebugInfos = true;
   task.run();
@@ -218,10 +239,10 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Hoffmann_HYBRID) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
   task.settings.basisExtThresh = 0.0;
   task.settings.extendBasis = true;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::PBE0;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::PBE0;
   task.settings.printLevel = 2;
   task.run();
   auto supersystem = *act + *env;
@@ -254,12 +275,12 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Hoffmann_DIIS) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
   task.settings.useConvAcceleration = true;
   task.settings.diisStart = 0.1;
   task.settings.extendBasis = true;
   task.settings.basisExtThresh = 0.0;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.run();
 
@@ -279,12 +300,12 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Hoffmann_DIIS_UNRESTRICTED) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::UNRESTRICTED>({act,env},{});
   act->setSCFMode(UNRESTRICTED);
   env->setSCFMode(UNRESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
   task.settings.useConvAcceleration = true;
   task.settings.diisStart = 0.1;
   task.settings.extendBasis = true;
   task.settings.basisExtThresh = 0.0;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.run();
 
@@ -303,12 +324,12 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Levelshift_DIIS) {
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.settings.useConvAcceleration = true;
   task.settings.diisStart = 0.1;
   task.settings.extendBasis = true;
   task.settings.basisExtThresh = 0.0;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.run();
 
@@ -327,12 +348,12 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_WaterDimer_HFinDFT_Levelshift_DII
   auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act,env},{});
   act->setSCFMode(RESTRICTED);
   env->setSCFMode(RESTRICTED);
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   task.settings.useConvAcceleration = true;
   task.settings.diisStart = 0.1;
   task.settings.extendBasis = true;
   task.settings.basisExtThresh = 0.0;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 2;
   task.run();
 
@@ -354,8 +375,8 @@ TEST_F(FreezeAndThawTaskTest, TDPlusFaT) {
   tdTask.run();
   // Perform FaT calculation on top
   auto task = FreezeAndThawTask<SPIN>({act,env},{});
-  task.settings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-  task.settings.naddXCFunc = Options::XCFUNCTIONALS::BP86;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  task.settings.embedding.naddXCFunc = Options::XCFUNCTIONALS::BP86;
   task.settings.printLevel = 0;
   task.run();
   // Different results to the scratch calculation (restricted) due to different settings of the systems on disk.

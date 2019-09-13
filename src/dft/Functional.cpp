@@ -42,7 +42,7 @@ Functional::Functional(
     const double osScaling) :
       _basicFunctionals(basicFunctionals),
       _mixingFactors(mixingFactors),
-      _functionalClass(FUNCTIONAL_CLASSES::LDA),
+      _functionalClass(FUNCTIONAL_CLASSES::NONE),
       _hfExchangeRatio(hfExchangeRatio),
       _hfCorrelRatio(hfCorrelRatio),
       _lrExchangeRatio(lrExchangeRatio),
@@ -52,17 +52,19 @@ Functional::Functional(
   for (const auto& func : _basicFunctionals) {
     switch (FunctionalClassResolver::resolveFunctionalClass(func)) {
       case FUNCTIONAL_CLASSES::NONE:
-        _functionalClass = FUNCTIONAL_CLASSES::NONE;
+        //nothing to be done here, NONE is default
         break;
       case FUNCTIONAL_CLASSES::LDA:
-      // do nothing, this is the initial setting
+        if (_functionalClass == FUNCTIONAL_CLASSES::NONE) _functionalClass = FUNCTIONAL_CLASSES::LDA;
         break;
       case FUNCTIONAL_CLASSES::GGA:
-        if (_functionalClass == FUNCTIONAL_CLASSES::LDA) _functionalClass = FUNCTIONAL_CLASSES::GGA;
+        if (_functionalClass == FUNCTIONAL_CLASSES::NONE ||
+            _functionalClass == FUNCTIONAL_CLASSES::LDA) _functionalClass = FUNCTIONAL_CLASSES::GGA;
         break;
       case FUNCTIONAL_CLASSES::META_GGA:
-        if (_functionalClass == FUNCTIONAL_CLASSES::LDA || _functionalClass == FUNCTIONAL_CLASSES::GGA)
-          _functionalClass = FUNCTIONAL_CLASSES::META_GGA;
+        if (_functionalClass == FUNCTIONAL_CLASSES::NONE ||
+            _functionalClass == FUNCTIONAL_CLASSES::LDA ||
+            _functionalClass == FUNCTIONAL_CLASSES::GGA) _functionalClass = FUNCTIONAL_CLASSES::META_GGA;
         break;
       case FUNCTIONAL_CLASSES::MODELL:
         _functionalClass = FUNCTIONAL_CLASSES::MODELL;

@@ -55,6 +55,8 @@ public:
       std::shared_ptr<BasisController> basisB,
       std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > dMats,
       double exchangeRatio,
+      double LRexchangeRatio = 0.0,
+      double mu = 0.0,
       bool topDown = false,
       Options::DENS_FITS densityFitting = Options::DENS_FITS::NONE,
       std::shared_ptr<BasisController> auxBasisAB = nullptr,
@@ -79,8 +81,14 @@ private:
   std::unique_ptr<SPMatrix<SCFMode> >_abPotential;
   ///@brief The exchange ratio
   double _exchangeRatio;
+  ///@brief The long range exchange ratio
+  double _lrExchangeRatio;
+  ///@brief The range separation parameter
+  double _mu;
   ///@brief The exchange part of the interaction.
   std::shared_ptr<ABPotential<SCFMode> > _abExchange;
+  ///@brief The LR exchange part of the interaction.
+  std::shared_ptr<ABPotential<SCFMode> > _abLRExchange;
   ///@brief The coulomb part of the interaction.
   std::shared_ptr<ABPotential<SCFMode> > _abCoulomb;
 };

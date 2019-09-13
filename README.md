@@ -82,12 +82,13 @@ The following libraries are optional and needed for additional features:
 
 ### Install Using CMake and Make
 Extract or pull the source code, then create a build directory:
-> cd serenity
+> cd serenity  
 > mkdir build  
 > cd build  
 
 Then run cmake:
-> cmake ..    
+> cmake ..  
+
 (If the build folder is not located inside the main directory of Serenity 
 please adapt the path accordingly.)
 
@@ -173,12 +174,12 @@ The BibTeX code would thus be:
   
 In order to allow others to reproduce your data please also reference the Verison of Serenity used like this:  
   
-Serenity Version: 1.1.0, https://github.com/qcserenity/serenity (2019)  
+Serenity Version: 1.2.0, https://github.com/qcserenity/serenity (2019)  
   
 or as BibTeX code:  
 >@misc{serenity_version,  
 >  title = {Serenity},  
->  notes = {Serenity Version: 1.0.0, \url{{https://github.com/qcserenity/serenity}}},  
+>  notes = {Serenity Version: 1.2.0, \url{{https://github.com/qcserenity/serenity}}},  
 >  year  = {2019}  
 >  }  
 

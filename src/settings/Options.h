@@ -340,10 +340,12 @@ enum class FUNCTIONALS {
       B3P86=304,
       B3P86_G=305,
       BPW91=306,
+      HF=307,
       // Meta-Hybrid
       // Range-Separated Hybrid
       CAMB3LYP=501,
       LCBLYP=502,
+      LCBLYP_047=503,
       // Double-Hybrid
       B2PLYP=601,
       B2KPLYP=602,
@@ -379,7 +381,7 @@ enum class FUNCTIONALS {
       PBE2KS=1106,
       PBE3K=1107,
       PBE4K=1108,
-      E2000K=1109
+      E2000K=1109,
 };
 template<> inline void resolve<FUNCTIONALS>(std::string& value, FUNCTIONALS& field){
   static const std::map<std::string, FUNCTIONALS> m = {
@@ -408,6 +410,7 @@ template<> inline void resolve<FUNCTIONALS>(std::string& value, FUNCTIONALS& fie
       {"BPW91",FUNCTIONALS::BPW91},
       {"CAMB3LYP",FUNCTIONALS::CAMB3LYP},
       {"LCBLYP",FUNCTIONALS::LCBLYP},
+      {"LCBLYP_047",FUNCTIONALS::LCBLYP_047},
       {"B2PLYP",FUNCTIONALS::B2PLYP},
       {"B2KPLYP",FUNCTIONALS::B2KPLYP},
       {"B2TPLYP",FUNCTIONALS::B2TPLYP},
@@ -432,7 +435,8 @@ template<> inline void resolve<FUNCTIONALS>(std::string& value, FUNCTIONALS& fie
       {"PBE2S", FUNCTIONALS::PBE2KS},
       {"PBE3", FUNCTIONALS::PBE3K},
       {"PBE4", FUNCTIONALS::PBE4K},
-      {"E2000", FUNCTIONALS::E2000K}
+      {"E2000", FUNCTIONALS::E2000K},
+      {"HF", FUNCTIONALS::HF}
   };
   check(m,value,field);
 }  
@@ -474,10 +478,12 @@ enum class XCFUNCTIONALS {
       B3P86=304,
       B3P86_G=305,
       BPW91=306,
+      HF=307,
       // Meta-Hybrid
       // Range-Separated Hybrid
       CAMB3LYP=501,
       LCBLYP=502,
+      LCBLYP_047=503,
       // Double-Hybrid
       B2PLYP=601,
       B2KPLYP=602,
@@ -526,6 +532,7 @@ template<> inline void resolve<XCFUNCTIONALS>(std::string& value, XCFUNCTIONALS&
       {"BPW91",XCFUNCTIONALS::BPW91},
       {"CAMB3LYP",XCFUNCTIONALS::CAMB3LYP},
       {"LCBLYP",XCFUNCTIONALS::LCBLYP},
+      {"LCBLYP_047",XCFUNCTIONALS::LCBLYP_047},
       {"B2PLYP",XCFUNCTIONALS::B2PLYP},
       {"B2KPLYP",XCFUNCTIONALS::B2KPLYP},
       {"B2TPLYP",XCFUNCTIONALS::B2TPLYP},
@@ -541,7 +548,8 @@ template<> inline void resolve<XCFUNCTIONALS>(std::string& value, XCFUNCTIONALS&
       {"PUT",XCFUNCTIONALS::PUT},
       {"DSDPBEP86",XCFUNCTIONALS::DSDPBEP86},
       {"PWPB95",XCFUNCTIONALS::PWPB95},
-      {"SAOP", XCFUNCTIONALS::SAOP}
+      {"SAOP", XCFUNCTIONALS::SAOP},
+      {"HF", XCFUNCTIONALS::HF}
   };
   check(m,value,field);
 }
@@ -624,16 +632,17 @@ enum class DFT_CONTROLLER_PURPOSES{SCF=0,LRSCF=1,ALL=2};
  * EHT:       Extended Hueckel Theory guess, points to ExtendedHueckel\n
  * ATOM_DENS: A guess of combined atomic densities, points to AtomicDensityGuessCalculator
  * ATOM_SCF:  Similar to ATOM_DENS, but the atomic densities themselves are calculated with a proper
- *            SCF for each atom type. This is very similar to what ADF does. 
+ *            SCF for each atom type. This is very similar to what ADF does.
  */
-enum class INITIAL_GUESSES {H_CORE=0, EHT=1, ATOM_DENS=2, ATOM_SCF=3, ATOM_SCF_INPLACE=4};
+enum class INITIAL_GUESSES {H_CORE=0, EHT=1, ATOM_DENS=2, ATOM_SCF=3, ATOM_SCF_INPLACE=4, SAP=5};
 template<> inline void resolve<INITIAL_GUESSES>(std::string& value, INITIAL_GUESSES& field){
   static const std::map<std::string, INITIAL_GUESSES> m = {
       {"HCORE",INITIAL_GUESSES::H_CORE},
       {"EHT",INITIAL_GUESSES::EHT},
       {"ATOM_DENS",INITIAL_GUESSES::ATOM_DENS},
       {"ATOM_SCF",INITIAL_GUESSES::ATOM_SCF},
-      {"ATOM_SCF_INPLACE",INITIAL_GUESSES::ATOM_SCF_INPLACE}
+      {"ATOM_SCF_INPLACE",INITIAL_GUESSES::ATOM_SCF_INPLACE},
+      {"SAP",INITIAL_GUESSES::SAP}
   };
   check(m,value,field);
 }
@@ -655,27 +664,56 @@ template<> inline void resolve<DAMPING_ALGORITHMS>(std::string& value, DAMPING_A
 }
 
 /**
- * Methods for SigmaVectorCalculator
- * APLUSB:  calculates sigma vectors for A+B matrix in linear response SCF problem
- * AMINUSB: calculates sigma vectors for A-B matrix in linear response SCF problem
+ * Possible types for LRSCF problems to determine eigenvalue solving procedure:
+ * TDA/CIS : AX = Xw (is Hermitian, uses Davidson)
+ * TDDFT : sqrt(A-B)(A+B)sqrt(A-B) sqrt-(X+Y)
+ *           = sqrt-(X+Y) w^2 (is Hermitian, uses Davidson)
+ * RPA : (A+B)(X+Y) = (X-Y)w
+ *       (A-B)(X-Y) = (X+Y)w (is non-Hermitian, uses a modifed OJJ)
+ * The latter one includes TDHF, hybrid TDDFT, FDEc with 
+ * external orthogonality and supermolecular TDDFT with local orbitals.
  */
-enum class SIGMAVECTOR_METHODS {APLUSB=0,AMINUSB=1};
-template<> inline void resolve<SIGMAVECTOR_METHODS>(std::string& value, SIGMAVECTOR_METHODS& field){
-  static const std::map<std::string, SIGMAVECTOR_METHODS> m = {
-      {"APLUSB",SIGMAVECTOR_METHODS::APLUSB},
-      {"AMINUSB",SIGMAVECTOR_METHODS::AMINUSB}
+enum class RESPONSE_PROBLEM {TDA=0,TDDFT=1,RPA=2};
+template<> inline void resolve<RESPONSE_PROBLEM>(std::string& value, RESPONSE_PROBLEM& field){
+  static const std::map<std::string, RESPONSE_PROBLEM> m = {
+    {"TDA",RESPONSE_PROBLEM::TDA},
+    {"TDDFT",RESPONSE_PROBLEM::TDDFT},
+    {"RPA",RESPONSE_PROBLEM::RPA},
   };
   check(m,value,field);
 }
 
-enum class RPA_EIGENVALUESOLVER {KDavidson=0,SSF=1};
-template<> inline void resolve<RPA_EIGENVALUESOLVER>(std::string& value, RPA_EIGENVALUESOLVER& field){
-  static const std::map<std::string, RPA_EIGENVALUESOLVER> m = {
-      {"KDAVIDSON",RPA_EIGENVALUESOLVER::KDavidson},
-      {"SSF",RPA_EIGENVALUESOLVER::SSF}
+enum class LRSCF_TYPE {ISOLATED=0, UNCOUPLED=1, COUPLED=2};
+template<> inline void resolve<LRSCF_TYPE>(std::string& value, LRSCF_TYPE& field){
+  static const std::map<std::string, LRSCF_TYPE> m = {
+    {"ISOLATED",LRSCF_TYPE::ISOLATED},
+    {"ISO",LRSCF_TYPE::ISOLATED},
+    {"UNCOUPLED",LRSCF_TYPE::UNCOUPLED},
+    {"FDEU",LRSCF_TYPE::UNCOUPLED},
+    {"COUPLED",LRSCF_TYPE::COUPLED},
+    {"FDEC",LRSCF_TYPE::COUPLED},
   };
   check(m,value,field);
 }
+
+enum class INTEGRAL_TYPE {NUMERICAL=0, ANALYTICAL=1};
+template<> inline void resolve<INTEGRAL_TYPE>(std::string& value, INTEGRAL_TYPE& field){
+  static const std::map<std::string, INTEGRAL_TYPE> m = {
+      {"NUMERICAL",INTEGRAL_TYPE::NUMERICAL},
+      {"ANALYTICAL",INTEGRAL_TYPE::ANALYTICAL}
+  };
+  check(m,value,field);
+}
+
+enum class GAUGE {LENGTH=0, VELOCITY=1};
+template<> inline void resolve<GAUGE>(std::string& value, GAUGE& field){
+  static const std::map<std::string, GAUGE> m = {
+      {"LENGTH",GAUGE::LENGTH},
+      {"VELOCITY",GAUGE::VELOCITY}
+  };
+  check(m,value,field);
+}
+
 /**
  * Multiplicity of excited state in LRSCF calculation
  * Singlet: 2*S + 1 = 1
@@ -865,7 +903,7 @@ template<> inline void resolve<HESSIAN_TYPES>(std::string& value, HESSIAN_TYPES&
 /**************************************************************************************************/
 
 
-enum class ORBITAL_LOCALIZATION_ALGORITHMS {PIPEK_MEZEY=0, FOSTER_BOYS=1, IAO=2, IBO=3,EDMISTON_RUEDENBERG=4,NON_ORTHOGONAL=5};
+enum class ORBITAL_LOCALIZATION_ALGORITHMS {PIPEK_MEZEY=0, FOSTER_BOYS=1, IAO=2, IBO=3,EDMISTON_RUEDENBERG=4,NON_ORTHOGONAL=5,NONE=6};
 template<> inline void resolve<ORBITAL_LOCALIZATION_ALGORITHMS>(std::string& value, ORBITAL_LOCALIZATION_ALGORITHMS& field){
   static const std::map<std::string, ORBITAL_LOCALIZATION_ALGORITHMS> m = {
       {"PM",ORBITAL_LOCALIZATION_ALGORITHMS::PIPEK_MEZEY},
@@ -873,12 +911,14 @@ template<> inline void resolve<ORBITAL_LOCALIZATION_ALGORITHMS>(std::string& val
       {"IAO",ORBITAL_LOCALIZATION_ALGORITHMS::IAO},
       {"IBO",ORBITAL_LOCALIZATION_ALGORITHMS::IBO},
       {"ER",ORBITAL_LOCALIZATION_ALGORITHMS::EDMISTON_RUEDENBERG},
-      {"NO",ORBITAL_LOCALIZATION_ALGORITHMS::NON_ORTHOGONAL}
+      {"NO",ORBITAL_LOCALIZATION_ALGORITHMS::NON_ORTHOGONAL},
+      {"NONE",ORBITAL_LOCALIZATION_ALGORITHMS::NONE}
   };
   check(m,value,field);
 }
 
-enum class KIN_EMBEDDING_MODES {NONE=0, NADD_FUNC=1, LEVELSHIFT=2, HUZINAGA=3, HOFFMANN=4, RECONSTRUCTION=5};
+enum class KIN_EMBEDDING_MODES {
+  NONE=0, NADD_FUNC=1, LEVELSHIFT=2, HUZINAGA=3, HOFFMANN=4, RECONSTRUCTION=5, FERMI_SHIFTED_HUZINAGA=6};
 template<> inline void resolve<KIN_EMBEDDING_MODES>(std::string& value, KIN_EMBEDDING_MODES& field){
   static const std::map<std::string, KIN_EMBEDDING_MODES> m = {
       {"NONE",KIN_EMBEDDING_MODES::NONE},
@@ -887,6 +927,8 @@ template<> inline void resolve<KIN_EMBEDDING_MODES>(std::string& value, KIN_EMBE
       {"HUZINAGA",KIN_EMBEDDING_MODES::HUZINAGA},
       {"HOFFMANN",KIN_EMBEDDING_MODES::HOFFMANN},
       {"RECONSTRUCTION",KIN_EMBEDDING_MODES::RECONSTRUCTION},
+      {"FERMI_SHIFTED_HUZINAGA",KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA},
+      {"FERMI",KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA}
   };
   check(m,value,field);
 }
@@ -922,21 +964,6 @@ template<> inline void resolve<PROJECTION_OPERATORS>(std::string& value, PROJECT
   check(m,value,field);
 }
 
-/**************************************************************************************************/
-/*                        Criterion for non orthogonal orbitals in PBE							  */
-/**************************************************************************************************/
-enum class NON_ORTHOGONAL_CRITERION {
-  NONE=0,DISTANT_ATOM=1, OVERLAP=2
-};
-template<> inline void resolve<NON_ORTHOGONAL_CRITERION>(std::string& value, NON_ORTHOGONAL_CRITERION& field) {
-  static const std::map<std::string, NON_ORTHOGONAL_CRITERION> m = {
-      {"NONE", NON_ORTHOGONAL_CRITERION::NONE},
-      {"DISTANTATOMS", NON_ORTHOGONAL_CRITERION::DISTANT_ATOM},
-      {"OVERLAP", NON_ORTHOGONAL_CRITERION::OVERLAP},
-  };
-  check(m,value,field);
-}
-
 enum class CC_LEVEL {CCSD, CCSD_T};
 template<> inline void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field){
   static const std::map<std::string, CC_LEVEL> m = {
@@ -946,11 +973,11 @@ template<> inline void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field){
   check(m,value,field);
 }
 
-enum class REFERENCE_POINT {COM, ORIGIN};
-template<> inline void resolve<REFERENCE_POINT>(std::string& value, REFERENCE_POINT& field){
-  static const std::map<std::string, REFERENCE_POINT> m = {
-      {"CENTEROFMASS",REFERENCE_POINT::COM},
-      {"ORIGIN",REFERENCE_POINT::ORIGIN}
+enum class GAUGE_ORIGIN {COM, ORIGIN};
+template<> inline void resolve<GAUGE_ORIGIN>(std::string& value, GAUGE_ORIGIN& field){
+  static const std::map<std::string, GAUGE_ORIGIN> m = {
+      {"CENTEROFMASS",GAUGE_ORIGIN::COM},
+      {"ORIGIN",GAUGE_ORIGIN::ORIGIN}
   };
   check(m,value,field);
 }

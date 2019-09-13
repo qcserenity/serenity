@@ -24,7 +24,7 @@
 #include "settings/Options.h"
 #include "data/matrices/SPMatrix.h"
 #include "math/Matrix.h"
-#include "data/matrices/DensityMatrix.h"
+#include "data/matrices/DensityMatrixController.h"
 /* Include Std and External Headers */
 #include <memory>
 #include <vector>
@@ -173,6 +173,28 @@ public:
       std::shared_ptr<SystemController> environmentSystem,
       SpinPolarizedData<SCFMode,std::vector<bool> > distantOrbitals);
 
+  /**
+   * @brief Calculates the overlap between the basis sets of active and environment systems.
+   *        A nullptr is returned if the total overlap is below the given threshold.
+   * @param activeSystem The active systems.
+   * @param environmentSystem The environment systems.
+   * @param truncationThreshold Total overlap threshold.
+   * @return The overlap matrices or nullptr in case of a not projected system.
+   */
+  static std::vector<std::shared_ptr<Eigen::MatrixXd> > getProjectedSubsystems(
+      std::shared_ptr<SystemController> activeSystem,
+      std::vector<std::shared_ptr<SystemController> > environmentSystems,
+      double truncationThreshold = -10);
+
+  /**
+   * @brief Constructs the density matrix controllers with the given SCFMode.
+   * @param environmentSystems The environment system controllers.
+   * @param topDown A flag for top-down calculations.
+   * @return The associated density matrix controllers with the correct SCFMode.
+   */
+  static std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > getEnvironmentDensityControllers(
+      std::vector<std::shared_ptr<SystemController> > environmentSystems,
+      bool topDown = false);
 };
 
 } /* namespace Serenity */

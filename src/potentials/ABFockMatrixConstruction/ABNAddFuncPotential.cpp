@@ -176,7 +176,9 @@ SPMatrix<SCFMode>& ABNAddFuncPotential<SCFMode>::getMatrix() {
     _abPotential.reset(new SPMatrix<SCFMode>(nBasisA,nBasisB));
     auto& f_AB = *_abPotential;
     // Calculating non-additive part.
-    if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::LDA){
+    if(_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::NONE) {
+      //Nothing to be done here
+    } else if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::LDA){
       *superFuncDat.dFdRho -= *activeFuncDat.dFdRho;
       _gridToMatrix_AB->addScalarOperatorToMatrix(f_AB,*superFuncDat.dFdRho);
     } else if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::GGA) {

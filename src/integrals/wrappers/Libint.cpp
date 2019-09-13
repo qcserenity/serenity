@@ -230,6 +230,35 @@ void Libint::initialize(libint2::Operator op,
   this->initialize(op, deriv ,nCenter, q, mu);
 }
 
+void Libint::initialize(libint2::Operator op,
+    const unsigned int deriv,
+    const unsigned int nCenter,
+    const Point multipoleOrigin){
+
+  assert((op == libint2::Operator::emultipole1 || op == libint2::Operator::emultipole2 || op == libint2::Operator::emultipole3)
+    && "If you put a multipole origin in the Libint initializer you should also use a multipole operator.");
+
+  Timings::takeTime("Tech. - Libint Initializations");
+  if (!libint2::initialized())libint2::initialize();
+  IntegralType it(op,deriv,nCenter);
+  auto& evector = _engines.at(it);
+
+  //Libint expects a std::array as parameter
+  std::array<double, 3> origin = {multipoleOrigin.getX(), multipoleOrigin.getY(), multipoleOrigin.getZ()};
+  for (unsigned int i = 0; i < (unsigned int)evector.size(); ++i) {
+    if (evector[i]){
+      evector[i]->set_params(origin);
+      continue;
+    }
+
+    evector[i].reset(new libint2::Engine(op,N_PRIM_MAX,AM_MAX,
+      deriv,std::numeric_limits<double>::epsilon()));
+
+    evector[i]->set_params(origin);
+  }
+  Timings::timeTaken("Tech. - Libint Initializations");
+}
+
 void Libint::finalize(libint2::Operator op, unsigned int deriv, unsigned int nCenter){
   IntegralType it(op,deriv,nCenter);
   if (_keep[it]) return;

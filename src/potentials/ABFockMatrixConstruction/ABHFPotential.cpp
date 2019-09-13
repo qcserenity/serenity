@@ -23,6 +23,7 @@
 #include "basis/ABShellPairCalculator.h"
 #include "system/SystemController.h"
 #include "potentials/ABFockMatrixConstruction/ABExchangePotential.h"
+#include "potentials/ABFockMatrixConstruction/ABLRExchangePotential.h"
 #include "potentials/ABFockMatrixConstruction/ABCoulombInteractionPotential.h"
 
 namespace Serenity {
@@ -34,13 +35,17 @@ ABHFPotential<SCFMode>::ABHFPotential(
     std::shared_ptr<BasisController> basisB,
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > dMats,
     double exchangeRatio,
+    double LRexchangeRatio,
+    double mu,
     bool topDown,
     Options::DENS_FITS densityFitting,
     std::shared_ptr<BasisController> auxBasisAB,
     std::vector<std::shared_ptr<BasisController> > envAuxBasisController) :
     ABPotential<SCFMode>(basisA,basisB),
     _system(system),
-    _exchangeRatio(exchangeRatio){
+    _exchangeRatio(exchangeRatio),
+    _lrExchangeRatio(LRexchangeRatio),
+    _mu(mu){
   //Basis
   this->_basisA->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_basisB->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
@@ -66,6 +71,15 @@ ABHFPotential<SCFMode>::ABHFPotential(
       densityFitting,
       auxBasisAB,
       envAuxBasisController);
+  if (_lrExchangeRatio != 0.0) {
+    _abLRExchange = std::make_shared<ABLRExchangePotential<SCFMode> > (
+        _system,
+        this->_basisA,
+        this->_basisB,
+        dMats,
+        _lrExchangeRatio,
+        _mu);
+  }
 }
 
 template <Options::SCF_MODES SCFMode>
@@ -77,6 +91,7 @@ SPMatrix<SCFMode>& ABHFPotential<SCFMode>::getMatrix() {
     SPMatrix<SCFMode>& f_AB = *_abPotential;
     if (_exchangeRatio != 0.0) f_AB += _abExchange->getMatrix();
     f_AB += _abCoulomb->getMatrix();
+    if (_abLRExchange) f_AB += _abLRExchange->getMatrix();
   } /* if !_abPotential */
   return *_abPotential;
 }

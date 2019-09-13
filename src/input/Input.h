@@ -107,13 +107,48 @@ public:
       iss >> word;
 
       for (auto& c: word ) c = std::toupper(c);
-     
+      // end of settings block
+      if (!word.compare("-TASK")){
+        break;
+      }
       // check for comments and empty lines
       if (word.empty()) continue;
       if (word[0] == '#') continue;
-      // end of settings block
-      if (word[0] == '-'){
-        break;
+      if (word[0] == '+') {
+        std::string blockname = word.erase(0, 1);
+        for (auto& c: blockname) c = std::toupper(c);
+        if(blockname=="TASK") assert(false);
+        while(getline(stream, line)){
+          std::istringstream iss2(line);
+          word ="";
+          iss2 >> word;
+          if (word[0] == '-') {
+            break;
+          }
+          // check for comments
+          if (word[0] == '#') continue;
+          if (word.empty()) continue;
+          std::string name = word;
+          std::string value;
+          if (!(iss2 >> word)){
+            throw SerenityError("ERROR: Value missing for keyword '"+name+"'.");
+          }
+          value = word;
+          while(iss2 >> word){
+            value+=word;
+            value+=" ";
+          }
+
+          // set the corresponding fields for the reflection (see Reflection.h)
+          bool check = false;
+
+          set_visitor visitor(name,value,check);
+          task->visit(task->settings,visitor,blockname);
+          if (!check){
+            throw SerenityError("ERROR: No keyword '"+name+"' known in this block.");
+          }
+        }
+        continue;
       }
 
       // unblocked options
@@ -137,12 +172,13 @@ public:
       bool check = false;
 
       set_visitor visitor(name,value,check);
-      visit_each(task->settings, visitor);
+      task->visit(task->settings,visitor,"");
       if (!check){
         throw SerenityError("ERROR: No keyword '"+name+"' known in this block.");
       }
     }
   }
+
 
 /**
  *
@@ -200,7 +236,7 @@ public:
           throw SerenityError("ERROR: No system known with name: '"+word+"'.");
         }
         continue;
-      } else if(word[0]== '-'){
+      } else if(!word.compare("-TASK")){
         // Task block finished...
         // ...check for systems...
         if(activeSystem.size()==0){
@@ -276,7 +312,12 @@ public:
           if (!defaultSettings) Input::parseTaskSettings(taskptr,settingsStream);
           task.reset(taskptr);
         } else if (!copy.compare("LRSCFTASK") or !copy.compare("LRSCF")){
-          createTaskAE(LRSCFTask,activeSystem[0]->getSettings().scfMode,activeSystem[0],environmentSystem);
+          Options::SCF_MODES scfMode=Options::SCF_MODES::RESTRICTED;
+          for(auto system : activeSystem){
+             if(system->getSettings().scfMode==Options::SCF_MODES::UNRESTRICTED)
+               scfMode=Options::SCF_MODES::UNRESTRICTED;
+              }
+          createTaskAE(LRSCFTask,scfMode,activeSystem,environmentSystem);
         } else if (!copy.compare("MP2TASK") or !copy.compare("MP2")){
           createTaskA(MP2Task,activeSystem[0]->getSettings().scfMode,activeSystem[0]);
         } else if (!copy.compare("MULTIPOLEMOMENTTASK") or !copy.compare("MULTI")){
@@ -304,6 +345,7 @@ public:
           throw SerenityError("ERROR: No task known with name: '"+name+"'.");
         }
         return task;
+
       }else{
         // If none of the above:
         // Must be settings keywords...

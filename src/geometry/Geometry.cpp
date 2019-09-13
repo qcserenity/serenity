@@ -33,6 +33,7 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <iomanip>
 
 
 
@@ -167,9 +168,9 @@ void Geometry::printToFile(std::string baseName, std::string id) const{
   for (auto atom : _atoms){
 //    std::string dummy=atom->isDummy()? ":" : ""; // The name already contains the information whether it is a dummy.
     file << atom->getAtomType()->getName() //<< dummy
-         << "  " << std::fixed <<  atom->getX()*BOHR_TO_ANGSTROM
-         << "  " << std::fixed << atom->getY()*BOHR_TO_ANGSTROM
-         << "  " << std::fixed << atom->getZ()*BOHR_TO_ANGSTROM
+         << "  " <<fixed << std::setprecision(12)<< atom->getX()*BOHR_TO_ANGSTROM
+         << "  " <<fixed << std::setprecision(12)<< atom->getY()*BOHR_TO_ANGSTROM
+         << "  " <<fixed << std::setprecision(12)<< atom->getZ()*BOHR_TO_ANGSTROM
          << std::endl;
   }
   file.close();
@@ -524,6 +525,16 @@ Eigen::MatrixXd Geometry::getRotModes(){
   }
 
   return rotModes;
+}
+
+bool Geometry::hasIdenticalAtoms() const {
+  for(unsigned int atom1=0; atom1<this->_atoms.size(); atom1++){
+    for(unsigned int atom2=0; atom2<atom1; atom2++){
+      double dist= distance(*(this->_atoms[atom1]),*(this->_atoms[atom2]));
+      if(dist<1e-5) return true;
+    }
+  }
+  return false;
 }
 
 void Geometry::deleteIdenticalAtoms() {

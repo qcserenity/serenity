@@ -72,11 +72,12 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
    * Get in some data locally
    */
   const auto& atoms = systemController->getAtoms();
-  auto minimalBasisController =
-      systemController->getAtomCenteredBasisController(
-          (_scf==GUESSMODES::SCF)?Options::BASIS_PURPOSES::SCF_DENS_GUESS : Options::BASIS_PURPOSES::MINBAS);
-  auto oneEIntC = systemController->getOneElectronIntegralController(
-      (_scf==GUESSMODES::SCF)?Options::BASIS_PURPOSES::SCF_DENS_GUESS : Options::BASIS_PURPOSES::MINBAS);
+  std::shared_ptr<BasisController> minimalBasisController;
+  if(_scf!=GUESSMODES::SCF_INPLACE) {
+    minimalBasisController =
+        systemController->getAtomCenteredBasisController(
+            (_scf==GUESSMODES::SCF)?Options::BASIS_PURPOSES::SCF_DENS_GUESS : Options::BASIS_PURPOSES::MINBAS);
+  }
 
   auto basisController=systemController->getBasisController();
 
@@ -85,7 +86,8 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
   // these two variables are needed in the outer scope
   Eigen::MatrixXd targetBasisOverlap = systemController->getOneElectronIntegralController()->getOverlapIntegrals();
 
-  auto newGuessDensity = unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> >(new DensityMatrix<Options::SCF_MODES::RESTRICTED>(keepMinimalBasis?minimalBasisController:basisController));
+  auto newGuessDensity = unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> >(
+      new DensityMatrix<Options::SCF_MODES::RESTRICTED>(keepMinimalBasis?minimalBasisController:basisController));
   auto& newDens=*newGuessDensity;
   unsigned int blockstart=0;
   for(auto atom : atoms){
@@ -95,14 +97,17 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
       }
       continue;
     }
+    bool usesECPs = atom->usesECP();
     /*
      * If not already available: Get from file
      */
     if(_atomDensities.find(atom->getAtomType()->getElementSymbol())==_atomDensities.end()){
       Eigen::MatrixXd atomDensMat;
-      if(_scf==GUESSMODES::SCF_INPLACE){
-        std::string pathRes=systemController->getSettings().path+atom->getAtomType()->getElementSymbol()+"_FREE/"+atom->getAtomType()->getElementSymbol()+"_FREE.dmat.res.h5";
-        std::string pathUnres=systemController->getSettings().path+atom->getAtomType()->getElementSymbol()+"_FREE/"+atom->getAtomType()->getElementSymbol()+"_FREE.dmat.unres.h5";
+      if(_scf==GUESSMODES::SCF_INPLACE || usesECPs){
+        std::string pathRes=systemController->getSettings().path+atom->getAtomType()->getElementSymbol()
+            +"_FREE/"+atom->getAtomType()->getElementSymbol()+"_FREE.dmat.res.h5";
+        std::string pathUnres=systemController->getSettings().path+atom->getAtomType()->getElementSymbol()
+            +"_FREE/"+atom->getAtomType()->getElementSymbol()+"_FREE.dmat.unres.h5";
         struct stat buffer;
         if(stat (pathRes.c_str(), &buffer) == 0){
           HDF5::Filepath name(pathRes);
@@ -132,7 +137,7 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
           }else{
             atomSettings.spin=0;
           }
-          atomSettings.scf.initialguess=Options::INITIAL_GUESSES::ATOM_SCF;
+          atomSettings.scf.initialguess=(!usesECPs)? Options::INITIAL_GUESSES::ATOM_SCF : Options::INITIAL_GUESSES::H_CORE;
           atomSettings.scf.energyThreshold=1e-6;
           atomSettings.scf.rmsdThreshold=1e-6;
           atomSettings.scf.diisThreshold=1e-6;
@@ -165,7 +170,7 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
       /*
        * If basis change is wanted: Project to new basis
        */
-      if (!keepMinimalBasis and _scf!=GUESSMODES::SCF_INPLACE){
+      if (!keepMinimalBasis and _scf!=GUESSMODES::SCF_INPLACE and !usesECPs){
         std::vector<std::shared_ptr<Atom>> dummyVec={atom};
         auto dummyGeom=std::make_shared<Geometry>(dummyVec);
         /*
@@ -212,14 +217,11 @@ std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED> > AtomicDensityGue
     unsigned int nBasFunc=atomDensMat.rows();
     newDens.block(blockstart,blockstart,nBasFunc,nBasFunc)=atomDensMat;
     blockstart+=nBasFunc;
-  }
+  }// for atom
 
 
   libint.freeEngines(libint2::Operator::overlap,0,2);
 
   return newGuessDensity;
 }
-
-
-
 } /* namespace Serenity */

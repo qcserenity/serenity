@@ -27,6 +27,7 @@
 #include "tasks/Task.h"
 #include "math/Matrix.h"
 #include "data/matrices/CoefficientMatrix.h"
+#include "settings/EmbeddingSettings.h"
 /* Include Std and External Headers */
 #include <memory>
 #include <vector>
@@ -40,59 +41,34 @@ class Settings;
 
 struct TDEmbeddingTaskSettings {
   TDEmbeddingTaskSettings():
-    levelShiftParameter(1.0e6),
     locType(Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO),
-    naddXCFunc(Options::XCFUNCTIONALS::BP86),
-    naddKinFunc(Options::KINFUNCTIONALS::PW91K),
-    longRangeNaddKinFunc(Options::KINFUNCTIONALS::NONE),
-    embeddingMode(Options::KIN_EMBEDDING_MODES::LEVELSHIFT),
-    dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE),
     useEnvSys(false),
     orbitalThreshold(0.6),
     enforceCharges(false),
-    smoothFactor(0.0),
-    potentialBasis(""),
-    singValThreshold(0.0),
-    lbDamping(0.995),
-    lbCycles(0),
-    carterCycles(0),
     noSupRec(true),
     truncationFactor(0.0),
     truncAlgorithm(Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE),
     netThreshold(1e-4),
-    borderAtomThreshold(0.02),
-    basisFunctionRatio(0.0),
-    nonOrthogonalCrit(Options::NON_ORTHOGONAL_CRITERION::NONE),
     load(""),
-    name("")
+    name(""),
+    useFermiLevel(true)
   {}
   REFLECTABLE(
-    (double) levelShiftParameter,
     (Options::ORBITAL_LOCALIZATION_ALGORITHMS) locType,
-    (Options::XCFUNCTIONALS) naddXCFunc,
-    (Options::KINFUNCTIONALS) naddKinFunc,
-    (Options::KINFUNCTIONALS) longRangeNaddKinFunc,
-    (Options::KIN_EMBEDDING_MODES) embeddingMode,
-    (Options::DFT_DISPERSION_CORRECTIONS) dispersion,
     (bool) useEnvSys,
     (double) orbitalThreshold,
     (bool) enforceCharges,
-    (double) smoothFactor,
-    (std::string) potentialBasis,
-    (double) singValThreshold,
-    (double) lbDamping,
-    (unsigned int) lbCycles,
-    (unsigned int) carterCycles,
     (bool) noSupRec,
     (double) truncationFactor,
     (Options::BASIS_SET_TRUNCATION_ALGORITHMS) truncAlgorithm,
     (double) netThreshold,
-    (double) borderAtomThreshold,
-    (double) basisFunctionRatio,
-    (Options::NON_ORTHOGONAL_CRITERION) nonOrthogonalCrit,
     (std::string) load,
-    (std::string) name
+    (std::string) name,
+    (bool) useFermiLevel
   )
+public:
+  EmbeddingSettings embedding;
+
 };
 
 /**
@@ -127,39 +103,39 @@ public:
    * @brief Default destructor.
    */
   virtual ~TDEmbeddingTask() = default;
-
+  /**
+   * @see Task
+   */
   void run();
+  /**
+   * @brief Parse the settings to the task settings.
+   * @param c The task settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  void visit(TDEmbeddingTaskSettings& c, set_visitor v, std::string blockname) {
+    if (!blockname.compare("")){
+      visit_each(c, v);
+    } else if(!c.embedding.visitSettings(v,blockname)){
+      throw SerenityError((string)"Unknown block in TDEmbeddingTaskSettings: "+blockname);
+    }
+  }
 
   /**
    * @brief The settings/keywords for ProjectionBasedEmbTask:
-   *        -levelShiftParameter : Shift projected orbitals by levelShiftParameters (default: 1.0e-6 Eh)
    *        -locType : The localization method (see LocalizationTask, default: IBO)
-   *        -naddXCFunc : The non-additive exchange correlation functional
-   *        -naddKinFunc : The non-additive kinetic functional (used in for EMBEDDING_MODE::NADD_FUNC)
-   *        -longRangeNaddKinFunc : The kinetic energy functional used to correct contributions from non orthogonal orbitals.
-   *        -embeddingMode : The type of embedding to run (e.g., level shift, potential reconstruction... see Options class)
-   *        -dispersion : The dispersion interaction between subsystems.
    *        -useEnvSys : Relax the active system with respect to a previously calculated environment.
    *        -orbitalThreshold : Threshold for until localized orbitals get assigned to active system (regarding Mulliken population)
    *        -enforceCharges : If true, orbitals get assigned to match input charges
-   *        -smoothFactor : Smoothing to be used in potential reconstruction
-   *        -potentialBasis : Basis to express the potential in during Wu-Yang reconstruction
-   *        -singValThreshold : Threshold for singular value decomposition in Wu-Yang Newton-Raphson step
-   *        -lbDamping : Damping to be used during the van Leeuwen-Baerends reconstruction
-   *        -lbCycles : Maximum cycles for van Leeuwen-Baerends scheme
-   *        -carterCycles : Maximum cycles for Zhang-Carter scheme
    *        -noSupRec : Only reconstructs subsystem potentials and evaluates supersystem potentials analytically
    *        -truncationFactor : The truncation factor used in the "primitive" truncation schemes
    *        -truncAlgorithm : The employed truncation algorithm.
    *        -netThreshold : The Mulliken net population threshold for the Mulliken net population truncation.
    *        -distantNonOrthogonal : True, if distant orbitals are not enforced to be orthogonal to the active orbitals.
-   *        -borderAtomThreshold : The Mulliken population threshold used to determine if an orbital is considered "distant" or not.
-   *                               The Mulliken population of the orbital on all not "distant" atoms has to exceed this threshold in order
-   *                               to be included in the projector.
-   *        -basisFunctionRatio : The minimum ratio of retained basis functions needed in order to consider a atom to be not "distant".
    *        -nonOrthogonalCrit : The criterion to select non-orthogonal orbitals: NONE, DistantAtom
    *        -load : The path to the directory from which the supersystem is taken. If empty a supersystem calculation is done.
    *        -name : The name of the system if it is loaded from disk.
+   *        -embeddingSettings: The embedding settings. See settings/EmbeddingSettings.h for details.
    */
   TDEmbeddingTaskSettings settings;
 
@@ -192,6 +168,12 @@ private:
    * @return Set up the supersystem from a supersystem calculation or fragment addition.
    */
   inline std::shared_ptr<SystemController> setUpSupersystem();
+  /**
+   * @param The supersystem controller.
+   * @return The fermi-level of the supersystem or the largest occupied fock matrix element.
+   */
+  inline double getFermiLevel(
+      std::shared_ptr<SystemController> supersystem);
 };
 
 } /* namespace Serenity */

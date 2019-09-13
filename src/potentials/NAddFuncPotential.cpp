@@ -113,10 +113,11 @@ NAddFuncPotential<SCFMode>::getMatrix(){
       pot_spin.setZero();
     };
 
-    if (_functional.isHybrid() and _evaluateExactX){
+    if ((_functional.isHybrid() || _functional.isRSHybrid()) and _evaluateExactX){
       if (!_excPot){
         _excPot.reset(new ExchangeInteractionPotential<SCFMode>(this->_basis,_envDMatController,
-            _functional.getHfExchangeRatio(),_system->getSettings().basis.integralThreshold));
+            _functional.getHfExchangeRatio(),_system->getSettings().basis.integralThreshold,
+            _functional.getLRExchangeRatio(),_functional.getRangeSeparationParameter()));
       }
       auto& xcMat = _excPot->getMatrix();
       for_spin(pot,xcMat){
@@ -201,10 +202,11 @@ NAddFuncPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P){
     (void)this->getMatrix();
   }
 
-  if (_functional.isHybrid() and _evaluateExactX){
+  if ((_functional.isHybrid() || _functional.isRSHybrid()) and _evaluateExactX){
     if (!_excPot){
       _excPot.reset(new ExchangeInteractionPotential<SCFMode>(this->_basis,_envDMatController,
-          _functional.getHfExchangeRatio(),_system->getSettings().basis.integralThreshold));
+          _functional.getHfExchangeRatio(),_system->getSettings().basis.integralThreshold,
+          _functional.getLRExchangeRatio(),_functional.getRangeSeparationParameter()));
     }
     this->_system->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_EXACT_EXCHANGE,_excPot->getEnergy(P));
   }else{

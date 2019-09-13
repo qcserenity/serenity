@@ -27,6 +27,7 @@
 /* Include Std and External Headers */
 #include <cassert>
 #include <cmath>
+#include <Eigen/SparseCore>
 
 namespace Serenity {
 /*********************************************************************************
@@ -85,7 +86,6 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
       }
     }
   }
-  const unsigned int nBasisFunctions = basisFunctionOnGridController.getNBasisFunctions();
   /*
    * Loop over blocks of grid points
    */
@@ -99,8 +99,13 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
     const auto& thisBlockData = basisFunctionOnGridController.getBlockOnGridData(blockNumber);
     const unsigned int blockFirstIndex = basisFunctionOnGridController.getFirstIndexOfBlock(blockNumber);
     const unsigned int blockSize = thisBlockData->functionValues.rows();
+    /*
+     * This projection matrix projects to the non-negligible basis functions of any matrix expressed
+     * in the associated basis. Note that this matrix is extremely sparse and multiplication with it
+     * are extremely fast.
+     */
+    const Eigen::SparseMatrix<double> projection = constructProjectionMatrix(thisBlockData->negligible);
 
-    assert(thisBlockData->functionValues.cols() == nBasisFunctions);
     /*
      * Product of a basis function value on a grid point with the corresponding entries in the
      * density matrix.
@@ -110,7 +115,15 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
      * See 'a' in the part 'A comment on the program structure' in:
      * O. Treutler and R. Ahlrichs, J. Chem. Phys (1995), 102, 346
      */
-    Eigen::MatrixXd nuAndP(blockSize, (resultHessiansPtr ? 4 : 1) * nBasisFunctions);
+    const Eigen::MatrixXd sigFunctionValues = thisBlockData->functionValues * projection;
+    Eigen::MatrixXd signGradX;
+    Eigen::MatrixXd signGradY;
+    Eigen::MatrixXd signGradZ;
+    if (resultGradientsPtr||resultHessiansPtr) {
+      signGradX = thisBlockData->derivativeValues->x * projection;
+      signGradY = thisBlockData->derivativeValues->y * projection;
+      signGradZ = thisBlockData->derivativeValues->z * projection;
+    }// if resultGradientsPtr||resultHessiansPtr
 
     /*
      * Loop over data sets
@@ -122,92 +135,43 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
       const auto& thisMatrix = matrices[i].get();
       auto& thisResults = results[i].get();
 
-      // (Re-)init nuAndP
-      nuAndP.setZero();
-
-      /*====================================
-       *  Pre-calculations incl. screening
-       *====================================*/
-      for (unsigned int nu = 0; nu < nBasisFunctions; ++nu) {
-        // screening
-        if (thisBlockData->negligible[nu])
-          continue;
-        for (unsigned int mu = 0; mu < nBasisFunctions; ++mu) {
-          const double rhoMuNu = thisMatrix.data()[mu * nBasisFunctions + nu];
-          nuAndP.col(mu) += rhoMuNu * thisBlockData->functionValues.col(nu);
-
-          if (resultHessiansPtr) {
-            nuAndP.col(mu + 1 * nBasisFunctions) += rhoMuNu * thisBlockData->derivativeValues->x.col(nu);
-            nuAndP.col(mu + 2 * nBasisFunctions) += rhoMuNu * thisBlockData->derivativeValues->y.col(nu);
-            nuAndP.col(mu + 3 * nBasisFunctions) += rhoMuNu * thisBlockData->derivativeValues->z.col(nu);
-          }
-        }
-      }
-
-      /*==========
-       *  Values
-       *==========*/
-      thisResults.segment(blockFirstIndex, blockSize).setZero();
-      for (unsigned int nu = 0; nu < nBasisFunctions; ++nu) {
-        if (thisBlockData->negligible[nu])
-          continue;
-        thisResults.segment(blockFirstIndex, blockSize).array() +=
-            thisBlockData->functionValues.col(nu).array() * nuAndP.col(nu).array();
-      }
-
-      /*====================
-       *  First Derivatives
-       *====================*/
+      const Eigen::MatrixXd signMatrix = projection.transpose() * thisMatrix * projection;
+      const Eigen::MatrixXd basis_P = sigFunctionValues * signMatrix;
+      thisResults.segment(blockFirstIndex,blockSize) =
+          (basis_P.array() * sigFunctionValues.array()).rowwise().sum();
       if (resultGradientsPtr) {
         auto& grad = (*resultGradientsPtr)[i];
-        grad.x.get().segment(blockFirstIndex, blockSize).setZero();
-        grad.y.get().segment(blockFirstIndex, blockSize).setZero();
-        grad.z.get().segment(blockFirstIndex, blockSize).setZero();
-        for (unsigned int nu = 0; nu < nBasisFunctions; ++nu) {
-          if (thisBlockData->negligible[nu])
-            continue;
-          grad.x.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * thisBlockData->derivativeValues->x.col(nu).array() * nuAndP.col(nu).array();
-          grad.y.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * thisBlockData->derivativeValues->y.col(nu).array() * nuAndP.col(nu).array();
-          grad.z.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * thisBlockData->derivativeValues->z.col(nu).array() * nuAndP.col(nu).array();
-        }
-      }
-      /*=====================
-       *  Second Derivative
-       *=====================*/
+        grad.x.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signGradX.array()).rowwise().sum();
+        grad.y.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signGradY.array()).rowwise().sum();
+        grad.z.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signGradZ.array()).rowwise().sum();
+      }//  if resultGradientsPtr
       if (resultHessiansPtr) {
         auto& hess = (*resultHessiansPtr)[i];
-        hess.xx.get().segment(blockFirstIndex, blockSize).setZero();
-        hess.xy.get().segment(blockFirstIndex, blockSize).setZero();
-        hess.xz.get().segment(blockFirstIndex, blockSize).setZero();
-        hess.yy.get().segment(blockFirstIndex, blockSize).setZero();
-        hess.yz.get().segment(blockFirstIndex, blockSize).setZero();
-        hess.zz.get().segment(blockFirstIndex, blockSize).setZero();
-        for (unsigned int nu = 0; nu < nBasisFunctions; ++nu) {
-          if (thisBlockData->negligible[nu])
-            continue;
-          hess.xx.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->xx.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->x.col(nu).array() * nuAndP.col(1 * nBasisFunctions + nu).array());
-          hess.xy.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->xy.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->y.col(nu).array() * nuAndP.col(1 * nBasisFunctions + nu).array());
-          hess.xz.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->xz.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->z.col(nu).array() * nuAndP.col(1 * nBasisFunctions + nu).array());
-          hess.yy.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->yy.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->y.col(nu).array() * nuAndP.col(2 * nBasisFunctions + nu).array());
-          hess.yz.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->yz.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->z.col(nu).array() * nuAndP.col(2 * nBasisFunctions + nu).array());
-          hess.zz.get().segment(blockFirstIndex, blockSize).array() +=
-              2.0 * (thisBlockData->secondDerivativeValues->zz.col(nu).array() * nuAndP.col(nu).array() +
-                     thisBlockData->derivativeValues->z.col(nu).array() * nuAndP.col(3 * nBasisFunctions + nu).array());
-        }
-      }
+        const Eigen::MatrixXd signHessXX = thisBlockData->secondDerivativeValues->xx * projection;
+        const Eigen::MatrixXd signHessXY = thisBlockData->secondDerivativeValues->xy * projection;
+        const Eigen::MatrixXd signHessXZ = thisBlockData->secondDerivativeValues->xz * projection;
+        const Eigen::MatrixXd signHessYY = thisBlockData->secondDerivativeValues->yy * projection;
+        const Eigen::MatrixXd signHessYZ = thisBlockData->secondDerivativeValues->yz * projection;
+        const Eigen::MatrixXd signHessZZ = thisBlockData->secondDerivativeValues->zz * projection;
+        const Eigen::MatrixXd grad_mat_x = signGradX * signMatrix;
+        const Eigen::MatrixXd grad_mat_y = signGradY * signMatrix;
+        const Eigen::MatrixXd grad_mat_z = signGradZ * signMatrix;
+        hess.xx.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessXX.array() + grad_mat_x.array() * signGradX.array()).rowwise().sum();
+        hess.xy.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessXY.array() + grad_mat_x.array() * signGradY.array()).rowwise().sum();
+        hess.xz.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessXZ.array() + grad_mat_x.array() * signGradZ.array()).rowwise().sum();
+        hess.yy.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessYY.array() + grad_mat_y.array() * signGradY.array()).rowwise().sum();
+        hess.yz.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessYZ.array() + grad_mat_y.array() * signGradZ.array()).rowwise().sum();
+        hess.zz.get().segment(blockFirstIndex,blockSize) =
+            2.0 * (basis_P.array() * signHessZZ.array() + grad_mat_z.array() * signGradZ.array()).rowwise().sum();
+      }// if resultHessiansPtr
     } /*Data*/
   }   /*Block*/
 }

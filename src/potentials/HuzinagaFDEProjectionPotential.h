@@ -23,33 +23,38 @@
 
 /* Include Serenity Internal Headers */
 #include "data/grid/ExternalDensityOnGridController.h"
-#include "data/ElectronicStructure.h"
 #include "data/matrices/DensityMatrixController.h"
-#include "dft/Functional.h"
 #include "grid/GridController.h"
-#include "potentials/bundles/FDEPotentials.h"
-#include "potentials/Potential.h"
+#include "potentials/bundles/PotentialBundle.h"
 #include "settings/Options.h"
-#include "potentials/ABFockMatrixConstruction/ABPotential.h"
+#include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundle.h"
+#include "potentials/Potential.h"
+#include "potentials/NAddFuncPotential.h"
+/* Include Std and External Headers */
+#include <Eigen/SparseCore>
 
 namespace Serenity {
 
 /* Forward declarations */
 class SystemController;
+class EmbeddingSettings;
+
 /**
  * @class HuzinagaFDEProjectionPotential HuzinagaFDEProjectionPotential.h
  * @brief A class for handling the Huzinaga operator and Hoffmann's external orthogonality
- *        approach in any FDE like calculation.
+ *        approach in any FDE like calculation.\n
  *
- * The Huzinaga operator:\n
- * According to:\n
+ *        The operator effectively mirrors the energy levels of the occupied environment orbitals
+ *        at 0. The level at which the levels are mirrored can be adjusted by the fermi-shifted
+ *        operator.\n\n
+ *
+ * The Huzinaga operator according to:\n
  *  J. Chem. Theory Comput. 13, 1503-1508 (2017)\n
- *  J. Chem. Phys. 55, 5543 (1971)
+ *  J. Chem. Phys. 55, 5543 (1971)\n
+ *  J. Chem. Phys. 145, 064107 (2016)\n\n
  *
- * Hoffmann's external orthogonality approach:\n
- * According to:\n
- *  Theory. Annu. Rep. Comput. Chem. 8,53-70 (2012) and \n
- *  J. Phys. Chem. A 118, 9182–9200 (2014).
+ * Fermi-shifted Huzinaga operator:\n
+ *   J. Chem. Theory Comput. 14, 1928-1942 (2018)\n
  */
 template <Options::SCF_MODES SCFMode>
 class HuzinagaFDEProjectionPotential: public Potential<SCFMode>,
@@ -65,31 +70,24 @@ public:
    *
    * @param activeSystem The active system.
    * @param environmentSystems The environment systems.
-   * @param truncatedProjection A flag in order to truncate the projection operator.
-   * @param projectionOverlapThreshold The overlap threshold for the truncation.
-   * @param buildHoffmannsOperator A flag whether Hoffmann's operator should be constructed.
-   * @param distantKinFunc A flag whether not projected subsystems are treated with a kin. energy func. .(optional)
-   * @param supersystemgrid The supersystem grid for the kin. energy func. evaluation. (optional)
-   * @param naddKinFunc The non--additive kin. energy functional. (optional)
-   * @param gridCutOff The grid cut off. (optional)
-   * @param allEConts The energy component controllers. (optional)
+   * @param settings The embedding settings.
+   * @param activeFockMatrix The AA potential bundle of the active system.
+   * @param topDown Flag for top-down calculations.
+   * @param supersystemgrid The supersystem grid controller.
+   * @param gridCutOff Optional grid cut off for hybrid approaches.
+   * @param allEConts Optional energy component controllers for hybrid approaches.
+   * @param fermiShift Optional fermi shift for the operator..
    */
   HuzinagaFDEProjectionPotential(
       std::shared_ptr<SystemController> activeSystem,
       std::vector<std::shared_ptr<SystemController> > environmentSystems,
-      Functional naddXCFunc,
-      bool truncatedProjection = false,
-      double projectionOverlapThreshold = 0.0,
-      bool buildHoffmannsOperator = false,
+      const EmbeddingSettings& settings,
+      std::shared_ptr<PotentialBundle<SCFMode> > activeFockMatrix = nullptr,
       bool topDown = false,
-      bool distantKinFunc = false,
-      double basisFunctionRatio = 0.0,
-      double borderAtomThreshold = 0.02,
       std::shared_ptr<GridController> supersystemgrid = nullptr,
-      Options::KINFUNCTIONALS naddKinFunc = Options::KINFUNCTIONALS::NONE,
       double gridCutOff = 0.0,
-      std::vector<std::shared_ptr<EnergyComponentController> > allEConts = {nullptr}
-      );
+      std::vector<std::shared_ptr<EnergyComponentController> > allEConts = {nullptr},
+      double fermiShift = 0.0);
   /**
    * @brief Default destructor.
    */
@@ -106,14 +104,9 @@ public:
   Eigen::MatrixXd getGeomGradients() override final;
 
   /**
+   * @brief Calculates the associated energy. Only different from 0 if a hybrid approach is used.
    * @param P The density matrix.
    * @return 0. There is no energy associated with this potential.
-   *
-   *TODO
-   * In general the orbitals may not be orthogonal after applying this projection operator due to
-   * the lack of basis functions in the space of the projected orbitals.
-   * This would result in the so called overlap energy. For more information see:
-   *   J. Chem. Phys. 97, 9 (1992) 6504-6508
    */
   double getEnergy(const DensityMatrix<SCFMode>& P) override final;
   /**
@@ -126,73 +119,32 @@ public:
   }
 
 private:
+  ///@brief Sorting/Projection matrices from basis A to basis set B.
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double> > > _AtoBProjections;
+  ///@brief Sorting/Projection matrices from the differential basis between B and A (diff  = {B}/{A}) to basis set B.
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double> > > _difftoBProjections;
   /// @brief The potential in matrix representation.
   std::unique_ptr<FockMatrix<SCFMode> >_potential;
   /// @brief The active system.
   std::shared_ptr<SystemController> _activeSystem;
   /// @brief The environment systems.
   std::vector<std::shared_ptr<SystemController> > _environmentSystems;
+  /// @brief The block of the fock matrix from which missing fock matrix elements are extracted if possible.
+  std::shared_ptr<PotentialBundle<SCFMode> > _activeFockMatrix;
   /// @brief The density matrix controllers of the environment systems.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _envDensityCont;
-  /// @brief the supersystem geometry (without duplicated atoms!)
-  std::shared_ptr<Geometry> _supersystemGeometry;
-  /// @brief The transformer for the exchange--correlation part for all AB grid combinations.
-  std::vector<std::shared_ptr<ScalarOperatorToMatrixAdder<SCFMode> > > _gridToMatrix_AB;
-  ///@brief The non-additive exchange--correlation functional.
-  Functional _naddXCFunc;
+  /// @brief AB-Potentials
+  std::vector<std::shared_ptr<ABEmbeddedBundle<SCFMode> > > _abEmbeddedBundles;
+  double _fermiShift;
   /*
    * Projection truncation
    */
   /// @brief The overlap matrix of the active system basis set with all environment basis sets.
   std::vector<std::shared_ptr<Eigen::MatrixXd> >_s_ABs;
-  /// @brief A flag whether the projection operator should be truncated.
-  bool _truncatedProjection;
-  /// @brief A flag for each environment system, which is true when the system is projected into the
-  /// active system
-  Eigen::VectorXi _projectedEnvSystems;
-  /// @brief The overlap threshold for the determination of the projected environment systems.
-  double _projectionOverlapThreshold;
-  /*
-   * Hoffmann only
-   */
-  /// @brief A flag whether Hoffmann's projection operator should be constructed.
-  bool _buildHoffmannsOperator;
-  /// @brief The FDE potentials for the environment systems (f_BB) (Hoffmann only).
-  std::vector<std::shared_ptr<FDEPotentials<SCFMode> > > _env_i_fdePot;
-
-  /// @brief Special case of a top-down calculation.
-  bool _topDown;
-  /*
-   * Distant kin. functional only
-   */
-  /// @brief A flag whether not projected subsystems should be treated with a non additve kin. energy functional.
-  bool _distantKinFunc;
-  /// @brief The supersystem grid (optional).
-  std::shared_ptr<GridController> _supersystemgrid;
   /// @brief The non additive kinetic energy potential for not projected subsystems (optional).
   std::shared_ptr<NAddFuncPotential<SCFMode> > _naddKinPot;
-
-  unsigned int _printLevel;
   /// @brief The density controllers of the not-projected densities.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _notProjectedEnvDensities;
-  /*
-   * AB-Potentials
-   */
-  /// @brief The coulomb contributions in the basis A x B for all environment systems.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _coulombAB_Potentials;
-  /// @brief The coulomb contribution in the basis A x B for the active systems.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _activeCoulombAB_Potentials;
-  /// @brief The exchange--correlation contribution in the basis A x B for the active system on all AB grids.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _exchangeAB_Potentials;
-  /// @brief The core hamiltonian in the basis A x B.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _coreAB_Potentials;
-  /// @brief The non-additive exchange--correlation potential for all environment systems.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _naddExchangeAB_Potentials;
-  /// @brief The non-additive exchange--correlation potential for all environment systems.
-  std::vector<std::shared_ptr<ABPotential<SCFMode> > > _naddKinAB_Potentials; /// only for hybrid methods
-  /// @brief The combined AB auxillary basis.
-  std::vector<std::shared_ptr<BasisController> > _abAuxBasisController;
-
   /* Helper Functions */
   /**
    * @brief builds the outer diagonal Fock matrix of act. + env[iEnv]
@@ -204,6 +156,12 @@ private:
    * @brief Writes the current average overlap of all occupied environmental orbitals with the occ. active system orbitals.
    */
   void writeInterSubsystemOccOverlap();
+  /**
+   * @brief Adjust the settings for the call to the ABPotentialBundle factory.
+   * @param settings The settings to be adjusted.
+   * @return A pointer on the manipulated settings.
+   */
+  std::shared_ptr<EmbeddingSettings> adjustSettings(EmbeddingSettings& settings);
 };
 
 } /* namespace Serenity */

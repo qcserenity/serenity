@@ -10,7 +10,6 @@ gmon\.out
 ext
 
 # Manual build files
-/manual/
 manual/SerenityUserManual.aux
 manual/SerenityUserManual.toc
 manual/SerenityUserManual.tex.backup
@@ -39,6 +38,7 @@ temp
 # IDE stuff
 .clang-format
 .vscode/
+src/.vscode/
 .pydevproject 
 .cproject
 .project
@@ -46,4 +46,5 @@ temp
 .launchConfig
 .kdev4/
 *.kdev4
-
+codetemplates.xml
+eclipseFormatProfile.xml

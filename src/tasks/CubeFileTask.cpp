@@ -36,7 +36,7 @@
 #include "grid/Grid.h"
 #include "data/grid/GridData.h"
 #include "data/grid/MOCalculator.h"
-#include "postHF/LRSCF/Analysis/NTOCalculator.h"
+//#include "postHF/LRSCF/Analysis/NTOCalculator.h"
 #include "data/OrbitalController.h"
 #include "analysis/localizationFunctions/SEDD.h"
 #include "analysis/localizationFunctions/ELFCalculator.h"
@@ -135,13 +135,18 @@ void CubeFileTask<SCFMode>::run() {
     printSmallCaption("Molecular Orbitals");
     print((string)"Printing MOs to files: "+supersystem->getSystemName()+"_<a/b>MO<number>.cube");
     for_spin(coeffMat,range,_fnameSuffix){
+      Eigen::MatrixXd moCoefficients(coeffMat.rows(),range_spin);
+      std::vector<std::string> fileNames;
       for (unsigned int i=0;i<range_spin;i++){
-        Eigen::VectorXd MOCoeffs = coeffMat_spin.col(i);
-        cubeWriter.writeVectorToCube(supersystem->getSettings().path+(string)supersystem->getSystemName()+_fnameSuffix_spin+"MO"+std::to_string(i+1),
-            geom,
-            supersystem->getBasisController(),
-            MOCoeffs);
-      }
+        moCoefficients.col(i) = coeffMat_spin.col(i);
+        fileNames.push_back(
+            supersystem->getSettings().path+(string)supersystem->getSystemName()+_fnameSuffix_spin+"MO"+std::to_string(i+1));
+      }// for i
+      cubeWriter.writeVectorSetToCube(
+          fileNames,
+          geom,
+          supersystem->getBasisController(),
+          moCoefficients);
     };
   }
 
@@ -150,19 +155,33 @@ void CubeFileTask<SCFMode>::run() {
     print((string)"Printing MOs to files: "+supersystem->getSystemName()+"_<a/b>MO<number>.cube");
     const auto& coeffMat = supersystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
     auto nOrbs=supersystem->getBasisController()->getNBasisFunctions();
+    unsigned int nError = 0;
     for(unsigned int orbital : settings.orbitals){
       if(orbital<(unsigned int)1 or orbital>(unsigned int)nOrbs){
         std::cout << "Orbital " << orbital << " not within range!" << std::endl;
+        ++nError;
         continue;
       }
-      for_spin(coeffMat,_fnameSuffix){
-        Eigen::VectorXd MOCoeffs = coeffMat_spin.col(orbital-1);
-        cubeWriter.writeVectorToCube(supersystem->getSettings().path+(string)supersystem->getSystemName()+_fnameSuffix_spin+"MO"+std::to_string(orbital),
-            geom,
-            supersystem->getBasisController(),
-            MOCoeffs);
-      };
-    }
+    }// for orbital
+
+    for_spin(coeffMat,_fnameSuffix) {
+      Eigen::MatrixXd moCoefficients(nOrbs,settings.orbitals.size()-nError);
+      std::vector<std::string> fileNames;
+      unsigned int col=0;
+      for(unsigned int orbital : settings.orbitals){
+        if(orbital>=(unsigned int)1 and orbital<=(unsigned int)nOrbs) {
+          moCoefficients.col(col) = coeffMat_spin.col(orbital-1);
+          fileNames.push_back(
+              supersystem->getSettings().path+(string)supersystem->getSystemName()+_fnameSuffix_spin+"MO"+std::to_string(orbital));
+          ++col;
+        }
+      }// for orbital
+      cubeWriter.writeVectorSetToCube(
+          fileNames,
+          geom,
+          supersystem->getBasisController(),
+          moCoefficients);
+    };
   }
 
   if(settings.electrostaticPot){
@@ -231,38 +250,7 @@ void CubeFileTask<SCFMode>::run() {
     cubeWriter.writeCube(supersystem->getSettings().path+supersystem->getSystemName() + "_signedDensity",geom,
         lambda);
   }
-  if (settings.ntos) {
-    printSmallCaption("Plotting NTOs...");
-    NTOCalculator<SCFMode> ntoCalculator(_systems[0],settings.ntoPlotThreshold);
-    shared_ptr<BasisController> basisController = _systems[0]->getBasisController();
-    unsigned int nStates = ntoCalculator.getNumberOfStates();
-    for (unsigned int i = 0; i < nStates; i++){
-      const std::string dirName = ntoCalculator.getDir(i);
-      auto oNTOs = ntoCalculator.getOccNTOs(i);
-      auto vNTOs = ntoCalculator.getVirtNTOs(i);
-      auto oEigenvalues = ntoCalculator.getOccEigenvalues(i);
-      auto vEigenvalues = ntoCalculator.getVirtEigenvalues(i);
-      for_spin(oNTOs, vNTOs,oEigenvalues,vEigenvalues, _fnameSuffix) {
-        for (unsigned int j = 0; j < oNTOs_spin.cols(); j++){
-          if (oEigenvalues_spin(j) > settings.ntoPlotThreshold) {
-            int tmpState = j+1;
-            std::string fileName = dirName+tmpState+_fnameSuffix_spin+"occ";
-            Eigen::VectorXd tmp = oNTOs_spin.col(j);
-            cubeWriter.writeVectorToCube(fileName,geom,basisController,tmp);
-          }
-        }
-        for (unsigned int j = 0; j < vNTOs_spin.cols(); j++){
-          if (vEigenvalues_spin(vEigenvalues_spin.rows() - j - 1) > settings.ntoPlotThreshold) {
-            int tmpState = oEigenvalues_spin.rows()+j+1;
-            std::string fileName = dirName+tmpState+_fnameSuffix_spin+"virt";
-            Eigen::VectorXd tmp = vNTOs_spin.col(j);
-            cubeWriter.writeVectorToCube(fileName,geom,basisController,tmp);
-          }
-        }
-      };
 
-    }
-  }
 }
 
 template class CubeFileTask<Options::SCF_MODES::RESTRICTED>;

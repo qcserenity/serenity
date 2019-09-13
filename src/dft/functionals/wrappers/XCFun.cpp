@@ -265,6 +265,9 @@ char* XCFun<T>::getAlias(BASIC_FUNCTIONALS functional) {
       case BASIC_FUNCTIONALS::E2000K:
     	  alias = (char*) "E00";
     	  break;
+      case BASIC_FUNCTIONALS::EXX:
+        alias = (char*) "exx";
+        break;
       default:
         throw SerenityError("Unknown functional to XCFun.cpp");
         break;
@@ -354,6 +357,7 @@ FunctionalData<T> XCFun<T>::calcData(
       type,
       functional,
       densityOnGridController->getGridController());
+
   //Loop over blocks of grid points
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
@@ -499,7 +503,16 @@ template<> void XCFun<Options::SCF_MODES::RESTRICTED>::parseOutput(
         (*funcData.dFdGradRho).z.segment(iGridStart,n) = output.row(4);
       }
       if (order >= 2) {
-        throw SerenityError("GRADIENTS type only implemented up to first order");
+        (*funcData.d2FdRho2).segment(iGridStart,n) = output.row(5);
+        (*funcData.d2FdRhodGradRho).x.segment(iGridStart,n) = output.row(6);
+        (*funcData.d2FdRhodGradRho).y.segment(iGridStart,n) = output.row(7);
+        (*funcData.d2FdRhodGradRho).z.segment(iGridStart,n) = output.row(8);
+        (*funcData.d2FdGradRho2).xx.segment(iGridStart,n) = output.row(9);
+        (*funcData.d2FdGradRho2).xy.segment(iGridStart,n) = output.row(10);
+        (*funcData.d2FdGradRho2).xz.segment(iGridStart,n) = output.row(11);
+        (*funcData.d2FdGradRho2).yy.segment(iGridStart,n) = output.row(12);
+        (*funcData.d2FdGradRho2).yz.segment(iGridStart,n) = output.row(13);
+        (*funcData.d2FdGradRho2).zz.segment(iGridStart,n) = output.row(14);
       }
     } else {
       throw SerenityError("output for requested xc_vars not implemented");
@@ -622,9 +635,48 @@ template<> void XCFun<Options::SCF_MODES::UNRESTRICTED>::parseOutput(
         (*funcData.dFdGradRho).z.beta.segment(iGridStart,n) = output.row(8);
       }
       if (order >= 2) {
-        throw SerenityError("GRADIENTS type only implemented up to first order");
+        //Now it gets messy...
+        (*funcData.d2FdRho2).aa.segment(iGridStart,n) = output.row(9);
+        (*funcData.d2FdRho2).ab.segment(iGridStart,n) = output.row(10);
+        (*funcData.d2FdRho2).bb.segment(iGridStart,n) = output.row(17);
+        (*funcData.d2FdRhodGradRho).x.aa.segment(iGridStart,n) = output.row(11);
+        (*funcData.d2FdRhodGradRho).y.aa.segment(iGridStart,n) = output.row(12);
+        (*funcData.d2FdRhodGradRho).z.aa.segment(iGridStart,n) = output.row(13);
+        (*funcData.d2FdRhodGradRho).x.ab.segment(iGridStart,n) = output.row(14);
+        (*funcData.d2FdRhodGradRho).y.ab.segment(iGridStart,n) = output.row(15);
+        (*funcData.d2FdRhodGradRho).z.ab.segment(iGridStart,n) = output.row(16);
+        (*funcData.d2FdRhodGradRho).x.ba.segment(iGridStart,n) = output.row(18);
+        (*funcData.d2FdRhodGradRho).y.ba.segment(iGridStart,n) = output.row(19);
+        (*funcData.d2FdRhodGradRho).z.ba.segment(iGridStart,n) = output.row(20);
+        (*funcData.d2FdRhodGradRho).x.bb.segment(iGridStart,n) = output.row(21);
+        (*funcData.d2FdRhodGradRho).y.bb.segment(iGridStart,n) = output.row(22);
+        (*funcData.d2FdRhodGradRho).z.bb.segment(iGridStart,n) = output.row(23);
+        (*funcData.d2FdGradRho2).xx.aa.segment(iGridStart,n) = output.row(24);
+        (*funcData.d2FdGradRho2).xy.aa.segment(iGridStart,n) = output.row(25);
+        (*funcData.d2FdGradRho2).xz.aa.segment(iGridStart,n) = output.row(26);
+        (*funcData.d2FdGradRho2).xx.ab.segment(iGridStart,n) = output.row(27);
+        (*funcData.d2FdGradRho2).xy.ab.segment(iGridStart,n) = output.row(28);
+        (*funcData.d2FdGradRho2).xz.ab.segment(iGridStart,n) = output.row(29);
+        (*funcData.d2FdGradRho2).yy.aa.segment(iGridStart,n) = output.row(30);
+        (*funcData.d2FdGradRho2).yz.aa.segment(iGridStart,n) = output.row(31);
+        (*funcData.d2FdGradRho2).xy.ba.segment(iGridStart,n) = output.row(32);
+        (*funcData.d2FdGradRho2).yy.ab.segment(iGridStart,n) = output.row(33);
+        (*funcData.d2FdGradRho2).yz.ab.segment(iGridStart,n) = output.row(34);
+        (*funcData.d2FdGradRho2).zz.aa.segment(iGridStart,n) = output.row(35);
+        (*funcData.d2FdGradRho2).xz.ba.segment(iGridStart,n) = output.row(36);
+        (*funcData.d2FdGradRho2).yz.ba.segment(iGridStart,n) = output.row(37);
+        (*funcData.d2FdGradRho2).zz.ab.segment(iGridStart,n) = output.row(38);
+        (*funcData.d2FdGradRho2).xx.bb.segment(iGridStart,n) = output.row(39);
+        (*funcData.d2FdGradRho2).xy.bb.segment(iGridStart,n) = output.row(40);
+        (*funcData.d2FdGradRho2).xz.bb.segment(iGridStart,n) = output.row(41);
+        (*funcData.d2FdGradRho2).yy.bb.segment(iGridStart,n) = output.row(42);
+        (*funcData.d2FdGradRho2).yz.bb.segment(iGridStart,n) = output.row(43);
+        (*funcData.d2FdGradRho2).zz.bb.segment(iGridStart,n) = output.row(44);
+        //Copy data to fill Hessian...
+        (*funcData.d2FdGradRho2).xx.ba.segment(iGridStart,n) = output.row(27);
+        (*funcData.d2FdGradRho2).yy.ba.segment(iGridStart,n) = output.row(33);
+        (*funcData.d2FdGradRho2).zz.ba.segment(iGridStart,n) = output.row(38);
       }
-
     } else {
       throw SerenityError("output for requested xc_vars not implemented");
     }

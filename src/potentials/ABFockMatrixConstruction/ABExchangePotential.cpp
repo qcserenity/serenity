@@ -45,19 +45,19 @@ ABExchangePotential<SCFMode>::ABExchangePotential(
   }
 }
 
-template <Options::SCF_MODES SCFMode>
-SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
+template <>
+SPMatrix<Options::SCF_MODES::RESTRICTED>& ABExchangePotential<Options::SCF_MODES::RESTRICTED>::getMatrix() {
   if (!_abPotential) {
-
+    const auto scfMode = Options::SCF_MODES::RESTRICTED;
     auto intThreshold = _actSystem->getSettings().basis.integralThreshold;
     unsigned int nBasisA = this->_basisA->getNBasisFunctions();
     unsigned int nBasisB = this->_basisB->getNBasisFunctions();
-    _abPotential.reset(new SPMatrix<SCFMode>(nBasisA,nBasisB));
-    SPMatrix<SCFMode>& f_AB = *_abPotential;
+    _abPotential.reset(new SPMatrix<scfMode>(nBasisA,nBasisB));
+    SPMatrix<scfMode>& f_AB = *_abPotential;
     for_spin(f_AB) {
       f_AB_spin.setZero();
     };
-    double pre = (SCFMode == Options::SCF_MODES::RESTRICTED)? 0.5*_exchangeRatio : 1.0*_exchangeRatio;
+    double pre = 0.5*_exchangeRatio;
       // intialize libint
       libint2::Operator op = libint2::Operator::coulomb;
       _libint->keepEngines(op,0,4);
@@ -66,6 +66,7 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
     for (const auto& densityC : _densityMatrices) {
       auto densityMatrixC = densityC->getDensityMatrix();
       const auto& basisContC =  densityC->getDensityMatrix().getBasisController();
+      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().total();
 
       // Calculate shellPairData
       const auto shellPairsAC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisA,basisContC);
@@ -80,11 +81,11 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
        */
 #ifdef _OPENMP
       std::vector<Eigen::MatrixXd> ints(omp_get_max_threads());
-      std::vector<SPMatrix<SCFMode> > eriContr(omp_get_max_threads(),SPMatrix<SCFMode> (
+      std::vector<SPMatrix<scfMode> > eriContr(omp_get_max_threads(),SPMatrix<scfMode> (
           this->_basisA->getNBasisFunctions(),this->_basisB->getNBasisFunctions()));
 #else
       std::vector<Eigen::MatrixXd> ints(1);
-      std::vector<SPMatrix<SCFMode> > eriContr(1,SPMatrix<SCFMode> (
+      std::vector<SPMatrix<scfMode> > eriContr(1,SPMatrix<scfMode> (
           this->_basisA->getNBasisFunctions(),this->_basisB->getNBasisFunctions()));
 #endif
 
@@ -108,10 +109,16 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
            * Simple Prescreening, break out of loops early
            */
           if (p.factor * q.factor < intThreshold) break;
-          const unsigned int b=q.bf1;
           const unsigned int c2=q.bf2;
-          const auto& basB= *basisB[b];
+          double densMax = densMatrixCTotal.block(
+              basisContC->extendedIndex(c1),
+              basisContC->extendedIndex(c2),
+              basisC[c1]->getNContracted(),
+              basisC[c2]->getNContracted()).array().abs().maxCoeff();
+          if (densMax * p.factor * q.factor < intThreshold) continue;
           const auto& basC2= *basisC[c2];
+          const unsigned int b=q.bf1;
+          const auto& basB= *basisB[b];
           if (_libint->compute(op, 0, basA, basC1, basB, basC2, ints[threadId])){
 
             // unpack and run
@@ -126,11 +133,9 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
                     const unsigned int cc2 = basisContC->extendedIndex(c2)+C2;
 //                    if (cc2>cc1) continue;
 
-                    Eigen::VectorXd set(ints[threadId].row(counter));
+                    double set(ints[threadId](counter,0));
                     auto& eris = eriContr[threadId];
-                    for_spin(densityMatrixC,eris) {
-                      eris_spin(aa,bb) -= pre * densityMatrixC_spin(cc1,cc2) * set(0);
-                    };
+                    eris(aa,bb) -= pre * densityMatrixC(cc1,cc2) * set;
 
                   } /* primitives of c2 -> C2  */
                 } /* primitives of c1 -> C1  */
@@ -143,15 +148,11 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
     // sum over all threads
     for (int t=0; t<omp_get_max_threads(); ++t) {
       const auto& eris = eriContr[t];
-      for_spin(f_AB,eris){
-        f_AB_spin += eris_spin;
-      };
+      f_AB += eris;
     }
 #else
     const auto& eris = eriContr[0];
-    for_spin(f_AB,eris){
-      f_AB_spin += eris_spin;
-    };
+    f_AB += eris;
 #endif
     } /* for densityC */
     // finalize libint
@@ -159,7 +160,123 @@ SPMatrix<SCFMode>& ABExchangePotential<SCFMode>::getMatrix() {
   } /* if !_abPotential */
   return *_abPotential;
 }
+template <>
+SPMatrix<Options::SCF_MODES::UNRESTRICTED>& ABExchangePotential<Options::SCF_MODES::UNRESTRICTED>::getMatrix() {
+  if (!_abPotential) {
+    const auto scfMode = Options::SCF_MODES::UNRESTRICTED;
+    auto intThreshold = _actSystem->getSettings().basis.integralThreshold;
+    unsigned int nBasisA = this->_basisA->getNBasisFunctions();
+    unsigned int nBasisB = this->_basisB->getNBasisFunctions();
+    _abPotential.reset(new SPMatrix<scfMode>(nBasisA,nBasisB));
+    SPMatrix<scfMode>& f_AB = *_abPotential;
+    for_spin(f_AB) {
+      f_AB_spin.setZero();
+    };
+    double pre = 1.0*_exchangeRatio;
+      // intialize libint
+      libint2::Operator op = libint2::Operator::coulomb;
+      _libint->keepEngines(op,0,4);
+      _libint->initialize(op,0,4);
 
+    for (const auto& densityC : _densityMatrices) {
+      auto densityMatrixC = densityC->getDensityMatrix();
+      const auto& basisContC =  densityC->getDensityMatrix().getBasisController();
+      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().total();
+
+      // Calculate shellPairData
+      const auto shellPairsAC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisA,basisContC);
+      const auto shellPairsBC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisB,basisContC);
+
+      const auto& basisA = this->_basisA->getBasis();
+      const auto& basisB = this->_basisB->getBasis();
+      const auto& basisC = basisContC->getBasis();
+
+      /*
+       * Thread safety: one buffer for each thread
+       */
+#ifdef _OPENMP
+      std::vector<Eigen::MatrixXd> ints(omp_get_max_threads());
+      std::vector<SPMatrix<scfMode> > eriContr(omp_get_max_threads(),SPMatrix<scfMode> (
+          this->_basisA->getNBasisFunctions(),this->_basisB->getNBasisFunctions()));
+#else
+      std::vector<Eigen::MatrixXd> ints(1);
+      std::vector<SPMatrix<scfMode> > eriContr(1,SPMatrix<scfMode> (
+          this->_basisA->getNBasisFunctions(),this->_basisB->getNBasisFunctions()));
+#endif
+
+#pragma omp parallel for schedule(static, 1)
+      // loops over shells
+      for (int pIndex=shellPairsAC->size()-1; pIndex >= 0; --pIndex){
+        auto& p = (*shellPairsAC)[pIndex];
+
+#ifdef _OPENMP
+        const unsigned int threadId = omp_get_thread_num();
+#else
+        const unsigned int threadId = 0;
+#endif
+        const unsigned int a = p.bf1;
+        const unsigned int c1 = p.bf2;
+        const auto& basA= *basisA[a];
+        const auto& basC1= *basisC[c1];
+
+        for (const auto& q : *shellPairsBC) {
+          /*
+           * Simple Prescreening, break out of loops early
+           */
+          if (p.factor * q.factor < intThreshold) break;
+          const unsigned int c2=q.bf2;
+          double densMax = densMatrixCTotal.block(
+              basisContC->extendedIndex(c1),
+              basisContC->extendedIndex(c2),
+              basisC[c1]->getNContracted(),
+              basisC[c2]->getNContracted()).array().abs().maxCoeff();
+          if (densMax * p.factor * q.factor < intThreshold) continue;
+          const auto& basC2= *basisC[c2];
+          const unsigned int b=q.bf1;
+          const auto& basB= *basisB[b];
+          if (_libint->compute(op, 0, basA, basC1, basB, basC2, ints[threadId])){
+            // unpack and run
+            unsigned int counter =0;
+            for (unsigned int A=0;A<basisA[a]->getNContracted();++A){
+              const unsigned int aa = this->_basisA->extendedIndex(a)+A;
+              for (unsigned int C1=0;C1<basisC[c1]->getNContracted();++C1){
+                const unsigned int cc1 = basisContC->extendedIndex(c1)+C1;
+                for (unsigned int B=0;B <basisB[b]->getNContracted();++B){
+                  const unsigned int bb = this->_basisB->extendedIndex(b)+B;
+                  for (unsigned int C2=0;C2 <basisC[c2]->getNContracted();++C2,++counter){
+                    const unsigned int cc2 = basisContC->extendedIndex(c2)+C2;
+//                    if (cc2>cc1) continue;
+
+                    double set(ints[threadId](counter,0));
+                    auto& eris = eriContr[threadId];
+                      eris.alpha(aa,bb) -= pre * densityMatrixC.alpha(cc1,cc2) * set;
+                      eris.beta(aa,bb)  -= pre * densityMatrixC.beta(cc1,cc2) * set;
+
+                  } /* primitives of c2 -> C2  */
+                } /* primitives of c1 -> C1  */
+              } /* primitives of a -> A  */
+            } /* primitives of b -> B  */
+          } /* if (prescreen) */
+        } /* q/shellPairsC */
+      } /* p/shellPairsAB */
+#ifdef _OPENMP
+    // sum over all threads
+    for (int t=0; t<omp_get_max_threads(); ++t) {
+      const auto& eris = eriContr[t];
+      f_AB.alpha += eris.alpha;
+      f_AB.beta += eris.beta;
+    }
+#else
+    const auto& eris = eriContr[0];
+    f_AB.alpha += eris.alpha;
+    f_AB.beta += eris.beta;
+#endif
+    } /* for densityC */
+    // finalize libint
+      _libint->freeEngines(op,0,4);
+  } /* if !_abPotential */
+  return *_abPotential;
+}
 template class ABExchangePotential<Options::SCF_MODES::RESTRICTED>;
 template class ABExchangePotential<Options::SCF_MODES::UNRESTRICTED>;
 

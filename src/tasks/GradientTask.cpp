@@ -116,13 +116,13 @@ void GradientTask<SCFMode>::run() {
      */
 
     FreezeAndThawTask<SCFMode> task(_activeSystems,_passiveSystems);
-    task.settings.naddKinFunc = settings.naddKinFunc;
-    task.settings.naddXCFunc = settings.naddXCFunc;
+    task.settings.embedding.naddKinFunc = settings.naddKinFunc;
+    task.settings.embedding.naddXCFunc = settings.naddXCFunc;
     task.settings.gridCutOff = settings.FDEgridCutOff;
     task.settings.maxCycles = settings.FaTmaxCycles;
     task.settings.convThresh = settings.FaTenergyConvThresh;
     task.settings.printLevel = 0;
-    task.settings.dispersion = settings.dispersion;
+    task.settings.embedding.dispersion = settings.dispersion;
     task.run();
 
     if(settings.gradType == Options::GRADIENT_TYPES::NUMERICAL){
@@ -170,10 +170,10 @@ void GradientTask<SCFMode>::run() {
 
 
         FDETask<SCFMode> task(activeSystem,passiveSystems);
-        task.settings.naddKinFunc = settings.naddKinFunc;
-        task.settings.naddXCFunc = settings.naddXCFunc;
+        task.settings.embedding.naddKinFunc = settings.naddKinFunc;
+        task.settings.embedding.naddXCFunc = settings.naddXCFunc;
         task.settings.gridCutOff = settings.FDEgridCutOff;
-        task.settings.dispersion = settings.dispersion;
+        task.settings.embedding.dispersion = settings.dispersion;
         task.run();
 
         takeTime("Gradient Step");

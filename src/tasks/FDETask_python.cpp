@@ -32,11 +32,8 @@ void export_FDETask(py::module &spy){
 
   py::class_<FDETaskSettings>(spy,"FDETaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("naddKinFunc",&FDETaskSettings::naddKinFunc)
-    .def_readwrite("naddXCFunc",&FDETaskSettings::naddXCFunc)
-    .def_readwrite("embeddingMode",&FDETaskSettings::embeddingMode)
-    .def_readwrite("gridCutOff",&FDETaskSettings::gridCutOff)
-    .def_readwrite("naddDispersion",&FDETaskSettings::dispersion);
+    .def_readwrite("embeddingSettings",&FDETaskSettings::embedding)
+    .def_readwrite("gridCutOff",&FDETaskSettings::gridCutOff);
 
   py::class_<FDETask<Options::SCF_MODES::RESTRICTED> >(spy,"FDETask_R")
       .def(py::init<std::shared_ptr<SystemController>,

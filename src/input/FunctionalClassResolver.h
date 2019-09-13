@@ -108,7 +108,8 @@ enum class BASIC_FUNCTIONALS {
 	  TPSSLOCC=72,
 	  ZVPBEINTC=73,
 	  SAOP=74,
-	  E2000K=75
+	  E2000K=75,
+	  EXX=76
 };
 /**
  * Whether a functional is LDA, GGA, meta-GGA, hybrid, ...

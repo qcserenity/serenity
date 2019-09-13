@@ -298,6 +298,11 @@ public:
    */
   bool isLinear();
 
+  /**
+   * @brief Check for atoms with the same coordinates.
+   * @return The result of the check.
+   */
+  bool hasIdenticalAtoms() const;
 
   /**
    * @param rhs is added to this instance.
@@ -316,8 +321,17 @@ public:
     return *this;
   }
 
+  /**
+   * @brief Add geometry as dummy atoms.
+   * @param add The other geometry.
+   * @param toFront Add at the front of the atom list.
+   */
   void addAsDummy(const Geometry& add, bool toFront = false);
 
+  /**
+   * @brief Checks for atoms with ECPs.
+   * @return The result of the check.
+   */
   bool hasAtomsWithECPs() const {
     bool atomsWithECPs =false;
     for (auto& atom : _atoms) {

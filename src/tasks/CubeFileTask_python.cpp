@@ -41,11 +41,9 @@ void export_CubeFileTask(py::module &spy){
   .def_readwrite("sedd",&CubeFileTaskSettings::sedd)
   .def_readwrite("dori",&CubeFileTaskSettings::dori)
   .def_readwrite("signedDensity",&CubeFileTaskSettings::signedDensity)
-  .def_readwrite("ntoPlotThreshold",&CubeFileTaskSettings::ntoPlotThreshold)
   .def_readwrite("allOrbitals",&CubeFileTaskSettings::allOrbitals)
   .def_readwrite("occOrbitals",&CubeFileTaskSettings::occOrbitals)
-  .def_readwrite("electrostaticPot",&CubeFileTaskSettings::electrostaticPot)
-  .def_readwrite("ntos",&CubeFileTaskSettings::ntos);
+  .def_readwrite("electrostaticPot",&CubeFileTaskSettings::electrostaticPot);
 
   py::class_<CubeFileTask<RESTRICTED> >(spy,"CubeFileTask_R")
         .def(py::init<const std::vector<std::shared_ptr<SystemController> > &,

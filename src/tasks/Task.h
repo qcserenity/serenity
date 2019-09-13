@@ -19,6 +19,10 @@
  */
 #ifndef TASK_H_
 #define TASK_H_
+/* Include Serenity Internal Headers */
+#include "settings/Reflection.h"
+/* Include Std and External Headers */
+#include <string>
 
 namespace Serenity {
 /**
@@ -36,6 +40,20 @@ public:
    * This method invokes the actual task. Everything may happen here.
    */
   virtual void run() = 0;
+
+  /**
+   * @brief Parses the settings to the task. Can be over defined by a new implementation
+   *        in the respective task.
+   * @param c The settings of any kind.
+   * @param v The visitor.
+   * @param blockname The name of the input block.
+   */
+  template<class C, class Visitor>
+  void visit(C & c, Visitor v, std::string blockname) {
+    (void) blockname;
+    visit_each(c, v);
+  }
+
 };
 
 

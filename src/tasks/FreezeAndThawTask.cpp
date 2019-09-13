@@ -243,43 +243,19 @@ void FreezeAndThawTask<SCFMode>::run() {
       // Update the active System
       if (activeSystem->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
         FDETask<Options::SCF_MODES::RESTRICTED> task(activeSystem,passiveSystems);
-        task.settings.naddKinFunc = settings.naddKinFunc;
-        task.settings.naddXCFunc = settings.naddXCFunc;
-        task.settings.embeddingMode = settings.embeddingMode;
+        task.settings.embedding = settings.embedding;
         task.settings.gridCutOff = settings.gridCutOff;
-        task.settings.dispersion = settings.dispersion;
-        task.settings.smoothFactor = settings.smoothFactor;
-        task.settings.potentialBasis = settings.potentialBasis;
-        task.settings.singValThreshold = settings.singValThreshold;
-        task.settings.lbDamping = settings.lbDamping;
-        task.settings.lbCycles = settings.lbCycles;
-        task.settings.carterCycles = settings.carterCycles;
         task.settings.smallSupersystemGrid = settings.smallSupersystemGrid;
         task.settings.finalGrid=false;
-        task.settings.truncateProjector = settings.truncateProjector;
-        task.settings.projecTruncThresh = settings.projecTruncThresh;
-        task.settings.distantKinFunc = settings.distantKinFunc;
         if (settings.gridCutOff<0) task.setSuperSystemGrid(supersystemgrid);
         task.run();
         supersystemgrid = task.getSuperSystemGrid();
       } else if (activeSystem->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
         FDETask<Options::SCF_MODES::UNRESTRICTED> task(activeSystem,passiveSystems);
-        task.settings.naddKinFunc = settings.naddKinFunc;
-        task.settings.naddXCFunc = settings.naddXCFunc;
-        task.settings.embeddingMode = settings.embeddingMode;
+        task.settings.embedding = settings.embedding;
         task.settings.gridCutOff = settings.gridCutOff;
-        task.settings.dispersion = settings.dispersion;
-        task.settings.smoothFactor = settings.smoothFactor;
-        task.settings.potentialBasis = settings.potentialBasis;
-        task.settings.singValThreshold = settings.singValThreshold;
-        task.settings.lbDamping = settings.lbDamping;
-        task.settings.lbCycles = settings.lbCycles;
-        task.settings.carterCycles = settings.carterCycles;
         task.settings.smallSupersystemGrid = settings.smallSupersystemGrid;
         task.settings.finalGrid=false;
-        task.settings.truncateProjector = settings.truncateProjector;
-        task.settings.projecTruncThresh = settings.projecTruncThresh;
-        task.settings.distantKinFunc = settings.distantKinFunc;
         if (settings.gridCutOff<0) task.setSuperSystemGrid(supersystemgrid);
         task.run();
         supersystemgrid = task.getSuperSystemGrid();
@@ -337,7 +313,7 @@ void FreezeAndThawTask<SCFMode>::run() {
   /* =======================================
    *   Final Energy Evaluation (if needed)
    * ======================================= */
-  if (settings.gridCutOff>=0.0 and settings.embeddingMode==Options::KIN_EMBEDDING_MODES::NADD_FUNC){
+  if (settings.gridCutOff>=0.0 and settings.embedding.embeddingMode==Options::KIN_EMBEDDING_MODES::NADD_FUNC){
     printSmallCaption("Creating final grid for energy evaluation");
     // atoms of all subsystems
     auto finalGridGeometry=std::make_shared<Geometry>();
@@ -356,8 +332,8 @@ void FreezeAndThawTask<SCFMode>::run() {
     auto finalGrid = GridControllerFactory::produce(
         finalGridGeometry, _activeSystems[0]->getSettings(), finalGridacc);
 
-    auto xcfunc = FunctionalClassResolver::resolveFunctional(settings.naddXCFunc);
-    auto kinefunc = FunctionalClassResolver::resolveFunctional(settings.naddKinFunc);
+    auto xcfunc = FunctionalClassResolver::resolveFunctional(settings.embedding.naddXCFunc);
+    auto kinefunc = FunctionalClassResolver::resolveFunctional(settings.embedding.naddKinFunc);
     bool gga(kinefunc.getFunctionalClass()!=FUNCTIONAL_CLASSES::LDA or
               xcfunc.getFunctionalClass()!=FUNCTIONAL_CLASSES::LDA);
 

@@ -29,15 +29,8 @@
 #include "misc/Timing.h"
 #include "memory/MemoryManager.h"
 #include "potentials/BUReconstructionPotential.h"
-
-/* Construction of embedded fock matrix. */
-#include "potentials/bundles/ESIPotentials.h"
-#include "potentials/bundles/FDEPotentials.h"
-#include "potentials/HuzinagaFDEProjectionPotential.h"
-#include "potentials/NAddFuncPotential.h"
-#include "potentials/ZeroPotential.h"
-#include "potentials/ECPInteractionPotential.h"
-#include "potentials/LevelshiftHybridPotential.h"
+#include "misc/SystemSplittingTools.h"
+#include "potentials/bundles/FDEPotentialBundleFactory.h"
 
 namespace Serenity {
 
@@ -189,188 +182,17 @@ FockMatrix<SCFMode> FaTConvergenceAccelerator<SCFMode>::calcEmbeddedFockMatrix(
     envSystems.push_back(_environmentSystems[i]);
   }
   // list of environment density matrices (their controllers)
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > envDensities;
-  for (auto& sys : envSystems){
-    if (sys->getSettings().scfMode == SCFMode) {
-      envDensities.push_back(sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController());
-    } else {
-      if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
-        //Build unrestricted DensityMatrixController
-        DensityMatrix<SCFMode> uDensMat(sys->getBasisController());
-        for_spin(uDensMat) {
-          uDensMat_spin = 0.5 * sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix();
-        };
-        envDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(uDensMat));
-      } else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
-        //Build restricted DensityMatrixController
-        DensityMatrix<SCFMode> rDensMat(sys->getBasisController());
-        for_spin(rDensMat) {
-          rDensMat_spin = sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix().total();
-        };
-        envDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(rDensMat));
-      } else {
-        assert(false);
-      }
-    }
-  } /* for i */
-  /* Core part of the fock matrix */
+  auto envDensities = SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(envSystems);
   auto activeSystem = _activeSystems[activeSystemIndex];
-  auto actsettings = activeSystem->getSettings();
-  std::shared_ptr<PotentialBundle<SCFMode> > activeSysPot;
-  if (actsettings.method==Options::ELECTRONIC_STRUCTURE_THEORIES::HF){
-    activeSysPot = activeSystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
-  } else if (actsettings.method==Options::ELECTRONIC_STRUCTURE_THEORIES::DFT){
-    activeSysPot = activeSystem->getPotentials<SCFMode,Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
-  } else {
-    std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
-    assert(false);
-  }
-  // ECP Contribution
-  std::vector<std::shared_ptr<Atom> > envAtoms;
-  for (const auto& sys : envSystems) {
-    for (const auto& atom : sys->getGeometry()->getAtoms()) {
-      envAtoms.push_back(atom);
-    }
-  }
-  std::shared_ptr<Potential<SCFMode> > ecpInt
-  (new ECPInteractionPotential<SCFMode>(
-      activeSystem,
-      activeSystem->getGeometry()->getAtoms(),
-      envAtoms,
-      envDensities,
-      activeSystem->getBasisController()));
-  /* Electrostatic embedding */
-  // geometries of the environment subsystems
-  std::vector<std::shared_ptr<const Geometry> > envGeometries;
-  for (auto sys : envSystems){
-    envGeometries.push_back(sys->getGeometry());
-  }
-  std::shared_ptr<PotentialBundle<SCFMode> > esiPot;
-  if (actsettings.dft.densityFitting==Options::DENS_FITS::RI){
-    std::vector<std::shared_ptr<BasisController> > envAuxBasis;
-    for(auto& env : envSystems){
-      envAuxBasis.push_back(env->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB));
-    }
-    esiPot = std::shared_ptr<PotentialBundle<SCFMode> >(
-        new ESIPotentials<SCFMode>(
-            activeSystem,
-            envSystems,
-            activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-            activeSystem->getGeometry(),
-            envDensities,
-            envGeometries,
-            activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB),
-            envAuxBasis));
-  } else {
-    esiPot = std::shared_ptr<PotentialBundle<SCFMode> >(
-        new ESIPotentials<SCFMode>(
-            activeSystem,
-            envSystems,
-            activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-            activeSystem->getGeometry(),
-            envDensities,
-            envGeometries));
-  }
-  auto es = activeSystem->getElectronicStructure<SCFMode>();
   auto grid = activeSystem->getGridController();
-  auto eCont = es->getEnergyComponentController();
-  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_EXACT_EXCHANGE,0.0);
 
-  std::shared_ptr<NAddFuncPotential<SCFMode> > naddKinPot;
-  auto naddXCfunc = FunctionalClassResolver::resolveFunctional(_settings.naddXCFunc);
-  auto naddXCPot = std::make_shared<NAddFuncPotential<SCFMode> >(
+  auto fdePot = FDEPotentialBundleFactory<SCFMode>::produce(
       activeSystem,
-      activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+      activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+      envSystems,
       envDensities,
-      grid,
-      naddXCfunc,
-      std::make_pair(true,std::vector<std::shared_ptr<EnergyComponentController> >(0)),
-      false,
-      false);
-
-  std::shared_ptr<Potential<SCFMode> > kin;
-  if(_settings.embeddingMode==Options::KIN_EMBEDDING_MODES::NADD_FUNC){
-    kin = std::make_shared<NAddFuncPotential<SCFMode> >(
-        activeSystem,
-        activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-        envDensities,
-        grid,
-        FunctionalClassResolver::resolveFunctional(_settings.naddKinFunc),
-        std::make_pair(true,std::vector<std::shared_ptr<EnergyComponentController> >(0)),
-        false,
-        false);
-  }else if(_settings.embeddingMode==Options::KIN_EMBEDDING_MODES::LEVELSHIFT){
-    kin = std::make_shared<LevelshiftHybridPotential<SCFMode> > (
-        activeSystem,
-        envSystems,
-        _settings.levelShiftParameter,
-        (_settings.basisFunctionRatio == 0.0)? false : true,
-         _settings.basisFunctionRatio,
-         _settings.borderAtomThreshold,
-         grid,
-         FunctionalClassResolver::resolveFunctional(_settings.naddKinFunc),
-         false);
-  }else if(_settings.embeddingMode==Options::KIN_EMBEDDING_MODES::HUZINAGA){
-    kin = std::make_shared<HuzinagaFDEProjectionPotential<SCFMode> >(
-        activeSystem,
-        envSystems,
-        naddXCfunc,
-        _settings.truncateProjector,
-        _settings.projecTruncThresh,
-        false,
-        false,
-        _settings.distantKinFunc,
-        _settings.basisFunctionRatio,
-        _settings.borderAtomThreshold,
-        grid,
-        _settings.naddKinFunc,
-        0,//_settings.gridCutOff,
-        std::vector<std::shared_ptr<EnergyComponentController> >(0));
-  }else if(_settings.embeddingMode==Options::KIN_EMBEDDING_MODES::HOFFMANN){
-    kin = std::make_shared<HuzinagaFDEProjectionPotential<SCFMode> >(
-        activeSystem,
-        envSystems,
-        naddXCfunc,
-        _settings.truncateProjector,
-        _settings.projecTruncThresh,
-        true,
-        false,
-        _settings.distantKinFunc,
-        _settings.basisFunctionRatio,
-        _settings.borderAtomThreshold,
-        grid,
-        _settings.naddKinFunc,
-        _settings.gridCutOff,
-        std::vector<std::shared_ptr<EnergyComponentController> >(0));
-  }else if(_settings.embeddingMode==Options::KIN_EMBEDDING_MODES::RECONSTRUCTION){
-    kin=std::make_shared<BUReconstructionPotential<SCFMode>>(
-        activeSystem,
-        activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-        envDensities,
-        grid,
-        naddXCfunc,
-        _environmentSystems,
-        _settings.smoothFactor,
-        _settings.potentialBasis.empty()? activeSystem->getBasisController()->getBasisString() : _settings.potentialBasis,
-        _settings.singValThreshold,
-        _settings.lbDamping,
-        _settings.lbCycles,
-        _settings.carterCycles);
-  }else{
-    kin = std::shared_ptr<Potential<SCFMode> >(
-        new ZeroPotential<SCFMode>(activeSystem->getBasisController()));
-  }
-
-  /*
-   * Bundle potentials
-   */
-  auto fdePot = std::shared_ptr<PotentialBundle<SCFMode> >(
-      new FDEPotentials<SCFMode>(
-          activeSysPot,
-          esiPot,
-          naddXCPot,
-          kin,
-          ecpInt));
+      std::make_shared<EmbeddingSettings>(_settings.embedding),
+      grid);
 
   return fdePot->getFockMatrix(activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
       std::make_shared<EnergyComponentController>());

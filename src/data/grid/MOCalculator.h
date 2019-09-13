@@ -57,8 +57,9 @@ public:
    * @param coefficients The linear coefficients for the MO to be calculated.
    * @return An Eigen vector containing the grid representations of the MO
    */
-  Eigen::VectorXd calcMOValuesOnGrid(
-      Eigen::VectorXd& coefficients);
+  Eigen::MatrixXd calcMOValuesOnGrid(
+      const Eigen::MatrixXd& coefficients,
+      double mnpTruncationThreshold = 1e-5);
 
 
   /**
@@ -72,7 +73,8 @@ public:
   template<Options::SCF_MODES SCFMode>
   SpinPolarizedData<SCFMode, Matrix<double>> calcOccMOValuesOnGrid(
         CoefficientMatrix<SCFMode>& coefficientMatrix,
-        SpinPolarizedData<SCFMode, unsigned int>& nOccOrbs);
+        SpinPolarizedData<SCFMode, unsigned int>& nOccOrbs,
+        double mnpTruncationThreshold = 1e-5);
 
   /**
    * @brief Calculates the real-space representation of all MOs using calcMOValuesOnGrid.
@@ -82,19 +84,8 @@ public:
    */
   template<Options::SCF_MODES SCFMode>
   SpinPolarizedData<SCFMode, Matrix<double>> calcAllMOValuesOnGrid(
-        CoefficientMatrix<SCFMode>& coefficientMatrix);
-
-  /**
-   * @brief Calculates the real-space representation of the kinetic energy density.
-   * @param coefficientMatrix The CoefficientMatrix for the MOs.
-   * @param nOccOrbs The number of occupied orbitals
-   * @return A vector containing the kinetic energy density on a grid.
-   */
-  template<Options::SCF_MODES SCFMode>
-      GridData<SCFMode> calcKineticEnergyDensityOnGrid(
-      CoefficientMatrix<SCFMode> coefficientMatrix,
-      SpinPolarizedData<SCFMode, unsigned int> nOccOrbs);
-
+        CoefficientMatrix<SCFMode>& coefficientMatrix,
+        double mnpTruncationThreshold = 1e-5);
 
 private:
   std::shared_ptr<BasisFunctionOnGridController> _basisFuncOnGridController;

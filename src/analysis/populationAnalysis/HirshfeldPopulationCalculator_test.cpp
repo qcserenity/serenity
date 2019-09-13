@@ -71,8 +71,8 @@ TEST_F(HirshfeldPopulationCalculatorTest, populationsRestricted) {
    * convergence criteria need to be tightened (take a look at the AtomDensityGuessCalculator for this).
    */
 
-  EXPECT_NEAR(populations[0], 5.8749637070498704, 1e-2);
-  EXPECT_NEAR(populations[1], 8.1250355647454224, 1e-2);
+  EXPECT_NEAR(populations[0], 5.8253929850375386, 8e-2);
+  EXPECT_NEAR(populations[1], 8.1746062872641581, 8e-2);
 
   std::remove((systemController->getSettings().path+"C_FREE/C_FREE.settings").c_str());
   std::remove((systemController->getSettings().path+"C_FREE/C_FREE.xyz").c_str());

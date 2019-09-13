@@ -32,27 +32,14 @@ using namespace Serenity;
 void export_FreezeAndThawTask(py::module &spy){
   py::class_<FreezeAndThawTaskSettings>(spy,"FreezeAndThawTaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("naddKinFunc",&FreezeAndThawTaskSettings::naddKinFunc)
-    .def_readwrite("naddXCFunc",&FreezeAndThawTaskSettings::naddXCFunc)
+    .def_readwrite("naddKinFunc",&FreezeAndThawTaskSettings::embedding)
     .def_readwrite("maxCycles",&FreezeAndThawTaskSettings::maxCycles)
     .def_readwrite("convThresh",&FreezeAndThawTaskSettings::convThresh)
-    .def_readwrite("embeddingMode",&FreezeAndThawTaskSettings::embeddingMode)
-    .def_readwrite("dispersion",&FreezeAndThawTaskSettings::dispersion)
-    .def_readwrite("smoothFactor",&FreezeAndThawTaskSettings::smoothFactor)
-    .def_readwrite("potentialBasis",&FreezeAndThawTaskSettings::potentialBasis)
-    .def_readwrite("singValThreshold",&FreezeAndThawTaskSettings::singValThreshold)
-    .def_readwrite("lbCycles",&FreezeAndThawTaskSettings::lbCycles)
-    .def_readwrite("lbDamping",&FreezeAndThawTaskSettings::lbDamping)
-    .def_readwrite("carterCycles",&FreezeAndThawTaskSettings::carterCycles)
     .def_readwrite("gridCutOff",&FreezeAndThawTaskSettings::gridCutOff)
     .def_readwrite("printLevel",&FreezeAndThawTaskSettings::printLevel)
     .def_readwrite("makeSuperSystemBasis",&FreezeAndThawTaskSettings::makeSuperSystemBasis)
-
     .def_readwrite("basisExtThresh",&FreezeAndThawTaskSettings::basisExtThresh)
     .def_readwrite("extendBasis",&FreezeAndThawTaskSettings::extendBasis)
-    .def_readwrite("truncateProjector",&FreezeAndThawTaskSettings::truncateProjector)
-    .def_readwrite("projecTruncThresh",&FreezeAndThawTaskSettings::projecTruncThresh)
-
     .def_readwrite("useConvAcceleration",&FreezeAndThawTaskSettings::useConvAcceleration)
     .def_readwrite("diisStart",&FreezeAndThawTaskSettings::diisStart);
 

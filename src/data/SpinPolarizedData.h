@@ -20,7 +20,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef SPINPOLARIZEDDATA_H_
-#define	SPINPOLARIZEDDATA_H_
+#define SPINPOLARIZEDDATA_H_
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
 /* Include Std and External Headers */
@@ -54,235 +54,235 @@ namespace Serenity {
  *   For further information see e.g.:
  *   https://stackoverflow.com/questions/11287043/is-there-a-way-to-specialize-a-template-to-target-primitives
  */
-template<Options::SCF_MODES T, class U, typename E=void>class SpinPolarizedData;
+  template<Options::SCF_MODES T, class U, typename E=void>class SpinPolarizedData;
 
 /* =================================================
  *   Specialization for RESTRICTED, non-primitives
  * =================================================*/
-template<class U>
-class SpinPolarizedData<RESTRICTED,U,
+  template<class U>
+  class SpinPolarizedData<RESTRICTED,U,
     typename std::enable_if<std::is_class<U>::value>::type> : public U {
-public:
-  using U::U;
-  
-  /// @brief Default destructor.
-  virtual ~SpinPolarizedData() = default;
-  
-  /// @brief Default constructor.
-  inline SpinPolarizedData() : U() {}
-  /**
-   * @brief Copy constructor using base object.
-   * @param init Initial value.
-   */
-  inline SpinPolarizedData(const U& init) : U(init) {}
-  /**
-   * @brief Move constructor using base object.
-   * @param init Initial value.
-   */
-  inline SpinPolarizedData(U&& init) : U(std::move(init)) {}
-  /**
-   * @brief Copy constructor using SpinPolarizedData.
-   * @param orig Initial/original value.
-   */
-  inline SpinPolarizedData(const SpinPolarizedData<RESTRICTED, U, void>&  orig) : U(orig){}
-  /**
-   * @brief Copy constructor using SpinPolarizedData.
-   * @param orig Initial/original value.
-   */
-  inline SpinPolarizedData(      SpinPolarizedData<RESTRICTED, U, void>&  orig) : U(orig){}
-  /**
-   * @brief Move constructor using SpinPolarizedData.
-   * @param orig Initial/original value.
-   */
-  inline SpinPolarizedData(      SpinPolarizedData<RESTRICTED, U, void>&& orig) : U(std::move(orig)){}
-  /**
-   * @brief Assignment operator.
-   * @param rhs Other object.
-   */
-  SpinPolarizedData<RESTRICTED, U, void>& operator=(const SpinPolarizedData<RESTRICTED, U, void>& rhs){
-    if (this != &rhs)  this->U::operator=(rhs);
-    return *this;
-  }
-  /**
-   * @brief Move assignment operator.
-   * @param rhs Other object.
-   */
-  SpinPolarizedData<RESTRICTED, U, void>& operator=(SpinPolarizedData<RESTRICTED, U, void>&& rhs){
-    if (this != &rhs)  this->U::operator=(std::move(rhs));
-    return *this;
-  }
+  public:
+    using U::U;
 
-  /**
-   * @brief Function to get total value (see unrestricted implementations).
-   * @return Returns the total value.
-   */
-  inline U total() { return *this; }
+    /// @brief Default destructor.
+    virtual ~SpinPolarizedData() = default;
 
-  static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
-  /// @brief The type
-  typedef U type;
-  /// @brief The underlying type
-  typedef U& spinlesstype;
-  /// @brief The underlying type
-  typedef const U& constspinlesstype;
-};
+    /// @brief Default constructor.
+    inline SpinPolarizedData() : U() {}
+    /**
+     * @brief Copy constructor using base object.
+     * @param init Initial value.
+     */
+    inline SpinPolarizedData(const U& init) : U(init) {}
+    /**
+     * @brief Move constructor using base object.
+     * @param init Initial value.
+     */
+    inline SpinPolarizedData(U&& init) : U(std::move(init)) {}
+    /**
+     * @brief Copy constructor using SpinPolarizedData.
+     * @param orig Initial/original value.
+     */
+    inline SpinPolarizedData(const SpinPolarizedData<RESTRICTED, U, void>&  orig) : U(orig){}
+    /**
+     * @brief Copy constructor using SpinPolarizedData.
+     * @param orig Initial/original value.
+     */
+    inline SpinPolarizedData(      SpinPolarizedData<RESTRICTED, U, void>&  orig) : U(orig){}
+    /**
+     * @brief Move constructor using SpinPolarizedData.
+     * @param orig Initial/original value.
+     */
+    inline SpinPolarizedData(      SpinPolarizedData<RESTRICTED, U, void>&& orig) : U(std::move(orig)){}
+    /**
+     * @brief Assignment operator.
+     * @param rhs Other object.
+     */
+    SpinPolarizedData<RESTRICTED, U, void>& operator=(const SpinPolarizedData<RESTRICTED, U, void>& rhs){
+      if (this != &rhs)  this->U::operator=(rhs);
+      return *this;
+    }
+    /**
+     * @brief Move assignment operator.
+     * @param rhs Other object.
+     */
+    SpinPolarizedData<RESTRICTED, U, void>& operator=(SpinPolarizedData<RESTRICTED, U, void>&& rhs){
+      if (this != &rhs)  this->U::operator=(std::move(rhs));
+      return *this;
+    }
+
+    /**
+     * @brief Function to get total value (see unrestricted implementations).
+     * @return Returns the total value.
+     */
+    inline U total() { return *this; }
+
+    static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
+    /// @brief The type
+    typedef U type;
+    /// @brief The underlying type
+    typedef U& spinlesstype;
+    /// @brief The underlying type
+    typedef const U& constspinlesstype;
+  };
 
 /* =============================================
  *   Specialization for Restricted, primitives
  * =============================================*/
-template<class U>
-class SpinPolarizedData<RESTRICTED,U,
+  template<class U>
+  class SpinPolarizedData<RESTRICTED,U,
     typename std::enable_if<!std::is_class<U>::value>::type> {
-public:
-  // Check whether the constructors have to be explicit (if that is possible at all in a sensible way)
-  inline SpinPolarizedData() {};
-  inline SpinPolarizedData(const U& initValue) : _m(initValue) {};
-  inline operator const U&() const {return _m;};
-  inline operator U&() {return _m;};
+  public:
+    // Check whether the constructors have to be explicit (if that is possible at all in a sensible way)
+    inline SpinPolarizedData() {};
+    inline SpinPolarizedData(const U& initValue) : _m(initValue) {};
+    inline operator const U&() const {return _m;};
+    inline operator U&() {return _m;};
 
-  inline U total() { return _m; }
+    inline U total() { return _m; }
 
-  U _m;
-  static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
-  /// @brief The type
-  typedef U type;
-  /// @brief The underlying type
-  typedef U& spinlesstype;
-  /// @brief The underlying type
-  typedef const U& constspinlesstype;
-};
+    U _m;
+    static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
+    /// @brief The type
+    typedef U type;
+    /// @brief The underlying type
+    typedef U& spinlesstype;
+    /// @brief The underlying type
+    typedef const U& constspinlesstype;
+  };
 
 /* ================================================
  *   Specialization for UNRESTRICTED, (all cases)
  * ================================================*/
-template<class U>
-class SpinPolarizedData<UNRESTRICTED, U, void> : public std::pair<U, U> {
-public:
-  using std::pair<U, U>::operator=;
+  template<class U>
+  class SpinPolarizedData<UNRESTRICTED, U, void> : public std::pair<U, U> {
+  public:
+    using std::pair<U, U>::operator=;
 
-  inline SpinPolarizedData(
-    const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& orig) :
+    inline SpinPolarizedData(
+      const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& orig) :
       std::pair<U, U>((const std::pair<U, U>&)orig), alpha(this->first), beta(this->second) {}
-  inline SpinPolarizedData(
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& orig) :
+    inline SpinPolarizedData(
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& orig) :
       std::pair<U, U>((std::pair<U, U>&)orig), alpha(this->first), beta(this->second) {}
-  inline SpinPolarizedData(
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>&& orig) :
+    inline SpinPolarizedData(
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>&& orig) :
       std::pair<U, U>(std::move(orig)), alpha(this->first), beta(this->second) {}
-  inline SpinPolarizedData(std::piecewise_construct_t, U&& alpha, U&& beta) :
+    inline SpinPolarizedData(std::piecewise_construct_t, U&& alpha, U&& beta) :
       std::pair<U, U>(std::forward<U>(alpha), std::forward<U>(beta)) {}
-  inline SpinPolarizedData(std::piecewise_construct_t, const U& alpha, const U& beta) :
+    inline SpinPolarizedData(std::piecewise_construct_t, const U& alpha, const U& beta) :
       std::pair<U, U>(alpha, beta) {}
 
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& operator=(
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& operator=(
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& orig) {
-    this->alpha = orig.alpha;
-    this->beta = orig.beta;
-    return *this;
-  }
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& operator=(
+      this->alpha = orig.alpha;
+      this->beta = orig.beta;
+      return *this;
+    }
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>& operator=(
       SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void>&& orig) {
-    this->alpha = std::move(orig.alpha);
-    this->beta = std::move(orig.beta);
-    return *this;
-  }
-  /*
-   * Forward constructors of a single U-type object. I looked at std::make_shared for this.
-   */
-  template<typename... _Args>inline SpinPolarizedData(_Args&&... __args) :
-    std::pair<U, U>(std::piecewise_construct,
-          std::forward_as_tuple(__args...),
-          std::forward_as_tuple(__args...)) {}
-  U& alpha = this->first;
-  U& beta = this->second;
+      this->alpha = std::move(orig.alpha);
+      this->beta = std::move(orig.beta);
+      return *this;
+    }
+    /*
+     * Forward constructors of a single U-type object. I looked at std::make_shared for this.
+     */
+    template<typename... _Args>inline SpinPolarizedData(_Args&&... __args) :
+      std::pair<U, U>(std::piecewise_construct,
+                      std::forward_as_tuple(__args...),
+                      std::forward_as_tuple(__args...)) {}
+    U& alpha = this->first;
+    U& beta = this->second;
 
-  inline U total() { return this->alpha + this->beta; }
+    inline U total() { return this->alpha + this->beta; }
 
-  static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::UNRESTRICTED;
-  /// @brief The type
-  typedef SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void> type;
-  /// @brief The underlying type
-  typedef U& spinlesstype;
-  /// @brief The underlying type
-  typedef const U& constspinlesstype;
-  /*
-   * Arithmetic operators
-   */
+    static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::UNRESTRICTED;
+    /// @brief The type
+    typedef SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U, void> type;
+    /// @brief The underlying type
+    typedef U& spinlesstype;
+    /// @brief The underlying type
+    typedef const U& constspinlesstype;
+    /*
+     * Arithmetic operators
+     */
 
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator+= (
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator+= (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) {
-    this->alpha += y.alpha;
-    this->beta += y.beta;
-    return *this;
-  }
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator+ (
+      this->alpha += y.alpha;
+      this->beta += y.beta;
+      return *this;
+    }
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator+ (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) const {
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
-    result += y;
-    return result;
-  }
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
+      result += y;
+      return result;
+    }
 
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator*= (
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator*= (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) {
-    this->alpha *= y.alpha;
-    this->beta *= y.beta;
-    return *this;
-  }
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator* (
+      this->alpha *= y.alpha;
+      this->beta *= y.beta;
+      return *this;
+    }
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator* (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) const {
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
-    result *= y;
-    return result;
-  }
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
+      result *= y;
+      return result;
+    }
 
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator-= (
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator-= (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) {
-    this->alpha -= y.alpha;
-    this->beta -= y.beta;
-    return *this;
-  }
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator- (
+      this->alpha -= y.alpha;
+      this->beta -= y.beta;
+      return *this;
+    }
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator- (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) const {
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
-    result -= y;
-    return result;
-  }
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
+      result -= y;
+      return result;
+    }
 
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator/= (
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>& operator/= (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) {
-    this->alpha /= y.alpha;
-    this->beta /= y.beta;
-    return *this;
-  }
-  template<class Y>
-  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator/ (
+      this->alpha /= y.alpha;
+      this->beta /= y.beta;
+      return *this;
+    }
+    template<class Y>
+    inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> operator/ (
       const SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Y>& y) const {
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
-    result /= y;
-    return result;
-  }
+      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> result(*this);
+      result /= y;
+      return result;
+    }
 
-};
+  };
 
-template<class U>
-inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFromPieces(
-          U&& alpha, U&& beta) {
-  return SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>(
+  template<class U>
+  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFromPieces(
+    U&& alpha, U&& beta) {
+    return SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>(
       std::piecewise_construct, std::forward<U>(alpha), std::forward<U>(beta));
-}
-template<class U>
-inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFromPieces(
-          const U& alpha, const U& beta) {
-  return SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>(
+  }
+  template<class U>
+  inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFromPieces(
+    const U& alpha, const U& beta) {
+    return SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U>(
       std::piecewise_construct, alpha, beta);
-}
+  }
 
 /**************************************************************************************************
  * 
@@ -311,31 +311,31 @@ inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFr
 /*
  * Single argument
  */
-template<Options::SCF_MODES T, class U, bool isConstU>class ForSpinHelperOne;
-template<class U, bool isConstU>class ForSpinHelperOne<Options::SCF_MODES::RESTRICTED, U, isConstU> {
+  template<Options::SCF_MODES T, class U, bool isConstU>class ForSpinHelperOne;
+  template<class U, bool isConstU>class ForSpinHelperOne<Options::SCF_MODES::RESTRICTED, U, isConstU> {
   public:
-  inline ForSpinHelperOne(
+    inline ForSpinHelperOne(
       typename std::conditional<isConstU,const U&,U&>::type u) :
-    _u(u) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, const U&, U&>::type&)>& f) {
-    f(_u);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
-};
-template<class U, bool isConstU>class ForSpinHelperOne<Options::SCF_MODES::UNRESTRICTED, U, isConstU> {
+      _u(u) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&)>& f) {
+      f(_u);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+  };
+  template<class U, bool isConstU>class ForSpinHelperOne<Options::SCF_MODES::UNRESTRICTED, U, isConstU> {
   public:
-  inline ForSpinHelperOne(typename std::conditional<isConstU,const U&,U&>::type u) :
-    _u(u) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type&)>& f) {
-    f(_u.alpha);
-    f(_u.beta);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
-};
+    inline ForSpinHelperOne(typename std::conditional<isConstU,const U&,U&>::type u) :
+      _u(u) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type&)>& f) {
+      f(_u.alpha);
+      f(_u.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+  };
 #define _FOR_SPIN_1(a) ForSpinHelperOne<                                                           \
     std::remove_reference<decltype(a)>::type::scf_mode,                                            \
     typename std::remove_reference<decltype(a)>::type::type,                                       \
@@ -348,42 +348,42 @@ template<class U, bool isConstU>class ForSpinHelperOne<Options::SCF_MODES::UNRES
 /*
  * Two arguments
  */
-template<Options::SCF_MODES T, class U, class V, bool isConstU, bool isConstV>class ForSpinHelperTwo;
-template<class U, class V, bool isConstU, bool isConstV>
-class ForSpinHelperTwo<Options::SCF_MODES::RESTRICTED, U, V, isConstU, isConstV> {
+  template<Options::SCF_MODES T, class U, class V, bool isConstU, bool isConstV>class ForSpinHelperTwo;
+  template<class U, class V, bool isConstU, bool isConstV>
+  class ForSpinHelperTwo<Options::SCF_MODES::RESTRICTED, U, V, isConstU, isConstV> {
   public:
-  inline ForSpinHelperTwo(
+    inline ForSpinHelperTwo(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v) :
-    _u(u), _v(v) {};
-  void operator<<(const std::function <void (
-          typename std::conditional<isConstU, const U&, U&>::type&,
-          typename std::conditional<isConstV, const V&, V&>::type&)>& f){
-    f(_u, _v);
-   }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
-  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
-};
-template<class U, class V, bool isConstU, bool isConstV>
-class ForSpinHelperTwo<Options::SCF_MODES::UNRESTRICTED, U, V, isConstU, isConstV> {
+      _u(u), _v(v) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&)>& f){
+      f(_u, _v);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+  };
+  template<class U, class V, bool isConstU, bool isConstV>
+  class ForSpinHelperTwo<Options::SCF_MODES::UNRESTRICTED, U, V, isConstU, isConstV> {
   public:
-  inline ForSpinHelperTwo(
+    inline ForSpinHelperTwo(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v) :
-    _u(u), _v(v) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
-         typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type&)>& f) {
-    f(_u.alpha, _v.alpha);
-    f(_u.beta, _v.beta);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
-  typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
-};
+      _u(u), _v(v) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type&)>& f) {
+      f(_u.alpha, _v.alpha);
+      f(_u.beta, _v.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+  };
 #define _FOR_SPIN_2(a, b) ForSpinHelperTwo<                                                        \
     std::remove_reference<decltype(a)>::type::scf_mode,                                            \
     typename std::remove_reference<decltype(a)>::type::type,                                       \
@@ -406,51 +406,51 @@ class ForSpinHelperTwo<Options::SCF_MODES::UNRESTRICTED, U, V, isConstU, isConst
 /*
  * Three arguments
  */
-template<Options::SCF_MODES T, class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
-class ForSpinHelperThree;
-template<class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
-class ForSpinHelperThree<Options::SCF_MODES::RESTRICTED, U, V, W, isConstU, isConstV, isConstW> {
+  template<Options::SCF_MODES T, class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
+  class ForSpinHelperThree;
+  template<class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
+  class ForSpinHelperThree<Options::SCF_MODES::RESTRICTED, U, V, W, isConstU, isConstV, isConstW> {
   public:
-  inline ForSpinHelperThree(
+    inline ForSpinHelperThree(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w) :
-    _u(u), _v(v), _w(w) {};
-  void operator<<(const std::function <void (
-          typename std::conditional<isConstU, const U&, U&>::type&,
-          typename std::conditional<isConstV, const V&, V&>::type&,
-          typename std::conditional<isConstW, const W&, W&>::type&)>& f){
-    f(_u, _v, _w);
-   }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
-  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
-  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
-};
-template<class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
-class ForSpinHelperThree<Options::SCF_MODES::UNRESTRICTED, U, V, W, isConstU, isConstV, isConstW> {
+      _u(u), _v(v), _w(w) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&,
+      typename std::conditional<isConstW, const W&, W&>::type&)>& f){
+      f(_u, _v, _w);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+    typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+  };
+  template<class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
+  class ForSpinHelperThree<Options::SCF_MODES::UNRESTRICTED, U, V, W, isConstU, isConstV, isConstW> {
   public:
-  inline ForSpinHelperThree(
+    inline ForSpinHelperThree(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w) :
-    _u(u), _v(v), _w(w) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
-         typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
-         typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type&)>& f){
-    f(_u.alpha, _v.alpha, _w.alpha);
-    f(_u.beta, _v.beta, _w.beta);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
-  typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
-  typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
-};
+      _u(u), _v(v), _w(w) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
+      typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type&)>& f){
+      f(_u.alpha, _v.alpha, _w.alpha);
+      f(_u.beta, _v.beta, _w.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+    typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
+  };
 #define _FOR_SPIN_3(a, b, c) ForSpinHelperThree<                                                   \
     std::remove_reference<decltype(a)>::type::scf_mode,                                            \
     typename std::remove_reference<decltype(a)>::type::type,                                       \
@@ -488,63 +488,63 @@ class ForSpinHelperThree<Options::SCF_MODES::UNRESTRICTED, U, V, W, isConstU, is
 /*
  * Four arguments
  */
-template<Options::SCF_MODES T, class U, class V, class W, class X,
-        bool isConstU, bool isConstV, bool isConstW, bool isConstX>class ForSpinHelperFour;
-template<class U, class V, class W, class X,
+  template<Options::SCF_MODES T, class U, class V, class W, class X,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX>class ForSpinHelperFour;
+  template<class U, class V, class W, class X,
     bool isConstU, bool isConstV, bool isConstW, bool isConstX>
-class ForSpinHelperFour<Options::SCF_MODES::RESTRICTED, U, V, W, X,
-        isConstU, isConstV, isConstW, isConstX> {
+  class ForSpinHelperFour<Options::SCF_MODES::RESTRICTED, U, V, W, X,
+    isConstU, isConstV, isConstW, isConstX> {
   public:
-  inline ForSpinHelperFour(
+    inline ForSpinHelperFour(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w,
       typename std::conditional<isConstX,const X&,X&>::type x):
-    _u(u), _v(v), _w(w), _x(x) {};
-  void operator<<(const std::function <void (
-          typename std::conditional<isConstU, const U&, U&>::type&,
-          typename std::conditional<isConstV, const V&, V&>::type&,
-          typename std::conditional<isConstW, const W&, W&>::type&,
-          typename std::conditional<isConstX, const X&, X&>::type&)>& f) {
-    f(_u, _v, _w, _x);
-   }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typename std::conditional<isConstX,const X&,X&>::type _x;
-  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
-  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
-  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
-  typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
-};
-template<class U, class V, class W, class X,
+      _u(u), _v(v), _w(w), _x(x) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&,
+      typename std::conditional<isConstW, const W&, W&>::type&,
+      typename std::conditional<isConstX, const X&, X&>::type&)>& f) {
+      f(_u, _v, _w, _x);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+    typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+    typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+  };
+  template<class U, class V, class W, class X,
     bool isConstU, bool isConstV, bool isConstW, bool isConstX>
-class ForSpinHelperFour<Options::SCF_MODES::UNRESTRICTED, U, V, W, X,
-        isConstU, isConstV, isConstW, isConstX> {
+  class ForSpinHelperFour<Options::SCF_MODES::UNRESTRICTED, U, V, W, X,
+    isConstU, isConstV, isConstW, isConstX> {
   public:
-  inline ForSpinHelperFour(
+    inline ForSpinHelperFour(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w,
       typename std::conditional<isConstX,const X&,X&>::type x) :
-    _u(u), _v(v), _w(w), _x(x) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
-         typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
-         typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
-         typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type&)>& f){
-    f(_u.alpha, _v.alpha, _w.alpha, _x.alpha);
-    f(_u.beta, _v.beta, _w.beta, _x.beta);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typename std::conditional<isConstX,const X&,X&>::type _x;
-  typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
-  typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
-  typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
-  typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
-};
+      _u(u), _v(v), _w(w), _x(x) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
+      typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
+      typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type&)>& f){
+      f(_u.alpha, _v.alpha, _w.alpha, _x.alpha);
+      f(_u.beta, _v.beta, _w.beta, _x.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+    typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
+    typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
+  };
 #define _FOR_SPIN_4(a, b, c, d) ForSpinHelperFour<                                                 \
     std::remove_reference<decltype(a)>::type::scf_mode,                                            \
     typename std::remove_reference<decltype(a)>::type::type,                                       \
@@ -596,71 +596,74 @@ class ForSpinHelperFour<Options::SCF_MODES::UNRESTRICTED, U, V, W, X,
         std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                   \
         std::is_const<typename std::remove_reference<decltype(d)>::type>::value>::typeX& d ## _spin)
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y,
-        bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>class ForSpinHelperFive;
-template<class U, class V, class W, class X, class Y,
+/*
+ * Five arguments
+ */
+  template<Options::SCF_MODES T, class U, class V, class W, class X, class Y,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>class ForSpinHelperFive;
+  template<class U, class V, class W, class X, class Y,
     bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>
-class ForSpinHelperFive<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y,
-        isConstU, isConstV, isConstW, isConstX, isConstY> {
+  class ForSpinHelperFive<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y,
+    isConstU, isConstV, isConstW, isConstX, isConstY> {
   public:
-  inline ForSpinHelperFive(
+    inline ForSpinHelperFive(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w,
       typename std::conditional<isConstX,const X&,X&>::type x,
       typename std::conditional<isConstY,const Y&,Y&>::type y) :
-    _u(u), _v(v), _w(w), _x(x), _y(y) {};
-  void operator<<(const std::function <void (
-          typename std::conditional<isConstU, const U&, U&>::type&,
-          typename std::conditional<isConstV, const V&, V&>::type&,
-          typename std::conditional<isConstW, const W&, W&>::type&,
-          typename std::conditional<isConstX, const X&, X&>::type&,
-          typename std::conditional<isConstY, const Y&, Y&>::type&)>& f) {
-    f(_u, _v, _w, _x, _y);
-   }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typename std::conditional<isConstX,const X&,X&>::type _x;
-  typename std::conditional<isConstY,const Y&,Y&>::type _y;
-  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
-  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
-  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
-  typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
-  typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
-};
-template<class U, class V, class W, class X, class Y,
+      _u(u), _v(v), _w(w), _x(x), _y(y) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&,
+      typename std::conditional<isConstW, const W&, W&>::type&,
+      typename std::conditional<isConstX, const X&, X&>::type&,
+      typename std::conditional<isConstY, const Y&, Y&>::type&)>& f) {
+      f(_u, _v, _w, _x, _y);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+    typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+    typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+    typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+  };
+  template<class U, class V, class W, class X, class Y,
     bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>
-class ForSpinHelperFive<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y,
-        isConstU, isConstV, isConstW, isConstX, isConstY> {
+  class ForSpinHelperFive<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y,
+    isConstU, isConstV, isConstW, isConstX, isConstY> {
   public:
-  inline ForSpinHelperFive(
+    inline ForSpinHelperFive(
       typename std::conditional<isConstU,const U&,U&>::type u,
       typename std::conditional<isConstV,const V&,V&>::type v,
       typename std::conditional<isConstW,const W&,W&>::type w,
       typename std::conditional<isConstX,const X&,X&>::type x,
       typename std::conditional<isConstY,const Y&,Y&>::type y) :
-    _u(u), _v(v), _w(w), _x(x), _y(y) {};
-  void operator<<(const std::function <void (
-         typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
-         typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
-         typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
-         typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type& ,
-         typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type&)>& f) {
-    f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha);
-    f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta);
-  }
-  typename std::conditional<isConstU,const U&,U&>::type _u;
-  typename std::conditional<isConstV,const V&,V&>::type _v;
-  typename std::conditional<isConstW,const W&,W&>::type _w;
-  typename std::conditional<isConstX,const X&,X&>::type _x;
-  typename std::conditional<isConstY,const Y&,Y&>::type _y;
-  typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
-  typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
-  typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
-  typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
-  typedef typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type typeY;
-};
+      _u(u), _v(v), _w(w), _x(x), _y(y) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
+      typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
+      typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type& ,
+      typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type&)>& f) {
+      f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha);
+      f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+    typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
+    typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
+    typedef typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type typeY;
+  };
 #define _FOR_SPIN_5(a, b, c, d, e) ForSpinHelperFive<                                              \
     std::remove_reference<decltype(a)>::type::scf_mode,                                            \
     typename std::remove_reference<decltype(a)>::type::type,                                       \
@@ -734,7 +737,401 @@ class ForSpinHelperFive<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y,
         std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                   \
         std::is_const<typename std::remove_reference<decltype(e)>::type>::value>::typeY& e ## _spin)
 
-#define _GET_FOR_SPIN_MACRO(_1,_2,_3,_4,_5,NAME,...) NAME
+/*
+ * Six arguments
+ */
+
+  template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ>class ForSpinHelperSix;
+  template<class U, class V, class W, class X, class Y, class Z,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ>
+  class ForSpinHelperSix<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z,
+    isConstU, isConstV, isConstW, isConstX, isConstY, isConstZ> {
+  public:
+    inline ForSpinHelperSix(
+      typename std::conditional<isConstU,const U&,U&>::type u,
+      typename std::conditional<isConstV,const V&,V&>::type v,
+      typename std::conditional<isConstW,const W&,W&>::type w,
+      typename std::conditional<isConstX,const X&,X&>::type x,
+      typename std::conditional<isConstY,const Y&,Y&>::type y,
+      typename std::conditional<isConstZ,const Z&,Z&>::type z) :
+      _u(u), _v(v), _w(w), _x(x), _y(y), _z(z) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&,
+      typename std::conditional<isConstW, const W&, W&>::type&,
+      typename std::conditional<isConstX, const X&, X&>::type&,
+      typename std::conditional<isConstY, const Y&, Y&>::type&,
+      typename std::conditional<isConstZ, const Z&, Z&>::type&)>& f) {
+      f(_u, _v, _w, _x, _y, _z);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typename std::conditional<isConstZ,const Z&,Z&>::type _z;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+    typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+    typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+    typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+    typedef typename std::conditional<isConstZ, const Z&, Z&>::type typeZ;
+  };
+
+  template<class U, class V, class W, class X, class Y, class Z,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ>
+  class ForSpinHelperSix<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z,
+    isConstU, isConstV, isConstW, isConstX, isConstY, isConstZ> {
+  public:
+    inline ForSpinHelperSix(
+      typename std::conditional<isConstU,const U&,U&>::type u,
+      typename std::conditional<isConstV,const V&,V&>::type v,
+      typename std::conditional<isConstW,const W&,W&>::type w,
+      typename std::conditional<isConstX,const X&,X&>::type x,
+      typename std::conditional<isConstY,const Y&,Y&>::type y,
+      typename std::conditional<isConstY,const Z&,Z&>::type z) :
+      _u(u), _v(v), _w(w), _x(x), _y(y), _z(z) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
+      typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
+      typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type& ,
+      typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type& ,
+      typename std::conditional<isConstZ, typename Z::constspinlesstype,typename Z::spinlesstype>::type&)>& f) {
+      f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha, _z.alpha);
+      f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta, _z.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typename std::conditional<isConstZ,const Z&,Z&>::type _z;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+    typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
+    typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
+    typedef typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type typeY;
+    typedef typename std::conditional<isConstZ, typename Z::constspinlesstype,typename Z::spinlesstype>::type typeZ;
+  };
+
+#define _FOR_SPIN_6(a, b, c, d, e, f) ForSpinHelperSix<                                               \
+    std::remove_reference<decltype(a)>::type::scf_mode,                                               \
+    typename std::remove_reference<decltype(a)>::type::type,                                          \
+    typename std::remove_reference<decltype(b)>::type::type,                                          \
+    typename std::remove_reference<decltype(c)>::type::type,                                          \
+    typename std::remove_reference<decltype(d)>::type::type,                                          \
+    typename std::remove_reference<decltype(e)>::type::type,                                          \
+    typename std::remove_reference<decltype(f)>::type::type,                                          \
+    std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                          \
+    std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                          \
+    std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                          \
+    std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                          \
+    std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                          \
+    std::is_const<typename std::remove_reference<decltype(f)>::type>::value>(a, b, c, d, e, f) << [&](\
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeU& a ## _spin,  \
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeV& b ## _spin,  \
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeW& c ## _spin,  \
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeX& d ## _spin,  \
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeY& e ## _spin,  \
+      typename ForSpinHelperSix<                                                                      \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                           \
+        typename std::remove_reference<decltype(a)>::type::type,                                      \
+        typename std::remove_reference<decltype(b)>::type::type,                                      \
+        typename std::remove_reference<decltype(c)>::type::type,                                      \
+        typename std::remove_reference<decltype(d)>::type::type,                                      \
+        typename std::remove_reference<decltype(e)>::type::type,                                      \
+        typename std::remove_reference<decltype(f)>::type::type,                                      \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                      \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value>::typeZ& f ## _spin   )
+
+  /*
+   * Seven arguments
+   */
+
+  template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ>class ForSpinHelperSeven;
+  template<class U, class V, class W, class X, class Y, class Z, class Q,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ>
+  class ForSpinHelperSeven<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q,
+    isConstU, isConstV, isConstW, isConstX, isConstY, isConstZ, isConstQ> {
+  public:
+    inline ForSpinHelperSeven(
+      typename std::conditional<isConstU,const U&,U&>::type u,
+      typename std::conditional<isConstV,const V&,V&>::type v,
+      typename std::conditional<isConstW,const W&,W&>::type w,
+      typename std::conditional<isConstX,const X&,X&>::type x,
+      typename std::conditional<isConstY,const Y&,Y&>::type y,
+      typename std::conditional<isConstZ,const Z&,Z&>::type z,
+      typename std::conditional<isConstZ,const Q&,Q&>::type q) :
+      _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, const U&, U&>::type&,
+      typename std::conditional<isConstV, const V&, V&>::type&,
+      typename std::conditional<isConstW, const W&, W&>::type&,
+      typename std::conditional<isConstX, const X&, X&>::type&,
+      typename std::conditional<isConstY, const Y&, Y&>::type&,
+      typename std::conditional<isConstZ, const Z&, Z&>::type&,
+      typename std::conditional<isConstQ, const Q&, Q&>::type&)>& f) {
+      f(_u, _v, _w, _x, _y, _z, _q);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typename std::conditional<isConstZ,const Z&,Z&>::type _z;
+    typename std::conditional<isConstZ,const Q&,Q&>::type _q;
+    typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+    typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+    typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+    typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+    typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+    typedef typename std::conditional<isConstZ, const Z&, Z&>::type typeZ;
+    typedef typename std::conditional<isConstQ, const Q&, Q&>::type typeQ;
+  };
+
+  template<class U, class V, class W, class X, class Y, class Z, class Q,
+    bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ>
+  class ForSpinHelperSeven<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q,
+    isConstU, isConstV, isConstW, isConstX, isConstY, isConstZ, isConstQ> {
+  public:
+    inline ForSpinHelperSeven(
+      typename std::conditional<isConstU,const U&,U&>::type u,
+      typename std::conditional<isConstV,const V&,V&>::type v,
+      typename std::conditional<isConstW,const W&,W&>::type w,
+      typename std::conditional<isConstX,const X&,X&>::type x,
+      typename std::conditional<isConstY,const Y&,Y&>::type y,
+      typename std::conditional<isConstY,const Z&,Z&>::type z,
+      typename std::conditional<isConstY,const Q&,Q&>::type q) :
+      _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q) {};
+    void operator<<(const std::function <void (
+      typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type& ,
+      typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type& ,
+      typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type& ,
+      typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type& ,
+      typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type& ,
+      typename std::conditional<isConstZ, typename Z::constspinlesstype,typename Z::spinlesstype>::type& ,
+      typename std::conditional<isConstQ, typename Q::constspinlesstype,typename Q::spinlesstype>::type&)>& f) {
+      f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha, _z.alpha, _q.alpha);
+      f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta, _z.beta, _q.beta);
+    }
+    typename std::conditional<isConstU,const U&,U&>::type _u;
+    typename std::conditional<isConstV,const V&,V&>::type _v;
+    typename std::conditional<isConstW,const W&,W&>::type _w;
+    typename std::conditional<isConstX,const X&,X&>::type _x;
+    typename std::conditional<isConstY,const Y&,Y&>::type _y;
+    typename std::conditional<isConstZ,const Z&,Z&>::type _z;
+    typename std::conditional<isConstQ,const Q&,Q&>::type _q;
+    typedef typename std::conditional<isConstU, typename U::constspinlesstype,typename U::spinlesstype>::type typeU;
+    typedef typename std::conditional<isConstV, typename V::constspinlesstype,typename V::spinlesstype>::type typeV;
+    typedef typename std::conditional<isConstW, typename W::constspinlesstype,typename W::spinlesstype>::type typeW;
+    typedef typename std::conditional<isConstX, typename X::constspinlesstype,typename X::spinlesstype>::type typeX;
+    typedef typename std::conditional<isConstY, typename Y::constspinlesstype,typename Y::spinlesstype>::type typeY;
+    typedef typename std::conditional<isConstZ, typename Z::constspinlesstype,typename Z::spinlesstype>::type typeZ;
+    typedef typename std::conditional<isConstQ, typename Q::constspinlesstype,typename Q::spinlesstype>::type typeQ;
+  };
+
+#define _FOR_SPIN_7(a, b, c, d, e, f, g) ForSpinHelperSeven<                                             \
+    std::remove_reference<decltype(a)>::type::scf_mode,                                                  \
+    typename std::remove_reference<decltype(a)>::type::type,                                             \
+    typename std::remove_reference<decltype(b)>::type::type,                                             \
+    typename std::remove_reference<decltype(c)>::type::type,                                             \
+    typename std::remove_reference<decltype(d)>::type::type,                                             \
+    typename std::remove_reference<decltype(e)>::type::type,                                             \
+    typename std::remove_reference<decltype(f)>::type::type,                                             \
+    typename std::remove_reference<decltype(g)>::type::type,                                             \
+    std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                             \
+    std::is_const<typename std::remove_reference<decltype(g)>::type>::value>(a, b, c, d, e, f, g) << [&](\
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeU& a ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeV& b ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeW& c ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeX& d ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeY& e ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeZ& f ## _spin,     \
+      typename ForSpinHelperSeven<                                                                       \
+        std::remove_reference<decltype(a)>::type::scf_mode,                                              \
+        typename std::remove_reference<decltype(a)>::type::type,                                         \
+        typename std::remove_reference<decltype(b)>::type::type,                                         \
+        typename std::remove_reference<decltype(c)>::type::type,                                         \
+        typename std::remove_reference<decltype(d)>::type::type,                                         \
+        typename std::remove_reference<decltype(e)>::type::type,                                         \
+        typename std::remove_reference<decltype(f)>::type::type,                                         \
+        typename std::remove_reference<decltype(g)>::type::type,                                         \
+        std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                         \
+        std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeQ& g ## _spin      )
+
+#define _GET_FOR_SPIN_MACRO(_1,_2,_3,_4,_5,_6,_7,NAME,...) NAME
 /**
  * TODO Check whether this is the correct place for a comment -> check whether/how doxygen can pick it up!
  * 
@@ -767,7 +1164,7 @@ class ForSpinHelperFive<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y,
  * Note that the variable which may be restricted or unrestricted is accessed with a suffix '_spin'
  * inside the structure, and note that it has to be ended with a semicolon!
  */
-#define for_spin(...) _GET_FOR_SPIN_MACRO(__VA_ARGS__, _FOR_SPIN_5, _FOR_SPIN_4, _FOR_SPIN_3, _FOR_SPIN_2, _FOR_SPIN_1, DUMMY)(__VA_ARGS__)
+#define for_spin(...) _GET_FOR_SPIN_MACRO(__VA_ARGS__, _FOR_SPIN_7, _FOR_SPIN_6, _FOR_SPIN_5, _FOR_SPIN_4, _FOR_SPIN_3, _FOR_SPIN_2, _FOR_SPIN_1, DUMMY)(__VA_ARGS__)
 // Note: the final argument DUMMY is only there to avoid a compiler warning.
 } /* namespace Serenity */
-#endif	/* SpinPolarizedData_H */
+#endif  /* SpinPolarizedData_H */

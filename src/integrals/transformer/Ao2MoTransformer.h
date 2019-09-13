@@ -1,6 +1,6 @@
 /**
  * @file   Ao2MoTransformer.h
- * @author Jan Unsleber, Michael Boeckers
+ * @author Jan Unsleber
  * @date   23. November 2015
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
@@ -49,29 +49,6 @@ class Ao2MoTransformer {
 public:
   Ao2MoTransformer(std::shared_ptr<BasisController> basisController);
   virtual ~Ao2MoTransformer() = default;
-//  /**
-//   *
-//   * @param choleskyVectors The Cholesky vectors. On output, this hold the MO
-//   *                        Cholesky vectors.
-//   * @param P               The permutation indices. See CD_IntegralCalculator.h.
-//   * @brief                 Transforms Cholesky vectors from AO to MO basis.
-//   *                        The Cholesky vectors \f$ L \f$ can be transformed by
-//   *                        \f[
-//   *                        L_{ij}^K = \sum_\mu \sum_\nu  c_{\nu j} c_{\mu i} L_{\mu\nu}^K \; .
-//   *                        \f]
-//   *                        This expression scales with \f$ N^5 \f$, but can be rewritten as
-//   *                        \f[
-//   *                        L_{\mu j}^K = \sum_\nu c_{\nu j} L_{\mu\nu}^K
-//   *                        \f]
-//   *                        \f[
-//   *                        L_{ij}^K = \sum_\nu c_{\mu i} L_{\mu j}^K \; ,
-//   *                        \f]
-//   *                        where each sum scales with \f$ N^4 \f$.
-//   *                        The transformation is parallelized over the columns of the Cholesky
-//   *                        vectors.
-//   *                        Note that the resulting Cholesky vector matrix is not triangular.
-//   */
-//  void transformCholeskyVectors(Matrix<double>& choleskyVectors, Transpositions<-1,-1,int>& P);
 
   /**
    *

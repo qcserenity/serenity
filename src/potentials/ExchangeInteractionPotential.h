@@ -47,12 +47,16 @@ class ExchangeInteractionPotential : public Potential<SCFMode>,
       const std::shared_ptr<BasisController> activeSystemBasis,
       std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > envDensityMatrixControllers,
       const double exchangeRatio,
-      const double prescreeningThreshold):
+      const double prescreeningThreshold,
+      const double lrExchangeRatio = 0.0,
+      const double mu = 0.0):
         Potential<SCFMode>(activeSystemBasis),
         _prescreeningThreshold(prescreeningThreshold),
         _basis(activeSystemBasis),
         _dMatControllers(envDensityMatrixControllers),
-        _exc(exchangeRatio){
+        _exc(exchangeRatio),
+        _lrexc(lrExchangeRatio),
+        _mu(mu){
     this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
     for(auto& envMat : _dMatControllers){
       envMat->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode> >::_self);
@@ -100,11 +104,15 @@ private:
   ///@brief The active System basis this potential is defined in.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > >  _dMatControllers;
   ///@brief The exchange ratio.
-  const double _exc;
+  double _exc;
   ///@brief A Libint instance.
   const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  ///@brief The long range exchange ratio.
+  const double _lrexc;
+  ///@brief The range separation parameter
+  const double _mu;
 };
 } /* namespace Serenity */
 

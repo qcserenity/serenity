@@ -40,10 +40,10 @@ MultipoleMomentTask<SCFMode>::MultipoleMomentTask(
 template<Options::SCF_MODES SCFMode>
 void MultipoleMomentTask<SCFMode>::run() {
 
-  if (settings.origin == Options::REFERENCE_POINT::COM){
+  if (settings.origin == Options::GAUGE_ORIGIN::COM){
     printSmallCaption("Choosing center of mass as origin");
     _origin=_systemController->getGeometry()->getCenterOfMass();
-  } else if (settings.origin == Options::REFERENCE_POINT::ORIGIN) {
+  } else if (settings.origin == Options::GAUGE_ORIGIN::ORIGIN) {
     _origin=Point(0,0,0);
   }
 

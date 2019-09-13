@@ -55,13 +55,13 @@ void NumericalGeomGradCalc<T>::calcFDEGradients(std::vector<std::shared_ptr<Syst
   iOOptions.printGridInfo = false;
 
   FreezeAndThawTask<T> task(activeSystems,environmentSystems);
-  task.settings.naddKinFunc = naddKinFunc;
-  task.settings.naddXCFunc = naddXCFunc;
+  task.settings.embedding.naddKinFunc = naddKinFunc;
+  task.settings.embedding.naddXCFunc = naddXCFunc;
   task.settings.gridCutOff = FDEgridCutOff;
   task.settings.maxCycles = FaTmaxCycles;
   task.settings.convThresh = FaTenergyConvThresh;
   task.settings.printLevel = 0;
-  task.settings.dispersion = dispersion;
+  task.settings.embedding.dispersion = dispersion;
   task.run();
 
   for (unsigned int i=0; i < activeSystems.size(); i++){

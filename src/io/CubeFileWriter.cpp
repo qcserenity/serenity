@@ -117,16 +117,17 @@ void CubeFileWriter::writeMatrixToCube(
   writeCube(filenames, geometry, calcValuesOnGrid);
 }
 
-void CubeFileWriter::writeVectorToCube(
-    const string& filename,
+void CubeFileWriter::writeVectorSetToCube(
+    const std::vector<string>& filenames,
     shared_ptr<const Geometry> geometry,
     shared_ptr<BasisController> basisController,
-    Eigen::VectorXd& inVector) {
+    Eigen::MatrixXd& inVectorSet) {
+  assert(filenames.size()==inVectorSet.cols());
   /*
    * define lambda function
    */
   auto calcValuesOnGrid =
-      [&basisController,&inVector,this](shared_ptr<GridController> cubeGridController) -> Eigen::VectorXd{
+      [&basisController,&inVectorSet,this](shared_ptr<GridController> cubeGridController) -> Eigen::MatrixXd{
 
     //get useful data
     auto basFuncOnGridController =
@@ -135,14 +136,36 @@ void CubeFileWriter::writeVectorToCube(
 
     //use MOCalculator to calculate MO on grid
     MOCalculator moCalc(basFuncOnGridController);
-    Eigen::VectorXd valuesOnGrid=moCalc.calcMOValuesOnGrid(inVector);
+    Eigen::MatrixXd valuesOnGrid=moCalc.calcMOValuesOnGrid(inVectorSet);
 
 
     return valuesOnGrid;
 
     };
   // write out the data
-  writeCube(filename, geometry, calcValuesOnGrid);
+  writeCube(filenames, geometry, calcValuesOnGrid);
+}
+
+void CubeFileWriter::writeCube(
+    const vector<string>& filenames,
+    shared_ptr<const Geometry> geometry,
+    std::function<Eigen::MatrixXd(shared_ptr<GridController>)> calcProperties) {
+  /*
+   * write headers
+   */
+  shared_ptr<GridController> cubeGridController = this->writeHeaderAndCreateCubeGrid(
+      filenames, geometry);
+  /*
+   * calc data
+   */
+  auto data = calcProperties(cubeGridController);
+  assert(data.size() == filenames.size());
+  /*
+   * write data
+   */
+  for (unsigned int i=0; i<filenames.size(); ++i) {
+    this->writeData(filenames[i], data.col(i));
+  }
 }
 
 void CubeFileWriter::writeCube(

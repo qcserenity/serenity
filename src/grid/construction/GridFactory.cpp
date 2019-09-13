@@ -58,6 +58,13 @@ GridFactory::GridFactory(
 std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry> geometry) {
   Timings::takeTime("Tech. -     Grid Constructions");
   assert(geometry);
+
+  if(geometry->hasIdenticalAtoms()) {
+    throw SerenityError("Grid construction with duplicated atoms was detected!\n\
+                         You have to delete all identical atoms from the geometry before\n\
+                         entering the grid construction!");
+  }
+
   takeTime("Setup Grid");
   if (iOOptions.printGridInfo) printSmallCaption("Constructing an integration grid");
 

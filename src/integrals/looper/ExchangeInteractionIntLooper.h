@@ -40,17 +40,20 @@ public:
    * @param deriv The derivative level.
    * @param basisOne The basis of one system.
    * @param basisTwo The basis of the second interacting system.
+   * @param mu Parameter for range sepraration. To be used with erf_coulomb operator.
    */
-	ExchangeInteractionIntLooper(libint2::Operator op,
+  ExchangeInteractionIntLooper(libint2::Operator op,
       const unsigned int deriv,
       std::shared_ptr<BasisController> basisOne,
       std::shared_ptr<BasisController> basisTwo,
-      double prescreeningThreshold):
+      double prescreeningThreshold,
+      double mu = 0.0):
       _op(op),
       _deriv(deriv),
       _basisOne(basisOne),
       _basisTwo(basisTwo),
-      _prescreeningThreshold(prescreeningThreshold){
+      _prescreeningThreshold(prescreeningThreshold),
+      _mu(mu){
     }
 
   /**
@@ -117,7 +120,7 @@ public:
 
     auto& libint = Libint::getInstance();
     libint.keepEngines(_op,_deriv,4);
-    libint.initialize(_op,_deriv,4);
+    libint.initialize(_op,_deriv,4,std::vector<std::shared_ptr<Atom> >(0),_mu);
 
     const auto& basis1 = _basisOne->getBasis();
     const auto& basis2 = _basisTwo->getBasis();
@@ -132,7 +135,7 @@ public:
           for (unsigned int a=0;a<nShells2;++a){
             const auto& shellA = *basis2[a];
             // calculate integrals
-            if (libint.compute(libint2::Operator::coulomb,0,shellI,shellA,shellI,shellA,integrals)){
+            if (libint.compute(_op,0,shellI,shellA,shellI,shellA,integrals)){
               (*mixedShellPairs).push_back(ShellPairData(i, a,sqrt(integrals.maxCoeff()),false));
             } /* if (prescreen) */
           } /* j/shellJ */
@@ -228,6 +231,8 @@ private:
   std::shared_ptr<BasisController> _basisTwo;
   /// @brief A threshold for the Schwartz conditions.
   double _prescreeningThreshold;
+  /// @brief Range separation parameter mu
+  double _mu;
 };
 
 } /* namespace Serenity */
