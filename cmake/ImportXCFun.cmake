@@ -4,12 +4,22 @@ function(import_xcfun)
     return()
   endif()
 
+  if (APPLE)
+    set(XCFUN_LIBRARY_NAME ${CMAKE_SHARED_LIBRARY_PREFIX}xcfun.2.0.0${CMAKE_SHARED_LIBRARY_SUFFIX})
+  else()
+    set(XCFUN_LIBRARY_NAME ${CMAKE_SHARED_LIBRARY_PREFIX}xcfun${CMAKE_SHARED_LIBRARY_SUFFIX}.2.0.0)
+  endif()
+
   add_library(XCFun::XCFun SHARED IMPORTED)
-  set_property(TARGET XCFun::XCFun PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/xcfun/lib/libxcfun.so)
+  set_property(TARGET XCFun::XCFun PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME})
   set_property(TARGET XCFun::XCFun PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/ext/xcfun/include)
+  install(FILES
+    ${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME}
+    DESTINATION lib
+  )
 
   # Download it instead
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/xcfun/lib/libxcfun.so")
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME}")
     file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/ext/xcfun/include/)
     include(ExternalProject)
     ExternalProject_Add(XCFun

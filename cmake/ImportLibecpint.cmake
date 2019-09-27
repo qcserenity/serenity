@@ -5,11 +5,15 @@ function(import_libecpint)
   endif()
 
   add_library(Libecpint::Libecpint SHARED IMPORTED)
-  set_property(TARGET Libecpint::Libecpint PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/libecpint/lib/libecpint.so)
+  set_property(TARGET Libecpint::Libecpint PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX})
   set_property(TARGET Libecpint::Libecpint PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/ext/libecpint/include)
+  install(FILES
+    ${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX}
+    DESTINATION lib
+  )
 
   # Download it instead
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/libecpint/lib/libecpint.so")
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX}")
     file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/ext/libecpint/include)
     include(ExternalProject)
     ExternalProject_Add(Libecpint
@@ -18,7 +22,7 @@ function(import_libecpint)
     add_dependencies(Libecpint::Libecpint Libecpint)
   else()
     message(STATUS "Libecpint was found the 'ext/' folder.")
-    return()    
+    return()
   endif()
 
   # Final check if all went well
@@ -29,7 +33,7 @@ function(import_libecpint)
   else()
     string(CONCAT error_msg
       "Libecpint was not found in your PATH and could not be established "
-      "through a download. Try specifying the Libecpint_DIR variable or " 
+      "through a download. Try specifying the Libecpint_DIR variable or "
       "altering the CMAKE_PREFIX_PATH."
     )
     message(FATAL_ERROR ${error_msg})

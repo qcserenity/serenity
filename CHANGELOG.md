@@ -7,6 +7,10 @@ Release 1.3.0 (under development)
  - Added MCSCF solver(s) (Jan Unsleber, Stefan Knecht)
  - Added DMRG-CI and DMRG-SCF capabilities via a QCMaquis Interface (Jan Unsleber)
 
+Release 1.2.1 (27.09.2019)
+-------------------------------
+ - Bug Fixes
+
 Release 1.2.0 (13.09.2019)
 -------------------------------
  - Various small improvements and unit tests

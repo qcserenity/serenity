@@ -13,7 +13,7 @@ find_path(MKL_INCLUDE_DIRS mkl.h
 
 # Set path according to architecture
 execute_process(COMMAND getconf LONG_BIT OUTPUT_VARIABLE SYSTEM_BIT)
-string(STRIP ${SYSTEM_BIT} SYSTEM_BIT) 
+string(STRIP ${SYSTEM_BIT} SYSTEM_BIT)
 if ("${SYSTEM_BIT}" STREQUAL "64")
   set(MKL_LIB_ARCH lib/intel64/)
 else()
@@ -38,7 +38,7 @@ endif()
 find_library(MKL_CORE_LIBRARY libmkl_core.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
 find_library(MKL_AVX_LIBRARY libmkl_avx2.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
 find_library(MKL_DEF_LIBRARY libmkl_def.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
-    
+
 set(MKL_LIBRARIES ${MKL_AVX_LIBRARY} ${MKL_INTERFACE_LIBRARY} ${MKL_THREADING_LIBRARY} ${MKL_CORE_LIBRARY})
 
 find_package_handle_standard_args(MKL DEFAULT_MSG MKL_INCLUDE_DIRS MKL_LIBRARIES)
@@ -50,7 +50,7 @@ if(MKL_FOUND)
   message("-- ${MKL_THREADING_LIBRARY} ")
   message("-- ${MKL_CORE_LIBRARY} ")
   message("-- ${MKL_AVX_LIBRARY} ")
-  message("-- ${MKL_DEF_LIBRARY} ")  
+  message("-- ${MKL_DEF_LIBRARY} ")
 else()
   set(MKL_LIBRARIES "MKL_LIBRARIES-NOTFOUND")
 endif()

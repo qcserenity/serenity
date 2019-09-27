@@ -1,0 +1,12 @@
++system
+  name hydrogen
+  geometry data/xyzfiles/h2.xyz
+  method dft
+  +dft
+    functional pbe
+  -dft
+-system
+
++task scf
+  system hydrogen
+-task

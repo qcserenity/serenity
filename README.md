@@ -174,12 +174,12 @@ The BibTeX code would thus be:
   
 In order to allow others to reproduce your data please also reference the Verison of Serenity used like this:  
   
-Serenity Version: 1.2.0, https://github.com/qcserenity/serenity (2019)  
+Serenity Version: 1.2.1, https://github.com/qcserenity/serenity (2019)  
   
 or as BibTeX code:  
 >@misc{serenity_version,  
 >  title = {Serenity},  
->  notes = {Serenity Version: 1.2.0, \url{{https://github.com/qcserenity/serenity}}},  
+>  notes = {Serenity Version: 1.2.1, \url{{https://github.com/qcserenity/serenity}}},  
 >  year  = {2019}  
 >  }  
 

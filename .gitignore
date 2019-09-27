@@ -21,13 +21,12 @@ manual/SerenityUserManual.bcf
 manual/tmp
 
 # Auto generated source files
-serenity.sh
+./serenity.sh
 src/tasks/DummyTask.cpp
 src/tasks/DummyTask.h
-test.input
+./test.input
 
 # Output files
-*.input
 *.inp
 *.out
 *.err
