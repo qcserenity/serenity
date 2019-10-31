@@ -1,7 +1,7 @@
 /**
  * @file   SystemController.cpp
  * @author Thomas Dresselhaus, Jan Unsleber
- * 
+ *
  * @date   20. Juli 2015, 16:51
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
@@ -35,6 +35,7 @@
 #include "grid/GridControllerFactory.h"
 #include "potentials/HCorePotential.h"
 #include "io/HDF5.h"
+#include "io/Filesystem.h"
 #include "potentials/HFPotential.h"
 #include "potentials/bundles/HFPotentials.h"
 #include "scf/initialGuess/InitialGuessCalculator.h"
@@ -97,12 +98,7 @@ SystemController::SystemController(Settings settings) :
   } else {
     settings.path=settings.path+settings.name+"/";
   }
-  try{
-    std::string command="mkdir -p "+settings.path;
-    auto stat = system(command.c_str());
-    (void)stat;
-  }catch(...){
-  }
+  makePath(settings.path);
   //print settings
   settings.printSettings();
   XyzFileToGeometryConverter reader(settings.geometry);
@@ -134,12 +130,7 @@ SystemController::SystemController(std::shared_ptr<Geometry> geometry,Settings s
   } else {
     settings.path=settings.path+settings.name+"/";
   }
-  try{
-    std::string command="mkdir -p "+settings.path;
-    auto stat = system(command.c_str());
-    (void)stat;
-  }catch(...){
-  }
+  makePath(settings.path);
   _system.reset(new System(geometry,settings));
   assert(_system);
   setCharge(_system->_settings.charge);

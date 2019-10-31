@@ -30,9 +30,11 @@ void export_CubeFileTask(py::module &spy);
 void export_DensityMatrixController(py::module &spy);
 void export_DispersionCorrectionTask(py::module &spy);
 void export_ElectronicStructure(py::module &spy);
+void export_EmbeddingSettings(py::module &spy);
 void export_EnergyContributions(py::module &spy);
 void export_FDETask(py::module &spy);
 void export_FreezeAndThawTask(py::module &spy);
+void export_GeneralTaskSettings(py::module &spy);
 void export_Geometry(py::module &spy);
 void export_GeometryOptimizationTask(py::module &spy);
 void export_GradientTask(py::module &spy);
@@ -45,7 +47,7 @@ void export_Options(py::module &spy);
 void export_ProjectionBasedEmbTask(py::module &spy);
 void export_ScfTask(py::module &spy);
 void export_Settings(py::module &spy);
-void export_SystemController(py::module &spy); 
+void export_SystemController(py::module &spy);
 void export_Timings(py::module &spy);
 
 PYBIND11_MODULE(serenipy, spy) {
@@ -55,8 +57,10 @@ PYBIND11_MODULE(serenipy, spy) {
   export_DensityMatrixController(spy);
   export_DispersionCorrectionTask(spy);
   export_ElectronicStructure(spy);
+  export_EmbeddingSettings(spy);
   export_EnergyContributions(spy);
   export_Geometry(spy);
+  export_GeneralTaskSettings(spy);
   export_GridController(spy);
   export_Libint(spy);
   export_Options(spy);

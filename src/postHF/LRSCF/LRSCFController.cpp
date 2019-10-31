@@ -459,7 +459,7 @@ namespace Serenity {
 
   template<Options::SCF_MODES SCFMode>
   void LRSCFController<SCFMode>::indexToH5(Options::LRSCF_TYPE type){
-    
+
     std::string mode = (SCFMode==RESTRICTED) ? "res":"unres";
     std::string type_str = (type==Options::LRSCF_TYPE::ISOLATED || type==Options::LRSCF_TYPE::UNCOUPLED) ? "" : ".fdec";
     std::string name = _system->getSettings().path + _system->getSettings().name + type_str + ".lrscfSpace." + mode + ".h5";

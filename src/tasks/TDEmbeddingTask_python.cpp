@@ -32,7 +32,7 @@ void export_ProjectionBasedEmbTask(py::module &spy){
 
   py::class_<TDEmbeddingTaskSettings>(spy, "TDEmbeddingTaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("levelShiftParameter",&TDEmbeddingTaskSettings::embedding)
+    .def_readwrite("embedding",&TDEmbeddingTaskSettings::embedding)
     .def_readwrite("locType",&TDEmbeddingTaskSettings::locType)
     .def_readwrite("useEnvSys",&TDEmbeddingTaskSettings::useEnvSys)
     .def_readwrite("orbitalThreshold",&TDEmbeddingTaskSettings::orbitalThreshold)

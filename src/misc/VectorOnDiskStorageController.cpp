@@ -21,6 +21,7 @@
 
 /* Include Class Header*/
 #include "misc/VectorOnDiskStorageController.h"
+#include "io/Filesystem.h"
 
 namespace Serenity {
 
@@ -132,11 +133,7 @@ void VectorOnDiskStorageController::saveVectorSegment(
     Eigen::VectorXd& vectorSegment,
     std::string label) {
   //create directory if it does not exist yet.
-  try{
-    std::string command="mkdir -p tmp";
-    auto status = system(command.c_str());
-    (void) status;
-  }catch(...){}
+  makePath("tmp");
 
   if (_files.find(label) == _files.end()){
     // No entry available yet.

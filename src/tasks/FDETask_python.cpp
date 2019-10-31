@@ -32,7 +32,7 @@ void export_FDETask(py::module &spy){
 
   py::class_<FDETaskSettings>(spy,"FDETaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("embeddingSettings",&FDETaskSettings::embedding)
+    .def_readwrite("embedding",&FDETaskSettings::embedding)
     .def_readwrite("gridCutOff",&FDETaskSettings::gridCutOff);
 
   py::class_<FDETask<Options::SCF_MODES::RESTRICTED> >(spy,"FDETask_R")

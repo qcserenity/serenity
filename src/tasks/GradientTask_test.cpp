@@ -51,6 +51,10 @@ protected:
     libint.keepEngines(libint2::Operator::coulomb,1,4);
   }
 
+  virtual void TearDown() {
+    SystemController__TEST_SUPPLY::cleanUp();
+  }
+
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
@@ -79,7 +83,7 @@ TEST_F(GradientTaskTest, D3_Grad_BP86) {
    */
   GradientTask<Options::SCF_MODES::RESTRICTED> task({_activeSystem});
   task.settings.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJ;
-//  task.settings.print = false;
+  task.settings.print = false;
   task.run();
 
   auto actGradient = _activeSystem->getGeometry()->getGradients();
@@ -125,8 +129,6 @@ TEST_F(GradientTaskTest, D3_Grad_FDE_BP86) {
 
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
-
-
 }
 
 /**
@@ -195,15 +197,12 @@ TEST_F(GradientTaskTest, TranslationalInvarianceFDE_BP86) {
  * @test GradientTaskTest
  * @brief Tests the total gradient of a Ne dimer in a 6-31Gs basis.
  */
-
 TEST_F(GradientTaskTest, NeDimerGradient) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
 
   // Neon dimer
-
   auto systemControllerNe = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ne2_6_31Gs);
-
   auto es = systemControllerNe->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
 
   std::shared_ptr<PotentialBundle<Options::SCF_MODES::RESTRICTED> > potentials;
@@ -223,13 +222,14 @@ TEST_F(GradientTaskTest, NeDimerGradient) {
   EXPECT_NEAR(gradientsNe(1,0),0.0,1e-5);
   EXPECT_NEAR(gradientsNe(1,1),0.0,1e-5);
   EXPECT_NEAR(gradientsNe(1,2),-0.03359440685778825,1e-5);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::Ne2_6_31Gs);
 }
 
 /**
  * @test GradientTaskTest
  * @brief Tests the total gradient of F2 in a 6-31Gs basis.
  */
-
 TEST_F(GradientTaskTest, F2Gradient) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
@@ -249,13 +249,14 @@ TEST_F(GradientTaskTest, F2Gradient) {
 
   Matrix<double> gradientsF2 = systemControllerF2->getGeometry()->getGradients();
 
-
   EXPECT_NEAR(gradientsF2(0,0),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(0,1),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(0,2),-0.1252599,1e-5);
   EXPECT_NEAR(gradientsF2(1,0),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(1,1),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(1,2),0.1252599,1e-5);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs);
 }
 
 /**
@@ -266,6 +267,7 @@ TEST_F(GradientTaskTest, F2Gradient) {
 TEST_F(GradientTaskTest, F2GradientsNum) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+
   // F2
   auto systemControllerF2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs);
   auto es = systemControllerF2->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -288,6 +290,8 @@ TEST_F(GradientTaskTest, F2GradientsNum) {
   EXPECT_NEAR(gradientsF2(1,0),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(1,1),0.0,1e-5);
   EXPECT_NEAR(gradientsF2(1,2),0.1252599,1e-4);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs);
 }
 
 /**

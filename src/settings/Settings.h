@@ -21,6 +21,7 @@
 #define SETTINGS_H_
 /* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
+#include "io/Filesystem.h"
 #include "settings/Options.h"
 #include "settings/Reflection.h"
 /* Include Std and External Headers */
@@ -325,12 +326,7 @@ public:
     std::string field;
     std::string value;
     // Create folder if it does not exist
-    try{
-      std::string command="mkdir -p "+path;
-      auto stat = system(command.c_str());
-      (void) stat;
-    }catch(...){
-    }
+    makePath(path);
 
     std::ofstream ofs;
     ofs.open ((*this).path+(*this).name+".settings", std::ofstream::out | std::ofstream::trunc);

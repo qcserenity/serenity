@@ -7,6 +7,12 @@ Release 1.3.0 (under development)
  - Added MCSCF solver(s) (Jan Unsleber, Stefan Knecht)
  - Added DMRG-CI and DMRG-SCF capabilities via a QCMaquis Interface (Jan Unsleber)
 
+Release 1.2.2 (31.10.2019)
+-------------------------------
+ - Bug Fixes
+   - Missing embedding settings in the Python wrapper
+   - Generating directories in parallel runs
+
 Release 1.2.1 (27.09.2019)
 -------------------------------
  - Bug Fixes

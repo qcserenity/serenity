@@ -170,9 +170,6 @@ void ScalarOperatorToMatrixAdder<SCFMode>::addBlock(
   bool useSym = isDefinedInSameBasis(*_basisFunctionOnGridControllerA,*_basisFunctionOnGridControllerB);
   //Get weights
   const auto& weights = _basisFunctionOnGridControllerA->getGridController()->getWeights();
-  // Sanity checks
-  assert(m_AB.rows() == nBasisFuncA);
-  assert(m_AB.cols() == nBasisFuncB);
   //function values for each grid point/ basis function combination (Dimension: nPoints x nBasisFunctions)
   const auto& basisFunctionValuesA = blockDataA->functionValues;
   const auto& basisFunctionValuesB = blockDataB->functionValues;

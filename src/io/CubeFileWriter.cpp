@@ -122,7 +122,7 @@ void CubeFileWriter::writeVectorSetToCube(
     shared_ptr<const Geometry> geometry,
     shared_ptr<BasisController> basisController,
     Eigen::MatrixXd& inVectorSet) {
-  assert(filenames.size()==inVectorSet.cols());
+  assert((long int)(filenames.size())==inVectorSet.cols());
   /*
    * define lambda function
    */
@@ -159,7 +159,7 @@ void CubeFileWriter::writeCube(
    * calc data
    */
   auto data = calcProperties(cubeGridController);
-  assert(data.size() == filenames.size());
+  assert(data.cols() == (long int)(filenames.size()));
   /*
    * write data
    */

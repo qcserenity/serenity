@@ -1,6 +1,6 @@
 /**
  * @file serenity.cpp
- * @version 1.2.1
+ * @version 1.2.2
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify

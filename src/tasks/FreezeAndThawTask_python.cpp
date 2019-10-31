@@ -32,7 +32,7 @@ using namespace Serenity;
 void export_FreezeAndThawTask(py::module &spy){
   py::class_<FreezeAndThawTaskSettings>(spy,"FreezeAndThawTaskSettings",
       "@brief Default constructor for Settings all set to their default values.")
-    .def_readwrite("naddKinFunc",&FreezeAndThawTaskSettings::embedding)
+    .def_readwrite("embedding",&FreezeAndThawTaskSettings::embedding)
     .def_readwrite("maxCycles",&FreezeAndThawTaskSettings::maxCycles)
     .def_readwrite("convThresh",&FreezeAndThawTaskSettings::convThresh)
     .def_readwrite("gridCutOff",&FreezeAndThawTaskSettings::gridCutOff)
