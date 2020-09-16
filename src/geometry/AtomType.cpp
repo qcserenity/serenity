@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,14 +24,13 @@
 #include "misc/WarningTracker.h"
 #include "parameters/AtomicParameters.h"
 /* Include Std and External Headers */
-#include <cassert>
 #include <stdexcept>
 
 namespace Serenity {
 using namespace std;
 
 AtomType::AtomType(const string name, const int nuclearCharge, const double mass, const double braggSlaterRadius,
-                   const double vanDerWaalsRadius,
+                   const double vanDerWaalsRadius, double uffRadius,
                    const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations, const bool isDummy)
   : _name(name),
     _nuclearCharge(isDummy ? 0 : nuclearCharge),
@@ -39,6 +38,7 @@ AtomType::AtomType(const string name, const int nuclearCharge, const double mass
     _mass(mass),
     _braggSlaterRadius(braggSlaterRadius),
     _vanDerWaalsRadius(vanDerWaalsRadius),
+    _uffRadius(uffRadius),
     _occupations(occupations),
     _isDummy(isDummy) {
   assert(_psePosition && "Even dummy atoms need to have a position in the PSE, that of the actual atom they mimic.");
@@ -63,12 +63,22 @@ double AtomType::getBraggSlaterRadius() const {
 }
 /// @returns this atom type's Van der Waals radius
 double AtomType::getVanDerWaalsRadius() const {
-  if (_braggSlaterRadius < 0.0) {
+  if (_vanDerWaalsRadius < 0.0) {
     WarningTracker::printWarning("Warning: No tabulated van der Waals radius available. Simply guessing 2.0 Angstrom.", true);
     return 2.0 * ANGSTROM_TO_BOHR;
   }
   else {
     return _vanDerWaalsRadius;
+  }
+}
+
+double AtomType::getUFFRadius() const {
+  if (_uffRadius < 0.0) {
+    WarningTracker::printWarning("Warning: No tabulated UFF radius available. Simply guessing 2.0 Angstrom.", true);
+    return 2.0 * ANGSTROM_TO_BOHR;
+  }
+  else {
+    return _uffRadius;
   }
 }
 

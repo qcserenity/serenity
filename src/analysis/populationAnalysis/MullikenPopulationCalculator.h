@@ -6,31 +6,35 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef MULLIKENPOPULATIONCALCULATOR_H_
 #define MULLIKENPOPULATIONCALCULATOR_H_
 /* Include Serenity Internal Headers */
+#include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/DensityMatrix.h"
 #include "settings/Options.h"
-#include "data/SpinPolarizedData.h"
 
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES SCFMode> class ElectronicStructure;
-template<Options::SCF_MODES SCFMode> class MatrixInBasis;
-template<Options::SCF_MODES SCFMode> class SPMatrix;
-template<class SCFMode>class Matrix;
+template<Options::SCF_MODES SCFMode>
+class ElectronicStructure;
+template<Options::SCF_MODES SCFMode>
+class MatrixInBasis;
+template<Options::SCF_MODES SCFMode>
+class SPMatrix;
+template<class SCFMode>
+class Matrix;
 
 class SystemController;
 /**
@@ -42,9 +46,9 @@ class SystemController;
  */
 template<Options::SCF_MODES SCFMode>
 class MullikenPopulationCalculator {
-public:
+ public:
   MullikenPopulationCalculator() = default;
-  virtual ~MullikenPopulationCalculator() = default;  
+  virtual ~MullikenPopulationCalculator() = default;
   /**
    * @param   system of which the atoms, i.e. also the mapping of basis functions to atoms, are
    *                 taken
@@ -52,11 +56,11 @@ public:
    * @returns a vector holding the Mulliken population for each atom (in the order of the atoms
    *          as in system)
    */
-  static SpinPolarizedData<SCFMode, Eigen::VectorXd > calculateMullikenPopulations(
-      std::shared_ptr<SystemController> systemController);
+  static SpinPolarizedData<SCFMode, Eigen::VectorXd>
+  calculateMullikenPopulations(std::shared_ptr<SystemController> systemController);
   /**
    * @brief see calculateBasisFunctionPopulations()
-   * 
+   *
    * @param densityMatrix
    * @param overlapMatrix
    * @param atomBasisIndices see AtomCenteredBasisController, forms a connection between the basis
@@ -64,10 +68,10 @@ public:
    *                         For each atom there is a first index and an end index
    * @returns the Mulliken population on the atoms defined by the atomBasisIndices
    */
-  static SpinPolarizedData<SCFMode, Eigen::VectorXd > calculateAtomPopulations(
-      const DensityMatrix<SCFMode>& densityMatrix,
-      const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
-      const std::vector<std::pair<unsigned int, unsigned int> >& atomBasisIndices);
+  static SpinPolarizedData<SCFMode, Eigen::VectorXd>
+  calculateAtomPopulations(const DensityMatrix<SCFMode>& densityMatrix,
+                           const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
+                           const std::vector<std::pair<unsigned int, unsigned int>>& atomBasisIndices);
   /**
    * @brief calculates the population of each basis function
    *
@@ -76,21 +80,21 @@ public:
    * @returns the population of each basis function, i.e.
    *          \f$ {\rm Vector}_{\mu} = \sum_{\nu} P_{\mu,\nu} \cdot S_{\mu,\nu} \f$
    */
-  static SpinPolarizedData<SCFMode, Eigen::VectorXd > calculateBasisFunctionPopulations(
-      const DensityMatrix<SCFMode>& densityMatrix,
-      const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix);
+  static SpinPolarizedData<SCFMode, Eigen::VectorXd>
+  calculateBasisFunctionPopulations(const DensityMatrix<SCFMode>& densityMatrix,
+                                    const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix);
   /**
    * @brief Analog of calculateAtomPopulations() for orbitals (uses calculateOrbitalPopulations())
    * @param coefficients
    * @param overlapMatrix
    * @param atomBasisIndices
    */
-  static SPMatrix<SCFMode> calculateAtomwiseOrbitalPopulations(
-      const CoefficientMatrix<SCFMode>& coefficients,
-      const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
-      const std::vector<std::pair<unsigned int, unsigned int> >& atomBasisIndices);
+  static SPMatrix<SCFMode>
+  calculateAtomwiseOrbitalPopulations(const CoefficientMatrix<SCFMode>& coefficients,
+                                      const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
+                                      const std::vector<std::pair<unsigned int, unsigned int>>& atomBasisIndices);
 
-private:
+ private:
   /**
    * @brief analog to calculateBasisFunctionPopulations, but for a molecular orbital
    *
@@ -103,11 +107,10 @@ private:
    *          orbital, i.e.
    *          \f$ {\rm Vector}_{\mu} = \sum_{\nu} c_{\mu} \cdot c_{\nu} \cdot S_{\mu,\nu} \f$
    */
-  static Eigen::VectorXd calculateOrbitalPopulations(
-      const Eigen::VectorXd& orbitalcoeffitients,
-      const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix);
+  static Eigen::VectorXd calculateOrbitalPopulations(const Eigen::VectorXd& orbitalcoeffitients,
+                                                     const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix);
 };
-  
+
 } /* namespace Serenity */
 
 #endif /* MULLIKENPOPULATIONCALCULATOR_H_ */

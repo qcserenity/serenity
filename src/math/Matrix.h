@@ -6,25 +6,24 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef MATRIX_H
-#define	MATRIX_H
+#define MATRIX_H
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <cassert>
 #include <iostream>
 #include <vector>
-
 
 namespace Serenity {
 /**
@@ -33,17 +32,17 @@ namespace Serenity {
  *
  * with i being the row index and j the column index.
  */
-template<typename T> class Matrix {
-
-public:
+template<typename T>
+class Matrix {
+ public:
   /**
    * @brief Provides a filled nRows x nCols matrix.
    * @param nRows the number of rows
    * @param nCols the number of columns
    * @param init initial value
    */
-  Matrix(const int& nRows, const int& nCols, T init) :
-      _nRows(nRows), _nColumns(nCols), _size(nRows * nCols), _data(nRows * nCols,init) {
+  Matrix(const int& nRows, const int& nCols, T init)
+    : _nRows(nRows), _nColumns(nCols), _size(nRows * nCols), _data(nRows * nCols, init) {
   }
 
   /**
@@ -52,13 +51,11 @@ public:
    * @param nCols the number of columns
    * @param data  the matrix will be constructed using this data
    */
-  Matrix(const int& nRows, const int& nCols, std::vector<T>&& data) :
-      _nRows(nRows), _nColumns(nCols), _size(nRows * nCols), _data(std::move(data)) {
-
+  Matrix(const int& nRows, const int& nCols, std::vector<T>&& data)
+    : _nRows(nRows), _nColumns(nCols), _size(nRows * nCols), _data(std::move(data)) {
   }
 
   virtual ~Matrix() = default;
-
 
   /**
    * @brief Straightforward and safe access to the matrix. Slow!
@@ -126,9 +123,9 @@ public:
    */
   std::vector<T> row(unsigned int iRow) const {
     assert(iRow < _nRows);
-    std::vector<T> returnRow(_nColumns,0.0);
-    for (unsigned int i=0; i<_nColumns; ++i){
-      returnRow[i]=_data[i*_nColumns+iRow];
+    std::vector<T> returnRow(_nColumns, 0.0);
+    for (unsigned int i = 0; i < _nColumns; ++i) {
+      returnRow[i] = _data[i * _nColumns + iRow];
     }
     return returnRow;
   }
@@ -140,9 +137,9 @@ public:
    */
   std::vector<T> col(unsigned int iCol) const {
     assert(iCol < _nColumns);
-    std::vector<T> returnCol(_nRows,0.0);
-    for (unsigned int i=0;i<_nRows;i++){
-      returnCol[i]=_data[iCol*_nColumns+i];
+    std::vector<T> returnCol(_nRows, 0.0);
+    for (unsigned int i = 0; i < _nRows; i++) {
+      returnCol[i] = _data[iCol * _nColumns + i];
     }
     return returnCol;
   }
@@ -150,33 +147,32 @@ public:
   /**
    * @return Returns the number of elements in the matrix.
    */
-  inline unsigned int size() const{
+  inline unsigned int size() const {
     return _size;
   }
   /**
    * @return Returns the number of columns.
    */
-  inline unsigned int cols() const{
+  inline unsigned int cols() const {
     return _nColumns;
   }
   /**
    * @return Returns the number of rows.
    */
-  inline unsigned int rows() const{
+  inline unsigned int rows() const {
     return _nRows;
   }
 
-private:
+ private:
   ///@brief The rank, if viewed as a tensor
   const static int RANK = 2;
   ///@{Size indicators for the matrix
   const unsigned int _nRows, _nColumns, _size;
   ///}
-protected:
+ protected:
   /// the underlying data object
   std::vector<T> _data;
 };
-
 
 /*
  * Eigen3 versions for Matrix<double> and Matrix<int>
@@ -184,9 +180,11 @@ protected:
  * For the complete documentation check the Eigen3 website:
  *  http://eigen.tuxfamily.org/dox/
  */
-template<> class Matrix<double> : public Eigen::MatrixXd {
+template<>
+class Matrix<double> : public Eigen::MatrixXd {
   using Eigen::MatrixXd::MatrixXd;
-public:
+
+ public:
   /**
    * @brief Prints the matrix to stdout.
    * TODO switch to managed internal output system
@@ -199,14 +197,17 @@ public:
       std::cout << std::endl;
     }
   }
-private:
+
+ private:
   ///@brief The rank, if viewed as a tensor
   const static int RANK = 2;
 };
 
-template<> class Matrix<int> : public Eigen::MatrixXi {
+template<>
+class Matrix<int> : public Eigen::MatrixXi {
   using Eigen::MatrixXi::MatrixXi;
-public:
+
+ public:
   /**
    * @brief Prints the matrix to stdout.
    * TODO switch to managed internal output system
@@ -219,11 +220,11 @@ public:
       std::cout << std::endl;
     }
   }
-private:
+
+ private:
   ///@brief The rank, if viewed as a tensor
   const static int RANK = 2;
 };
-
 
 } /* namespace Serenity */
-#endif	/* MATRIX_H */
+#endif /* MATRIX_H */

@@ -1,47 +1,32 @@
 function(import_xcfun)
   # If the target already exists, do nothing
-  if(TARGET XCFun::XCFun)
+  if(TARGET xcfun)
     return()
   endif()
 
-  if (APPLE)
-    set(XCFUN_LIBRARY_NAME ${CMAKE_SHARED_LIBRARY_PREFIX}xcfun.2.0.0${CMAKE_SHARED_LIBRARY_SUFFIX})
-  else()
-    set(XCFUN_LIBRARY_NAME ${CMAKE_SHARED_LIBRARY_PREFIX}xcfun${CMAKE_SHARED_LIBRARY_SUFFIX}.2.0.0)
-  endif()
-
-  add_library(XCFun::XCFun SHARED IMPORTED)
-  set_property(TARGET XCFun::XCFun PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME})
-  set_property(TARGET XCFun::XCFun PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/ext/xcfun/include)
-  install(FILES
-    ${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME}
-    DESTINATION lib
+  message(STATUS
+    "Checking XCFun source files."
+  )
+  include(DownloadProject)
+  download_project(
+    PROJ ext-xcfun
+    GIT_REPOSITORY https://github.com/qcserenity/xcfun.git
+    QUIET
   )
 
-  # Download it instead
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/xcfun/lib/${XCFUN_LIBRARY_NAME}")
-    file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/ext/xcfun/include/)
-    include(ExternalProject)
-    ExternalProject_Add(XCFun
-     GIT_REPOSITORY "https://github.com/moritzBens/xcfun.git"
-     GIT_TAG "b2bfa8e92fde74897f08a5f412196df2677af956"
-     CMAKE_ARGS -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_SHARED_LIBS=ON -DENABLE_FORTRAN_INTERFACE=OFF -DENABLE_TESTALL=OFF -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/ext/xcfun)
-    add_dependencies(XCFun::XCFun XCFun)
-  else()
-    message(STATUS "XCFun was found the 'ext/' folder.")
-    return()
-  endif()
+  set(_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  set(_ENABLE_TESTALL ${ENABLE_TESTALL})
+  set(ENABLE_TESTALL OFF)
+  set(BUILD_SHARED_LIBS OFF)
+  add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/ext-xcfun-src ${CMAKE_CURRENT_BINARY_DIR}/ext-xcfun-build)
+  set(ENABLE_TESTALL ${_ENABLE_TESTALL})
+  set(BUILD_SHARED_LIBS ${_BUILD_SHARED_LIBS})
+  install(TARGETS xcfun EXPORT ${PROJECT_NAME}Targets DESTINATION lib)
 
   # Final check if all went well
-  if(TARGET XCFun::XCFun)
-    message(STATUS
-      "XCFun was not found in your PATH, so it was downloaded."
-    )
-  else()
+  if(NOT TARGET xcfun)
     string(CONCAT error_msg
-      "XCFun was not found in your PATH and could not be established "
-      "through a download. Try specifying the XCFun_DIR variable or " 
-      "altering the CMAKE_PREFIX_PATH"
+      "XCFun was not found and could not be established through a download."
     )
     message(FATAL_ERROR ${error_msg})
   endif()

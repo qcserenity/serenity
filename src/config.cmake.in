@@ -1,22 +1,20 @@
-# - Config file for the Serenity package
-# It defines the following variables
-#  SERENITY_INCLUDE_DIRS - include directories for Serenity
-#  SERENITY_LIBRARIES    - libraries to link against
-#  SERENITY_EXECUTABLE   - the serenity executable
+include(CMakeFindDependencyMacro)
 
-# Compute paths
-get_filename_component(SERENITY_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
-set(SERENITY_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
-
-# Our library dependencies (contains definitions for IMPORTED targets)
-if(NOT TARGET serenity AND NOT serenity_BINARY_DIR)
-  include("${SERENITY_CMAKE_DIR}/serenityTargets.cmake")
+find_dependency(HDF5 REQUIRED COMPONENTS HL CXX)
+find_dependency(Eigen3 REQUIRED)
+find_dependency(OpenMP REQUIRED)
+find_dependency(Boost REQUIRED)
+if(NOT @BUILD_SHARED_LIBS@)
+  find_dependency(ecpint REQUIRED)
+  find_dependency(Libint2 REQUIRED)
+  if(@SERENITY_USE_XCFUN@)
+    find_dependency(XCFun REQUIRED)
+  endif()
+  if (@SERENITY_USE_LIBXC@)
+    find_dependency(Libxc REQUIRED)
+  endif()
 endif()
 
-# These are IMPORTED targets created by serenityTargets.cmake
-set(SERENITY_LIBRARIES serenity)
-set(SERENITY_EXECUTABLE serenity_exe)
+include("${CMAKE_CURRENT_LIST_DIR}/serenity-targets.cmake")
 
-# aliases
-add_library(serenity::shared ALIAS serenity)
-add_library(serenity::exe    ALIAS serenity_exe)
+@PACKAGE_INIT@

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,12 +21,11 @@
 #ifndef INTEGRALS_RI_J_INTEGRALCONTROLLERFACTORY_H_
 #define INTEGRALS_RI_J_INTEGRALCONTROLLERFACTORY_H_
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
 #include "integrals/RI_J_IntegralController.h"
 #include "misc/RememberingFactory.h"
+#include "settings/Options.h"
 /* Include Std and External Headers */
 #include <memory>
-
 
 namespace Serenity {
 /* Forward declarations */
@@ -40,19 +39,16 @@ class RI_J_IntegralController;
  *  @class RI_J_IntegralControllerFactory RI_J_IntegralControllerFactory.h
  *  @brief This class is a singleton to generate RI_J_IntegralController.
  */
-class RI_J_IntegralControllerFactory : public RememberingFactory<
-    RI_J_IntegralController,
-    std::shared_ptr<BasisController>,
-    std::shared_ptr<BasisController>,
-    std::shared_ptr<BasisController>> {
-public:
-
-    /**
+class RI_J_IntegralControllerFactory
+  : public RememberingFactory<RI_J_IntegralController, std::shared_ptr<BasisController>,
+                              std::shared_ptr<BasisController>, std::shared_ptr<BasisController>> {
+ public:
+  /**
    * @brief One of two singleton 'Constructors'
    *
    * @return A reference to the only existing version of the RI_J_IntegralControllerFactory object.
    */
-  static RI_J_IntegralControllerFactory& getInstance(){
+  static RI_J_IntegralControllerFactory& getInstance() {
     return *RI_J_IntegralControllerFactory::getSharedPtr();
   }
   /**
@@ -76,37 +72,29 @@ public:
    */
   virtual ~RI_J_IntegralControllerFactory() = default;
 
-  std::shared_ptr<RI_J_IntegralController> produce(
-      std::shared_ptr<BasisController> basisControllerA,
-      std::shared_ptr<BasisController> auxBasisController){
-    return this->getOrProduce(basisControllerA,auxBasisController,nullptr);
+  std::shared_ptr<RI_J_IntegralController> produce(std::shared_ptr<BasisController> basisControllerA,
+                                                   std::shared_ptr<BasisController> auxBasisController) {
+    return this->getOrProduce(basisControllerA, auxBasisController, nullptr);
   }
 
-  std::shared_ptr<RI_J_IntegralController> produce(
-      std::shared_ptr<BasisController> basisControllerA,
-      std::shared_ptr<BasisController> auxBasisController,
-      std::shared_ptr<BasisController> basisControllerB){
-    return this->getOrProduce(basisControllerA,auxBasisController,basisControllerB);
+  std::shared_ptr<RI_J_IntegralController> produce(std::shared_ptr<BasisController> basisControllerA,
+                                                   std::shared_ptr<BasisController> auxBasisController,
+                                                   std::shared_ptr<BasisController> basisControllerB) {
+    return this->getOrProduce(basisControllerA, auxBasisController, basisControllerB);
   }
 
-private:
-
+ private:
   /**
    * @brief Private destructor -> singleton.
    */
   RI_J_IntegralControllerFactory() = default;
 
-  std::unique_ptr<RI_J_IntegralController> produceNew(
-      std::shared_ptr<BasisController> basisControllerA,
-      std::shared_ptr<BasisController> auxBasisController,
-      std::shared_ptr<BasisController> basisControllerB) override final{
+  std::unique_ptr<RI_J_IntegralController> produceNew(std::shared_ptr<BasisController> basisControllerA,
+                                                      std::shared_ptr<BasisController> auxBasisController,
+                                                      std::shared_ptr<BasisController> basisControllerB) override final {
     return std::unique_ptr<RI_J_IntegralController>(
-        new RI_J_IntegralController(
-            basisControllerA,
-            auxBasisController,
-            basisControllerB));
+        new RI_J_IntegralController(basisControllerA, auxBasisController, basisControllerB));
   }
-
 };
 
 } /* namespace Serenity */

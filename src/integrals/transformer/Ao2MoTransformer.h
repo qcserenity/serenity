@@ -5,18 +5,18 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-#ifndef  AO2MOTRANSFORMER_H_
+#ifndef AO2MOTRANSFORMER_H_
 #define AO2MOTRANSFORMER_H_
 
 /* Include Serenity Internal Headers */
@@ -27,7 +27,6 @@
 #include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <memory>
-
 
 namespace Serenity {
 using namespace std;
@@ -46,7 +45,7 @@ using namespace std;
  *        This class provides efficient objects to transform from AO to MO basis .
  */
 class Ao2MoTransformer {
-public:
+ public:
   Ao2MoTransformer(std::shared_ptr<BasisController> basisController);
   virtual ~Ao2MoTransformer() = default;
 
@@ -69,10 +68,8 @@ public:
    *                             \f]
    *                             This expression scales with \f$ N^8 \f$, but can be rewritten as
    *                             \f[
-   *                             \left(\mu \nu | \lambda l \right) = \sum_\sigma  c_{\sigma l} \left(\mu \nu | \lambda \sigma \right)
-   *                             \f]
-   *                             \f[
-   *                             \left(\mu \nu | k l \right) = \sum_\lambda  c_{\lambda k} \left(\mu \nu | \lambda l \right)
+   *                             \left(\mu \nu | \lambda l \right) = \sum_\sigma  c_{\sigma l} \left(\mu \nu | \lambda
+   * \sigma \right) \f] \f[ \left(\mu \nu | k l \right) = \sum_\lambda  c_{\lambda k} \left(\mu \nu | \lambda l \right)
    *                             \f]
    *                             \f[
    *                             \left(\mu j | k l \right) = \sum_\nu  c_{\nu j} \left(\mu \nu | k l \right)
@@ -83,17 +80,12 @@ public:
    *                             where each sum scales with \f$N^5 \f$.
    *                             The transformation is parallelized over the first loop, respectively.
    */
-  void transformTwoElectronIntegrals(
-      RegularRankFourTensor<double>& twoElectronIntegrals,
-      RegularRankFourTensor<double>& result,
-      const Eigen::MatrixXd coefficients,
-      const unsigned int& nOrbitals);
+  void transformTwoElectronIntegrals(RegularRankFourTensor<double>& twoElectronIntegrals, RegularRankFourTensor<double>& result,
+                                     const Eigen::MatrixXd coefficients, const unsigned int& nOrbitals);
 
-private:
-
+ private:
   unsigned int _nBasisFunc;
-
 };
 
-}
+} // namespace Serenity
 #endif /* AO2MOTRANSFORMER_H_ */

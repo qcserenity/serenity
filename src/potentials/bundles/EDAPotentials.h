@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -31,8 +31,10 @@ namespace Serenity {
 
 /* forward declarations */
 class SystemController;
-template<Options::SCF_MODES SCFMode>class HCorePotential;
-template<Options::SCF_MODES SCFMode>class HFPotential;
+template<Options::SCF_MODES SCFMode>
+class HCorePotential;
+template<Options::SCF_MODES SCFMode>
+class ERIPotential;
 
 /**
  * @class EDAEnergyContributions EDAPotentials.h
@@ -43,7 +45,7 @@ template<Options::SCF_MODES SCFMode>class HFPotential;
  * by Kitaura and Morokuma:\n
  * K. Kitaura and K. Morokuma, Int. J. Quantum Chem. 10, 325 (1976)
  */
-enum class EDAEnergyContributions {ES, ESX, ESXCT, ESXPLX, ESPL, ESXEX};
+enum class EDAEnergyContributions { ES, ESX, ESXCT, ESXPLX, ESPL, ESXEX };
 /**
  * @class EDAPotentials EDAPotentials.h
  * @brief A class containing only a single potential. Currently used for EDA calculations.
@@ -52,31 +54,29 @@ enum class EDAEnergyContributions {ES, ESX, ESXCT, ESXPLX, ESPL, ESXEX};
  * is manipulated. This is done in the MO-(Monomer) basis of the fock matrix by setting specific blocks
  * of the matrix to 0. Then the SCF calculation is performed with the constrained fock matrix.
  *
- * In this class the fock matrix is constrained according to the block selection. Thus, the transformation matrices for the transformation
- * between MO-(Monomer) and AO basis are prepared in the constructor. In the actual fock matrix calculation, the unconstrained fock matrix
- * is transformed into the MO-(Monomer) basis, the blocks are selected and than the matrix is transformed back into the AO basis.
- * The actual SCF calculation is performed in the EDATask (tasks/EDATask.h/.cpp)
+ * In this class the fock matrix is constrained according to the block selection. Thus, the transformation matrices for
+ * the transformation between MO-(Monomer) and AO basis are prepared in the constructor. In the actual fock matrix
+ * calculation, the unconstrained fock matrix is transformed into the MO-(Monomer) basis, the blocks are selected and
+ * than the matrix is transformed back into the AO basis. The actual SCF calculation is performed in the EDATask
+ * (tasks/EDATask.h/.cpp)
  *
  * Ref: Kitaura-Morokuma : K. Kitaura and K. Morokuma, Int. J. Quantum Chem. 10, 325 (1976)
  */
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 class EDAPotentials : public PotentialBundle<SCFMode> {
-public:
+ public:
   /**
    * @brief The constructor.
    * @param systemA The first system.
    * @param systemB The second system.
    * @param super The supersystem (expected to be unoptimized).
    */
-  EDAPotentials(
-      std::shared_ptr<SystemController> systemA ,
-      std::shared_ptr<SystemController> systemB ,
-      std::shared_ptr<SystemController> super,
-      EDAEnergyContributions contribution);
+  EDAPotentials(std::shared_ptr<SystemController> systemA, std::shared_ptr<SystemController> systemB,
+                std::shared_ptr<SystemController> super, EDAEnergyContributions contribution);
   /**
    * @brief Default destructor.
    */
-  virtual ~EDAPotentials()=default;
+  virtual ~EDAPotentials() = default;
 
   /**
    * @brief A function to get the entire fock matrix.
@@ -88,7 +88,7 @@ public:
    *          together in every call)
    */
   FockMatrix<SCFMode> getFockMatrix(const DensityMatrix<SCFMode>& P,
-      std::shared_ptr<EnergyComponentController> energies) override final;
+                                    std::shared_ptr<EnergyComponentController> energies) override final;
 
   /**
    * @brief Dummy function, which leads to an error.
@@ -100,10 +100,11 @@ public:
    * @brief Get the energy contribution calculated.
    * @return Returns the calculated energy contribution.
    */
-  double getEDAEnergyContribution(){
+  double getEDAEnergyContribution() {
     return _EDAEnergy;
   }
-private:
+
+ private:
   /// @brief The first system.
   std::shared_ptr<SystemController> _a;
   /// @brief The second system.
@@ -125,17 +126,14 @@ private:
    * @param matrix the matrix in which blocks are zeroed (for each spin)
    * @param x The choice in x, can be: "ESX + EX", "ESX + CT", "ESX + PLX", "ESX".
    */
-  void setBlocksZero(
-      MatrixInBasis<SCFMode>& matrix,
-      EDAEnergyContributions x);
+  void setBlocksZero(MatrixInBasis<SCFMode>& matrix, EDAEnergyContributions x);
 
   ///@brief The H core potential contribtution.
-  std::shared_ptr<HCorePotential<SCFMode> > _hcorepot;
+  std::shared_ptr<HCorePotential<SCFMode>> _hcorepot;
   ///@brief The Hartree-Fock potential contribution.
-  std::shared_ptr<HFPotential<SCFMode> > _hfpot;
+  std::shared_ptr<ERIPotential<SCFMode>> _hfpot;
   ///@brief The EDA energy contribution calculated with this potential.
   EDAEnergyContributions _energyContr;
-
 };
 
 } /* namespace Serenity */

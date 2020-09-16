@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,28 +22,23 @@
 #define POSTSCF_ANALYSIS_HIRSHFELDPOPULATIONCALCULATOR_H_
 
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
-#include "data/SpinPolarizedData.h"
-#include "data/matrices/FockMatrix.h"
-#include "data/matrices/DensityMatrix.h"
-#include "data/grid/DensityOnGridController.h"
 #include "data/grid/DensityOnGrid.h"
+#include "data/matrices/DensityMatrix.h"
 /* Include Std and External Headers */
-#include <Eigen/Dense>
-#include <memory>
-#include <utility>
-#include <vector>
 
 namespace Serenity {
 /* Forward declarations */
 
-template<Options::SCF_MODES SCFMode> class DensityMatrixController;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
+template<Options::SCF_MODES SCFMode>
+class DensityOnGridController;
 
 class SystemController;
 /**
  * @class HirshfeldPopulationCalculator HirshfeldPopulationCalculator.h
  * @brief A class for the calculation of the Hirshfeld population.
- * 
+ *
  * The Hirshfeld population analysis is a grid-based tool. Based on atomic
  * reference densities the grid points are weighted and the molecular density
  * of each point is assigned to certain atoms based on these weights. After
@@ -68,8 +63,8 @@ class SystemController;
  *
  */
 template<Options::SCF_MODES SCFMode>
-class HirshfeldPopulationCalculator : public ObjectSensitiveClass<DensityOnGrid<SCFMode> >{
-public:
+class HirshfeldPopulationCalculator : public ObjectSensitiveClass<DensityOnGrid<SCFMode>> {
+ public:
   /**
    * @brief Constructor
    * @param systemController The SystemController of the system to be calculated.
@@ -78,14 +73,14 @@ public:
   HirshfeldPopulationCalculator(std::shared_ptr<SystemController> systemController,
                                 std::shared_ptr<DensityOnGridController<SCFMode>> densOnGrid);
   ///@brief Default destructor.
-  virtual ~HirshfeldPopulationCalculator()=default;
+  virtual ~HirshfeldPopulationCalculator() = default;
 
   /**
    * @brief Calculates the atom populations (if necessary) and returns them
    * @return The atom populations.
    */
-  const Eigen::VectorXd& getAtomPopulations(){
-    if(!_atomPopulations){
+  const Eigen::VectorXd& getAtomPopulations() {
+    if (!_atomPopulations) {
       calculateHirshfeldAtomPopulations();
     }
     return *_atomPopulations;
@@ -96,12 +91,11 @@ public:
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final{
+  void notify() override final {
     _atomPopulations.reset(nullptr);
   }
 
-private:
-
+ private:
   /*
    * The actual calculation is implemented here.
    */
@@ -111,8 +105,6 @@ private:
   std::shared_ptr<DensityOnGridController<SCFMode>> _densOnGrid;
   std::shared_ptr<BasisController> _basis;
   std::unique_ptr<Eigen::VectorXd> _atomPopulations;
-
-
 };
-}
+} // namespace Serenity
 #endif /* POSTSCF_ANALYSIS_HIRSHFELDPOPULATIONCALCULATOR_H_ */

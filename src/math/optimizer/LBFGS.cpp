@@ -6,52 +6,45 @@
  *  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
+
 /* Include Class Header*/
 #include "math/optimizer/LBFGS.h"
 /* Include Serenity Internal Headers */
-#include "math/VectorMaths.h"
-/* Include Std and External Headers */
-#include <algorithm>
-#include <iostream>
-#include <stdexcept>
 
+/* Include Std and External Headers */
 
 namespace Serenity {
-using namespace std;
 
-LBFGS::LBFGS(Eigen::VectorXd& parameters) :
-          Optimizer(parameters){
+LBFGS::LBFGS(Eigen::VectorXd& parameters) : Optimizer(parameters) {
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter" // value is ignored -> not needed
-void LBFGS::optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&,std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>updateFunction)  {
-
+void LBFGS::optimize(
+    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
   /* maxm might need some tweaking */
   constexpr unsigned int maxm = 50;
 
   /* steplength for initial steepest descent step */
-  double stepLength=1.0;
+  double stepLength = 1.0;
   /* number of parameters treated */
-  unsigned int nParams=this->_parameters.size();
+  unsigned int nParams = this->_parameters.size();
   double value;
   unsigned int m = 0;
-  bool converged=false;
+  bool converged = false;
 
-  Eigen::MatrixXd dg(nParams,maxm);
+  Eigen::MatrixXd dg(nParams, maxm);
   dg.setZero();
-  Eigen::MatrixXd dx(nParams,maxm);
+  Eigen::MatrixXd dx(nParams, maxm);
   dx.setZero();
 
   /* Setting all old gradients to zero. */
@@ -64,55 +57,55 @@ void LBFGS::optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::
   Eigen::VectorXd parametersOld(nParams);
   parametersOld = this->_parameters;
 
-  converged=updateFunction(this->_parameters,value,gradients,nullptr,true);
+  converged = updateFunction(this->_parameters, value, gradients, nullptr, true);
 
-  Eigen::VectorXd stepVector=0.1*gradients;
-  while(true){
-    if(converged)break;
+  Eigen::VectorXd stepVector = 0.1 * gradients;
+  while (true) {
+    if (converged)
+      break;
     /* Assign the (now) old parameter values to the private variables. */
     parametersOld = this->_parameters;
     /* Assign the old gradient values to the private variables. */
     gradientsOld = gradients;
-    this->_parameters -= stepLength*stepVector;
-    converged=updateFunction(this->_parameters,value,gradients,nullptr,true);
-    stepVector=gradients;
-    if (m<maxm){
-      dg.col(m) = gradients-gradientsOld;
-      dx.col(m) = this->_parameters-parametersOld;
+    this->_parameters -= stepLength * stepVector;
+    converged = updateFunction(this->_parameters, value, gradients, nullptr, true);
+    stepVector = gradients;
+    if (m < maxm) {
+      dg.col(m) = gradients - gradientsOld;
+      dx.col(m) = this->_parameters - parametersOld;
       ++m;
-    } else {
-      dg.leftCols(maxm-1) = dg.rightCols(maxm-1);
-      dx.leftCols(maxm-1) = dx.rightCols(maxm-1);
-      dg.col(maxm-1) = gradients-gradientsOld;
-      dx.col(maxm-1) = this->_parameters-parametersOld;
     }
-    //L-BFGS update
+    else {
+      dg.leftCols(maxm - 1) = dg.rightCols(maxm - 1);
+      dx.leftCols(maxm - 1) = dx.rightCols(maxm - 1);
+      dg.col(maxm - 1) = gradients - gradientsOld;
+      dx.col(maxm - 1) = this->_parameters - parametersOld;
+    }
+    // L-BFGS update
     Eigen::VectorXd alpha(m);
-    for (int i=m-1;i>-1;--i){
-      double dxDotdg=dx.col(i).dot(dg.col(i));
-      if(dxDotdg<1.0e-3){
-        alpha[i] = dx.col(i).dot(stepVector)/1.0e-3;
-      }else{
-        alpha[i] = dx.col(i).dot(stepVector)/dxDotdg;
+    for (int i = m - 1; i > -1; --i) {
+      double dxDotdg = dx.col(i).dot(dg.col(i));
+      if (dxDotdg < 1.0e-3) {
+        alpha[i] = dx.col(i).dot(stepVector) / 1.0e-3;
       }
-      stepVector -= alpha[i]*dg.col(i);
+      else {
+        alpha[i] = dx.col(i).dot(stepVector) / dxDotdg;
+      }
+      stepVector -= alpha[i] * dg.col(i);
     }
-    stepVector *= dx.col(m-1).dot(dg.col(m-1))/dg.col(m-1).dot(dg.col(m-1));
-    for (unsigned int i=0;i<m;++i){
-      double dxDotdg=dx.col(i).dot(dg.col(i));
+    stepVector *= dx.col(m - 1).dot(dg.col(m - 1)) / dg.col(m - 1).dot(dg.col(m - 1));
+    for (unsigned int i = 0; i < m; ++i) {
+      double dxDotdg = dx.col(i).dot(dg.col(i));
       double beta = dg.col(i).dot(stepVector);
-          if(dxDotdg<1.0e-3){
-            beta/=1.0e-3;
-          }else{
-            beta/=dx.col(i).dot(dg.col(i));
-          }
-      stepVector += dx.col(i)*(alpha[i]-beta);
+      if (dxDotdg < 1.0e-3) {
+        beta /= 1.0e-3;
+      }
+      else {
+        beta /= dx.col(i).dot(dg.col(i));
+      }
+      stepVector += dx.col(i) * (alpha[i] - beta);
     }
-
   }
-
 }
-#pragma GCC diagnostic pop // "-Wunused-parameter"
-
 
 } /* namespace Serenity */

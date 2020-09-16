@@ -22,40 +22,39 @@ Contribute to Serenity
 ## Contributor License Agreement
 By submitting code as an individual you agree to the usage and sharing of
 that code under the GNU L-GPLv3 as provided in the LICENSE file.
-In addition to this please read the the section:
+If you are a developer, in addition to this please read the the section:
 [Who Can Use My Unpublished Algorithms](#who-can-use-my-unpublished-algorithms)
 
 ## Access
 While this code is intended to be open source we are aware that peoples academic careers might be 
 intertwined with the code they add to this project.
 The intention here is obviously for everyone to publish their own algorithms/methods before handing
-it to other people.
-For this reason the developers git repository is not open to everyone, and the acces to everyones 
-branches including upublished work is restricted.  
-Users of the code will are kindly asked to use the release versions hosted on GitHub:  
-https://github.com/qcserenity/serenity  
+them to other people.
+For this reason the developers git repository is not open to everyone.  
+General users of the code are kindly asked to use the release versions hosted on
+[GitHub](https://github.com/qcserenity/serenity).
 Every developer will be invited and given access to the developers repository and thus be able to clone 
 the entire repository with all branches.
 
 ## Who Can Use My Unpublished Algorithms
+
+This section pertains only to code that is still exclusively present in the closed developer repository.
+
 The general rule is that all changes merged into the `master` are free to be used by any developer.
 They are considered ready for release, and ready for production tests.
-Thus using them for publications would be allowed.
-We would however like to ask patience until they are released in order to be referenced with a 
-version number.  
-The usage of algorithms under development in un-merged branches for publication should thus be off 
+The usage of algorithms under development in un-merged branches for publication should be off 
 limits unless agreed upon by the developing person(s).  
 Infringement of this last point can and will result in a permanent removal from the projects development team.  
 Additionally the citation of key publications in reference with Serenity is mandatory.
 
 ## Issue Tracker and Feature Requests
-Search the issue tracker for similar entries before submitting your own, please.
+Search the issue tracker for similar entries before submitting your own.
 Use apropriate labels please.
-Please keep feature proposals as small and simple as possible, complex ones might be edited to make them small and simple.
+Keep feature proposals as small and simple as possible, complex ones might be edited to make them small and simple.
 Obviously some features need chunks of new code please use tasks to break down bigger feature proposals.
 
 ## Merge Requests
-In general all improvements to the code are welcome, however in order to get your
+In general all improvements to the code are welcome, however, in order to get your
 merge request accepted please read the following sections carefully.
 
 ### Contribution Acceptance Criteria
@@ -64,16 +63,17 @@ Your merge will be accepted if you:
 1. Include proper tests and make all tests pass (unless it contains a test
    exposing a bug in existing code). In general, every new class or function 
    should have sensible, corresponding unit tests.
-2. If you suspect a failing CI build is unrelated to your contribution, you may
-   try and restart the failing CI job or ask another developer to help out.
+2. If you suspect a failing test is unrelated to your contribution, please ask about it.
 3. Make sure your changes can merge without problems (otherwisese, merge the
-   current `master` branch back into your branch)
-4. Do not break any existing functionality
+   current `master` branch back into your branch).
+4. Do not break any existing functionality.
 5. Keep the Serenity code base clean and well structured
-6. Conformsto the [Code and Style Guidelines](#code-and-style-guidelines)
+   There is a simple bash script that can format the code using `clang-format`.
+   It is located under `dev/scripts/apply_formatting.sh`.
+6. Conform to the [Code and Style Guidelines](#code-and-style-guidelines)
 7. Have reasonable documentation, if we cant get what you did by looking at the
-   documentation, "You shall not pass!"
-8. Give your self credit, add a Changelog entry if it is more than a 'one-line' bug fix
+   documentation, "You shall not pass!".
+8. Give your self credit, add a Changelog entry if it is more than a 'one-line' bug fix.
 
 ## Code and Style Guidelines
   

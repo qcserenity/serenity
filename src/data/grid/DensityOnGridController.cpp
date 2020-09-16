@@ -1,19 +1,19 @@
 /**
  * @file   DensityOnGridController.cpp
  * @author Thomas Dresselhaus
- * 
+ *
  * @date   22. November 2014, 10:55
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,15 +24,15 @@
 /* Include Std and External Headers */
 #include <cassert>
 
-
 namespace Serenity {
 
-template<Options::SCF_MODES T>DensityOnGridController<T>::DensityOnGridController(
-      std::shared_ptr<GridController> gridController, const unsigned int highestDerivative) :
-    _gridController(gridController),
+template<Options::SCF_MODES T>
+DensityOnGridController<T>::DensityOnGridController(std::shared_ptr<GridController> gridController,
+                                                    const unsigned int highestDerivative)
+  : _gridController(gridController),
     _highestDerivative(highestDerivative),
     _nGridPoints(gridController->getNGridPoints()),
-    _upToDate(false){
+    _upToDate(false) {
   assert(_gridController);
   _gridController->addSensitiveObject(this->_self);
 }
@@ -42,34 +42,7 @@ unsigned int DensityOnGridController<T>::getNGridPoints() const {
   return _gridController->getNGridPoints();
 }
 
-template<> void DensityOnGridController<Options::SCF_MODES::RESTRICTED>::screen(double th) {
-  assert(th < 1.0e-4 && th >= 0.0);
-  for (unsigned int iPoint = 0; iPoint < _gridController->getNGridPoints(); ++iPoint) {
-    if ((*_densityOnGrid)[iPoint] < th) {
-      (*_densityOnGrid)[iPoint] = 0.0;
-      if (_densityGradientOnGrid) {
-        (*_densityGradientOnGrid).x[iPoint] = 0.0;
-        (*_densityGradientOnGrid).y[iPoint] = 0.0;
-        (*_densityGradientOnGrid).z[iPoint] = 0.0;
-      }
-      if (_densityHessianOnGrid) {
-        (*_densityHessianOnGrid).xx[iPoint]=0.0;
-        (*_densityHessianOnGrid).xy[iPoint]=0.0;
-        (*_densityHessianOnGrid).xz[iPoint]=0.0;
-        (*_densityHessianOnGrid).yy[iPoint]=0.0;
-        (*_densityHessianOnGrid).yz[iPoint]=0.0;
-        (*_densityHessianOnGrid).zz[iPoint]=0.0;
-      }
-    }
-  }
-}
-
-template<> void DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>::screen(double th) {
-  (void) th;
-}
-
-
 template class DensityOnGridController<Options::SCF_MODES::RESTRICTED>;
 template class DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>;
 
-} /* Serenity */
+} // namespace Serenity

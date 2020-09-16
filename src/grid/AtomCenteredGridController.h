@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,7 +22,6 @@
 /* Include Serenity Internal Headers */
 #include "grid/GridController.h"
 #include "notification/ObjectSensitiveClass.h"
-
 
 namespace Serenity {
 /* Forward declarations */
@@ -39,15 +38,15 @@ class AtomCenteredGrid;
  * is not up to date any more because an atom was moved).
  */
 class AtomCenteredGridController : public GridController, ObjectSensitiveClass<Atom> {
-public:
+ public:
   /**
    * @brief Creates a grid with the given tools which it will then manage.
-   * @param geometry
-   * @param gridFactory
+   * @param geometry The geometry of the System the grid shall be constructed for
+   * @param gridFactory The GridFactory producing the AtomCenteredGrid
+   * @param gridPointSorting Specifies whether the HilbertRTreeSorting of the grid points shall be performed or not.
    */
-  AtomCenteredGridController(
-      std::shared_ptr<const Geometry> geometry,
-      std::shared_ptr<GridFactory> gridFactory);
+  AtomCenteredGridController(std::shared_ptr<const Geometry> geometry, std::shared_ptr<GridFactory> gridFactory,
+                             const bool gridPointSorting);
 
   virtual ~AtomCenteredGridController() = default;
 
@@ -60,11 +59,12 @@ public:
 
   void notify() override final;
 
-private:
+ private:
   void produceGrid() override final;
 
   const std::shared_ptr<const Geometry> _geometry;
   const std::shared_ptr<GridFactory> _gridFactory;
+  const bool _gridPointSorting;
 };
 
 } // namespace Serenity

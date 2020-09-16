@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,6 +23,7 @@
 #include "data/SpinPolarizedData.h"
 #include "parameters/Constants.h"
 /* Include Std and External Headers */
+#include <cassert>
 #include <map>
 #include <string>
 #include <vector>
@@ -44,9 +45,12 @@ class AtomType {
    *                      (the resulting nuclear charge will be zero though)
    * @param mass
    * @param braggSlaterRadius is needed for grid setups
-   * @param occupations
+   * @param vanDerWaalsRadius The van der Waals radius.
+   * @param uffRadius The UFF radius.
+   * @param occupations Isolated atom occupations.
+   * @param isDummy Flag for dummy atom types.
    */
-  AtomType(std::string name, int nuclearCharge, double mass, double braggSlaterRadius, double vanDerWaalsRadius,
+  AtomType(std::string name, int nuclearCharge, double mass, double braggSlaterRadius, double vanDerWaalsRadius, double uffRadius,
            const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations, const bool isDummy = false);
   virtual ~AtomType() = default;
   /// @returns the atom's mass, i.e. the mass of the selected isotope (no average), in u (g/mol)
@@ -71,6 +75,8 @@ class AtomType {
   double getBraggSlaterRadius() const;
   /// @returns this atom type's Van der Waals radius
   double getVanDerWaalsRadius() const;
+  /// @returns this atom type's UFF radius
+  double getUFFRadius() const;
   /**
    * @brief Dummy check.
    * @return Returns true if the atom type is a dummy atom.
@@ -123,6 +129,7 @@ class AtomType {
   const double _mass;
   const double _braggSlaterRadius;
   const double _vanDerWaalsRadius;
+  const double _uffRadius;
   const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> _occupations;
   const bool _isDummy;
 };

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -25,20 +25,21 @@
 #include "misc/HelperFunctions.h"
 #include "misc/Timing.h"
 /* Include Std and External Headers */
+#include <Eigen/SparseCore>
 #include <cassert>
 #include <cmath>
-#include <Eigen/SparseCore>
 
 namespace Serenity {
 /*********************************************************************************
  * Actual (private) calculation method                                           *
  * According to: O. Treutler and R. Ahlrichs, J. Chem. Phys (1995), 102, 346     *
  *********************************************************************************/
-void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference_wrapper<const Eigen::MatrixXd>>& matrices,
-                                                BasisFunctionOnGridController& basisFunctionOnGridController,
-                                                std::vector<std::reference_wrapper<Eigen::VectorXd>>& results,
-                                                std::vector<Gradient<std::reference_wrapper<Eigen::VectorXd>>>* resultGradientsPtr,
-                                                std::vector<Hessian<std::reference_wrapper<Eigen::VectorXd>>>* resultHessiansPtr) {
+Eigen::SparseVector<int>
+MatrixOperatorToGridTransformer::transform(const std::vector<std::reference_wrapper<const Eigen::MatrixXd>>& matrices,
+                                           BasisFunctionOnGridController& basisFunctionOnGridController,
+                                           std::vector<std::reference_wrapper<Eigen::VectorXd>>& results,
+                                           std::vector<Gradient<std::reference_wrapper<Eigen::VectorXd>>>* resultGradientsPtr,
+                                           std::vector<Hessian<std::reference_wrapper<Eigen::VectorXd>>>* resultHessiansPtr) {
   /*
    * Some comments and variables below are written for the density, as this is what the referenced
    * paper is about. Don't be irritated by this.
@@ -69,12 +70,14 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
   for (auto& result : results) {
     if (result.get().size() != nPoints)
       result.get().resize(nPoints);
+    result.get().setZero();
   }
   if (resultGradientsPtr) {
     for (auto& grad : *resultGradientsPtr) {
       for (auto& component : grad) {
         if (component.get().size() != nPoints)
           component.get().resize(nPoints);
+        component.get().setZero();
       }
     }
   }
@@ -83,6 +86,7 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
       for (auto& component : hess) {
         if (component.get().size() != nPoints)
           component.get().resize(nPoints);
+        component.get().setZero();
       }
     }
   }
@@ -90,7 +94,12 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
    * Loop over blocks of grid points
    */
   const unsigned int nBlocks = basisFunctionOnGridController.getNBlocks();
-  ;
+  unsigned int nThreads = 1;
+#ifdef _OPENMP
+  nThreads = omp_get_max_threads();
+#endif
+  std::vector<Eigen::Triplet<int>> newVec;
+  std::vector<std::vector<Eigen::Triplet<int>>> nonNegligibleBlocks(nThreads, newVec);
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int blockNumber = 0; blockNumber < nBlocks; ++blockNumber) {
     /*
@@ -105,6 +114,16 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
      * are extremely fast.
      */
     const Eigen::SparseMatrix<double> projection = constructProjectionMatrix(thisBlockData->negligible);
+    if (projection.nonZeros() > 0) {
+      unsigned int threadID = 0;
+#ifdef _OPENMP
+      threadID = omp_get_thread_num();
+#endif
+      nonNegligibleBlocks[threadID].push_back(Eigen::Triplet<int>(blockNumber, 0, 1));
+    }
+    else {
+      continue;
+    }
 
     /*
      * Product of a basis function value on a grid point with the corresponding entries in the
@@ -119,11 +138,11 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
     Eigen::MatrixXd signGradX;
     Eigen::MatrixXd signGradY;
     Eigen::MatrixXd signGradZ;
-    if (resultGradientsPtr||resultHessiansPtr) {
+    if (resultGradientsPtr || resultHessiansPtr) {
       signGradX = thisBlockData->derivativeValues->x * projection;
       signGradY = thisBlockData->derivativeValues->y * projection;
       signGradZ = thisBlockData->derivativeValues->z * projection;
-    }// if resultGradientsPtr||resultHessiansPtr
+    } // if resultGradientsPtr||resultHessiansPtr
 
     /*
      * Loop over data sets
@@ -134,20 +153,15 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
        */
       const auto& thisMatrix = matrices[i].get();
       auto& thisResults = results[i].get();
-
       const Eigen::MatrixXd signMatrix = projection.transpose() * thisMatrix * projection;
       const Eigen::MatrixXd basis_P = sigFunctionValues * signMatrix;
-      thisResults.segment(blockFirstIndex,blockSize) =
-          (basis_P.array() * sigFunctionValues.array()).rowwise().sum();
+      thisResults.segment(blockFirstIndex, blockSize) = (basis_P.array() * sigFunctionValues.array()).rowwise().sum();
       if (resultGradientsPtr) {
         auto& grad = (*resultGradientsPtr)[i];
-        grad.x.get().segment(blockFirstIndex,blockSize) =
-            2.0 * (basis_P.array() * signGradX.array()).rowwise().sum();
-        grad.y.get().segment(blockFirstIndex,blockSize) =
-            2.0 * (basis_P.array() * signGradY.array()).rowwise().sum();
-        grad.z.get().segment(blockFirstIndex,blockSize) =
-            2.0 * (basis_P.array() * signGradZ.array()).rowwise().sum();
-      }//  if resultGradientsPtr
+        grad.x.get().segment(blockFirstIndex, blockSize) = 2.0 * (basis_P.array() * signGradX.array()).rowwise().sum();
+        grad.y.get().segment(blockFirstIndex, blockSize) = 2.0 * (basis_P.array() * signGradY.array()).rowwise().sum();
+        grad.z.get().segment(blockFirstIndex, blockSize) = 2.0 * (basis_P.array() * signGradZ.array()).rowwise().sum();
+      } //  if resultGradientsPtr
       if (resultHessiansPtr) {
         auto& hess = (*resultHessiansPtr)[i];
         const Eigen::MatrixXd signHessXX = thisBlockData->secondDerivativeValues->xx * projection;
@@ -159,21 +173,28 @@ void MatrixOperatorToGridTransformer::transform(const std::vector<std::reference
         const Eigen::MatrixXd grad_mat_x = signGradX * signMatrix;
         const Eigen::MatrixXd grad_mat_y = signGradY * signMatrix;
         const Eigen::MatrixXd grad_mat_z = signGradZ * signMatrix;
-        hess.xx.get().segment(blockFirstIndex,blockSize) =
+        hess.xx.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessXX.array() + grad_mat_x.array() * signGradX.array()).rowwise().sum();
-        hess.xy.get().segment(blockFirstIndex,blockSize) =
+        hess.xy.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessXY.array() + grad_mat_x.array() * signGradY.array()).rowwise().sum();
-        hess.xz.get().segment(blockFirstIndex,blockSize) =
+        hess.xz.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessXZ.array() + grad_mat_x.array() * signGradZ.array()).rowwise().sum();
-        hess.yy.get().segment(blockFirstIndex,blockSize) =
+        hess.yy.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessYY.array() + grad_mat_y.array() * signGradY.array()).rowwise().sum();
-        hess.yz.get().segment(blockFirstIndex,blockSize) =
+        hess.yz.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessYZ.array() + grad_mat_y.array() * signGradZ.array()).rowwise().sum();
-        hess.zz.get().segment(blockFirstIndex,blockSize) =
+        hess.zz.get().segment(blockFirstIndex, blockSize) =
             2.0 * (basis_P.array() * signHessZZ.array() + grad_mat_z.array() * signGradZ.array()).rowwise().sum();
-      }// if resultHessiansPtr
-    } /*Data*/
-  }   /*Block*/
+      } // if resultHessiansPtr
+    }   /*Data*/
+  }     /*Block*/
+  std::vector<Eigen::Triplet<int>> finalTripletSet = nonNegligibleBlocks[0];
+  for (unsigned int iThread = 1; iThread < nonNegligibleBlocks.size(); ++iThread) {
+    finalTripletSet.insert(finalTripletSet.end(), nonNegligibleBlocks[iThread].begin(), nonNegligibleBlocks[iThread].end());
+  }
+  Eigen::SparseMatrix<int> sparseBlocks(nBlocks, 1);
+  sparseBlocks.setFromTriplets(finalTripletSet.begin(), finalTripletSet.end());
+  return sparseBlocks.col(0);
 }
 
 } /* namespace Serenity */

@@ -6,23 +6,23 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef GRIDDATA_H
-#define	GRIDDATA_H
+#define GRIDDATA_H
 /* Include Serenity Internal Headers */
+#include "data/SpinPolarizedData.h"
 #include "grid/GridController.h"
 #include "notification/ObjectSensitiveClass.h"
-#include "data/SpinPolarizedData.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -34,7 +34,7 @@ class Grid;
  * @brief little helper function to easily assert that two objects are defined on the same integration grid
  *
  * This function should not only be used for data which are defined on an integration grid, but
- * also for functionalities which work with a certain grid. 
+ * also for functionalities which work with a certain grid.
  *
  * @param t
  * @param u
@@ -62,36 +62,34 @@ inline bool isDefinedOnSameGrid(const T& t, const U& u) {
  * myGridData[1] = 4.56;\n
  * // Loop over all elements\n
  * for (auto& dataPoint : myGridData) dataPoint *= 2;\n
- * 
+ *
  * // At a point in time which may be long after the construction\n
  * // Either (e.g. if you only want to read data)\n
  * assert(myGridData.isValid());\n
  * // Or (if you recalculate all the data)\n
  * myGridData.init();
  */
-template<Options::SCF_MODES SCFMode> class GridData;
+template<Options::SCF_MODES SCFMode>
+class GridData;
 
 template<>
-class GridData<Options::SCF_MODES::RESTRICTED> :
-                                                 public Eigen::VectorXd,
-                                                 public ObjectSensitiveClass<Grid> {
-public:
+class GridData<Options::SCF_MODES::RESTRICTED> : public Eigen::VectorXd, public ObjectSensitiveClass<Grid> {
+ public:
   /**
    * @brief Constructor
    * @param gridController The grid this data is defined on.
    */
-  GridData(std::shared_ptr<GridController> gridController) :
-      Eigen::VectorXd(gridController->getNGridPoints()),
-      _gridController(gridController),
-      _valid(true){
+  GridData(std::shared_ptr<GridController> gridController)
+    : Eigen::VectorXd(gridController->getNGridPoints()), _gridController(gridController), _valid(true) {
     unsigned int nPoints = gridController->getNGridPoints();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->segment(start,n).setZero();
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->segment(start, n).setZero();
     }
     assert(_gridController);
   }
@@ -100,18 +98,14 @@ public:
   /**
    * @brief Explicit copy constructor to avoid unintentional copying
    */
-  inline GridData<RESTRICTED>(const GridData<RESTRICTED>& orig) :
-      Eigen::VectorXd( Eigen::VectorXd(orig)),
-      _gridController(orig.getGridController()),
-      _valid(true){
+  inline GridData<RESTRICTED>(const GridData<RESTRICTED>& orig)
+    : Eigen::VectorXd(Eigen::VectorXd(orig)), _gridController(orig.getGridController()), _valid(true) {
   }
   /**
    * @brief Move constructor
    */
-  inline GridData<RESTRICTED>(GridData<RESTRICTED>&& orig) :
-      Eigen::VectorXd(Eigen::VectorXd(orig)),
-      _gridController(orig.getGridController()),
-      _valid(true){
+  inline GridData<RESTRICTED>(GridData<RESTRICTED>&& orig)
+    : Eigen::VectorXd(Eigen::VectorXd(orig)), _gridController(orig.getGridController()), _valid(true) {
   }
   /**
    * @returns the controller for the basis in which this matrix is defined.
@@ -130,14 +124,14 @@ public:
    * @brief Total data.
    * @return Returns the sum of alpha an beta..
    */
-  inline GridData<RESTRICTED> total() const{
+  inline GridData<RESTRICTED> total() const {
     return *this;
   }
   /**
    * @brief Difference between alpha and beta.
    * @return Returns the difference of between alpha and beta (alpha-beta).
    */
-  inline GridData<RESTRICTED> difference() const{
+  inline GridData<RESTRICTED> difference() const {
     GridData<RESTRICTED> ret(*this);
     ret.setZero();
     return ret;
@@ -149,10 +143,11 @@ public:
     return _valid;
   }
   /// @brief See ObjectSensitveClass.
-  virtual void notify(){
-    _valid=false;
+  virtual void notify() {
+    _valid = false;
   }
-private:
+
+ private:
   std::shared_ptr<GridController> _gridController;
 
   /*
@@ -165,86 +160,90 @@ private:
    *
    * - JU
    */
-public:
+ public:
   // Operator overloads for other GridData objects
   /// @brief Assignement operator.
-  inline GridData<RESTRICTED>& operator=(const GridData<RESTRICTED>& other){
-    if (other.getGridController()) assert(other.getGridController()==_gridController);
+  inline GridData<RESTRICTED>& operator=(const GridData<RESTRICTED>& other) {
+    if (other.getGridController())
+      assert(other.getGridController() == _gridController);
     this->Base::operator=(other);
     return *this;
   }
   /// @brief Move assignement operator.
-  inline GridData<RESTRICTED>& operator=(GridData<RESTRICTED>&& other){
-    if (other.getGridController())assert(other.getGridController()==_gridController);
+  inline GridData<RESTRICTED>& operator=(GridData<RESTRICTED>&& other) {
+    if (other.getGridController())
+      assert(other.getGridController() == _gridController);
     this->Base::operator=(other);
     return *this;
   }
-  inline void operator+= (const GridData<RESTRICTED>& other) {
-    assert(_gridController==other.getGridController());
-    unsigned int nPoints =  this->size();
+  inline void operator+=(const GridData<RESTRICTED>& other) {
+    assert(_gridController == other.getGridController());
+    unsigned int nPoints = this->size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->segment(start,n) += other.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->segment(start, n) += other.segment(start, n);
     }
   }
-  inline void operator+= (const Eigen::VectorXd& other) {
-    unsigned int nPoints =  this->size();
+  inline void operator+=(const Eigen::VectorXd& other) {
+    unsigned int nPoints = this->size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->segment(start,n) += other.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->segment(start, n) += other.segment(start, n);
     }
-
   }
-  inline GridData<RESTRICTED> operator+ (const GridData<RESTRICTED>& y) const {
-    assert(_gridController==y.getGridController());
+  inline GridData<RESTRICTED> operator+(const GridData<RESTRICTED>& y) const {
+    assert(_gridController == y.getGridController());
     GridData<RESTRICTED> result(*this);
     result += y;
     return result;
   }
-  inline void operator-= (const Eigen::VectorXd& other) {
-    unsigned int nPoints =  this->size();
+  inline void operator-=(const Eigen::VectorXd& other) {
+    unsigned int nPoints = this->size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->segment(start,n) -= other.segment(start,n);
-    }
-
-  }
-  inline void operator-= (const GridData<RESTRICTED>& other) {
-    assert(_gridController==other.getGridController());
-    unsigned int nPoints =  this->size();
-    unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->segment(start,n) -= other.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->segment(start, n) -= other.segment(start, n);
     }
   }
-  inline GridData<RESTRICTED> operator- (const GridData<RESTRICTED>& y) const {
-    assert(_gridController==y.getGridController());
+  inline void operator-=(const GridData<RESTRICTED>& other) {
+    assert(_gridController == other.getGridController());
+    unsigned int nPoints = this->size();
+    unsigned int nBlocks = omp_get_max_threads();
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->segment(start, n) -= other.segment(start, n);
+    }
+  }
+  inline GridData<RESTRICTED> operator-(const GridData<RESTRICTED>& y) const {
+    assert(_gridController == y.getGridController());
     GridData<RESTRICTED> result(*this);
     result -= y;
     return result;
   }
-  inline Eigen::VectorXd operator+ (const Eigen::VectorXd& y) const {
+  inline Eigen::VectorXd operator+(const Eigen::VectorXd& y) const {
     Eigen::VectorXd result((Eigen::VectorXd)(*this));
     result += y;
     return result;
   }
-  inline Eigen::VectorXd operator- (const Eigen::VectorXd& y) const {
+  inline Eigen::VectorXd operator-(const Eigen::VectorXd& y) const {
     Eigen::VectorXd result((Eigen::VectorXd)(*this));
     result -= y;
     return result;
@@ -252,14 +251,14 @@ public:
 
   // Operator overloads for other Eigen3 objects
   /// @brief Assignement operator for Eigen3 objects.
-  template<typename OtherDerived> __attribute__((always_inline))
-  inline GridData<RESTRICTED>& operator=(const Eigen::MatrixBase <OtherDerived>& other){
+  template<typename OtherDerived>
+  __attribute__((always_inline)) inline GridData<RESTRICTED>& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
     this->Base::operator=(other);
     return *this;
   }
   /// @brief Move assignement operator for Eigen3 objects.
-  template<typename OtherDerived> __attribute__((always_inline))
-  inline  GridData<RESTRICTED>& operator=(Eigen::MatrixBase <OtherDerived>&& other){
+  template<typename OtherDerived>
+  __attribute__((always_inline)) inline GridData<RESTRICTED>& operator=(Eigen::MatrixBase<OtherDerived>&& other) {
     this->Base::operator=(other);
     return *this;
   }
@@ -270,9 +269,8 @@ public:
    * @param matrix The matrix to be printed.
    * @return Returns the stream after usage.
    */
-  friend std::ostream& operator<< (std::ostream& stream,
-                                   const GridData<RESTRICTED>& vector){
-    stream<<Eigen::VectorXd(vector);
+  friend std::ostream& operator<<(std::ostream& stream, const GridData<RESTRICTED>& vector) {
+    stream << Eigen::VectorXd(vector);
     return stream;
   }
   /// @brief The SCF_MOODE of this matrix
@@ -287,35 +285,36 @@ public:
   typedef const Eigen::VectorXd& constspinlesstype;
   /// @brief A switch to determine if the data is still valid, or if the Grid changed.
   bool _valid;
-protected:
+
+ protected:
   template<typename OtherDerived>
   __attribute__((always_inline)) inline GridData<RESTRICTED>(const Eigen::MatrixBase<OtherDerived>& other)
-      : Eigen::VectorXd(other),
-        _gridController(nullptr),
-        _valid(true){ }
+    : Eigen::VectorXd(other), _gridController(nullptr), _valid(true) {
+  }
 };
 
 template<>
 class GridData<Options::SCF_MODES::UNRESTRICTED> : public ObjectSensitiveClass<Grid> {
-public:
+ public:
   /**
    * @brief Constructor
    * @param GridController The grid this data is defined on.
    */
-  GridData(std::shared_ptr<GridController> gridController) :
-      alpha(gridController->getNGridPoints()),
+  GridData(std::shared_ptr<GridController> gridController)
+    : alpha(gridController->getNGridPoints()),
       beta(gridController->getNGridPoints()),
       _gridController(gridController),
-      _valid(true){
+      _valid(true) {
     unsigned int nPoints = gridController->getNGridPoints();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->alpha.segment(start,n).setZero();
-      this->beta.segment(start,n).setZero();
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->alpha.segment(start, n).setZero();
+      this->beta.segment(start, n).setZero();
     }
     assert(_gridController);
   }
@@ -323,31 +322,25 @@ public:
   /**
    * @brief Explicit copy constructor to avoid unintentional copying
    */
-  explicit inline GridData<UNRESTRICTED>(const GridData<UNRESTRICTED>& orig) :
-      alpha( orig.alpha),
-      beta( orig.beta),
-      _gridController(orig.getGridController()),
-      _valid(true){
+  explicit inline GridData<UNRESTRICTED>(const GridData<UNRESTRICTED>& orig)
+    : alpha(orig.alpha), beta(orig.beta), _gridController(orig.getGridController()), _valid(true) {
   }
-  inline GridData<UNRESTRICTED>(const GridData<RESTRICTED>& orig) :
-        alpha( orig),
-        beta( orig),
-        _gridController(orig.getGridController()),
-        _valid(true){
+  inline GridData<UNRESTRICTED>(const GridData<RESTRICTED>& orig)
+    : alpha(orig), beta(orig), _gridController(orig.getGridController()), _valid(true) {
   }
   /**
    * @brief Move constructor
    */
-  inline GridData<UNRESTRICTED>(GridData<UNRESTRICTED>&& orig) :
-      alpha( (Eigen::VectorXd)orig.alpha),
+  inline GridData<UNRESTRICTED>(GridData<UNRESTRICTED>&& orig)
+    : alpha((Eigen::VectorXd)orig.alpha),
       beta((Eigen::VectorXd)orig.beta),
       _gridController(orig.getGridController()),
-      _valid(true){
+      _valid(true) {
     assert(orig.getGridController());
     assert(_gridController);
   }
   /// @brief assignement operator
-  inline GridData<UNRESTRICTED>& operator=(const GridData<UNRESTRICTED>& orig){
+  inline GridData<UNRESTRICTED>& operator=(const GridData<UNRESTRICTED>& orig) {
     this->alpha = orig.alpha;
     this->beta = orig.beta;
     this->_gridController = orig.getGridController();
@@ -355,14 +348,13 @@ public:
     return *this;
   };
   /// @brief move assignement operator
-  inline GridData<UNRESTRICTED>& operator=(GridData<UNRESTRICTED>&& orig){
+  inline GridData<UNRESTRICTED>& operator=(GridData<UNRESTRICTED>&& orig) {
     this->alpha = std::move(orig.alpha);
     this->beta = std::move(orig.beta);
     this->_gridController = orig.getGridController();
     this->_valid = orig.isValid();
     return *this;
   }
-
 
   /**
    * @returns the controller for the basis in which this matrix is defined.
@@ -383,16 +375,16 @@ public:
    */
   inline GridData<RESTRICTED> total() const {
     GridData<RESTRICTED> ret(_gridController);
-    ret = this->alpha+this->beta;
+    ret = this->alpha + this->beta;
     return ret;
   }
   /**
    * @brief Difference between alpha and beta.
    * @return Returns the difference of between alpha and beta (alpha-beta).
    */
-  inline GridData<RESTRICTED>  difference() const{
+  inline GridData<RESTRICTED> difference() const {
     GridData<RESTRICTED> ret(_gridController);
-    ret = this->alpha-this->beta;
+    ret = this->alpha - this->beta;
     return ret;
   }
   /**
@@ -402,116 +394,119 @@ public:
     return _valid;
   }
   /// @brief See ObjectSensitveClass.
-  virtual void notify(){
-    _valid=false;
+  virtual void notify() {
+    _valid = false;
   }
   /// @brief The alpha part.
   Eigen::VectorXd alpha;
   /// @brief The beta part.
   Eigen::VectorXd beta;
-private:
+
+ private:
   std::shared_ptr<GridController> _gridController;
 
-/*
- * Operators explicitly needed in order not to loose
- * the GridController while doing basic operations
- * with the underlying Eigen3 matrices.
- *
- * If you want to read up on this search for:
- * 'inheritance and slicing'
- *
- * - JU
- */
-public:
-
-  inline void operator+= (const GridData<UNRESTRICTED>& other) {
-    unsigned int nPoints =  this->alpha.size();
+  /*
+   * Operators explicitly needed in order not to loose
+   * the GridController while doing basic operations
+   * with the underlying Eigen3 matrices.
+   *
+   * If you want to read up on this search for:
+   * 'inheritance and slicing'
+   *
+   * - JU
+   */
+ public:
+  inline void operator+=(const GridData<UNRESTRICTED>& other) {
+    unsigned int nPoints = this->alpha.size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->alpha.segment(start,n) += other.alpha.segment(start,n);
-      this->beta.segment(start,n) += other.beta.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->alpha.segment(start, n) += other.alpha.segment(start, n);
+      this->beta.segment(start, n) += other.beta.segment(start, n);
     }
     assert(_gridController);
   }
-  inline void operator+= (const GridData<RESTRICTED>& other) {
-    unsigned int nPoints =  this->alpha.size();
+  inline void operator+=(const GridData<RESTRICTED>& other) {
+    unsigned int nPoints = this->alpha.size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->alpha.segment(start,n) += other.segment(start,n);
-      this->beta.segment(start,n) += other.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->alpha.segment(start, n) += other.segment(start, n);
+      this->beta.segment(start, n) += other.segment(start, n);
     }
     assert(_gridController);
   }
-  inline GridData<UNRESTRICTED> operator+ (const GridData<UNRESTRICTED>& y) const {
+  inline GridData<UNRESTRICTED> operator+(const GridData<UNRESTRICTED>& y) const {
     GridData<UNRESTRICTED> result(*this);
-    assert(_gridController==y.getGridController());
+    assert(_gridController == y.getGridController());
     result.alpha += y.alpha;
     result.beta += y.beta;
     assert(result.getGridController());
     return result;
   }
-  inline GridData<UNRESTRICTED> operator+ (const GridData<RESTRICTED>& y) const {
+  inline GridData<UNRESTRICTED> operator+(const GridData<RESTRICTED>& y) const {
     GridData<UNRESTRICTED> result(*this);
-    assert(_gridController==y.getGridController());
+    assert(_gridController == y.getGridController());
     result.alpha += y;
     result.beta += y;
     assert(result.getGridController());
     return result;
   }
-  inline void operator-= (const GridData<UNRESTRICTED>& other) {
-    unsigned int nPoints =  this->alpha.size();
+  inline void operator-=(const GridData<UNRESTRICTED>& other) {
+    unsigned int nPoints = this->alpha.size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->alpha.segment(start,n) -= other.alpha.segment(start,n);
-      this->beta.segment(start,n) -= other.beta.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->alpha.segment(start, n) -= other.alpha.segment(start, n);
+      this->beta.segment(start, n) -= other.beta.segment(start, n);
     }
     assert(_gridController);
   }
-  inline void operator-= (const GridData<RESTRICTED>& other) {
-    unsigned int nPoints =  this->alpha.size();
+  inline void operator-=(const GridData<RESTRICTED>& other) {
+    unsigned int nPoints = this->alpha.size();
     unsigned int nBlocks = omp_get_max_threads();
-#pragma omp parallel for schedule (dynamic)
-    for (unsigned int iBlock = 0; iBlock<nBlocks;iBlock++){
-      unsigned int n = (unsigned int)(nPoints/nBlocks);
-      const unsigned int start = iBlock*n;
-      if(iBlock==nBlocks-1) n += nPoints%nBlocks;
-      this->alpha.segment(start,n) -= other.segment(start,n);
-      this->beta.segment(start,n) -= other.segment(start,n);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; iBlock++) {
+      unsigned int n = (unsigned int)(nPoints / nBlocks);
+      const unsigned int start = iBlock * n;
+      if (iBlock == nBlocks - 1)
+        n += nPoints % nBlocks;
+      this->alpha.segment(start, n) -= other.segment(start, n);
+      this->beta.segment(start, n) -= other.segment(start, n);
     }
     assert(_gridController);
   }
-  inline GridData<UNRESTRICTED> operator- (const GridData<UNRESTRICTED>& y) const {
+  inline GridData<UNRESTRICTED> operator-(const GridData<UNRESTRICTED>& y) const {
     GridData<UNRESTRICTED> result(*this);
-    assert(_gridController==y.getGridController());
+    assert(_gridController == y.getGridController());
     result.alpha -= y.alpha;
     result.beta -= y.beta;
     assert(result.getGridController());
     return result;
   }
-  inline GridData<UNRESTRICTED> operator- (const GridData<RESTRICTED>& y) const {
+  inline GridData<UNRESTRICTED> operator-(const GridData<RESTRICTED>& y) const {
     GridData<UNRESTRICTED> result(*this);
-    assert(_gridController==y.getGridController());
+    assert(_gridController == y.getGridController());
     result.alpha -= y;
     result.beta -= y;
     assert(result.getGridController());
     return result;
   }
 
-  friend std::ostream& operator<< (std::ostream& stream,
-                                   const GridData<UNRESTRICTED>& matrix){
-    stream<<matrix.alpha<<"\n \n"<<matrix.beta;
+  friend std::ostream& operator<<(std::ostream& stream, const GridData<UNRESTRICTED>& matrix) {
+    stream << matrix.alpha << "\n \n" << matrix.beta;
     return stream;
   }
   /// @brief The SCF_MOODE of this matrix
@@ -528,4 +523,4 @@ public:
 
 } /* namespace Serenity */
 
-#endif	/* GRIDDATA_H */
+#endif /* GRIDDATA_H */

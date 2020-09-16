@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -27,13 +27,13 @@
 #include <memory>
 #include <vector>
 
-
 /* Forward declarations */
 namespace HDF5 {
 class Filepath;
 }
 namespace Serenity {
-template<typename> class Matrix;
+template<typename>
+class Matrix;
 
 /**
  * @class Geometry Geometry.h
@@ -43,19 +43,19 @@ template<typename> class Matrix;
  */
 class Geometry : public ObjectSensitiveClass<Atom> {
   friend class GradientCalculator;
-public:
+
+ public:
   /**
    * @brief Constructor.
    * @param atoms
    */
-  explicit Geometry(std::vector<std::shared_ptr<Atom> > atoms);
+  explicit Geometry(std::vector<std::shared_ptr<Atom>> atoms);
   /**
    * @brief Constructor.
    * @param atomSymbols    The atoic symbols.
    * @param atomPositions  The atom positions, dimensions: (nAtoms,3)
    */
-  explicit Geometry(std::vector<std::string> atomSymbols,
-                    Matrix<double> atomPositions);
+  explicit Geometry(std::vector<std::string> atomSymbols, Matrix<double> atomPositions);
   /**
    * @brief Constructor for Geometries that are filled via addition.
    */
@@ -69,7 +69,7 @@ public:
    * TODO see SDGeomOptimizer.cpp, maybe we should const-overload this function and in the const
    * case return a vector<shared_ptr<const Atom> >.
    */
-  inline const std::vector<std::shared_ptr<Atom> >& getAtoms() const {
+  inline const std::vector<std::shared_ptr<Atom>>& getAtoms() const {
     return _atoms;
   }
   /**
@@ -82,38 +82,17 @@ public:
    * @returns The energy due to the Coulomb repulsion of the atoms from each other
    */
   inline double getCoreCoreRepulsion() const {
-    if (!_coreCoreRepulsionUpToDate) calcCoreCoreRepulsion();
+    if (!_coreCoreRepulsionUpToDate)
+      calcCoreCoreRepulsion();
     return _coreCoreRepulsion;
   }
   /**
    * @returns The center of mass
    */
   inline Point getCenterOfMass() const {
-    if (!_centerOfMassUpToDate) calcCenterOfMass();
+    if (!_centerOfMassUpToDate)
+      calcCenterOfMass();
     return _centerOfMass;
-  }
-
-  void calcMomentOfInertiaX();
-  void calcMomentOfInertiaY();
-  void calcMomentOfInertiaZ();
-
-  double getMomentOfInertia(){
-    if (!_momentOfInertia){
-      _momentOfInertia = getMomentOfInertiaX() + getMomentOfInertiaY() + getMomentOfInertiaZ();
-    }
-    return _momentOfInertia;
-  }
-  double getMomentOfInertiaX(){
-    if (!_momentOfInertiaX) calcMomentOfInertiaX();
-    return _momentOfInertiaX;
-  }
-  double getMomentOfInertiaY(){
-    if (!_momentOfInertiaY) calcMomentOfInertiaY();
-    return _momentOfInertiaY;
-  }
-  double getMomentOfInertiaZ(){
-    if (!_momentOfInertiaZ) calcMomentOfInertiaZ();
-    return _momentOfInertiaZ;
   }
 
   /**
@@ -167,9 +146,9 @@ public:
   /**
    * @return A list of all atoms symbols.
    */
-  std::vector<std::string> getAtomSymbols() const{
+  std::vector<std::string> getAtomSymbols() const {
     std::vector<std::string> symbols;
-    for (auto& atom: this->_atoms){
+    for (auto& atom : this->_atoms) {
       symbols.push_back(atom->getAtomType()->getElementSymbol());
     }
     return symbols;
@@ -179,8 +158,8 @@ public:
    * @brief Deletes an atom from the geometry.
    * @param i The number of the atom to be deleted within the array
    */
-  void deleteAtom(unsigned int i){
-    std::vector<std::shared_ptr<Atom> >::iterator it=_atoms.begin();
+  void deleteAtom(unsigned int i) {
+    std::vector<std::shared_ptr<Atom>>::iterator it = _atoms.begin();
     std::advance(it, i);
     _atoms.erase(it);
     notify();
@@ -195,7 +174,6 @@ public:
    * @brief Prints the current geometry to file.
    */
   void printToFile(std::string baseName, std::string id) const;
-
 
   /**
    * @brief Adds the current geometry to the trajectory file
@@ -234,38 +212,23 @@ public:
    * @brief Set all coordinates at once
    * @param newCoordinates The new coordinates, dimensions: (nAtoms,3)
    */
-  void setCoordinates(Eigen::MatrixXd& newCoordinates) const;
-
-//  /**
-//   * @brief Set all coordinates at once
-//   * @param newCoordinates The new coordinates, dimensions: (nAtoms,3)
-//   */
-//  void setCoordinates(const Eigen::VectorXd& newCoordinates) const;
-
+  void setCoordinates(const Eigen::MatrixXd& newCoordinates) const;
   /**
    * @brief Get the gradients if they are all up to date
    * @return The geometry gradient, dimensions: (nAtoms,3)
    */
   Matrix<double> getGradients() const;
-
   /**
    * @brief Set the Gradients.
    * @param newGradients The new geometry gradient, dimensions: (nAtoms,3)
    */
-  void setGradients(Matrix<double>& newGradients) const;
-
-//  /**
-//   * @brief Set the Gradients.
-//   * @param newGradients The new geometry gradient, dimensions: (nAtoms*3)
-//   */
-//  void setGradients(Eigen::VectorXd& newGradients) const;
-
+  void setGradients(const Eigen::MatrixXd& newGradients) const;
   /**
    * @brief Check if there are gradients that are up-to-date
    */
-  bool checkGradients(){
+  bool checkGradients() {
     bool check = true;
-    for (unsigned int i=0;i!=this->getNAtoms();++i){
+    for (unsigned int i = 0; i != this->getNAtoms(); ++i) {
       check *= this->_atoms[i]->gradientsUpToDate();
     }
     return check;
@@ -311,12 +274,18 @@ public:
     for (auto atom : rhs.getAtoms()) {
       this->_atoms.push_back(atom);
       atom->addSensitiveObject(this->_self);
-      if (atom->getX() < this->_minX) this->_minX = atom->getX();
-      if (atom->getY() < this->_minY) this->_minY = atom->getY();
-      if (atom->getZ() < this->_minZ) this->_minZ = atom->getZ();
-      if (atom->getX() > this->_maxX) this->_maxX = atom->getX();
-      if (atom->getY() > this->_maxY) this->_maxY = atom->getY();
-      if (atom->getZ() > this->_maxZ) this->_maxZ = atom->getZ();
+      if (atom->getX() < this->_minX)
+        this->_minX = atom->getX();
+      if (atom->getY() < this->_minY)
+        this->_minY = atom->getY();
+      if (atom->getZ() < this->_minZ)
+        this->_minZ = atom->getZ();
+      if (atom->getX() > this->_maxX)
+        this->_maxX = atom->getX();
+      if (atom->getY() > this->_maxY)
+        this->_maxY = atom->getY();
+      if (atom->getZ() > this->_maxZ)
+        this->_maxZ = atom->getZ();
     }
     return *this;
   }
@@ -333,14 +302,19 @@ public:
    * @return The result of the check.
    */
   bool hasAtomsWithECPs() const {
-    bool atomsWithECPs =false;
+    bool atomsWithECPs = false;
     for (auto& atom : _atoms) {
-      if (atom->usesECP()) atomsWithECPs = true;
+      if (atom->usesECP())
+        atomsWithECPs = true;
     }
     return atomsWithECPs;
   }
+  /**
+   * @brief Delete all ghost atoms.
+   */
+  void deleteGhostAtoms();
 
-private:
+ private:
   /**
    * @brief Calculates the core core repulsion of the current geometry
    */
@@ -354,7 +328,7 @@ private:
    */
   void notify();
 
-  std::vector<std::shared_ptr<Atom> > _atoms;
+  std::vector<std::shared_ptr<Atom>> _atoms;
 
   double _minX, _minY, _minZ;
   double _maxX, _maxY, _maxZ;

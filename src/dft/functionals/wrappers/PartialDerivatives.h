@@ -7,14 +7,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,13 +23,12 @@
 #define DFT_FUNCTIONALS_WRAPPERS_PARTIALDERIVATIVES_H_
 
 /* Include Serenity Internal Headers */
-#include "math/Derivatives.h"
-#include "dft/Functional.h"
+#include "data/DoublySpinPolarizedData.h"
 #include "data/grid/GridData.h"
 #include "data/grid/GridPotential.h"
+#include "dft/Functional.h"
+#include "math/Derivatives.h"
 #include "settings/Options.h"
-#include "data/DoublySpinPolarizedData.h"
-
 
 namespace Serenity {
 /**
@@ -42,18 +41,18 @@ namespace Serenity {
  *        as one may think this is the complete XC-potential which is only true when using pure LDA
  *        functionals.
  */
-template<Options::SCF_MODES T> class dF_dRho : public GridPotential<T>{
-public:
+template<Options::SCF_MODES T>
+class dF_dRho : public GridPotential<T> {
+ public:
   using GridPotential<T>::GridPotential;
   explicit dF_dRho(dF_dRho<T>&) = default;
   explicit dF_dRho(const dF_dRho<T>&) = default;
-  dF_dRho(dF_dRho<T> &&) = default;
+  dF_dRho(dF_dRho<T>&&) = default;
   dF_dRho& operator=(const dF_dRho<T>&) = default;
-  dF_dRho& operator=(dF_dRho<T> &&) = default;
+  dF_dRho& operator=(dF_dRho<T>&&) = default;
   using GridPotential<T>::operator+=;
   using GridPotential<T>::operator-=;
 };
-
 
 /**
  * @class   d2F_dRho2 PartialDerivatives.h
@@ -64,25 +63,27 @@ public:
  *           \f$ \frac{\partial^2 F}{\partial \rho_\beta \partial\rho_\beta} \f$.
  *          Every distinct derivative is stored as GridData.
  */
-template<Options::SCF_MODES T> class d2F_dRho2;
+template<Options::SCF_MODES T>
+class d2F_dRho2;
 
-template<> class d2F_dRho2<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
-public:
+template<>
+class d2F_dRho2<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
+ public:
   /**
    * @brief See GridData for more information.
    */
   using GridData<RESTRICTED>::GridData;
 };
 
-template<> class d2F_dRho2<Options::SCF_MODES::UNRESTRICTED>  {
-public:
+template<>
+class d2F_dRho2<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    * @param gridController The gridController controlling the grid on which the derivatives are calculated.
    */
-  d2F_dRho2(std::shared_ptr<GridController> gridController):
-    aa(gridController),
-    ab(gridController),
-    bb(gridController){}
+  d2F_dRho2(std::shared_ptr<GridController> gridController)
+    : aa(gridController), ab(gridController), bb(gridController) {
+  }
 
   GridData<RESTRICTED> aa;
   GridData<RESTRICTED> ab;
@@ -100,26 +101,27 @@ public:
  *          Every distinct derivative is stored as GridData.
  *
  */
-template<Options::SCF_MODES T> class d3F_dRho3;
+template<Options::SCF_MODES T>
+class d3F_dRho3;
 
-template<> class d3F_dRho3<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
-public:
+template<>
+class d3F_dRho3<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
+ public:
   /**
    * @brief See GridData for more information.
    */
   using GridData<RESTRICTED>::GridData;
 };
 
-template<> class d3F_dRho3<Options::SCF_MODES::UNRESTRICTED> {
-public:
+template<>
+class d3F_dRho3<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    * @param gridController The gridController controlling the grid on which the derivatives are calculated.
    */
-  d3F_dRho3(std::shared_ptr<GridController> gridController):
-    aaa(gridController),
-    aab(gridController),
-    abb(gridController),
-    bbb(gridController){}
+  d3F_dRho3(std::shared_ptr<GridController> gridController)
+    : aaa(gridController), aab(gridController), abb(gridController), bbb(gridController) {
+  }
 
   GridData<RESTRICTED> aaa;
   GridData<RESTRICTED> aab;
@@ -131,31 +133,32 @@ public:
  * @class   dF_dSigma PartialDerivatives.h
  * @brief   Object to store the derivative of the enhancement factor F w.r.t. \f$ \sigma \f$, i.e.
  *          \f$ \frac{\partial F}{\partial \sigma}\f$ where \f$ \sigma =  (\nabla \rho)^2 \f$. In the
- *          unrestricted case this objects holds three elements, i.e. \f$ \frac{\partial F}{\partial \sigma_{\alpha\alpha}}\f$,
- *          \f$ \frac{\partial F}{\partial \sigma_{\alpha\beta}}\f$ and
- *          \f$ \frac{\partial F}{\partial \sigma_{\beta\beta}}\f$ .
- *          Every distinct derivative is stored as GridData.
+ *          unrestricted case this objects holds three elements, i.e. \f$ \frac{\partial F}{\partial
+ * \sigma_{\alpha\alpha}}\f$, \f$ \frac{\partial F}{\partial \sigma_{\alpha\beta}}\f$ and \f$ \frac{\partial F}{\partial
+ * \sigma_{\beta\beta}}\f$ . Every distinct derivative is stored as GridData.
  *
  */
-template<Options::SCF_MODES T> class dF_dSigma;
+template<Options::SCF_MODES T>
+class dF_dSigma;
 
-template<> class dF_dSigma<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
+template<>
+class dF_dSigma<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
   /**
    * @brief See GridData for more information.
    */
   using GridData<RESTRICTED>::GridData;
 };
 
-template<> class dF_dSigma<Options::SCF_MODES::UNRESTRICTED>  {
-public:
+template<>
+class dF_dSigma<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    *
    * @param gridController The gridController controlling the grid on which the derivatives are calculated.
    */
-  dF_dSigma(std::shared_ptr<GridController> gridController):
-    aa(gridController),
-    ab(gridController),
-    bb(gridController){}
+  dF_dSigma(std::shared_ptr<GridController> gridController)
+    : aa(gridController), ab(gridController), bb(gridController) {
+  }
 
   GridData<RESTRICTED> aa;
   GridData<RESTRICTED> ab;
@@ -177,28 +180,27 @@ public:
  *          Note that the first two letters of the GridData object xxxx within this class always refer
  *          to the first derivative w.r.t. \f$ \sigma \f$, while the latter two refer to the second derivative.
  */
-template<Options::SCF_MODES T> class d2F_dSigma2;
+template<Options::SCF_MODES T>
+class d2F_dSigma2;
 
-template<> class d2F_dSigma2<Options::SCF_MODES::RESTRICTED>: public GridData<RESTRICTED> {
+template<>
+class d2F_dSigma2<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
   /**
    * @brief See GridData for more information.
    */
   using GridData<RESTRICTED>::GridData;
 };
 
-template<> class d2F_dSigma2<Options::SCF_MODES::UNRESTRICTED> {
-public:
+template<>
+class d2F_dSigma2<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    *
    * @param gridController The gridController controlling the grid on which the derivatives are calculated.
    */
-  d2F_dSigma2(std::shared_ptr<GridController> gridController):
-    aaaa(gridController),
-    aaab(gridController),
-    aabb(gridController),
-    abab(gridController),
-    abbb(gridController),
-    bbbb(gridController){}
+  d2F_dSigma2(std::shared_ptr<GridController> gridController)
+    : aaaa(gridController), aaab(gridController), aabb(gridController), abab(gridController), abbb(gridController), bbbb(gridController) {
+  }
 
   GridData<RESTRICTED> aaaa;
   GridData<RESTRICTED> aaab;
@@ -211,40 +213,36 @@ public:
 /**
  * @class   d2F_dRhodSigma PartialDerivatives.h
  * @brief   Object to store the second derivative of the enhancement factor F w.r.t. \f$ \rho \f$ and \f$ \sigma \f$,
- *           i.e. \f$ \frac{\partial^2 F}{\partial \rho \partial \sigma}\f$ where \f$ \sigma =  (\nabla \rho)^2 \f$. In the
- *          unrestricted case this objects holds six elements, i.e.
- *          \f$ \frac{\partial^2 F}{\partial \rho_\alpha \partial\sigma_{\alpha\alpha}}\f$,
- *          \f$ \frac{\partial^2 F}{\partial \rho_\alpha \partial\sigma_{\alpha\beta}}\f$,
- *          \f$ \frac{\partial^2 F}{\partial \rho_\alpha \partial\sigma_{\beta\beta}}\f$,
- *          \f$ \frac{\partial^2 F}{\partial \rho_\beta \partial\sigma_{\alpha\alpha}}\f$,
- *          \f$ \frac{\partial^2 F}{\partial \rho_\beta \partial\sigma_{\alpha\beta}}\f$,
- *          \f$ \frac{\partial^2 F}{\partial \rho_\beta \partial\sigma_{\beta\beta}}\f$.
- *          Every distinct derivative is stored as GridData.
- *          Note that the first letter of the GridData object xxx within this class always refers to the derivative w.r.t.
- *          the density while the latter two determine the spin-indices of \f$ \sigma \f$.
+ *           i.e. \f$ \frac{\partial^2 F}{\partial \rho \partial \sigma}\f$ where \f$ \sigma =  (\nabla \rho)^2 \f$. In
+ * the unrestricted case this objects holds six elements, i.e. \f$ \frac{\partial^2 F}{\partial \rho_\alpha
+ * \partial\sigma_{\alpha\alpha}}\f$, \f$ \frac{\partial^2 F}{\partial \rho_\alpha \partial\sigma_{\alpha\beta}}\f$, \f$
+ * \frac{\partial^2 F}{\partial \rho_\alpha \partial\sigma_{\beta\beta}}\f$, \f$ \frac{\partial^2 F}{\partial \rho_\beta
+ * \partial\sigma_{\alpha\alpha}}\f$, \f$ \frac{\partial^2 F}{\partial \rho_\beta \partial\sigma_{\alpha\beta}}\f$, \f$
+ * \frac{\partial^2 F}{\partial \rho_\beta \partial\sigma_{\beta\beta}}\f$. Every distinct derivative is stored as
+ * GridData. Note that the first letter of the GridData object xxx within this class always refers to the derivative
+ * w.r.t. the density while the latter two determine the spin-indices of \f$ \sigma \f$.
  */
-template<Options::SCF_MODES T> class d2F_dRhodSigma;
+template<Options::SCF_MODES T>
+class d2F_dRhodSigma;
 
-template<> class d2F_dRhodSigma<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
+template<>
+class d2F_dRhodSigma<Options::SCF_MODES::RESTRICTED> : public GridData<RESTRICTED> {
   /**
    * @brief See GridData for more information.
    */
   using GridData<RESTRICTED>::GridData;
 };
 
-template<> class d2F_dRhodSigma<Options::SCF_MODES::UNRESTRICTED> {
-public:
+template<>
+class d2F_dRhodSigma<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    *
    * @param gridController The gridController controlling the grid on which the derivatives are calculated.
    */
-  d2F_dRhodSigma(std::shared_ptr<GridController> gridController):
-    aaa(gridController),
-    aab(gridController),
-    abb(gridController),
-    baa(gridController),
-    bab(gridController),
-    bbb(gridController){}
+  d2F_dRhodSigma(std::shared_ptr<GridController> gridController)
+    : aaa(gridController), aab(gridController), abb(gridController), baa(gridController), bab(gridController), bbb(gridController) {
+  }
 
   GridData<RESTRICTED> aaa;
   GridData<RESTRICTED> aab;
@@ -254,69 +252,64 @@ public:
   GridData<RESTRICTED> bbb;
 };
 
-enum class FUNCTIONAL_DATA_TYPE {
-  GRADIENT_INVARIANTS = 0,
-  GRADIENTS = 1,
-  POTENTIAL = 2
-};
+enum class FUNCTIONAL_DATA_TYPE { GRADIENT_INVARIANTS = 0, GRADIENTS = 1, POTENTIAL = 2 };
 
-template<Options::SCF_MODES T> class FunctionalData {
-public:
-  FunctionalData(
-      const unsigned int order,
-      const FUNCTIONAL_DATA_TYPE type,
-      Functional functional,
-      const std::shared_ptr<GridController> gridController):
-    _order(order),
-    _type(type),
-    _functional(functional),
-    _gridController(gridController),
-    energy(0.0),
-    epuv(nullptr),
-    potential(nullptr),
-    dFdRho(nullptr),
-    d2FdRho2(nullptr),
-    dFdSigma(nullptr),
-    d2FdSigma2(nullptr),
-    d2FdRhodSigma(nullptr),
-    dFdGradRho(nullptr),
-    d2FdRhodGradRho(nullptr),
-    d2FdGradRho2(nullptr){
-    //ToDo: For higher derivatives, this gets really messy...
+template<Options::SCF_MODES T>
+class FunctionalData {
+ public:
+  FunctionalData(const unsigned int order, const FUNCTIONAL_DATA_TYPE type, Functional functional,
+                 const std::shared_ptr<GridController> gridController)
+    : _order(order),
+      _type(type),
+      _functional(functional),
+      _gridController(gridController),
+      energy(0.0),
+      epuv(nullptr),
+      potential(nullptr),
+      dFdRho(nullptr),
+      d2FdRho2(nullptr),
+      dFdSigma(nullptr),
+      d2FdSigma2(nullptr),
+      d2FdRhodSigma(nullptr),
+      dFdGradRho(nullptr),
+      d2FdRhodGradRho(nullptr),
+      d2FdGradRho2(nullptr) {
+    // ToDo: For higher derivatives, this gets really messy...
     assert(order <= 2 && "Partial derivatives only implemented up to second order");
     assert(_gridController);
-    //Initialize objects
-    epuv = std::make_shared<GridData<RESTRICTED> >(_gridController);
+    // Initialize objects
+    epuv = std::make_shared<GridData<RESTRICTED>>(_gridController);
     if (_type == FUNCTIONAL_DATA_TYPE::POTENTIAL) {
-      potential = std::make_shared<GridPotential<T> >(_gridController);
-    } else {
+      potential = std::make_shared<GridPotential<T>>(_gridController);
+    }
+    else {
       if (_order >= 1) {
-        dFdRho = std::make_shared<dF_dRho<T> >(_gridController);
+        dFdRho = std::make_shared<dF_dRho<T>>(_gridController);
       }
       if (_order >= 2) {
-        d2FdRho2 = std::make_shared<d2F_dRho2<T> >(_gridController);
+        d2FdRho2 = std::make_shared<d2F_dRho2<T>>(_gridController);
       }
-      if (_functional.getFunctionalClass() == FUNCTIONAL_CLASSES::GGA && _order > 0) {
-        switch(_type) {
-          case FUNCTIONAL_DATA_TYPE::GRADIENT_INVARIANTS :
+      if (_functional.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA && _order > 0) {
+        switch (_type) {
+          case FUNCTIONAL_DATA_TYPE::GRADIENT_INVARIANTS:
             if (_order >= 1) {
-              dFdSigma = std::make_shared<dF_dSigma<T> >(_gridController);
+              dFdSigma = std::make_shared<dF_dSigma<T>>(_gridController);
             }
             if (_order >= 2) {
-              d2FdSigma2 = std::make_shared<d2F_dSigma2<T> >(_gridController);
-              d2FdRhodSigma = std::make_shared<d2F_dRhodSigma<T> >(_gridController);
+              d2FdSigma2 = std::make_shared<d2F_dSigma2<T>>(_gridController);
+              d2FdRhodSigma = std::make_shared<d2F_dRhodSigma<T>>(_gridController);
             }
             break;
-          case FUNCTIONAL_DATA_TYPE::GRADIENTS :
+          case FUNCTIONAL_DATA_TYPE::GRADIENTS:
             if (_order >= 1) {
-              dFdGradRho = makeGradientPtr<GridPotential<T> >(_gridController);
+              dFdGradRho = makeGradientPtr<GridPotential<T>>(_gridController);
             }
             if (_order >= 2) {
-              d2FdRhodGradRho = makeGradientPtr<DoublySpinPolarizedData<T, GridData<RESTRICTED> > >(_gridController);
-              d2FdGradRho2 = makeHessianPtr<DoublySpinPolarizedData<T,GridData<RESTRICTED > > >(_gridController);
+              d2FdRhodGradRho = makeGradientPtr<DoublySpinPolarizedData<T, GridData<RESTRICTED>>>(_gridController);
+              d2FdGradRho2 = makeHessianPtr<DoublySpinPolarizedData<T, GridData<RESTRICTED>>>(_gridController);
             }
             break;
-          case FUNCTIONAL_DATA_TYPE::POTENTIAL :
+          case FUNCTIONAL_DATA_TYPE::POTENTIAL:
             assert(false);
             break;
         }
@@ -340,12 +333,13 @@ public:
     return _type;
   }
 
-private:
+ private:
   const unsigned int _order;
   const FUNCTIONAL_DATA_TYPE _type;
   const Functional _functional;
   const std::shared_ptr<GridController> _gridController;
-public:
+
+ public:
   double energy;
   /**
    * @brief The energy density  \f$ \epsilon(r) \f$
@@ -353,18 +347,18 @@ public:
    *  \f$ E_{xc}=\int \epsilon (r) \mathrm{d}r \f$.\n
    *  NOT as \f$ E_{xc}=\int \epsilon (r) \rho(r)\mathrm{d}r \f$ !
    */
-  std::shared_ptr<GridData<RESTRICTED> > epuv;
-  std::shared_ptr<GridPotential<T> > potential;
-  std::shared_ptr<dF_dRho<T> > dFdRho;
-  std::shared_ptr<d2F_dRho2<T> > d2FdRho2;
-  std::shared_ptr<dF_dSigma<T> > dFdSigma;
-  std::shared_ptr<d2F_dSigma2<T> > d2FdSigma2;
-  std::shared_ptr<d2F_dRhodSigma<T> > d2FdRhodSigma;
-  std::shared_ptr<Gradient<GridPotential<T> > > dFdGradRho;
-  //First index of DoublySpinPolarizedData corresponds to spin index of Rho.
-  //Second index of DoublySpinPolarizedData corresponds to spin index of GradRho.
-  std::shared_ptr<Gradient<DoublySpinPolarizedData<T,GridData<RESTRICTED> > > > d2FdRhodGradRho;
-  std::shared_ptr<Hessian<DoublySpinPolarizedData<T,GridData<RESTRICTED> > > >  d2FdGradRho2;
+  std::shared_ptr<GridData<RESTRICTED>> epuv;
+  std::shared_ptr<GridPotential<T>> potential;
+  std::shared_ptr<dF_dRho<T>> dFdRho;
+  std::shared_ptr<d2F_dRho2<T>> d2FdRho2;
+  std::shared_ptr<dF_dSigma<T>> dFdSigma;
+  std::shared_ptr<d2F_dSigma2<T>> d2FdSigma2;
+  std::shared_ptr<d2F_dRhodSigma<T>> d2FdRhodSigma;
+  std::shared_ptr<Gradient<GridPotential<T>>> dFdGradRho;
+  // First index of DoublySpinPolarizedData corresponds to spin index of Rho.
+  // Second index of DoublySpinPolarizedData corresponds to spin index of GradRho.
+  std::shared_ptr<Gradient<DoublySpinPolarizedData<T, GridData<RESTRICTED>>>> d2FdRhodGradRho;
+  std::shared_ptr<Hessian<DoublySpinPolarizedData<T, GridData<RESTRICTED>>>> d2FdGradRho2;
 };
 
 } /* namespace Serenity */

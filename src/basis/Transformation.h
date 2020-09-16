@@ -6,31 +6,32 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef TRANSFORMATION_H_
 #define TRANSFORMATION_H_
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
 #include <memory>
-
 
 namespace Serenity {
 /* Forward declarations */
 class BasisController;
-template<Options::SCF_MODES SCFMode> class MatrixInBasis;
+template<Options::SCF_MODES SCFMode>
+class MatrixInBasis;
 class OneElectronIntegralCalculator;
-template<Options::SCF_MODES SCFMode>class OrbitalController;
+template<Options::SCF_MODES SCFMode>
+class OrbitalController;
 
 /**
  * @class Transformation Transformation.h
@@ -58,12 +59,13 @@ template<Options::SCF_MODES SCFMode>class OrbitalController;
  *             J. W. Boughton, P. Pulay, J. Comput. Chem. 14, 736 (1993)
  */
 class Transformation {
-private:
+ private:
   /**
    * @brief Default constructor. Never instantiated. Purely static.
    */
   Transformation() = default;
-public:
+
+ public:
   /**
    * @brief Default destructor.
    */
@@ -75,10 +77,10 @@ public:
    * @param overlapB          The overlap integrals of basis B, i.e. \f$\mathbf{S}_B\f$
    * @return                  Returns new molecular orbitals defined in basis B
    */
-template<Options::SCF_MODES T>static std::unique_ptr<OrbitalController<T> > transformMOs(
-      OrbitalController<T>& orbitalsA,
-      std::shared_ptr<BasisController> basisControllerB,
-      const MatrixInBasis<RESTRICTED>& overlapB);
+  template<Options::SCF_MODES T>
+  static std::unique_ptr<OrbitalController<T>> transformMOs(OrbitalController<T>& orbitalsA,
+                                                            std::shared_ptr<BasisController> basisControllerB,
+                                                            const MatrixInBasis<RESTRICTED>& overlapB);
 };
 
 } /* namespace Serenity */

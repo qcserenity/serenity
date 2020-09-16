@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,12 +23,12 @@
 
 /* Include Serenity Internal Headers */
 #include "basis/BasisController.h"
-#include "potentials/Potential.h"
 #include "potentials/EffectiveCorePotential.h"
+#include "potentials/Potential.h"
 
 namespace Serenity {
 /* Forward Declarations */
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
 class Atom;
 
@@ -36,9 +36,9 @@ class Atom;
  * @class ECPInteractionPotential ECPInteractionPotential.h
  * @brief Calculates the ECP interaction between subsystems.
  */
-template <Options::SCF_MODES SCFMode>
-class ECPInteractionPotential : public Potential<SCFMode>{
-public:
+template<Options::SCF_MODES SCFMode>
+class ECPInteractionPotential : public Potential<SCFMode> {
+ public:
   /**
    * @brief Constructor.
    * @param actSystem The system controller for the active system.
@@ -47,12 +47,10 @@ public:
    * @param envDensities The densities of the environment.
    * @param basis The basis the Fock matrix should be expressed in.
    */
-  ECPInteractionPotential(
-      std::shared_ptr<SystemController> actSystem,
-      std::vector<std::shared_ptr<Atom> > actAtoms,
-      std::vector<std::shared_ptr<Atom> > envAtoms,
-      std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > envDensities,
-      std::shared_ptr<BasisController> basis);
+  ECPInteractionPotential(std::shared_ptr<SystemController> actSystem, std::vector<std::shared_ptr<Atom>> actAtoms,
+                          std::vector<std::shared_ptr<Atom>> envAtoms,
+                          std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensities,
+                          std::shared_ptr<BasisController> basis);
 
   /**
    * @brief Default destructor.
@@ -75,19 +73,19 @@ public:
    */
   Eigen::MatrixXd getGeomGradients() override final;
 
-private:
-  std::shared_ptr<SystemController> _actSystem;
+ private:
+  std::weak_ptr<SystemController> _actSystem;
   ///@brief The active atoms.
-  std::vector<std::shared_ptr<Atom> > _actAtoms;
+  std::vector<std::shared_ptr<Atom>> _actAtoms;
   ///@brief The environment atoms.
-  std::vector<std::shared_ptr<Atom> > _envAtoms;
+  std::vector<std::shared_ptr<Atom>> _envAtoms;
   ///@brief The environment densities.
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _envDensities;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDensities;
   double _actEnvDensityECPEnergy;
   ///@brief The ECP of the environment atoms acting on the active density.
-  std::shared_ptr<EffectiveCorePotential<SCFMode> >_envActDensECP;
+  std::shared_ptr<EffectiveCorePotential<SCFMode>> _envActDensECP;
   ///@brief The ECP of the active atoms acting on the environment density.
-  std::vector<std::shared_ptr<EffectiveCorePotential<SCFMode> > > _actEnvDensECPs;
+  std::vector<std::shared_ptr<EffectiveCorePotential<SCFMode>>> _actEnvDensECPs;
 };
 
 } /* namespace Serenity */

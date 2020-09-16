@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -32,18 +32,19 @@ namespace Serenity {
  * A four-dimensional object with the same length in each dimension. Used to store electron
  * repulsion integrals.
  */
-template<typename T> class RegularRankFourTensor {
-public:
+template<typename T>
+class RegularRankFourTensor {
+ public:
   /**
    * @brief Copy constructor.
    * @param old tensor
    */
-  RegularRankFourTensor(const RegularRankFourTensor<T>& tensor) :
-        _lengthPerDim(tensor._lengthPerDim),
-        _kOffset(tensor._lengthPerDim),
-        _jOffset(_kOffset * tensor._lengthPerDim),
-        _iOffset(_jOffset * tensor._lengthPerDim),
-        _nElements(_iOffset * tensor._lengthPerDim) {
+  RegularRankFourTensor(const RegularRankFourTensor<T>& tensor)
+    : _lengthPerDim(tensor._lengthPerDim),
+      _kOffset(tensor._lengthPerDim),
+      _jOffset(_kOffset * tensor._lengthPerDim),
+      _iOffset(_jOffset * tensor._lengthPerDim),
+      _nElements(_iOffset * tensor._lengthPerDim) {
     _data = new T[tensor._nElements];
     for (unsigned int i = 0; i < tensor._nElements; i++) {
       _data[i] = tensor._data[i];
@@ -54,12 +55,12 @@ public:
    * @param lengthPerDim number of entries into each dimension.
    * @param data the content of the produced tensor is taken from it
    */
-  RegularRankFourTensor(const unsigned int& lengthPerDim, T* data) :
-        _lengthPerDim(lengthPerDim),
-        _kOffset(lengthPerDim),
-        _jOffset(_kOffset * lengthPerDim),
-        _iOffset(_jOffset * lengthPerDim),
-        _nElements(_iOffset * lengthPerDim) {
+  RegularRankFourTensor(const unsigned int& lengthPerDim, T* data)
+    : _lengthPerDim(lengthPerDim),
+      _kOffset(lengthPerDim),
+      _jOffset(_kOffset * lengthPerDim),
+      _iOffset(_jOffset * lengthPerDim),
+      _nElements(_iOffset * lengthPerDim) {
     _data = new T[_nElements];
     for (unsigned int i = 0; i < _nElements; i++) {
       _data[i] = data[i];
@@ -69,12 +70,12 @@ public:
    * @brief Produces an empty tensor. Caution! Values are NOT initialized!
    * @param lengthPerDim number of entries into each dimension.
    */
-  RegularRankFourTensor(const unsigned int& lengthPerDim) :
-        _lengthPerDim(lengthPerDim),
-        _kOffset(lengthPerDim),
-        _jOffset(_kOffset * lengthPerDim),
-        _iOffset(_jOffset * lengthPerDim),
-        _nElements(_iOffset * lengthPerDim) {
+  RegularRankFourTensor(const unsigned int& lengthPerDim)
+    : _lengthPerDim(lengthPerDim),
+      _kOffset(lengthPerDim),
+      _jOffset(_kOffset * lengthPerDim),
+      _iOffset(_jOffset * lengthPerDim),
+      _nElements(_iOffset * lengthPerDim) {
     _data = new T[_nElements];
   }
   /**
@@ -82,12 +83,12 @@ public:
    * @param lengthPerDim number of entries into each dimension.
    * @param initValue is assigned to each field in the tensor.
    */
-  RegularRankFourTensor(const unsigned int& lengthPerDim, T initValue) :
-        _lengthPerDim(lengthPerDim),
-        _kOffset(lengthPerDim),
-        _jOffset(_kOffset * lengthPerDim),
-        _iOffset(_jOffset * lengthPerDim),
-        _nElements(_iOffset * lengthPerDim) {
+  RegularRankFourTensor(const unsigned int& lengthPerDim, T initValue)
+    : _lengthPerDim(lengthPerDim),
+      _kOffset(lengthPerDim),
+      _jOffset(_kOffset * lengthPerDim),
+      _iOffset(_jOffset * lengthPerDim),
+      _nElements(_iOffset * lengthPerDim) {
     _data = new T[_nElements];
     for (unsigned int i = 0; i < _nElements; ++i) {
       _data[i] = initValue;
@@ -108,8 +109,7 @@ public:
    * that, using that can more easily cause errors.
    */
   inline const T& operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l) const {
-    assert(i<this->_lengthPerDim && j<this->_lengthPerDim
-        && k<this->_lengthPerDim && l<this->_lengthPerDim);
+    assert(i < this->_lengthPerDim && j < this->_lengthPerDim && k < this->_lengthPerDim && l < this->_lengthPerDim);
     return this->_data[i * _iOffset + j * _jOffset + k * _kOffset + l];
   }
   /**
@@ -121,8 +121,7 @@ public:
    * that, using that can more easily cause errors.
    */
   inline T& operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l) {
-    assert(i<this->_lengthPerDim && j<this->_lengthPerDim
-        && k<this->_lengthPerDim && l<this->_lengthPerDim);
+    assert(i < this->_lengthPerDim && j < this->_lengthPerDim && k < this->_lengthPerDim && l < this->_lengthPerDim);
     return this->_data[i * _iOffset + j * _jOffset + k * _kOffset + l];
   }
   /**
@@ -164,7 +163,7 @@ public:
     return _data;
   }
 
-  inline void cleardata(){
+  inline void cleardata() {
     delete[] _data;
   }
   /// @returns the offset in the data array for each increase in the index of the first dimension.
@@ -180,7 +179,7 @@ public:
     return _kOffset;
   }
 
-private:
+ private:
   unsigned int _kOffset, _jOffset, _iOffset, _nElements;
 
   T* _data;

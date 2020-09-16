@@ -1,0 +1,40 @@
++system
+name ATOM
+geometry geo.xyz
+scfmode restricted
+spin 0
+charge 0
++scf
+INITIALGUESS hcore
+MAXCYCLES 1000
+WRITERESTART 5
+ENERGYTHRESHOLD 1e-06
+RMSDTHRESHOLD 1e-06
+DAMPING STATIC
+STATICDAMPINGFACTOR 0.7
+ENDDAMPERR 0.05
+USELEVELSHIFT true
+USEOFFDIAGLEVELSHIFT false
+MINIMUMLEVELSHIFT 0
+DIISFLUSH 1000
+DIISSTARTERROR 0.05
+DIISMAXSTORE 10
+DIISTHRESHOLD 1e-06
+CANORTHTHRESHOLD 1e-07
+USEADIIS false
+-scf
++basis
+ label def2-QZVP
+ makeSphericalBasis true
+-basis
+method dft
++dft
+functional PBE0
+densityFitting none
+-dft
+-system
+
++task scf
+act ATOM
+fractionalDegeneracy true
+-task

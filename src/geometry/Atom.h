@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,11 +21,10 @@
 #define ATOM_H_
 /* Include Serenity Internal Headers */
 #include "geometry/AtomType.h"
-#include "math/FloatMaths.h"
-#include "notification/NotifyingClass.h"
-#include "settings/Options.h"
 #include "geometry/Point.h"
+#include "math/FloatMaths.h"
 #include "misc/SerenityError.h"
+#include "notification/NotifyingClass.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <array>
@@ -35,11 +34,9 @@
 #include <string>
 #include <vector>
 
-#include "../ext/libecpint/include/libecpint/ecp.hpp"
-
-/* External forward declaration */ 
-namespace libecpint{
-//class ECP;
+/* External forward declaration */
+namespace libecpint {
+class ECP;
 }
 namespace Serenity {
 /* Forward declarations */
@@ -49,10 +46,10 @@ class Shell;
  * @class Atom Atom.h
  * @brief Model class for an atom
  */
-class Atom : public Point,
-             public NotifyingClass<Atom>{
+class Atom : public Point, public NotifyingClass<Atom> {
   friend class Geometry;
-public:
+
+ public:
   /**
    * @param atomType is typically resolved to an element symbol, but will maybe be generalized
    *                 to an atom type as it is used e.g. in force fields.
@@ -65,21 +62,17 @@ public:
    * @param x,y,z    coordinates of the atom (atomic units)
    * @param basisFunctions can be directly associated to the atom upon construction.
    */
-  Atom(
-      std::shared_ptr<const AtomType> atomType,
-      double x,
-      double y,
-      double z,
-      std::pair<std::string, std::vector<std::shared_ptr<Shell> > > basisFunctions);
+  Atom(std::shared_ptr<const AtomType> atomType, double x, double y, double z,
+       std::pair<std::string, std::vector<std::shared_ptr<Shell>>> basisFunctions);
 
-  bool operator==(Atom rhs){
-    bool same=true;
-    auto lhsName=this->getAtomType()->getName();
-    auto rhsName=rhs.getAtomType()->getName();
-    same*=this->_atomType->getElementSymbol()==rhs.getAtomType()->getElementSymbol();
-    same*=isEqual(this->_x,rhs.getX(),1e-6);
-    same*=isEqual(this->_y,rhs.getY(),1e-6);
-    same*=isEqual(this->_z,rhs.getZ(),1e-6);
+  bool operator==(Atom rhs) {
+    bool same = true;
+    auto lhsName = this->getAtomType()->getName();
+    auto rhsName = rhs.getAtomType()->getName();
+    same *= this->_atomType->getElementSymbol() == rhs.getAtomType()->getElementSymbol();
+    same *= isEqual(this->_x, rhs.getX(), 5e-5);
+    same *= isEqual(this->_y, rhs.getY(), 5e-5);
+    same *= isEqual(this->_z, rhs.getZ(), 5e-5);
     return same;
   }
   /**
@@ -99,7 +92,7 @@ public:
    * @brief Dummy check.
    * @return Returns true if the atom type is a dummy atom.
    */
-  bool isDummy(){
+  bool isDummy() {
     return _atomType->isDummy();
   }
   /**
@@ -114,14 +107,14 @@ public:
    */
   unsigned int getNBasisFunctions(std::string label) const;
   /// @returns the basis functions for this atom of the active basis
-  std::vector<std::shared_ptr<Shell> >& getBasisFunctions();
+  std::vector<std::shared_ptr<Shell>>& getBasisFunctions();
   /// @returns the basis functions for this atom of the active basis
-  const std::vector<std::shared_ptr<Shell> >& getBasisFunctions() const;
+  const std::vector<std::shared_ptr<Shell>>& getBasisFunctions() const;
   /**
    * @param   label a string identifying the basis type
    * @returns the basis functions for this atom of the basis with the label label
    */
-  std::vector<std::shared_ptr<Shell> >& getBasisFunctions(std::string label);
+  std::vector<std::shared_ptr<Shell>>& getBasisFunctions(std::string label);
   /**
    * @param   label a string identifying the basis type
    * @returns Returns if a basis with the given label is present
@@ -132,7 +125,7 @@ public:
    * @param   label a string identifying the basis type
    * @returns the basis functions for this atom of the basis with the label label
    */
-  const std::vector<std::shared_ptr<Shell> >& getBasisFunctions(std::string label) const;
+  const std::vector<std::shared_ptr<Shell>>& getBasisFunctions(std::string label) const;
   /**
    * @returns the nuclear charge which determines the element symbol. Caution: the effective
    *          charge of the nucleus may be different if effective core potentials are used.
@@ -154,14 +147,12 @@ public:
    * @param isPrimary if true the new basis is marked as being the active one from now on.
    * TODO extract these functions into the cpp file!!!
    */
-  void addBasis(
-      std::pair<std::string, std::vector<std::shared_ptr<Shell> > > newBasis,
-      bool isPrimary) {
+  void addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> newBasis, bool isPrimary) {
     /*
      * There is actually no problem if the same basis is tried to be added twice, but it seems
      * quite weird. Thus nothing happens here.
      */
-    if(_associatedBasis.find(newBasis.first) == _associatedBasis.end()){
+    if (_associatedBasis.find(newBasis.first) == _associatedBasis.end()) {
       _associatedBasis.insert(newBasis);
       if (isPrimary) {
         _primaryBasisLabel = newBasis.first;
@@ -181,25 +172,8 @@ public:
    * @param ecpSet    A set of effective core potential functions which is used along with
    *                  the newBasis.
    */
-  void addBasis(
-      std::pair<std::string, std::vector<std::shared_ptr<Shell> > > newBasis,
-      std::shared_ptr<libecpint::ECP> ecp,
-      unsigned int nCoreElectrons) {
-    // Make sure no primary basis has been specified before.
-    if(_primaryBasisLabel != "-" and ecp->N != 0) throw SerenityError(
-      "Error: A set of effective core potential functions is supposed to be added to an atom which"
-      " already has a 'primary' basis. This is not allowed, because using ECPs changes the"
-      " effective charge and number of electrons. This may lead to errors if data is used which"
-      " has been calculated before without using ECPs.");
-    this->addBasis(newBasis, true);
-    if (ecp->N != 0) {
-      assert (!_corePotential);
-      _corePotential = ecp;
-    }
-    // Only change the number of core electrons if there was no ECP before.
-    if(_nCoreElectrons == 0) _nCoreElectrons = nCoreElectrons;
-    notifyObjects();
-  }
+  void addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> newBasis,
+                std::shared_ptr<libecpint::ECP> ecp, unsigned int nCoreElectrons);
   /**
    * @brief Deletes a previously attached set of basis functions.
    *
@@ -216,7 +190,7 @@ public:
    * @param newGrid which will be attached to this atom
    * @param isPrimary indicates whether newGrid will be the new 'default' grid for this atom
    */
-  void addGrid(std::pair<std::string, AtomGrid* > newGrid, bool isPrimary);
+  void addGrid(std::pair<std::string, AtomGrid*> newGrid, bool isPrimary);
   /**
    * @returns the primary grid attached to this atom
    */
@@ -226,7 +200,7 @@ public:
    * @returns the grid identified by the label
    */
   AtomGrid* getGrid(std::string label);
-  
+
   /**
    * @brief sets the new x coordinate, also moves the basis functions accordingly
    * @param x  new x coordinate
@@ -255,13 +229,13 @@ public:
    */
   const Eigen::Vector3d& getGradient() const;
 
-  inline bool gradientsUpToDate(){
+  inline bool gradientsUpToDate() {
     return _gradientsUpToDate;
   }
 
-  Eigen::Vector3d coords(){
+  Eigen::Vector3d coords() {
     Eigen::Vector3d coord;
-    coord << _x,_y,_z;
+    coord << _x, _y, _z;
     return coord;
   }
   /**
@@ -281,12 +255,9 @@ public:
     assert(_primaryBasisLabel != "-");
     return _nCoreElectrons;
   }
-  inline std::shared_ptr<libecpint::ECP> getCorePotential() const {
-    assert(_primaryBasisLabel != "-");
-    assert(_corePotential);
-    return _corePotential;
-  }
-private:
+  std::shared_ptr<libecpint::ECP> getCorePotential() const;
+
+ private:
   const std::shared_ptr<const AtomType> _atomType;
 
   bool _gradientsUpToDate;
@@ -300,7 +271,7 @@ private:
    * is used here (the map connects a label to the basis
    * set for this atom).
    */
-  std::map<std::string, std::vector<std::shared_ptr<Shell> > > _associatedBasis;
+  std::map<std::string, std::vector<std::shared_ptr<Shell>>> _associatedBasis;
   /*
    * The set of functions representing the core potential for this atom
    */
@@ -310,13 +281,13 @@ private:
    */
   std::string _primaryBasisLabel;
   // TODO think about ownership and use the corresponding smart pointer. Probably unique.
-  std::map<std::string, AtomGrid* > _grids;
+  std::map<std::string, AtomGrid*> _grids;
 
   std::string _primaryGridLabel;
   /*
    * The number of core electrons in case the atom is defined with an effective core potential
    */
-  unsigned int _nCoreElectrons=0;
+  unsigned int _nCoreElectrons = 0;
 };
 
 } /* namespace Serenity */

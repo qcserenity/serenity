@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -30,6 +30,10 @@
 
 namespace Serenity {
 
+namespace Options {
+enum class SCF_MODES;
+}
+
 class SystemController;
 /**
  * @class NumericalDipoleMomentCalculator NumericalDipoleMomentCalculator.h
@@ -38,7 +42,7 @@ class SystemController;
  *
  */
 class NumericalDipoleMomentCalculator {
-public:
+ public:
   /**
    * @brief Constructor
    */
@@ -53,11 +57,10 @@ public:
    * @param system The system of which the dipole moment should be calculated
    * @return dipoleMoment array{x,y,z}
    */
-  template <Options::SCF_MODES SCFMode>
+  template<Options::SCF_MODES SCFMode>
   static Eigen::Vector3d calculateDipoleMoment(std::shared_ptr<SystemController> system);
-
 };
 
-} /* namespace QCPack */
+} // namespace Serenity
 
 #endif /* NUMERICALDIPOLEMOMENTCALCULATOR_H_ */

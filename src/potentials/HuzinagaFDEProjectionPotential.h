@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -25,11 +25,11 @@
 #include "data/grid/ExternalDensityOnGridController.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "grid/GridController.h"
+#include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundle.h"
+#include "potentials/NAddFuncPotential.h"
+#include "potentials/Potential.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "settings/Options.h"
-#include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundle.h"
-#include "potentials/Potential.h"
-#include "potentials/NAddFuncPotential.h"
 /* Include Std and External Headers */
 #include <Eigen/SparseCore>
 
@@ -56,11 +56,11 @@ class EmbeddingSettings;
  * Fermi-shifted Huzinaga operator:\n
  *   J. Chem. Theory Comput. 14, 1928-1942 (2018)\n
  */
-template <Options::SCF_MODES SCFMode>
-class HuzinagaFDEProjectionPotential: public Potential<SCFMode>,
-public ObjectSensitiveClass<Basis>,
-public ObjectSensitiveClass<DensityMatrix<SCFMode> >  {
-public:
+template<Options::SCF_MODES SCFMode>
+class HuzinagaFDEProjectionPotential : public Potential<SCFMode>,
+                                       public ObjectSensitiveClass<Basis>,
+                                       public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
+ public:
   /**
    * @brief Constructor.
    *
@@ -78,20 +78,17 @@ public:
    * @param allEConts Optional energy component controllers for hybrid approaches.
    * @param fermiShift Optional fermi shift for the operator..
    */
-  HuzinagaFDEProjectionPotential(
-      std::shared_ptr<SystemController> activeSystem,
-      std::vector<std::shared_ptr<SystemController> > environmentSystems,
-      const EmbeddingSettings& settings,
-      std::shared_ptr<PotentialBundle<SCFMode> > activeFockMatrix = nullptr,
-      bool topDown = false,
-      std::shared_ptr<GridController> supersystemgrid = nullptr,
-      double gridCutOff = 0.0,
-      std::vector<std::shared_ptr<EnergyComponentController> > allEConts = {nullptr},
-      double fermiShift = 0.0);
+  HuzinagaFDEProjectionPotential(std::shared_ptr<SystemController> activeSystem,
+                                 std::vector<std::shared_ptr<SystemController>> environmentSystems,
+                                 const EmbeddingSettings& settings,
+                                 std::shared_ptr<PotentialBundle<SCFMode>> activeFockMatrix = nullptr, bool topDown = false,
+                                 std::shared_ptr<GridController> supersystemgrid = nullptr, double gridCutOff = 0.0,
+                                 std::vector<std::shared_ptr<EnergyComponentController>> allEConts = {nullptr},
+                                 double fermiShift = 0.0);
   /**
    * @brief Default destructor.
    */
-  virtual ~HuzinagaFDEProjectionPotential()=default;
+  virtual ~HuzinagaFDEProjectionPotential() = default;
 
   /**
    * @return The fock matrix for the embedded/active system.
@@ -118,42 +115,42 @@ public:
     _potential = nullptr;
   }
 
-private:
+ private:
   ///@brief Sorting/Projection matrices from basis A to basis set B.
-  std::vector<std::shared_ptr<Eigen::SparseMatrix<double> > > _AtoBProjections;
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> _AtoBProjections;
   ///@brief Sorting/Projection matrices from the differential basis between B and A (diff  = {B}/{A}) to basis set B.
-  std::vector<std::shared_ptr<Eigen::SparseMatrix<double> > > _difftoBProjections;
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> _difftoBProjections;
   /// @brief The potential in matrix representation.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
   /// @brief The active system.
-  std::shared_ptr<SystemController> _activeSystem;
+  std::weak_ptr<SystemController> _activeSystem;
   /// @brief The environment systems.
-  std::vector<std::shared_ptr<SystemController> > _environmentSystems;
+  std::vector<std::weak_ptr<SystemController>> _environmentSystems;
   /// @brief The block of the fock matrix from which missing fock matrix elements are extracted if possible.
-  std::shared_ptr<PotentialBundle<SCFMode> > _activeFockMatrix;
+  std::shared_ptr<PotentialBundle<SCFMode>> _activeFockMatrix;
   /// @brief The density matrix controllers of the environment systems.
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _envDensityCont;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDensityCont;
   /// @brief AB-Potentials
-  std::vector<std::shared_ptr<ABEmbeddedBundle<SCFMode> > > _abEmbeddedBundles;
+  std::vector<std::shared_ptr<ABEmbeddedBundle<SCFMode>>> _abEmbeddedBundles;
   double _fermiShift;
   /*
    * Projection truncation
    */
   /// @brief The overlap matrix of the active system basis set with all environment basis sets.
-  std::vector<std::shared_ptr<Eigen::MatrixXd> >_s_ABs;
+  std::vector<std::shared_ptr<Eigen::MatrixXd>> _s_ABs;
   /// @brief The non additive kinetic energy potential for not projected subsystems (optional).
-  std::shared_ptr<NAddFuncPotential<SCFMode> > _naddKinPot;
+  std::shared_ptr<NAddFuncPotential<SCFMode>> _naddKinPot;
   /// @brief The density controllers of the not-projected densities.
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _notProjectedEnvDensities;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _notProjectedEnvDensities;
   /* Helper Functions */
   /**
    * @brief builds the outer diagonal Fock matrix of act. + env[iEnv]
    * @param iEnv The index of the environment system.
    */
-  SPMatrix<SCFMode> buildOuterDiagonalFockMatrix(
-      unsigned int iEnv);
+  SPMatrix<SCFMode> buildOuterDiagonalFockMatrix(unsigned int iEnv);
   /**
-   * @brief Writes the current average overlap of all occupied environmental orbitals with the occ. active system orbitals.
+   * @brief Writes the current average overlap of all occupied environmental orbitals with the occ. active system
+   * orbitals.
    */
   void writeInterSubsystemOccOverlap();
   /**

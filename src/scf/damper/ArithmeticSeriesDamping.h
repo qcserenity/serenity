@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,14 +22,13 @@
 #define ELECTRONICSTRUCTURECALCULATIONS_SCF_DAMPER_ARITHMETICSERIESDAMPING_H_
 
 /* Include Serenity Internal Headers */
-#include "scf/damper/Damper.h"
 #include "data/SpinPolarizedData.h"
-
+#include "scf/damper/Damper.h"
 
 namespace Serenity {
-template<Options::SCF_MODES T> class ArithmeticSeriesDamping: public Damper<T> {
-public:
-
+template<Options::SCF_MODES T>
+class ArithmeticSeriesDamping : public Damper<T> {
+ public:
   /**
    * @brief           Damping with varying damping factor in a given range.
    *
@@ -48,11 +47,7 @@ public:
    * @param iStartUp  Number of static damping steps with dStart at the beginning of the SCF
    *
    */
-  ArithmeticSeriesDamping(
-      const double dStart,
-      const double dStep,
-      const double dEnd,
-      int iStartUp);
+  ArithmeticSeriesDamping(const double dStart, const double dStep, const double dEnd, int iStartUp);
 
   virtual ~ArithmeticSeriesDamping() = default;
 
@@ -71,7 +66,10 @@ public:
    */
   virtual void damp(FockMatrix<T>& newMatrix) override final;
 
-private:
+  ///@brief Just override.
+  virtual void dynamicDamp(FockMatrix<T>&, DensityMatrix<T>) override final{};
+
+ private:
   const double _dStart;
   const double _dStep;
   const double _dEnd;
@@ -80,5 +78,5 @@ private:
   bool _initialized;
   SpinPolarizedData<T, Eigen::MatrixXd> _oldMatrix;
 };
-}/* namespace Serenity */
+} /* namespace Serenity */
 #endif /* ELECTRONICSTRUCTURECALCULATIONS_SCF_DAMPER_ARITHMETICSERIESDAMPING_H_ */

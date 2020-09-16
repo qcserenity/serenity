@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -26,19 +26,18 @@
 #include <memory>
 #include <string>
 
-
 namespace Serenity {
 /**
  * @class AtomTypeFactory AtomTypeFactory.h
  * @brief Generates @ref AtomType "AtomTypes" solely based on a label.
  *
- * The label usually the atom symbol as found in the PSE, but 
+ * The label usually the atom symbol as found in the PSE, but
  *   does include isotiopes such as D and T.
- *  
+ *
  * This is a purely static class for global use.
  */
 class AtomTypeFactory {
-public:
+ public:
   /**
    * @brief The default destructor.
    */
@@ -53,17 +52,16 @@ public:
    */
   static AtomTypeFactory& getInstance();
 
-private:
-
-  /* 
+ private:
+  /*
    * A map of all atom types created in the past, to ensure that none
    *   of them is build twice.
    */
-  typedef std::map<std::string, std::shared_ptr<const AtomType> > AtomTypeMap;
+  typedef std::map<std::string, std::shared_ptr<const AtomType>> AtomTypeMap;
   static AtomTypeMap _atomTypes;
 
   /*
-   * The private function to actually generate the AtomTypes that 
+   * The private function to actually generate the AtomTypes that
    *   are not yet present in the AtomTypeMap if they are requested.
    */
   static void generateAtomType(std::string name);
@@ -73,7 +71,6 @@ private:
   // Stop the compiler generating methods to copy the object
   AtomTypeFactory(AtomTypeFactory const& copy) = delete;
   AtomTypeFactory& operator=(AtomTypeFactory const& copy) = delete;
-
 };
 
 } /* namespace Serenity */

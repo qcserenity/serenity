@@ -1648,7 +1648,6 @@ br   MINAO
 1.7636              0.273774
 0.70619             0.074397
 *
-# This basis is called MINAO-PP in Molpro. Technically this is larger than a minimal basis set for 18e.
 pd   MINAO
 *
 9    s

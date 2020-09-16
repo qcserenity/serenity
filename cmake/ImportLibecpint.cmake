@@ -1,40 +1,30 @@
 function(import_libecpint)
   # If the target already exists, do nothing
-  if(TARGET Libecpint::Libecpint)
+  if(TARGET ecpint)
     return()
   endif()
 
-  add_library(Libecpint::Libecpint SHARED IMPORTED)
-  set_property(TARGET Libecpint::Libecpint PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX})
-  set_property(TARGET Libecpint::Libecpint PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/ext/libecpint/include)
-  install(FILES
-    ${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX}
-    DESTINATION lib
+  message(STATUS
+    "Checking Libecpint source files."
   )
+  include(DownloadProject)
+  download_project(
+    PROJ ext-ecpint
+    GIT_REPOSITORY "https://github.com/qcserenity/libecpint.git"
+    QUIET
+  )
+  set(LIBECPINT_BUILD_TESTS OFF CACHE BOOL "Disable tests")
+  set(_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF)
+  add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/ext-ecpint-src ${CMAKE_CURRENT_BINARY_DIR}/ext-ecpint-build)
+  set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  install(TARGETS ecpint EXPORT ${PROJECT_NAME}Targets DESTINATION lib)
 
-  # Download it instead
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/libecpint/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ecpint${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/ext/libecpint/include)
-    include(ExternalProject)
-    ExternalProject_Add(Libecpint
-    GIT_REPOSITORY "https://github.com/moritzBens/libecpint.git"
-    CMAKE_ARGS -DENABLE_FORTRAN_INTERFACE=OFF -DENABLE_TESTALL=OFF -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/ext/libecpint)
-    add_dependencies(Libecpint::Libecpint Libecpint)
-  else()
-    message(STATUS "Libecpint was found the 'ext/' folder.")
-    return()
-  endif()
 
   # Final check if all went well
-  if(TARGET Libecpint::Libecpint)
-    message(STATUS
-      "Libecpint was not found in your PATH, so it was downloaded."
-    )
-  else()
+  if(NOT TARGET ecpint)
     string(CONCAT error_msg
-      "Libecpint was not found in your PATH and could not be established "
-      "through a download. Try specifying the Libecpint_DIR variable or "
-      "altering the CMAKE_PREFIX_PATH."
+      "Libecpint was not found and could not be established through a download."
     )
     message(FATAL_ERROR ${error_msg})
   endif()

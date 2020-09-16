@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,14 +21,14 @@
 #ifndef POTENTIALS_HOFFMANNPROJECTIONPOTENTIAL_H_
 #define POTENTIALS_HOFFMANNPROJECTIONPOTENTIAL_H_
 /* Include Serenity Internal Headers */
-#include "potentials/Potential.h"                                   //Potential definition.
-#include "data/matrices/DensityMatrixController.h"                  //DensityMatrixController definition
-#include "basis/Basis.h"                                            //ObjectSensitiveClass
-#include "potentials/bundles/PotentialBundle.h"                     //Diagonal block of the fock matrix.
-#include "settings/EmbeddingSettings.h"                             //EmbeddingSettings definition.
+#include "basis/Basis.h"                           //ObjectSensitiveClass
+#include "data/matrices/DensityMatrixController.h" //DensityMatrixController definition
+#include "potentials/Potential.h"                  //Potential definition.
+#include "potentials/bundles/PotentialBundle.h"    //Diagonal block of the fock matrix.
+#include "settings/EmbeddingSettings.h"            //EmbeddingSettings definition.
 /* Include Std and External Headers */
-#include <memory>                                                   //smrt_ptr
-#include <vector>                                                   //std::vector
+#include <memory> //smrt_ptr
+#include <vector> //std::vector
 
 namespace Serenity {
 /* Forward declarations */
@@ -45,11 +45,11 @@ class GridController;
  *  Theory. Annu. Rep. Comput. Chem. 8,53-70 (2012) and \n
  *  J. Phys. Chem. A 118, 9182–9200 (2014).\n
  */
-template <Options::SCF_MODES SCFMode>
-class HoffmannProjectionPotential: public Potential<SCFMode>,
-public ObjectSensitiveClass<Basis>,
-public ObjectSensitiveClass<DensityMatrix<SCFMode> >  {
-public:
+template<Options::SCF_MODES SCFMode>
+class HoffmannProjectionPotential : public Potential<SCFMode>,
+                                    public ObjectSensitiveClass<Basis>,
+                                    public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
+ public:
   /**
    * @brief Constructor.
    * @param activeSystem         The active system.
@@ -61,19 +61,16 @@ public:
    * @param gridCutOff           Optional grid cut off for hybrid approaches.
    * @param allEConts            Optional energy component controller for hybrid approaches.
    */
-  HoffmannProjectionPotential(
-      std::shared_ptr<SystemController> activeSystem,
-      std::vector<std::shared_ptr<SystemController> > environmentSystems,
-      const EmbeddingSettings& settings,
-      std::shared_ptr<PotentialBundle<SCFMode> > activeFockMatrix = nullptr,
-      bool topDown = false,
-      std::shared_ptr<GridController> supersystemgrid = nullptr,
-      double gridCutOff = 0.0,
-      std::vector<std::shared_ptr<EnergyComponentController> > allEConts = {});
+  HoffmannProjectionPotential(std::shared_ptr<SystemController> activeSystem,
+                              std::vector<std::shared_ptr<SystemController>> environmentSystems,
+                              const EmbeddingSettings& settings,
+                              std::shared_ptr<PotentialBundle<SCFMode>> activeFockMatrix = nullptr, bool topDown = false,
+                              std::shared_ptr<GridController> supersystemgrid = nullptr, double gridCutOff = 0.0,
+                              std::vector<std::shared_ptr<EnergyComponentController>> allEConts = {});
   /**
    * @brief Defualt destrutor.
    */
-  virtual ~HoffmannProjectionPotential()=default;
+  virtual ~HoffmannProjectionPotential() = default;
 
   /**
    * @return The fock matrix for the embedded/active system.
@@ -100,7 +97,7 @@ public:
     _potential = nullptr;
   }
 
-private:
+ private:
   /**
    * @brief Adjust the settings for the call to the ABPotentialBundle factory.
    * @param settings The settings to be adjusted.
@@ -112,8 +109,7 @@ private:
    * @param pickedSystem The picked system controller.
    * @return The non picked system controllers.
    */
-  std::vector<std::shared_ptr<SystemController> > getOtherSystemController(
-      std::shared_ptr<SystemController> pickedSystem);
+  std::vector<std::shared_ptr<SystemController>> getOtherSystemController(std::shared_ptr<SystemController> pickedSystem);
   /**
    *
    * @brief Get the non picked density matrix controllers.
@@ -122,10 +118,10 @@ private:
    * @param environmentDensityMatrixController
    * @return The non picked density matrix controllers.
    */
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > getOtherDensityMatrixController(
-      std::shared_ptr<DensityMatrixController<SCFMode> > pickedDensityMatrixController,
-      std::shared_ptr<DensityMatrixController<SCFMode> > activeDensityMatrixController,
-      std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > environmentDensityMatrixController);
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>>
+  getOtherDensityMatrixController(std::shared_ptr<DensityMatrixController<SCFMode>> pickedDensityMatrixController,
+                                  std::shared_ptr<DensityMatrixController<SCFMode>> activeDensityMatrixController,
+                                  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> environmentDensityMatrixController);
 
   /**
    * @brief Check if the given functional is a range separated functional.
@@ -133,32 +129,32 @@ private:
    * @param functional The functional.
    * @return true if range separated.
    */
-  bool checkFunctionalForLRXC(Options::XCFUNCTIONALS functional);
+  bool checkFunctionalForLRXC(CompositeFunctionals::XCFUNCTIONALS functional);
 
   /**
    * @brief The Huzinaga projection part.
    */
-  std::shared_ptr<Potential<SCFMode> > _huzinagaProjection;
+  std::shared_ptr<Potential<SCFMode>> _huzinagaProjection;
   /**
    * @brief The diagonal fock matrix blocks as bundles.
    */
-  std::vector<std::shared_ptr<PotentialBundle<SCFMode> > > _embeddingBundle;
+  std::vector<std::shared_ptr<PotentialBundle<SCFMode>>> _embeddingBundle;
   /**
    * @brief The active system controller.
    */
-  std::shared_ptr<SystemController> _activeSystem;
+  std::weak_ptr<SystemController> _activeSystem;
   /**
    * @brief The environment system controllers.
    */
-  std::vector<std::shared_ptr<SystemController> > _environmentSystems;
+  std::vector<std::weak_ptr<SystemController>> _environmentSystems;
   /// @brief The overlap matrix of the active system basis set with all environment basis sets.
-  std::vector<std::shared_ptr<Eigen::MatrixXd> >_s_ABs;
+  std::vector<std::shared_ptr<Eigen::MatrixXd>> _s_ABs;
   /// @brief The density controllers of the not-projected densities.
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _notProjectedEnvDensities;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _notProjectedEnvDensities;
   /// @brief The density matrix controllers of the environment systems.
-  std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > _envDensityCont;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDensityCont;
   /// @brief The potential in matrix representation.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
 };
 
 } /* namespace Serenity */

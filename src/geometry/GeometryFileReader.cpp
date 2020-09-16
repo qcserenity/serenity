@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,7 +24,6 @@
 /* Include Std and External Headers */
 #include <cassert>
 #include <stdexcept>
-
 
 namespace Serenity {
 using namespace std;
@@ -40,7 +39,7 @@ void GeometryFileReader::loadFile(string filePath) {
   assert(!_file.is_open());
   _file.open(filePath.c_str(), ifstream::in);
   if (!_file.good()) {
-    throw SerenityError((string)"Error while loading file: " + filePath + ". Does it exist?");
+    throw SerenityError((string) "Error while loading file: " + filePath + ". Does it exist?");
   }
 }
 
@@ -65,32 +64,37 @@ std::unique_ptr<Geometry> GeometryFileReader::readGeometry(string filePath, unsi
   return result;
 }
 
-vector<std::unique_ptr<Geometry> > GeometryFileReader::readAllGeometries() {
+vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries() {
   const bool fileWasOpen = _file.is_open();
-  if (!fileWasOpen) loadFile(_filePath);
-  vector<unique_ptr<Geometry> > geometries;
-  unsigned int index=0;
-  while(true) {
+  if (!fileWasOpen)
+    loadFile(_filePath);
+  vector<unique_ptr<Geometry>> geometries;
+  unsigned int index = 0;
+  while (true) {
     auto newGeometry = readGeometry(index++);
     if (!newGeometry) {
       break;
-    } else {
+    }
+    else {
       geometries.push_back(move(newGeometry));
     }
   }
-  if (!fileWasOpen) _file.close();
+  if (!fileWasOpen)
+    _file.close();
   return geometries;
 }
 
 unique_ptr<Geometry> GeometryFileReader::readGeometry(unsigned int index) {
   const bool fileWasOpen = _file.is_open();
-  if (!fileWasOpen) loadFile(_filePath);
+  if (!fileWasOpen)
+    loadFile(_filePath);
   auto result = readGeometryFromLoadedFile(index);
-  if (!fileWasOpen) _file.close();
+  if (!fileWasOpen)
+    _file.close();
   return result;
 }
 
-vector<unique_ptr<Geometry> > GeometryFileReader::readAllGeometries(string filePath) {
+vector<unique_ptr<Geometry>> GeometryFileReader::readAllGeometries(string filePath) {
   loadFile(filePath);
   auto result = readAllGeometries();
   _file.close();

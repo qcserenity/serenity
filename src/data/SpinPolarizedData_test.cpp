@@ -1,19 +1,19 @@
 /**
  * @file   SpinPolarizedData_test.cpp
  * @author Thomas Dresselhaus
- * 
+ *
  * @date Aug 26, 2015
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,28 +24,24 @@
 #include <memory>
 #include <vector>
 
-
 namespace Serenity {
 
 class SpinPolarizedDataTest : public ::testing::Test {
-protected:
-  SpinPolarizedDataTest() :
-        tRestrictedDouble(-2.3),
-        tUnrestrictedDouble(1.4),
-        tRestrictedIntVec({4, -3, 1}),
-        tUnrestrictedIntVec(
-            makeUnrestrictedFromPieces(std::vector<int>({-1,3}),std::vector<int>({17,-4}))) {
+ protected:
+  SpinPolarizedDataTest()
+    : tRestrictedDouble(-2.3),
+      tUnrestrictedDouble(1.4),
+      tRestrictedIntVec({4, -3, 1}),
+      tUnrestrictedIntVec(makeUnrestrictedFromPieces(std::vector<int>({-1, 3}), std::vector<int>({17, -4}))) {
     tUnrestrictedDouble.beta = -0.2;
   }
   virtual ~SpinPolarizedDataTest() = default;
 
-
-
   // The objects under test
   SpinPolarizedData<Options::SCF_MODES::RESTRICTED, double> tRestrictedDouble;
   SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, double> tUnrestrictedDouble;
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > tRestrictedIntVec;
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > tUnrestrictedIntVec;
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> tRestrictedIntVec;
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> tUnrestrictedIntVec;
 };
 /**
  * @test
@@ -59,8 +55,8 @@ TEST_F(SpinPolarizedDataTest, Construct) {
   EXPECT_EQ(uDouble.alpha, 1.7);
   EXPECT_EQ(uDouble.beta, 1.7);
   // std::vector<int>
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > rIntVec(3, -5);
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uIntVec(4, 3);
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> rIntVec(3, -5);
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uIntVec(4, 3);
   EXPECT_EQ(rIntVec.size(), (unsigned int)3);
   EXPECT_EQ(rIntVec[0], -5);
   EXPECT_EQ(uIntVec.alpha.size(), (unsigned int)4);
@@ -72,7 +68,7 @@ TEST_F(SpinPolarizedDataTest, Construct) {
   EXPECT_EQ(uIntVec.alpha[1], 7);
   EXPECT_EQ(uIntVec.beta[1], 3);
   // Default construct
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uIntVec2;
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uIntVec2;
   EXPECT_EQ(uIntVec2.alpha.size(), (unsigned int)0);
   uIntVec2.alpha.push_back(-3);
   EXPECT_EQ(uIntVec2.alpha[0], -3);
@@ -84,12 +80,12 @@ TEST_F(SpinPolarizedDataTest, Construct) {
 TEST_F(SpinPolarizedDataTest, MakeUnrestrictedFromPieces) {
   std::vector<int> a{-3, 5, 4};
   std::vector<int> b{1, 0};
-  auto uIntVec = makeUnrestrictedFromPieces<std::vector<int> >(a, b);
+  auto uIntVec = makeUnrestrictedFromPieces<std::vector<int>>(a, b);
   EXPECT_EQ(uIntVec.alpha.size(), (unsigned int)3);
   EXPECT_EQ(uIntVec.alpha[1], 5);
   EXPECT_EQ(uIntVec.beta.size(), (unsigned int)2);
   EXPECT_EQ(uIntVec.beta[0], 1);
-  auto uIntVec2 = makeUnrestrictedFromPieces<std::vector<int> >({-3, 5, 4}, {1, 0});
+  auto uIntVec2 = makeUnrestrictedFromPieces<std::vector<int>>({-3, 5, 4}, {1, 0});
   EXPECT_EQ(uIntVec2.alpha, uIntVec.alpha);
   EXPECT_EQ(uIntVec2.beta, uIntVec.beta);
 }
@@ -117,13 +113,13 @@ TEST_F(SpinPolarizedDataTest, CopyConstruction) {
   /*
    * vector<int>
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > rCopyVec(tRestrictedIntVec);
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> rCopyVec(tRestrictedIntVec);
   EXPECT_EQ(rCopyVec[0], 4);
   // Make sure it's a copy
   rCopyVec[0] = -99;
   EXPECT_EQ(tRestrictedIntVec[0], 4);
   // Unresctricted
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uCopyVec(tUnrestrictedIntVec);
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uCopyVec(tUnrestrictedIntVec);
   EXPECT_EQ(uCopyVec.alpha[1], 3);
   EXPECT_EQ(uCopyVec.beta[1], -4);
   // Make sure it's a copy
@@ -148,22 +144,22 @@ TEST_F(SpinPolarizedDataTest, MoveConstruction) {
   /*
    * vector<int>
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > rCopyVec(std::move(tRestrictedIntVec));
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> rCopyVec(std::move(tRestrictedIntVec));
   EXPECT_EQ(rCopyVec[0], 4);
   // Unresctricted
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uCopyVec(std::move(tUnrestrictedIntVec));
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uCopyVec(std::move(tUnrestrictedIntVec));
   EXPECT_EQ(uCopyVec.alpha[1], 3);
   EXPECT_EQ(uCopyVec.beta[1], -4);
   /*
    * std::unique_ptr to ensure move instead of copy
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int> > rPtr(new int(1));
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int> > rPtrMove(std::move(rPtr));
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int>> rPtr(new int(1));
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int>> rPtrMove(std::move(rPtr));
   EXPECT_EQ(*rPtrMove, 1);
   EXPECT_EQ(rPtr, nullptr);
-  auto uPtr = makeUnrestrictedFromPieces<std::unique_ptr<int> >(
-      std::unique_ptr<int>(new int(2)), std::unique_ptr<int>(new int(3)));
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::unique_ptr<int> > uPtrMove(std::move(uPtr));
+  auto uPtr =
+      makeUnrestrictedFromPieces<std::unique_ptr<int>>(std::unique_ptr<int>(new int(2)), std::unique_ptr<int>(new int(3)));
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::unique_ptr<int>> uPtrMove(std::move(uPtr));
   EXPECT_EQ(*uPtrMove.alpha, 2);
   EXPECT_EQ(uPtr.alpha, nullptr);
   EXPECT_EQ(*uPtrMove.beta, 3);
@@ -195,14 +191,14 @@ TEST_F(SpinPolarizedDataTest, Assignment) {
   /*
    * vector<int>
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > rCopyVec(0);
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> rCopyVec(0);
   rCopyVec = tRestrictedIntVec;
   EXPECT_EQ(rCopyVec[0], 4);
   // Make sure it's a copy
   rCopyVec[0] = -99;
   EXPECT_EQ(tRestrictedIntVec[0], 4);
   // Unresctricted
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uCopyVec(0);
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uCopyVec(0);
   uCopyVec = tUnrestrictedIntVec;
   EXPECT_EQ(uCopyVec.alpha[1], 3);
   EXPECT_EQ(uCopyVec.beta[1], -4);
@@ -230,26 +226,26 @@ TEST_F(SpinPolarizedDataTest, MoveAssignment) {
   /*
    * vector<int>
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int> > rCopyVec(0);
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<int>> rCopyVec(0);
   rCopyVec = std::move(tRestrictedIntVec);
   EXPECT_EQ(rCopyVec[0], 4);
   // Unresctricted
-  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int> > uCopyVec(0);
+  SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<int>> uCopyVec(0);
   uCopyVec = std::move(tUnrestrictedIntVec);
   EXPECT_EQ(uCopyVec.alpha[1], 3);
   EXPECT_EQ(uCopyVec.beta[1], -4);
   /*
    * std::unique_ptr to ensure move instead of copy
    */
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int> > rPtr(new int(1));
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int> > rPtrMove(new int(-7));
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int>> rPtr(new int(1));
+  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::unique_ptr<int>> rPtrMove(new int(-7));
   rPtrMove = std::move(rPtr);
   EXPECT_EQ(*rPtrMove, 1);
   EXPECT_EQ(rPtr, nullptr);
-  auto uPtr = makeUnrestrictedFromPieces<std::unique_ptr<int> >(
-      std::unique_ptr<int>(new int(2)), std::unique_ptr<int>(new int(3)));
-  auto uPtrMove = makeUnrestrictedFromPieces<std::unique_ptr<int> >(
-      std::unique_ptr<int>(new int(66)), std::unique_ptr<int>(new int(666)));
+  auto uPtr =
+      makeUnrestrictedFromPieces<std::unique_ptr<int>>(std::unique_ptr<int>(new int(2)), std::unique_ptr<int>(new int(3)));
+  auto uPtrMove = makeUnrestrictedFromPieces<std::unique_ptr<int>>(std::unique_ptr<int>(new int(66)),
+                                                                   std::unique_ptr<int>(new int(666)));
   uPtrMove = std::move(uPtr);
   EXPECT_EQ(*uPtrMove.alpha, 2);
   EXPECT_EQ(uPtr.alpha, nullptr);
@@ -275,7 +271,7 @@ TEST_F(SpinPolarizedDataTest, ArithmeticOperators) {
   EXPECT_DOUBLE_EQ(tRestrictedDouble * rOther, -4.6);
   EXPECT_DOUBLE_EQ(tRestrictedDouble / rOther, -1.15);
   // Unrestricted
-  auto uOther = makeUnrestrictedFromPieces(-1.0, 2.0);// 1.4, -0.2
+  auto uOther = makeUnrestrictedFromPieces(-1.0, 2.0); // 1.4, -0.2
   EXPECT_DOUBLE_EQ((tUnrestrictedDouble + uOther).alpha, 0.4);
   EXPECT_DOUBLE_EQ((tUnrestrictedDouble + uOther).beta, 1.8);
   EXPECT_DOUBLE_EQ((tUnrestrictedDouble - uOther).alpha, 2.4);

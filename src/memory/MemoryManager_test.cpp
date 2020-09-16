@@ -1,33 +1,33 @@
 /**
  * @file   MemoryManager_test.cpp
  * @author Thomas Dresselhaus <t.dresselhaus at wwu.de>
- * 
+ *
  * @date   24. November 2015, 16:09
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
 #include "memory/MemoryManager.h"
 /* Include Std and External Headers */
-#include <algorithm>
 #include <gtest/gtest.h>
 #include <omp.h>
+#include <algorithm>
 #include <vector>
 
 namespace Serenity {
 class MemoryManagerTest : public testing::Test {
-protected:
+ protected:
   std::shared_ptr<MemoryManager> mm = MemoryManager::getInstance();
   const size_t testMemSize = 128;
 };
@@ -38,7 +38,7 @@ protected:
  * @brief Ensures that the available memory is smaller than the total RAM
  */
 TEST_F(MemoryManagerTest, AvailableMemory) {
-  EXPECT_NE(mm->getAvailableSystemMemory() , 0);
+  EXPECT_NE(mm->getAvailableSystemMemory(), 0);
 }
 #elif __unix__ || __linux__ || __unix
 /**
@@ -57,7 +57,7 @@ TEST_F(MemoryManagerTest, ParallelAccessWorking) {
 #endif
   unsigned int nRequests = 10;
 #pragma omp parallel for
-  for (unsigned int i=0; i<nRequests; ++i) {
+  for (unsigned int i = 0; i < nRequests; ++i) {
     /*
      * The program might crash if the tokens are wrong.
      */

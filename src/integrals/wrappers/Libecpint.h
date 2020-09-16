@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,7 +21,7 @@
 #define LIBECPINT_H_
 
 // Serenity includes
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h" //RESTRICTED/UNRESTRICTED
 
 // Other includes
 #include <memory>
@@ -34,8 +34,10 @@ using namespace std;
 class Atom;
 class BasisController;
 class Shell;
-template<Options::SCF_MODES T> class MatrixInBasis;
-template<Options::SCF_MODES T> class SPMatrix;
+template<Options::SCF_MODES T>
+class MatrixInBasis;
+template<Options::SCF_MODES T>
+class SPMatrix;
 
 /**
  * @class Libecpint Libecpint.h
@@ -43,11 +45,11 @@ template<Options::SCF_MODES T> class SPMatrix;
  * @brief Wrapper for the library with the same name for computing effective core potentials.
  */
 class Libecpint {
-private:
+ private:
   // Purely static, never instantiated
   Libecpint();
 
-public:
+ public:
   virtual ~Libecpint();
   /**
    * @brief Method for the calculation of effective core potential integrals.
@@ -63,15 +65,12 @@ public:
    * @returns a matrix containing the effective core potential in basis form so that it can be
    *          added to, e.g., the core Hamiltonian
    */
-  static MatrixInBasis<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(
-      std::shared_ptr<BasisController> basisController,
-      std::vector<std::shared_ptr<Atom> > atoms);
+  static MatrixInBasis<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(std::shared_ptr<BasisController> basisController,
+                                                                           std::vector<std::shared_ptr<Atom>> atoms);
 
-  static SPMatrix<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(
-      std::shared_ptr<BasisController> basisControllerA,
-      std::shared_ptr<BasisController> basisControllerB,
-      std::vector<std::shared_ptr<Atom> > atoms);
-
+  static SPMatrix<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(std::shared_ptr<BasisController> basisControllerA,
+                                                                      std::shared_ptr<BasisController> basisControllerB,
+                                                                      std::vector<std::shared_ptr<Atom>> atoms);
 };
 
 } /* namespace Serenity */

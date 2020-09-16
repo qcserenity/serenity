@@ -6,24 +6,24 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef LIBINT_H
-#define	LIBINT_H
+#define LIBINT_H
 
 /* Include Serenity Internal Headers */
-#include "math/Matrix.h"
-#include "geometry/Atom.h"
 #include "basis/BasisController.h"
+#include "geometry/Atom.h"
+#include "math/Matrix.h"
 
 /* Include Std and External Headers */
 #pragma GCC diagnostic push
@@ -32,7 +32,7 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <../../../ext/libint/include/libint2.hpp>
+#include <libint2.hpp>
 #pragma GCC diagnostic pop
 #include <mutex>
 
@@ -42,27 +42,26 @@ using namespace Serenity;
  * @class IntegralType
  * @brief A small class to wrap all the possible integral types.
  */
-struct IntegralType
-{
+struct IntegralType {
   /**
    * @brief Default constructor.
    */
-  IntegralType() : op() , deriv() ,nCenter(){};
+  IntegralType() : op(), deriv(), nCenter(){};
   /**
    * @brief Constructor.
    * @param op The kernel/operator as libint enum.
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  IntegralType(libint2::Operator op,
-      const unsigned int deriv,
-      const unsigned int nCenter) : op(op), deriv(deriv),nCenter(nCenter-2) {}
+  IntegralType(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter)
+    : op(op), deriv(deriv), nCenter(nCenter - 2) {
+  }
   /// @brief The kernel/operator as libint enum.
   libint2::Operator op;
   /// @brief The derivative level.
   unsigned int deriv;
   /// @brief The number of centers (2-4).
- unsigned int nCenter;
+  unsigned int nCenter;
 };
 
 /**
@@ -130,14 +129,13 @@ struct IntegralType
  *        iteration.
  */
 class Libint {
-
-public:
+ public:
   /**
    * @brief One of two singleton 'Constructors'
    *
    * @return A reference to the only existing version of the Libint object.
    */
-  static Libint& getInstance(){
+  static Libint& getInstance() {
     return *Libint::getSharedPtr();
   }
   /**
@@ -170,15 +168,10 @@ public:
    * @param pointCharges The charges to be added to the engines
    *                     (needed for Operator::nuclear integrals).
    */
-  void initialize(libint2::Operator op,
-      const unsigned int deriv,
-      const unsigned int nCenter,
-      const std::vector<std::pair<double,std::array<double,3>>> pointCharges,
-      double mu);
+  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter,
+                  const std::vector<std::pair<double, std::array<double, 3>>> pointCharges, double mu);
 
   /**
-   * TODO: What is mu?
-   *
    * @brief Initializes the engines for a specific type of integral.
    * @param op The kernel/operator as libint enum.
    * @param deriv The derivative level.
@@ -187,11 +180,8 @@ public:
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
    */
-  void initialize(libint2::Operator op,
-      const unsigned int deriv,
-      const unsigned int nCenter,
-      const std::vector<std::shared_ptr<Atom> >& atoms = std::vector<std::shared_ptr<Atom> >(0),
-      double mu = 0.0);
+  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter,
+                  const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0), double mu = 0.0);
 
   /**
    * @brief Initializes the engines for a specific type of integral.
@@ -200,10 +190,7 @@ public:
    * @param nCenter The number of centers (2-4).
    * @param multipoleOrigin The gauge-origin for multipole integrals.
    */
-  void initialize(libint2::Operator op,
-    const unsigned int deriv,
-    const unsigned int nCenter,
-    const Point multipoleOrigin);
+  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter, const Point multipoleOrigin);
 
   /**
    * @brief Cleans the engines for a specific type of integral.
@@ -211,9 +198,7 @@ public:
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void finalize(libint2::Operator op,
-      unsigned int deriv,
-      unsigned int nCenter);
+  void finalize(libint2::Operator op, unsigned int deriv, unsigned int nCenter);
 
   /**
    * @brief Keeps a set of engines form being destroyed by finalize calls.
@@ -224,9 +209,7 @@ public:
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void keepEngines(libint2::Operator op,
-      const unsigned int deriv,
-      const unsigned int nCenter);
+  void keepEngines(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter);
 
   /**
    * @brief Allows the destruction and destroys a set of engines if they are present.
@@ -234,9 +217,7 @@ public:
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void freeEngines(libint2::Operator op,
-      const unsigned int deriv,
-      const unsigned int nCenter);
+  void freeEngines(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter);
 
   /**
    * @brief Destroys all engines, call with caution!
@@ -255,11 +236,8 @@ public:
    * @param ints   The integrals stored per set (see class description for more information).
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
-  bool compute(libint2::Operator op,
-        unsigned int deriv,
-        const libint2::Shell& a,
-        const libint2::Shell& b,
-        Eigen::MatrixXd& ints);
+  bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               Eigen::MatrixXd& ints);
   /**
    * @brief Computes a set (operator/derivative) of integrals for the given shells.
    * @param op     The kernel/operator as libint enum.
@@ -270,12 +248,8 @@ public:
    * @param ints   The integrals stored per set (see class description for more information).
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
-  bool compute(libint2::Operator op,
-        unsigned int deriv,
-        const libint2::Shell& a,
-        const libint2::Shell& b,
-        const libint2::Shell& c,
-        Eigen::MatrixXd& ints);
+  bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, Eigen::MatrixXd& ints);
   /**
    * @brief Computes a set (operator/derivative) of integrals for the given shells.
    * @param op     The kernel/operator as libint enum.
@@ -287,13 +261,8 @@ public:
    * @param ints   The integrals stored per set (see class description for more information).
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
-  bool compute(libint2::Operator op,
-        unsigned int deriv,
-        const libint2::Shell& a,
-        const libint2::Shell& b,
-        const libint2::Shell& c,
-        const libint2::Shell& d,
-        Eigen::MatrixXd& ints);
+  bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, const libint2::Shell& d, Eigen::MatrixXd& ints);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -304,9 +273,8 @@ public:
    *                     [default=None]
    * @return The entire set if integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op,
-                                std::shared_ptr<BasisController> basis,
-                                const std::vector<std::pair<double,std::array<double,3>>> pointCharges);
+  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis,
+                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -317,10 +285,8 @@ public:
    *                     [default=None]
    * @return The entire set if integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op,
-                                std::shared_ptr<BasisController> basis,
-                                const std::vector<std::shared_ptr<Atom> >& atoms =
-                                     std::vector<std::shared_ptr<Atom> >(0));
+  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis,
+                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0));
   /**
    * @brief Shorthand for an entire set of 'interaction' 1e integrals.
    * @param op     The kernel/operator as libint enum.
@@ -331,10 +297,9 @@ public:
    *                     [default=None]
    * @return The entire set of 'interaction' integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op,
-                                std::shared_ptr<BasisController> basis1,
+  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis1,
                                 std::shared_ptr<BasisController> basis2,
-                                const std::vector<std::pair<double,std::array<double,3>>> pointCharges);
+                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges);
 
   /**
    * @brief Shorthand for an entire set of 'interaction' 1e integrals.
@@ -346,13 +311,18 @@ public:
    *                     [default=None]
    * @return The entire set of 'interaction' integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op,
-                                std::shared_ptr<BasisController> basis1,
+  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis1,
                                 std::shared_ptr<BasisController> basis2,
-                                const std::vector<std::shared_ptr<Atom> >& atoms =
-                                     std::vector<std::shared_ptr<Atom> >(0));
+                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0));
 
-private:
+  /**
+   * @brief Engines for 2e-4c integrals.
+   * @param The kernel/operator as libint enum.
+   * @return A reference to the libint engines for 2e-4c integrals.
+   */
+  std::vector<std::unique_ptr<libint2::Engine>>& getFourCenterEngines(libint2::Operator op);
+
+ private:
   /**
    * @brief Private destructor -> singleton.
    */
@@ -360,11 +330,11 @@ private:
   /**
    * @brief Map for all the engines.
    */
-  std::map<IntegralType ,std::vector<std::unique_ptr<libint2::Engine> > > _engines;
+  std::map<IntegralType, std::vector<std::unique_ptr<libint2::Engine>>> _engines;
   /**
    * @brief Map for all the engines.
    */
-  std::map<IntegralType ,unsigned int > _keep;
+  std::map<IntegralType, unsigned int> _keep;
   /**
    * @brief Help variable for parallelization critical steps.
    */
@@ -375,8 +345,7 @@ private:
    * only take slightly more memory.
    */
   const unsigned int N_PRIM_MAX = 20;
-
 };
 
 } /* namespace Serenity */
-#endif	/* LIBINT_H */
+#endif /* LIBINT_H */

@@ -6,23 +6,24 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef MATHS_DAMPER_DAMPER_H_
 #define MATHS_DAMPER_DAMPER_H_
 /* Include Serenity Internal Headers */
+#include "data/SpinPolarizedData.h"
+#include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/Options.h"
-#include "data/SpinPolarizedData.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <cassert>
@@ -66,7 +67,7 @@ template<Options::SCF_MODES SCFMode>
  *
  */
 class Damper {
-public:
+ public:
   /**
    * @param Default constructor
    */
@@ -86,9 +87,13 @@ public:
    * @param newMatrix The new Matrix to be damped.
    */
   virtual void damp(FockMatrix<SCFMode>& newMatrix) = 0;
-
+  /**
+   *
+   * @param newFock The new FockMatrix to be damped.
+   * @param newDensity The new DensityMatrix to be damped.
+   */
+  virtual void dynamicDamp(FockMatrix<SCFMode>& newFock, DensityMatrix<SCFMode> newDensity) = 0;
 };
-
 
 } /* namespace Serenity */
 

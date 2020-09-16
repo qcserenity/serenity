@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,29 +21,22 @@
 #ifndef TASKS_MULTIPOLEMOMENTTASK_H_
 #define TASKS_MULTIPOLEMOMENTTASK_H_
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
 #include "geometry/Point.h"
+#include "settings/MiscOptions.h"
+#include "settings/Options.h"
 #include "settings/Reflection.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>
 
-
 namespace Serenity {
 class SystemController;
 
-
 using namespace Serenity::Reflection;
 struct MultipoleMomentTaskSettings {
-  MultipoleMomentTaskSettings():
-    highestOrder(2),
-    numerical(false),
-    origin(Options::GAUGE_ORIGIN::ORIGIN) { }
-  REFLECTABLE(
-    (unsigned int) highestOrder,
-    (bool) numerical,
-    (Options::GAUGE_ORIGIN) origin
-  )
+  MultipoleMomentTaskSettings() : highestOrder(2), numerical(false), origin(Options::GAUGE_ORIGIN::ORIGIN) {
+  }
+  REFLECTABLE((unsigned int)highestOrder, (bool)numerical, (Options::GAUGE_ORIGIN)origin)
 };
 
 /**
@@ -51,8 +44,8 @@ struct MultipoleMomentTaskSettings {
  * @brief  A task to calculate the multipole moments of a system, numerically or analytically
  */
 template<Options::SCF_MODES SCFMode>
-class MultipoleMomentTask: public Task {
-public:
+class MultipoleMomentTask : public Task {
+ public:
   /**
    * @brief Constructor
    * @param systemController The system of which the multipole moments should be calculated
@@ -78,15 +71,13 @@ public:
    *          -COM : Use center of mass as origin
    */
   MultipoleMomentTaskSettings settings;
-private:
+
+ private:
   ///@brief The underlying systemController
   std::shared_ptr<SystemController> _systemController;
   ///@brief The origin used to calculate origin-corrected multipole moments
-  Point _origin = {0,0,0};
+  Point _origin = {0, 0, 0};
 };
-
-
-
 
 } /* namespace Serenity */
 

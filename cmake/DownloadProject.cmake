@@ -121,7 +121,7 @@ function(download_project)
     # Set up where we will put our temporary CMakeLists.txt file and also
     # the base point below which the default source and binary dirs will be
     if (NOT DL_ARGS_PREFIX)
-        set(DL_ARGS_PREFIX "${CMAKE_BINARY_DIR}")
+        set(DL_ARGS_PREFIX "${CMAKE_CURRENT_BINARY_DIR}")
     endif()
     if (NOT DL_ARGS_DOWNLOAD_DIR)
         set(DL_ARGS_DOWNLOAD_DIR "${DL_ARGS_PREFIX}/${DL_ARGS_PROJ}-download")

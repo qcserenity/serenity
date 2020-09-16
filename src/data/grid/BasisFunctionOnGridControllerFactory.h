@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,7 +22,6 @@
 /* Include Serenity Internal Headers */
 #include "data/grid/BasisFunctionOnGridController.h"
 #include "misc/RememberingFactory.h"
-
 
 namespace Serenity {
 /* Forward declarations */
@@ -33,20 +32,16 @@ struct Settings;
  * @class BasisFunctionOnGridControllerFactory BasisFunctionOnGridControllerFactory.h
  * @brief Produces instances of BasisFunctionOnGridController
  */
-class BasisFunctionOnGridControllerFactory :
-    public RememberingFactory<
-      BasisFunctionOnGridController,
-      const std::shared_ptr<BasisController>,
-      const std::shared_ptr<GridController>,
-      const unsigned int,
-      const double,
-      const unsigned int> {
-private:
+class BasisFunctionOnGridControllerFactory
+  : public RememberingFactory<BasisFunctionOnGridController, const std::shared_ptr<BasisController>,
+                              const std::shared_ptr<GridController>, const unsigned int, const double, const unsigned int> {
+ private:
   /**
    * private default constructor - Singleton
    */
   BasisFunctionOnGridControllerFactory() = default;
-public:
+
+ public:
   virtual ~BasisFunctionOnGridControllerFactory() = default;
   /**
    * @see BasisFunctionOnGridController
@@ -58,12 +53,9 @@ public:
    * @param gridController Provides the used grid.
    * @return A BasisFunctionOnGridController.
    */
-  static std::shared_ptr<BasisFunctionOnGridController> produce(
-    unsigned int maxBlockSize,
-    double radialThreshold,
-    unsigned int highestDerivative,
-    std::shared_ptr<BasisController> basisController,
-    std::shared_ptr<GridController> gridController);
+  static std::shared_ptr<BasisFunctionOnGridController>
+  produce(unsigned int maxBlockSize, double radialThreshold, unsigned int highestDerivative,
+          std::shared_ptr<BasisController> basisController, std::shared_ptr<GridController> gridController);
   /**
    * @param settings Contains values for maxBlockSize and radialThreshold
    *                 from user input.
@@ -72,18 +64,15 @@ public:
    * @param highestDerivatve The highest derivate d^n phi/(d^n r) to be computed.
    * @return A BasisFunctionOnGridController.
    */
-  static std::shared_ptr<BasisFunctionOnGridController> produce(
-    const Settings& settings,
-    std::shared_ptr<BasisController> basisController,
-    std::shared_ptr<GridController> gridController,
-    unsigned int highestDerivative=1);
-private:
-  std::unique_ptr<BasisFunctionOnGridController> produceNew(
-      const std::shared_ptr<BasisController> basis,
-      const std::shared_ptr<GridController> gridController,
-      const unsigned int maxBlockSize,
-      const double radialThreshold,
-      const unsigned int highestDerivative) override final;
+  static std::shared_ptr<BasisFunctionOnGridController>
+  produce(const Settings& settings, std::shared_ptr<BasisController> basisController,
+          std::shared_ptr<GridController> gridController, unsigned int highestDerivative = 1);
+
+ private:
+  std::unique_ptr<BasisFunctionOnGridController> produceNew(const std::shared_ptr<BasisController> basis,
+                                                            const std::shared_ptr<GridController> gridController,
+                                                            const unsigned int maxBlockSize, const double radialThreshold,
+                                                            const unsigned int highestDerivative) override final;
 
   static std::unique_ptr<BasisFunctionOnGridControllerFactory> _instance;
 };

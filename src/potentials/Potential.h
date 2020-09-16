@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,12 +22,14 @@
 #define POTENTIALS_POTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "basis/BasisController.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 
-
 namespace Serenity {
+
+/* Forward Declarations */
+class BasisController;
+
 /**
  * @class Potential Potential.h
  * @brief An interface for all the potentials.
@@ -38,18 +40,16 @@ namespace Serenity {
  *   function which returns the potential in matrix form in
  *   its entirety.
  */
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 class Potential {
-public:
+ public:
   /**
    * @brief Constructor
    * @param basis The basis this potential is defined in.
    */
-  Potential(std::shared_ptr<BasisController> basis):
-        _basis(basis){
-  };
+  Potential(std::shared_ptr<BasisController> basis) : _basis(basis){};
   /// @brief Default destructor.
-  virtual ~Potential() =default;
+  virtual ~Potential() = default;
   /**
    * @brief Getter for the actual potential.
    *
@@ -71,16 +71,16 @@ public:
 
   virtual Eigen::MatrixXd getGeomGradients() = 0;
 
-
   /**
    * @param Small function for sanity checks.
    * @param basis The basis to compare with potential basis with.
    * @return Boolean, true if the basis sets match.
    */
-  virtual bool compareBasis(std::shared_ptr<BasisController> basis){
-    return _basis==basis;
+  virtual bool compareBasis(std::shared_ptr<BasisController> basis) {
+    return _basis == basis;
   };
-protected:
+
+ protected:
   ///@brief The basis this potential is defined in.
   std::shared_ptr<BasisController> _basis;
 };

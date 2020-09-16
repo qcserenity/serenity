@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,8 +22,8 @@
 #define BASICS_GRID_DATAONGRID_COULOMBPOTENTIALONGRIDCALCULATOR_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/DensityMatrix.h"
 #include "data/grid/GridPotential.h"
+#include "data/matrices/DensityMatrix.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
 #include <memory>
@@ -34,6 +34,8 @@ namespace Serenity {
 class Atom;
 class BasisFunctionOnGridController;
 class GridController;
+template<Options::SCF_MODES T>
+class DensityOnGridController;
 
 /**
  * @class CoulombPotentialOnGridCalculator CoulombPotentialOnGridCalculator.h
@@ -60,14 +62,13 @@ class GridController;
  * arising when trying to evaluate (|phi_i(r')|^2 / |r-r'|) for r=r'.
  */
 class CoulombPotentialOnGridCalculator {
-public:
+ private:
   /**
-   * @brief Constructor
-   * @param basisFuncOnGridController The BasisFunctionOnGridController of the system.
+   * @brief Constructor. Purely static.
    */
-  CoulombPotentialOnGridCalculator(
-      std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController);
+  CoulombPotentialOnGridCalculator() = default;
 
+ public:
   virtual ~CoulombPotentialOnGridCalculator() = default;
 
   /**
@@ -77,9 +78,7 @@ public:
    * @param densMat The DensityMatrix of the MOs to be used.
    */
   template<Options::SCF_MODES SCF_MODE>
-  void calculateElectronElectron(GridPotential<RESTRICTED>& result,
-      const DensityMatrix<SCF_MODE>& densMat);
-
+  static void calculateElectronElectron(GridPotential<RESTRICTED>& result, const DensityMatrix<SCF_MODE>& densMat);
   /**
    * @brief Calculates the real-space representation of the electron-nuclei
    *        potential and adds it to a GridPotential.
@@ -90,12 +89,7 @@ public:
    * the same, of course) it is used to allow for an easy summation with the
    * electron-electron potential.
    */
-  void calculateElectronNuclei(GridPotential<RESTRICTED>& result,
-      const std::vector<std::shared_ptr<Atom> >& atoms);
-
-private:
-
-  std::shared_ptr<BasisFunctionOnGridController> _basisFuncOnGridController;
+  static void calculateElectronNuclei(GridPotential<RESTRICTED>& result, const std::vector<std::shared_ptr<Atom>>& atoms);
 };
 
 } /* namespace Serenity */

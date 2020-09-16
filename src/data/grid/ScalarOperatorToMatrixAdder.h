@@ -6,30 +6,30 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef SCALAROPERATORTOMATRIXADDER_H_
 #define SCALAROPERATORTOMATRIXADDER_H_
 /* Include Serenity Internal Headers */
-#include "data/grid/BasisFunctionOnGridController.h"
-#include "math/Derivatives.h"
-#include "data/matrices/FockMatrix.h"
-#include "data/grid/GridPotential.h"
-#include "settings/Options.h"
 #include "data/SpinPolarizedData.h"
+#include "data/grid/BasisFunctionOnGridController.h"
+#include "data/grid/GridPotential.h"
+#include "data/matrices/FockMatrix.h"
+#include "math/Derivatives.h"
+#include "settings/Options.h"
 /* Include Std and External Headers */
+#include <omp.h>
 #include <iostream>
 #include <memory>
-#include <omp.h>
 #include <vector>
 
 namespace Serenity {
@@ -44,21 +44,20 @@ class BasisFunctionOnGridController;
  *     \sum \chi_{\mu}(r) op(r) weight(r) \chi_{\nu}(r) \f$, where weight(r) is the integration
  * weight of the corresponding grid point.
  */
-template<Options::SCF_MODES SCFMode>class ScalarOperatorToMatrixAdder {
-public:
+template<Options::SCF_MODES SCFMode>
+class ScalarOperatorToMatrixAdder {
+ public:
   /**
    * @param basisFunctionOnGridController
    * @param blockAveThreshold if the average contribution of a block of grid points is below
    *                          this threshold it is skipped for efficiency
    */
-  ScalarOperatorToMatrixAdder(
-      std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-      double blockAveThreshold);
+  ScalarOperatorToMatrixAdder(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+                              double blockAveThreshold);
 
-  ScalarOperatorToMatrixAdder(
-      std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerA,
-      std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerB,
-      double blockAveThreshold);
+  ScalarOperatorToMatrixAdder(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerA,
+                              std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerB,
+                              double blockAveThreshold);
 
   virtual ~ScalarOperatorToMatrixAdder() {
 #ifdef _OPENMP
@@ -73,9 +72,7 @@ public:
    * @param scalarOperator expressed on a grid. This vector op will contribute with
    *                       \f$ F_{\mu, \nu} += \left<\chi_{\mu}(r) | op(r) | \chi_{\nu}(r)\right> \f$
    */
-  void addScalarOperatorToMatrix(
-      SPMatrix<SCFMode>& matrix,
-      const GridPotential<SCFMode>& scalarOperator);
+  void addScalarOperatorToMatrix(SPMatrix<SCFMode>& matrix, const GridPotential<SCFMode>& scalarOperator);
 
   /**
    * @brief Adds contributions from a scalar operator which is represented on a grid to a matrix.
@@ -85,13 +82,11 @@ public:
    * @param scalarOperator expressed on a grid. This vector op will contribute with
    *                       \f$ F_{\mu, \nu} += \left<\chi_{\mu}(r) | op(r) | \chi_{\nu}(r)\right> \f$
    * @param gradientOperator This vector g will contribute with
-   *                         \f$ F_{\mu, \nu} += \left<\chi_{\mu} | g  | \nabla \chi_{\nu}\right> + \left<\nabla \chi_{\mu} | g | \chi_{\nu}\right> \f$,
-   *                         optional.
+   *                         \f$ F_{\mu, \nu} += \left<\chi_{\mu} | g  | \nabla \chi_{\nu}\right> + \left<\nabla
+   * \chi_{\mu} | g | \chi_{\nu}\right> \f$, optional.
    */
-  void addScalarOperatorToMatrix(
-      SPMatrix<SCFMode>& matrix,
-      const GridPotential<SCFMode>& scalarOperator,
-      const Gradient<GridPotential<SCFMode> >& gradientOperator);
+  void addScalarOperatorToMatrix(SPMatrix<SCFMode>& matrix, const GridPotential<SCFMode>& scalarOperator,
+                                 const Gradient<GridPotential<SCFMode>>& gradientOperator);
   /**
    * @returns the used BasisFunctionOnGridController; Determines Grid and Basis.
    */
@@ -99,39 +94,7 @@ public:
     return _basisFunctionOnGridControllerA;
   }
 
-  /* ==================================================================== */
-  /* Out-dated with the next version of Michael's code.
-   */
-  /**
-   * @brief Adapted version of private addBlock. Needed e.g. for evaluation of XC kernel (KernelAdder.cpp)
-   * @param iBlock
-   * @param blockData
-   * @param matrix
-   * @param scalarPart    A VectorXd with the same dimension of block iBlock holding the scalar operator
-   */
-  void addBlock(
-        unsigned int iBlock,
-        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockData,
-        SPMatrix<SCFMode>& matrix,
-        const SpinPolarizedData<SCFMode,Eigen::VectorXd>& scalarPart);
-
-  /**
-   *
-   * @param iBlock
-   * @param blockData
-   * @param matrix
-   * @param scalarPart A VectorXd with the same dimension of block iBlock holding the scalar operator
-   * @param gradientPart A VectorXd with the same dimension of block iBlock holding the gradient operator
-   */
-  void addBlock(
-        unsigned int iBlock,
-        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockData,
-        SPMatrix<SCFMode>& matrix,
-        const SpinPolarizedData<SCFMode,Eigen::VectorXd>& scalarPart,
-        const Gradient<SpinPolarizedData<SCFMode,Eigen::VectorXd> >& gradientPart);
-  /* ==================================================================== */
-
-private:
+ private:
   /// @brief Basis function value controller for basis A.
   std::shared_ptr<BasisFunctionOnGridController> _basisFunctionOnGridControllerA;
   /// @brief Basis function value controller for basis B.
@@ -147,12 +110,9 @@ private:
    * @param m_AB The matrix where the result is added to.
    * @param scalarPart The scalar potential for this block.
    */
-  void addBlock(
-      unsigned int iBlock,
-      std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
-      std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
-      SPMatrix<SCFMode>& m_AB,
-      const GridPotential<SCFMode>& scalarPart);
+  void addBlock(unsigned int iBlock, std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
+                std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
+                SPMatrix<SCFMode>& m_AB, const GridPotential<SCFMode>& scalarPart);
 
   /**
    * @brief Integrates over one block.
@@ -163,15 +123,12 @@ private:
    * @param scalarPart The scalar potential for this block.
    * @param gradientPart The gradient part of the potential for this block.
    */
-   void addBlock(
-         unsigned int iBlock,
-         std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
-         std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
-         SPMatrix<SCFMode>& m_AB,
-         const GridPotential<SCFMode>& scalarPart,
-         const Gradient<GridPotential<SCFMode> >& gradientPart);
+  void addBlock(unsigned int iBlock, std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
+                std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
+                SPMatrix<SCFMode>& m_AB, const GridPotential<SCFMode>& scalarPart,
+                const Gradient<GridPotential<SCFMode>>& gradientPart);
 
-#ifdef _OPENMP  
+#ifdef _OPENMP
   omp_lock_t _lock;
 #endif
 };

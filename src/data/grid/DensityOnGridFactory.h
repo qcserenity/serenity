@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -29,7 +29,8 @@ namespace Serenity {
 
 class Geometry;
 class GridController;
-template<Options::SCF_MODES SCFMode> class DensityMatrixController;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
 struct Settings;
 
 /**
@@ -38,22 +39,16 @@ struct Settings;
  *          and recalculation of DensityOnGrid type data.
  */
 template<Options::SCF_MODES SCFMode>
-class DensityOnGridFactory :
-    public RememberingFactory<
-      DensityOnGridController<SCFMode>,
-      const std::shared_ptr<DensityMatrixController<SCFMode> >,
-      const std::shared_ptr<GridController>,
-      const unsigned int,
-      const unsigned int,
-      const double,
-      const double> {
-
-private:
+class DensityOnGridFactory
+  : public RememberingFactory<DensityOnGridController<SCFMode>, const std::shared_ptr<DensityMatrixController<SCFMode>>,
+                              const std::shared_ptr<GridController>, const unsigned int, const unsigned int, const double, const double> {
+ private:
   /**
    * @brief Private default constructor - Singleton.
    */
   DensityOnGridFactory() = default;
-public:
+
+ public:
   /// @brief Default destructor.
   virtual ~DensityOnGridFactory() = default;
 
@@ -66,21 +61,17 @@ public:
    * @param settings
    * @return Returns a DensityOnGridController.
    */
-  static std::shared_ptr<DensityOnGridController<SCFMode> > produce(
-      const std::shared_ptr<DensityMatrixController<SCFMode> > density,
-      const std::shared_ptr<GridController> gridController,
-      const unsigned int highestDerivative,
-      const Settings& settings);
-private:
-  std::unique_ptr<DensityOnGridController<SCFMode> > produceNew(
-      const std::shared_ptr<DensityMatrixController<SCFMode> > density,
-      const std::shared_ptr<GridController> gridController,
-      const unsigned int highestDerivative,
-      const unsigned int blocksize,
-      const double basFuncRadialThreshold,
-      const double blockAveThreshold) override final;
+  static std::shared_ptr<DensityOnGridController<SCFMode>>
+  produce(const std::shared_ptr<DensityMatrixController<SCFMode>> density, const std::shared_ptr<GridController> gridController,
+          const unsigned int highestDerivative, const Settings& settings);
 
-  static std::unique_ptr<DensityOnGridFactory<SCFMode> > _instance;
+ private:
+  std::unique_ptr<DensityOnGridController<SCFMode>>
+  produceNew(const std::shared_ptr<DensityMatrixController<SCFMode>> density,
+             const std::shared_ptr<GridController> gridController, const unsigned int highestDerivative,
+             const unsigned int blocksize, const double basFuncRadialThreshold, const double blockAveThreshold) override final;
+
+  static std::unique_ptr<DensityOnGridFactory<SCFMode>> _instance;
 };
 
 } /* namespace Serenity */

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,35 +21,34 @@
 /* Include Class Header*/
 #include "potentials/EffectiveCorePotential.h"
 /* Include Serenity Internal Headers */
+#include "geometry/Geometry.h"
 #include "integrals/wrappers/Libecpint.h"
 #include "system/SystemController.h"
 
 namespace Serenity {
 
-template <Options::SCF_MODES SCFMode>
-EffectiveCorePotential<SCFMode>::EffectiveCorePotential(
-    std::shared_ptr<SystemController> system,
-    std::vector<std::shared_ptr<Atom> > atoms,
-    std::shared_ptr<BasisController> basis) :
-    Potential<SCFMode>(basis),
-    _system(system),
-    _atoms(atoms) {
+template<Options::SCF_MODES SCFMode>
+EffectiveCorePotential<SCFMode>::EffectiveCorePotential(std::shared_ptr<SystemController> system,
+                                                        std::vector<std::shared_ptr<Atom>> atoms,
+                                                        std::shared_ptr<BasisController> basis)
+  : Potential<SCFMode>(basis), _system(system), _atoms(atoms) {
   _notZero = false;
-  for(const auto& atom : _atoms) {
-    if (atom->usesECP()) _notZero = true;
+  for (const auto& atom : _atoms) {
+    if (atom->usesECP())
+      _notZero = true;
   }
 }
 
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& EffectiveCorePotential<SCFMode>::getMatrix() {
   Timings::takeTime("Active System -     1e-Int Pot.");
-  if(!_potential) {
+  if (!_potential) {
     _potential.reset(new FockMatrix<SCFMode>(this->_basis));
     auto& f = *_potential;
     // Perform the Libecpint call only if there are atoms with an ECP.
     if (_notZero) {
       FockMatrix<Options::SCF_MODES::RESTRICTED> ecp(this->_basis);
-      ecp = Libecpint::computeECPIntegrals(this->_basis,_atoms);
+      ecp = Libecpint::computeECPIntegrals(this->_basis, _atoms);
       for_spin(f) {
         f_spin += ecp;
       };
@@ -59,21 +58,24 @@ FockMatrix<SCFMode>& EffectiveCorePotential<SCFMode>::getMatrix() {
   return *_potential;
 }
 
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 double EffectiveCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
-  if (!_potential) this->getMatrix();
+  if (!_potential)
+    this->getMatrix();
   auto& pot = *_potential;
   double energy = 0.0;
-  for_spin(pot,P){
+  for_spin(pot, P) {
     energy += pot_spin.cwiseProduct(P_spin).sum();
   };
   return energy;
 }
 
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd EffectiveCorePotential<SCFMode>::getGeomGradients() {
-  if (_notZero) assert(false && "No implementation for ECP gradients present.");
-  Eigen::MatrixXd gradient(_system->getGeometry()->getAtoms().size(),3);
+  if (_notZero)
+    assert(false && "No implementation for ECP gradients present.");
+  auto system = _system.lock();
+  Eigen::MatrixXd gradient(system->getGeometry()->getAtoms().size(), 3);
   gradient.setZero();
   return gradient;
 }

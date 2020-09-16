@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -29,26 +29,23 @@
 #include "potentials/Potential.h"
 #include "system/SystemController.h"
 
-
 namespace Serenity {
 /**
  * @class NEInteractionPotential NEInteractionPotential.h
  * @brief The attraction potential between electrons in a given
  *        basis and sets of nucleii.
  */
-template <Options::SCF_MODES SCFMode>
-class NEInteractionPotential : public Potential<SCFMode>,
-                               public ObjectSensitiveClass<Atom>{
-public:
+template<Options::SCF_MODES SCFMode>
+class NEInteractionPotential : public Potential<SCFMode>, public ObjectSensitiveClass<Atom> {
+ public:
   /**
    * @brief Constructor.
    * @param basis      The basis of the potential.
    * @param geometries The nucleii in form of multiple geometries.
    */
   NEInteractionPotential(std::shared_ptr<SystemController> activeSystem,
-                         std::vector<std::shared_ptr<SystemController> > environmentSystems,
-                         std::shared_ptr<BasisController> basis,
-                         std::vector<std::shared_ptr<const Geometry> > geometries);
+                         std::vector<std::shared_ptr<SystemController>> environmentSystems,
+                         std::shared_ptr<BasisController> basis, std::vector<std::shared_ptr<const Geometry>> geometries);
   /// @brief Default destructor.
   virtual ~NEInteractionPotential() = default;
 
@@ -85,23 +82,23 @@ public:
    * @param basisIndicesRed see AtomCenteredBasisController
    * @param nBasisFunctionRed the (reduced) number of basis functions
    */
-  static std::vector<unsigned int> createBasisToAtomIndexMapping(
-      const std::vector<std::pair<unsigned int, unsigned int> >& basisIndicesRed,
-      unsigned int nBasisFunctionsRed);
+  static std::vector<unsigned int>
+  createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
+                                unsigned int nBasisFunctionsRed);
 
-  void notify() override final{
+  void notify() override final {
     _potential = nullptr;
   };
 
-private:
+ private:
   ///@brief The active systems controller.
-  std::shared_ptr<SystemController> _actSystem;
+  std::weak_ptr<SystemController> _actSystem;
   ///@brief The environment systems controllers.
-  std::vector<std::shared_ptr<SystemController> > _envSystems;
+  std::vector<std::weak_ptr<SystemController>> _envSystems;
   ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief The geometries.
-  std::vector<std::shared_ptr<const Geometry> > _geometries;
+  std::vector<std::shared_ptr<const Geometry>> _geometries;
 };
 
 } /* namespace Serenity */

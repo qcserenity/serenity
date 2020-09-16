@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,551 +21,547 @@
 /* Include Class Header*/
 #include "potentials/HFPotential.h"
 /* Include Serenity Internal Headers */
+#include "basis/AtomCenteredBasisController.h"
+#include "data/ElectronicStructure.h"
 #include "data/matrices/FockMatrix.h"
-#include "misc/Timing.h"
 #include "integrals/looper/TwoElecFourCenterIntLooper.h"
+#include "io/FormattedOutputStream.h" //Filtered output streams.
+#include "misc/Timing.h"
+#include "settings/Settings.h"
 /* Include Std and External Headers */
 #include <algorithm>
 
-
 namespace Serenity {
 
-
-
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 HFPotential<SCFMode>::HFPotential(std::shared_ptr<SystemController> systemController,
-    std::shared_ptr<DensityMatrixController<SCFMode> > dMat,
-    const double exchangeRatio,
-    const double prescreeningThreshold):
-    Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
+                                  std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double xRatio,
+                                  const double prescreeningThreshold, double prescreeningIncrementStart,
+                                  double prescreeningIncrementEnd, unsigned int incrementSteps)
+  : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
+    IncrementalFockMatrix<SCFMode>(dMat, prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd,
+                                   incrementSteps),
     _systemController(systemController),
-    _prescreeningThreshold(prescreeningThreshold),
-    _exc(exchangeRatio),
+    _xRatio(xRatio),
     _dMatController(dMat),
-    _potential(nullptr),
-    _excPotential(nullptr){
+    _fullpotential(nullptr),
+    _fullXpotential(nullptr),
+    _outOfDate(true) {
   this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
-  this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode> >::_self);
+  this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+
+  _fullpotential = std::make_shared<FockMatrix<SCFMode>>(FockMatrix<SCFMode>(this->_basis));
+  auto& temp = *_fullpotential;
+  for_spin(temp) {
+    temp_spin.setZero();
+  };
+  _fullXpotential = std::make_shared<FockMatrix<SCFMode>>(FockMatrix<SCFMode>(this->_basis));
+  auto& temp2 = *_fullXpotential;
+  for_spin(temp2) {
+    temp2_spin.setZero();
+  };
+  _screening = prescreeningIncrementStart;
 };
 
-template <Options::SCF_MODES SCFMode> FockMatrix<SCFMode>&
-HFPotential<SCFMode>::getMatrix(){
-  Timings::takeTime("Active System -   Coul./XC Pot.");
-  if (!_potential or !_excPotential){
-    const auto& densityMatrix = _dMatController->getDensityMatrix();
-    _potential.reset(new FockMatrix<SCFMode>(this->_basis));
-    auto& pot = *_potential;
-    for_spin(pot){
-      pot_spin.setZero();
-    };
-    _excPotential.reset(new FockMatrix<SCFMode>(this->_basis));
-    auto& pot2 = *_excPotential;
-    for_spin(pot2){
-      pot2_spin.setZero();
-    };
-    this->addToMatrix(*_potential,densityMatrix);
+template<Options::SCF_MODES SCFMode>
+void HFPotential<SCFMode>::resetFockMatrix(FockMatrix<SCFMode>& f, double nextTreshold) {
+  // No printing in the fist cycle.
+  if (this->getCounter() != 0) {
+    OutputControl::dOut << " ***** Reset Incremental Fock Matrix Build: Coulomb and Exact-Exchange *****" << std::endl;
+    OutputControl::dOut << " ***** New Prescreening Threshold - " << nextTreshold << " ***** " << std::endl;
   }
-  Timings::timeTaken("Active System -   Coul./XC Pot.");
-  return *_potential;
+  auto& xPot = *_fullXpotential;
+  for_spin(f, xPot) {
+    f_spin.setZero();
+    xPot_spin.setZero();
+  };
 }
 
-template <Options::SCF_MODES SCFMode> double
-HFPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P){
-  if (!_potential) this->getMatrix();
-  Timings::takeTime("Active System -   Coul./XC Pot.");
-  auto& pot = *_potential;
+template<Options::SCF_MODES SCFMode>
+FockMatrix<SCFMode>& HFPotential<SCFMode>::getMatrix() {
+  Timings::takeTime("Active System -         HF Pot.");
+  if (_outOfDate) {
+    DensityMatrix<SCFMode> densityMatrix(this->_basis);
+    this->updateDensityAndThreshold(densityMatrix, _screening, *_fullpotential);
+    this->addToMatrix(*_fullpotential, densityMatrix);
+    _outOfDate = false;
+  }
+  Timings::timeTaken("Active System -         HF Pot.");
+  return *_fullpotential;
+}
+
+template<Options::SCF_MODES SCFMode>
+double HFPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
+  if (_outOfDate)
+    this->getMatrix();
+  Timings::takeTime("Active System -         HF Pot.");
+  auto& pot = *_fullpotential;
   double energy = 0.0;
-  for_spin(pot,P){
-    energy += 0.5*pot_spin.cwiseProduct(P_spin).sum();
+  for_spin(pot, P) {
+    energy += 0.5 * pot_spin.cwiseProduct(P_spin).sum();
   };
-  Timings::timeTaken("Active System -   Coul./XC Pot.");
+  Timings::timeTaken("Active System -         HF Pot.");
   return energy;
 };
 
-template <Options::SCF_MODES SCFMode> double
-HFPotential<SCFMode>::getXEnergy(const DensityMatrix<SCFMode>& P){
-  if (!_excPotential) this->getMatrix();
-  auto& pot = *_excPotential;
+template<Options::SCF_MODES SCFMode>
+double HFPotential<SCFMode>::getXEnergy(const DensityMatrix<SCFMode>& P) {
+  if (_outOfDate)
+    this->getMatrix();
+  auto& pot = *_fullXpotential;
   double energy = 0.0;
-  for_spin(pot,P){
-    energy += 0.5*pot_spin.cwiseProduct(P_spin).sum();
+  for_spin(pot, P) {
+    energy += 0.5 * pot_spin.cwiseProduct(P_spin).sum();
   };
   return energy;
 };
 
-template <> void
-HFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(
-    FockMatrix<Options::SCF_MODES::RESTRICTED>& F,
-    const DensityMatrix<Options::SCF_MODES::RESTRICTED>& densityMatrix){
+template<>
+void HFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Options::SCF_MODES::RESTRICTED>& F,
+                                                              const DensityMatrix<Options::SCF_MODES::RESTRICTED>& densityMatrix) {
+  const unsigned int nBFs = _basis->getNBasisFunctions();
 
-    const unsigned int nBFs = _basis->getNBasisFunctions();
-
-    /*
-     * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
-     */
-    std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fc;
-    std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fx;
+  /*
+   * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
+   */
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fc;
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fx;
 #ifdef _OPENMP
-    const unsigned int nThreads = omp_get_max_threads();
-    // Let the first thread use the Fock matrix directly
-    fc.push_back(&F);
-    fx.push_back(_excPotential.get());
-    for (unsigned int i=1; i<nThreads; ++i) {
-      fc.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-      fc[i]->setZero();
-      fx.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-      fx[i]->setZero();
-    }
+  const unsigned int nThreads = omp_get_max_threads();
+  // Let the first thread use the Fock matrix directly
+  for (unsigned int i = 0; i < nThreads; ++i) {
+    fc.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
+    fc[i]->setZero();
+    fx.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
+    fx[i]->setZero();
+  }
 
 #else
-    fc.push_back(&F);
-    fx.push_back(_excPotential.get());
+  fc.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
+  fc[0]->setZero();
+  fx.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
+  fx[0]->setZero();
 #endif
+  /*
+   * Function which parses the integrals
+   */
+  auto distribute = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l,
+                        const double& integral, const unsigned& threadId) {
     /*
-     * Function which parses the integrals
+     * Permutations
      */
-    auto distribute = [&](
-        unsigned int i, unsigned int j, unsigned int k, unsigned int l,
-        const Eigen::VectorXd integral,
-        unsigned int threadId) {
+    double perm = 2.0;
+    perm *= (i == j) ? 0.5 : 1.0;
+    perm *= (k == l) ? 0.5 : 1.0;
+    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
 
-      /*
-       * Permutations
-       */
-      double perm =2.0;
-      perm *= (i == j) ? 0.5 : 1.0;
-      perm *= (k == l) ? 0.5 : 1.0;
-      perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
-
-      /*
-       * Coulomb
-       */
-      const double coul = perm * integral[0];
-      const double coul1 = *(densityMatrix.data()+k*nBFs+l)  * coul;
-      const double coul2 = *(densityMatrix.data()+i*nBFs+j)  * coul;
-      *(fc[threadId]->data()+i*nBFs+j) += coul1;
-      *(fc[threadId]->data()+j*nBFs+i) += coul1;
-      *(fc[threadId]->data()+k*nBFs+l) += coul2;
-      *(fc[threadId]->data()+l*nBFs+k) += coul2;
-      /*
-       * Exchange
-       */
-      const double exc = perm * integral[0] * 0.25 * _exc;
-      const double exc1 = *(densityMatrix.data()+i*nBFs+k)  * exc;
-      const double exc2 = *(densityMatrix.data()+i*nBFs+l)  * exc;
-      const double exc3 = *(densityMatrix.data()+j*nBFs+k)  * exc;
-      const double exc4 = *(densityMatrix.data()+j*nBFs+l)  * exc;
-      *(fx[threadId]->data()+j*nBFs+l) -= exc1;
-      *(fx[threadId]->data()+l*nBFs+j) -= exc1;
-      *(fx[threadId]->data()+j*nBFs+k) -= exc2;
-      *(fx[threadId]->data()+k*nBFs+j) -= exc2;
-      *(fx[threadId]->data()+i*nBFs+l) -= exc3;
-      *(fx[threadId]->data()+l*nBFs+i) -= exc3;
-      *(fx[threadId]->data()+i*nBFs+k) -= exc4;
-      *(fx[threadId]->data()+k*nBFs+i) -= exc4;
-
-    };
     /*
-     * Detailed prescreening function
+     * Coulomb
      */
-    // Maximum absolute value in densityMatrix
-    const double maxDens = densityMatrix.lpNorm<Eigen::Infinity>();
-    auto prescreeningFunc = [&](
-        unsigned int i, unsigned int j, unsigned int k, unsigned int l,
-        unsigned int nI, unsigned int nJ, unsigned int nK, unsigned int nL, double schwartz) {
-      /*
-       * Early return for insignificance based on the largest element in the whole density matrix
-       */
-      if (maxDens*schwartz < _prescreeningThreshold) return true;
-      double maxDBlock = densityMatrix.block(i,j,nI,nJ).lpNorm<Eigen::Infinity>();
-      maxDBlock = std::max(maxDBlock, densityMatrix.block(i,k,nI,nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix.block(i,l,nI,nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix.block(j,k,nJ,nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix.block(j,l,nJ,nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix.block(k,l,nK,nL).lpNorm<Eigen::Infinity>());
-      if (maxDBlock*schwartz < _prescreeningThreshold) return true;
-      /*
-       * Shell quadruple is significant.
-       */
-      return false;
-    };
+    const double coul = perm * integral;
+    *(fc[threadId]->data() + i * nBFs + j) += *(densityMatrix.data() + k * nBFs + l) * coul;
+    *(fc[threadId]->data() + k * nBFs + l) += *(densityMatrix.data() + i * nBFs + j) * coul;
     /*
-     * Construct the looper, which loops over all integrals
+     * Exchange
      */
-    TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb,0,_basis, _prescreeningThreshold);
+    const double exc = perm * integral * 0.25 * _xRatio;
+    *(fx[threadId]->data() + j * nBFs + l) -= *(densityMatrix.data() + i * nBFs + k) * exc;
+    *(fx[threadId]->data() + j * nBFs + k) -= *(densityMatrix.data() + i * nBFs + l) * exc;
+    *(fx[threadId]->data() + i * nBFs + l) -= *(densityMatrix.data() + j * nBFs + k) * exc;
+    *(fx[threadId]->data() + i * nBFs + k) -= *(densityMatrix.data() + j * nBFs + l) * exc;
+  };
+  /*
+   * Detailed prescreening function
+   */
+  // Maximum absolute value in densityMatrix
+  const double maxDens = densityMatrix.lpNorm<Eigen::Infinity>();
+  auto prescreen = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l, const unsigned& nI,
+                       const unsigned& nJ, const unsigned& nK, const unsigned& nL, const double& schwartz) {
     /*
-     * Run
+     * Early return for insignificance based on the largest element in the whole density matrix
      */
-    looper.loop(distribute, prescreeningFunc);
+    if (maxDens * schwartz < _screening)
+      return true;
+    double maxDBlock = densityMatrix.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>();
+    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
+    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
+    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
+    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
+    maxDBlock = std::max(maxDBlock, densityMatrix.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
+    if (maxDBlock * schwartz < _screening)
+      return true;
+    /*
+     * Shell quadruple is significant.
+     */
+    return false;
+  };
+  /*
+   * Construct the looper, which loops over all integrals
+   */
+  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basis, _screening);
+  /*
+   * Run
+   */
+  looper.loopNoDerivative(distribute, prescreen);
 #ifdef _OPENMP
-    for (unsigned int i=1; i<nThreads; ++i) {
-      *_potential += *fc[i];
-      *_excPotential += *fx[i];
-      delete fx[i] ;
-      delete fc[i] ;
-    }
-    *_potential += *_excPotential;
+  for (unsigned int i = 1; i < nThreads; ++i) {
+    *fc[0] += *fc[i];
+    *fx[0] += *fx[i];
+    delete fx[i];
+    delete fc[i];
+  }
 #endif
-
+  // Symmetrizing
+  Eigen::MatrixXd& f_x = *fx[0];
+  Eigen::MatrixXd& f_c = *fc[0];
+  Eigen::MatrixXd temp_c = f_c + f_c.transpose();
+  Eigen::MatrixXd temp_x = f_x + f_x.transpose();
+  *_fullXpotential += temp_x;
+  F += temp_c + temp_x;
 }
 
-template <> void
-HFPotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(
-    FockMatrix<Options::SCF_MODES::UNRESTRICTED>& F,
-    const DensityMatrix<Options::SCF_MODES::UNRESTRICTED>& densityMatrix){
-    /*
-     * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
-     */
-    std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>* > fx;
-    std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>* > fc;
+template<>
+void HFPotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(FockMatrix<Options::SCF_MODES::UNRESTRICTED>& F,
+                                                                const DensityMatrix<Options::SCF_MODES::UNRESTRICTED>& densityMatrix) {
+  /*
+   * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
+   */
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>*> fx;
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>*> fc;
 #ifdef _OPENMP
-    const unsigned int nThreads = omp_get_max_threads();
-    // Let the first thread use the Fock matrix directly
-    fc.push_back(&F);
-    fx.push_back(_excPotential.get());
-    for (unsigned int i=1; i<nThreads; ++i) {
-      fc.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-      fc[i]->alpha.setZero();
-      fc[i]->beta.setZero();
-      fx.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-      fx[i]->alpha.setZero();
-      fx[i]->beta.setZero();
-    }
+  const unsigned int nThreads = omp_get_max_threads();
+  // Let the first thread use the Fock matrix directly
+  for (unsigned int i = 0; i < nThreads; ++i) {
+    fc.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
+    fc[i]->alpha.setZero();
+    fc[i]->beta.setZero();
+    fx.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
+    fx[i]->alpha.setZero();
+    fx[i]->beta.setZero();
+  }
 
 #else
-    // Simply use the fock matrix directly
-    fc.push_back(&F);
-    fx.push_back(_excPotential.get());
+  // Simply use the fock matrix directly
+  fc.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
+  fc[0]->alpha.setZero();
+  fc[0]->beta.setZero();
+  fx.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
+  fx[0]->alpha.setZero();
+  fx[0]->beta.setZero();
 #endif
+  /*
+   * Function which parses the integrals
+   */
+  auto distribute = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l,
+                        const double& integral, const unsigned& threadId) {
     /*
-     * Function which parses the integrals
+     * Permutations
      */
-    auto distribute = [&](
-        unsigned int i, unsigned int j, unsigned int k, unsigned int l,
-        const Eigen::VectorXd integral,
-        unsigned int threadId) {
+    double perm = 2.0;
+    perm *= (i == j) ? 0.5 : 1.0;
+    perm *= (k == l) ? 0.5 : 1.0;
+    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
 
-
-      /*
-       * Permutations
-       */
-      double perm =2.0;
-      perm *= (i == j) ? 0.5 : 1.0;
-      perm *= (k == l) ? 0.5 : 1.0;
-      perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
-
-      /*
-       * Coulomb
-       */
-      const double coul = perm * integral[0];
-      const double coul1 = (densityMatrix.alpha(k,l)+densityMatrix.beta(k,l))  * coul;
-      const double coul2 = (densityMatrix.alpha(i,j)+densityMatrix.beta(i,j))  * coul;
-      fc[threadId]->beta(i,j) += coul1;
-      fc[threadId]->beta(j,i) += coul1;
-      fc[threadId]->beta(k,l) += coul2;
-      fc[threadId]->beta(l,k) += coul2;
-      fc[threadId]->alpha(i,j) += coul1;
-      fc[threadId]->alpha(j,i) += coul1;
-      fc[threadId]->alpha(k,l) += coul2;
-      fc[threadId]->alpha(l,k) += coul2;
-      /*
-       * Exchange
-       */
-
-      const double exc = perm * integral[0] * 0.5 * _exc;
-
-      const double exc1a = densityMatrix.alpha(i,k)  * exc;
-      const double exc2a = densityMatrix.alpha(i,l)  * exc;
-      const double exc3a = densityMatrix.alpha(j,k)  * exc;
-      const double exc4a = densityMatrix.alpha(j,l)  * exc;
-      fx[threadId]->alpha(j,l) -= exc1a;
-      fx[threadId]->alpha(l,j) -= exc1a;
-      fx[threadId]->alpha(j,k) -= exc2a;
-      fx[threadId]->alpha(k,j) -= exc2a;
-      fx[threadId]->alpha(i,l) -= exc3a;
-      fx[threadId]->alpha(l,i) -= exc3a;
-      fx[threadId]->alpha(i,k) -= exc4a;
-      fx[threadId]->alpha(k,i) -= exc4a;
-      const double exc1b = densityMatrix.beta(i,k)  * exc;
-      const double exc2b = densityMatrix.beta(i,l)  * exc;
-      const double exc3b = densityMatrix.beta(j,k)  * exc;
-      const double exc4b = densityMatrix.beta(j,l)  * exc;
-      fx[threadId]->beta(j,l) -= exc1b;
-      fx[threadId]->beta(l,j) -= exc1b;
-      fx[threadId]->beta(j,k) -= exc2b;
-      fx[threadId]->beta(k,j) -= exc2b;
-      fx[threadId]->beta(i,l) -= exc3b;
-      fx[threadId]->beta(l,i) -= exc3b;
-      fx[threadId]->beta(i,k) -= exc4b;
-      fx[threadId]->beta(k,i) -= exc4b;
-
+    /*
+     * Coulomb
+     */
+    const double coul = perm * integral;
+    const double coul1 = (densityMatrix.alpha(k, l) + densityMatrix.beta(k, l)) * coul;
+    const double coul2 = (densityMatrix.alpha(i, j) + densityMatrix.beta(i, j)) * coul;
+    fc[threadId]->beta(i, j) += coul1;
+    fc[threadId]->beta(k, l) += coul2;
+    fc[threadId]->alpha(i, j) += coul1;
+    fc[threadId]->alpha(k, l) += coul2;
+    /*
+     * Exchange
+     */
+    const double exc = perm * integral * 0.5 * _xRatio;
+    const double exc1a = densityMatrix.alpha(i, k) * exc;
+    const double exc2a = densityMatrix.alpha(i, l) * exc;
+    const double exc3a = densityMatrix.alpha(j, k) * exc;
+    const double exc4a = densityMatrix.alpha(j, l) * exc;
+    fx[threadId]->alpha(j, l) -= exc1a;
+    fx[threadId]->alpha(j, k) -= exc2a;
+    fx[threadId]->alpha(i, l) -= exc3a;
+    fx[threadId]->alpha(i, k) -= exc4a;
+    const double exc1b = densityMatrix.beta(i, k) * exc;
+    const double exc2b = densityMatrix.beta(i, l) * exc;
+    const double exc3b = densityMatrix.beta(j, k) * exc;
+    const double exc4b = densityMatrix.beta(j, l) * exc;
+    fx[threadId]->beta(j, l) -= exc1b;
+    fx[threadId]->beta(j, k) -= exc2b;
+    fx[threadId]->beta(i, l) -= exc3b;
+    fx[threadId]->beta(i, k) -= exc4b;
+  };
+  /*
+   * Detailed prescreening function
+   */
+  // Maximum absolute value in densityMatrix
+  const double maxDens =
+      std::max(densityMatrix.alpha.lpNorm<Eigen::Infinity>(), densityMatrix.beta.lpNorm<Eigen::Infinity>());
+  auto prescreen = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l, const unsigned& nI,
+                       const unsigned& nJ, const unsigned& nK, const unsigned& nL, const double& schwartz) {
+    /*
+     * Early return for insignificance based on the largest element in the whole density matrix
+     */
+    if (maxDens * schwartz < _screening)
+      return true;
+    double maxDBlock = 0.0;
+    for_spin(densityMatrix) {
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>());
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
+      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
     };
+    if (maxDBlock * schwartz < _screening)
+      return true;
     /*
-     * Detailed prescreening function
+     * Shell quadruple is significant.
      */
-    // Maximum absolute value in densityMatrix
-    const double maxDens = std::max(
-        densityMatrix.alpha.lpNorm<Eigen::Infinity>(),
-        densityMatrix.beta.lpNorm<Eigen::Infinity>());
-    auto prescreeningFunc = [&](
-        unsigned int i, unsigned int j, unsigned int k, unsigned int l,
-        unsigned int nI, unsigned int nJ, unsigned int nK, unsigned int nL, double schwartz) {
-      /*
-       * Early return for insignificance based on the largest element in the whole density matrix
-       */
-      if (maxDens*schwartz < _prescreeningThreshold) return true;
-      double maxDBlock=0.0;
-      for_spin(densityMatrix) {
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i,j,nI,nJ).lpNorm<Eigen::Infinity>());
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i,k,nI,nK).lpNorm<Eigen::Infinity>());
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i,l,nI,nL).lpNorm<Eigen::Infinity>());
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j,k,nJ,nK).lpNorm<Eigen::Infinity>());
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j,l,nJ,nL).lpNorm<Eigen::Infinity>());
-        maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(k,l,nK,nL).lpNorm<Eigen::Infinity>());
-      };
-      if (maxDBlock*schwartz < _prescreeningThreshold) return true;
-      /*
-       * Shell quadruple is significant.
-       */
-      return false;
-    };
-    /*
-     * Construct looper for loop over all integrals
-     */
-    TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb,0,_basis, _prescreeningThreshold);
-    /*
-     * Run
-     */
-    looper.loop(distribute, prescreeningFunc);
+    return false;
+  };
+  /*
+   * Construct looper for loop over all integrals
+   */
+  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basis, _screening);
+  /*
+   * Run
+   */
+  looper.loopNoDerivative(distribute, prescreen);
 #ifdef _OPENMP
-    for (unsigned int i=1; i<nThreads; ++i) {
-      _potential->alpha += fc[i]->alpha;
-      _potential->beta += fc[i]->beta;
-      _excPotential->alpha += fx[i]->alpha;
-      _excPotential->beta += fx[i]->beta;
-      delete fx[i] ;
-      delete fc[i] ;
-    }
-    _potential->alpha += _excPotential->alpha;
-    _potential->beta += _excPotential->beta;
+  for (unsigned int i = 1; i < nThreads; ++i) {
+    fc[0]->alpha += fc[i]->alpha;
+    fc[0]->beta += fc[i]->beta;
+    fx[0]->alpha += fx[i]->alpha;
+    fx[0]->beta += fx[i]->beta;
+  }
 #endif
+  // Symmetrizing
+  Eigen::MatrixXd& f_x_a = fx[0]->alpha;
+  Eigen::MatrixXd& f_x_b = fx[0]->beta;
+  Eigen::MatrixXd& f_c_a = fc[0]->alpha;
+  Eigen::MatrixXd& f_c_b = fc[0]->beta;
+
+  Eigen::MatrixXd temp_c = f_c_a + f_c_a.transpose();
+  Eigen::MatrixXd temp_x = f_x_a + f_x_a.transpose();
+  F.alpha += temp_c + temp_x;
+  _fullXpotential->alpha += temp_x;
+
+  temp_c = f_c_b + f_c_b.transpose();
+  temp_x = f_x_b + f_x_b.transpose();
+  F.beta += temp_c + temp_x;
+  _fullXpotential->beta += temp_x;
 }
 
-
-template<Options::SCF_MODES T> std::vector<unsigned int>
-HFPotential<T>::createBasisToAtomIndexMapping(
-      const std::vector<std::pair<unsigned int, unsigned int> >& basisIndicesRed,
-      unsigned int nBasisFunctionsRed) {
-  std::vector<unsigned int> mapping(nBasisFunctionsRed);
+template<Options::SCF_MODES SCFMode>
+Eigen::VectorXi HFPotential<SCFMode>::createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis) {
+  const unsigned int nBasisFunctions = basis->getNBasisFunctions();
+  const unsigned int nBasisFunctionsRed = basis->getReducedNBasisFunctions();
+  const auto basisIndicesRed = basis->getBasisIndicesRed();
+  Eigen::VectorXi shellMap(nBasisFunctionsRed);
+  Eigen::VectorXi bfMap(nBasisFunctions);
   // Vector to check whether ALL basis function shells are assigned to an atom index
   std::vector<bool> hasElementBeenSet(nBasisFunctionsRed, false);
-  for (unsigned int iAtom=0; iAtom < basisIndicesRed.size(); ++iAtom) {
+  for (unsigned int iAtom = 0; iAtom < basisIndicesRed.size(); ++iAtom) {
     const unsigned int firstIndex = basisIndicesRed[iAtom].first;
     const unsigned int endIndex = basisIndicesRed[iAtom].second;
-    for (unsigned int iShell=firstIndex; iShell < endIndex; ++iShell) {
-      mapping[iShell] = iAtom;
+    for (unsigned int iShell = firstIndex; iShell < endIndex; ++iShell) {
+      shellMap[iShell] = iAtom;
       hasElementBeenSet[iShell] = true;
     }
   }
   // Check
-  for (bool x : hasElementBeenSet){
+  for (bool x : hasElementBeenSet) {
     if (not x)
       throw SerenityError("HFPotential: Missed gradient element in gradient evaluation.");
-  } 
-  return mapping;
+  }
+  for (unsigned int i = 0; i < nBasisFunctions; i++) {
+    bfMap[i] = shellMap[basis->reducedIndex(i)];
+  }
+  return bfMap;
 }
 
-
-template <> Eigen::MatrixXd
-HFPotential<RESTRICTED>::getGeomGradients(){
-  auto atoms = _systemController->getAtoms();
-  const auto& orbitalSet = _systemController->getActiveOrbitalController<RESTRICTED>();
+template<>
+Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
+  auto systemController = _systemController.lock();
+  auto atoms = systemController->getAtoms();
   unsigned int nAtoms = atoms.size();
 
-  auto densityMatrix = _systemController->getElectronicStructure<RESTRICTED>()->getDensityMatrix();
+  auto densityMatrix = _dMatController->getDensityMatrix();
+  auto dMatPtr = densityMatrix.data();
 
-  unsigned int nBasisFunctionsRed = orbitalSet->getBasisController()->getReducedNBasisFunctions();
-  auto basisIndicesRed = _systemController->getAtomCenteredBasisController()->getBasisIndicesRed();
-  auto mapping = createBasisToAtomIndexMapping(basisIndicesRed,nBasisFunctionsRed);
+  auto mapping = createBasisToAtomMap(systemController->getAtomCenteredBasisController());
 
-  auto basis = _systemController->getBasisController();
-  Libint& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb,1,4);
+  const unsigned int nBFs = _basis->getNBasisFunctions();
 
 #ifdef _OPENMP
   // create a vector of matrices for each thread
-  std::vector<Eigen::MatrixXd> eriContrPriv(omp_get_max_threads(),Eigen::MatrixXd::Zero(nAtoms,3));
-  std::vector<Eigen::MatrixXd> exchangeContrPriv(omp_get_max_threads(),Eigen::MatrixXd::Zero(nAtoms,3));
+  std::vector<Eigen::MatrixXd> cPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
+  std::vector<Eigen::MatrixXd> xPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
 #else
   // or just one
-  std::vector<Eigen::MatrixXd > eriContrPriv(1,Eigen::MatrixXd::Zero(nAtoms,3));
-  std::vector<Eigen::MatrixXd > exchangeContrPriv(1,Eigen::MatrixXd::Zero(nAtoms,3));
+  std::vector<Eigen::MatrixXd> cPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
+  std::vector<Eigen::MatrixXd> xPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
 #endif
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, basis, 1E-10);
+  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, _basis, 1E-10);
 
-  auto const looperFunction = [&]
-                               (const unsigned int&  i,
-                                   const unsigned int&  j,
-                                   const unsigned int&  a,
-                                   const unsigned int&  b,
-                                   const Eigen::VectorXd& intValues,
-                                   const unsigned int& threadID) {
-
+  auto const looperFunction = [&](const unsigned int& i, const unsigned int& j, const unsigned int& a,
+                                  const unsigned int& b, const Eigen::VectorXd& intValues, const unsigned int& threadID) {
     double perm = (i == j) ? 1.0 : 2.0;
     perm *= (a == b) ? 1.0 : 2.0;
     perm *= (i == a) ? (j == b ? 1.0 : 2.0) : 2.0;
     perm *= 0.5;
 
-    for (unsigned int iAtom = 0; iAtom < 4; ++iAtom) {
-
-
-
-      unsigned int nAtom;
-      switch(iAtom){
-        case(0): nAtom = mapping[basis->reducedIndex(i)]; break;
-        case(1): nAtom = mapping[basis->reducedIndex(j)]; break;
-        case(2): nAtom = mapping[basis->reducedIndex(a)]; break;
-        case(3): nAtom = mapping[basis->reducedIndex(b)]; break;
-      }
-
-      for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
-          double contr = perm * densityMatrix(i,j) * densityMatrix(a,b) * intValues(iAtom*3 + iDirection);
-          eriContrPriv[threadID](nAtom,iDirection) += contr;
-
-          //TODO: THE FOLLOWING ONLY WORKS FOR RHF SO FAR!!!
-          double prefac = 0.0;
-          prefac += 0.5 * densityMatrix(i,a) * densityMatrix(j,b);
-          prefac += 0.5 * densityMatrix(i,b) * densityMatrix(j,a);
-
-          double exchContr = 0.5 * perm *prefac*intValues(iAtom*3 + iDirection);
-
-          exchangeContrPriv[threadID](nAtom,iDirection) += exchContr;
-      }
-    }
+    const unsigned int iAtom = mapping[i];
+    const unsigned int jAtom = mapping[j];
+    const unsigned int aAtom = mapping[a];
+    const unsigned int bAtom = mapping[b];
+    // Coulomb
+    const double cprefac = dMatPtr[i * nBFs + j] * dMatPtr[a * nBFs + b];
+    cPriv[threadID].data()[0 * nAtoms + iAtom] += perm * cprefac * intValues.data()[0];  // 0 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + iAtom] += perm * cprefac * intValues.data()[1];  // 0 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + iAtom] += perm * cprefac * intValues.data()[2];  // 0 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + jAtom] += perm * cprefac * intValues.data()[3];  // 1 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + jAtom] += perm * cprefac * intValues.data()[4];  // 1 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + jAtom] += perm * cprefac * intValues.data()[5];  // 1 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + aAtom] += perm * cprefac * intValues.data()[6];  // 2 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + aAtom] += perm * cprefac * intValues.data()[7];  // 2 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + aAtom] += perm * cprefac * intValues.data()[8];  // 2 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + bAtom] += perm * cprefac * intValues.data()[9];  // 3 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + bAtom] += perm * cprefac * intValues.data()[10]; // 3 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + bAtom] += perm * cprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
+    // Exchange
+    const double xprefac = dMatPtr[i * nBFs + a] * dMatPtr[j * nBFs + b] + dMatPtr[i * nBFs + b] * dMatPtr[j * nBFs + a];
+    xPriv[threadID].data()[0 * nAtoms + iAtom] += 0.25 * perm * xprefac * intValues.data()[0];  // 0 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + iAtom] += 0.25 * perm * xprefac * intValues.data()[1];  // 0 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + iAtom] += 0.25 * perm * xprefac * intValues.data()[2];  // 0 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + jAtom] += 0.25 * perm * xprefac * intValues.data()[3];  // 1 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + jAtom] += 0.25 * perm * xprefac * intValues.data()[4];  // 1 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + jAtom] += 0.25 * perm * xprefac * intValues.data()[5];  // 1 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + aAtom] += 0.25 * perm * xprefac * intValues.data()[6];  // 2 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + aAtom] += 0.25 * perm * xprefac * intValues.data()[7];  // 2 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + aAtom] += 0.25 * perm * xprefac * intValues.data()[8];  // 2 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + bAtom] += 0.25 * perm * xprefac * intValues.data()[9];  // 3 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + bAtom] += 0.25 * perm * xprefac * intValues.data()[10]; // 3 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + bAtom] += 0.25 * perm * xprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
   };
 
   looper.loop(looperFunction);
 
-  libint.finalize(libint2::Operator::coulomb,1,4);
-
-  Matrix<double> eriContr(nAtoms,3);
-  eriContr.setZero();
+  Matrix<double> hfGrad(nAtoms, 3);
+  hfGrad.setZero();
 #ifdef _OPENMP
   // sum over all threads
-  for (unsigned int i=0; i<(unsigned int)omp_get_max_threads(); ++i) {
-    eriContr += eriContrPriv[i];
-    eriContr -= exchangeContrPriv[i]*_exc;
+  for (unsigned int i = 0; i < (unsigned int)omp_get_max_threads(); ++i) {
+    hfGrad += cPriv[i];
+    hfGrad -= xPriv[i] * _xRatio;
   }
 #else
-  eriContr += eriContrPriv[0];
-  eriContr -= exchangeContrPriv[0]*_exc;
+  hfGrad += cPriv[0];
+  hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return eriContr;
+  return hfGrad;
 }
 
-template <> Eigen::MatrixXd
-HFPotential<UNRESTRICTED>::getGeomGradients(){
-  auto atoms = _systemController->getAtoms();
-  const auto& orbitalSet = _systemController->getActiveOrbitalController<UNRESTRICTED>();
+template<>
+Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
+  auto systemController = _systemController.lock();
+  auto atoms = systemController->getAtoms();
   unsigned int nAtoms = atoms.size();
 
-  auto densityMatrix = _systemController->getElectronicStructure<UNRESTRICTED>()->getDensityMatrix();
+  auto densityMatrix = _dMatController->getDensityMatrix();
+  auto dMatPtrA = densityMatrix.alpha.data();
+  auto dMatPtrB = densityMatrix.beta.data();
 
-  unsigned int nBasisFunctionsRed = orbitalSet->getBasisController()->getReducedNBasisFunctions();
-  auto basisIndicesRed = _systemController->getAtomCenteredBasisController()->getBasisIndicesRed();
-  auto mapping = createBasisToAtomIndexMapping(basisIndicesRed,nBasisFunctionsRed);
+  auto mapping = createBasisToAtomMap(systemController->getAtomCenteredBasisController());
 
-  auto basis = _systemController->getBasisController();
-  Libint& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb,1,4);
+  const unsigned int nBFs = _basis->getNBasisFunctions();
 
 #ifdef _OPENMP
   // create a vector of matrices for each thread
-  std::vector<Eigen::MatrixXd> eriContrPriv(omp_get_max_threads(),Eigen::MatrixXd::Zero(nAtoms,3));
-  std::vector<Eigen::MatrixXd> exchangeContrPriv(omp_get_max_threads(),Eigen::MatrixXd::Zero(nAtoms,3));
+  std::vector<Eigen::MatrixXd> cPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
+  std::vector<Eigen::MatrixXd> xPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
 #else
   // or just one
-  std::vector<Eigen::MatrixXd > eriContrPriv(1,Eigen::MatrixXd::Zero(nAtoms,3));
-  std::vector<Eigen::MatrixXd > exchangeContrPriv(1,Eigen::MatrixXd::Zero(nAtoms,3));
+  std::vector<Eigen::MatrixXd> cPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
+  std::vector<Eigen::MatrixXd> xPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
 #endif
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, basis, 1E-10);
+  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, _basis, 1E-10);
 
-  auto const looperFunction = [&]
-                               (const unsigned int&  i,
-                                   const unsigned int&  j,
-                                   const unsigned int&  a,
-                                   const unsigned int&  b,
-                                   const Eigen::VectorXd& intValues,
-                                   const unsigned int& threadID) {
-
+  auto const looperFunction = [&](const unsigned int& i, const unsigned int& j, const unsigned int& a,
+                                  const unsigned int& b, const Eigen::VectorXd& intValues, const unsigned int& threadID) {
     double perm = (i == j) ? 1.0 : 2.0;
     perm *= (a == b) ? 1.0 : 2.0;
     perm *= (i == a) ? (j == b ? 1.0 : 2.0) : 2.0;
     perm *= 0.5;
 
-    for (unsigned int iAtom = 0; iAtom < 4; ++iAtom) {
-
-
-
-      unsigned int nAtom;
-      switch(iAtom){
-        case(0): nAtom = mapping[basis->reducedIndex(i)]; break;
-        case(1): nAtom = mapping[basis->reducedIndex(j)]; break;
-        case(2): nAtom = mapping[basis->reducedIndex(a)]; break;
-        case(3): nAtom = mapping[basis->reducedIndex(b)]; break;
-      }
-
-      for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
-          double contr = densityMatrix.alpha(i,j) * densityMatrix.alpha(a,b);
-          contr += densityMatrix.beta(i,j)  * densityMatrix.beta(a,b);
-          contr += densityMatrix.alpha(i,j) * densityMatrix.beta(a,b);
-          contr += densityMatrix.beta(i,j) * densityMatrix.alpha(a,b);
-          contr *= perm * intValues(iAtom*3 + iDirection);
-          eriContrPriv[threadID](nAtom,iDirection) += contr;
-
-          //TODO: THE FOLLOWING ONLY WORKS FOR RHF SO FAR!!!
-          double prefac = 0.0;
-          prefac += densityMatrix.alpha(i,a) * densityMatrix.alpha(j,b);
-          prefac += densityMatrix.alpha(i,b) * densityMatrix.alpha(j,a);
-          prefac += densityMatrix.beta(i,a) * densityMatrix.beta(j,b);
-          prefac += densityMatrix.beta(i,b) * densityMatrix.beta(j,a);
-
-          double exchContr = 0.5 * perm *prefac*intValues(iAtom*3 + iDirection);
-
-          exchangeContrPriv[threadID](nAtom,iDirection) += exchContr;
-      }
-    }
+    const unsigned int iAtom = mapping[i];
+    const unsigned int jAtom = mapping[j];
+    const unsigned int aAtom = mapping[a];
+    const unsigned int bAtom = mapping[b];
+    // Coulomb
+    const double cprefac =
+        dMatPtrA[i * nBFs + j] * dMatPtrA[a * nBFs + b] + dMatPtrB[i * nBFs + j] * dMatPtrB[a * nBFs + b] +
+        dMatPtrB[i * nBFs + j] * dMatPtrA[a * nBFs + b] + dMatPtrA[i * nBFs + j] * dMatPtrB[a * nBFs + b];
+    cPriv[threadID].data()[0 * nAtoms + iAtom] += perm * cprefac * intValues.data()[0];  // 0 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + iAtom] += perm * cprefac * intValues.data()[1];  // 0 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + iAtom] += perm * cprefac * intValues.data()[2];  // 0 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + jAtom] += perm * cprefac * intValues.data()[3];  // 1 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + jAtom] += perm * cprefac * intValues.data()[4];  // 1 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + jAtom] += perm * cprefac * intValues.data()[5];  // 1 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + aAtom] += perm * cprefac * intValues.data()[6];  // 2 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + aAtom] += perm * cprefac * intValues.data()[7];  // 2 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + aAtom] += perm * cprefac * intValues.data()[8];  // 2 * 3 + 2 = (at, xyz)
+    cPriv[threadID].data()[0 * nAtoms + bAtom] += perm * cprefac * intValues.data()[9];  // 3 * 3 + 0 = (at, xyz)
+    cPriv[threadID].data()[1 * nAtoms + bAtom] += perm * cprefac * intValues.data()[10]; // 3 * 3 + 1 = (at, xyz)
+    cPriv[threadID].data()[2 * nAtoms + bAtom] += perm * cprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
+    // Exchange
+    const double xprefac =
+        dMatPtrA[i * nBFs + a] * dMatPtrA[j * nBFs + b] + dMatPtrA[i * nBFs + b] * dMatPtrA[j * nBFs + a] +
+        dMatPtrB[i * nBFs + a] * dMatPtrB[j * nBFs + b] + dMatPtrB[i * nBFs + b] * dMatPtrB[j * nBFs + a];
+    xPriv[threadID].data()[0 * nAtoms + iAtom] += 0.5 * perm * xprefac * intValues.data()[0];  // 0 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + iAtom] += 0.5 * perm * xprefac * intValues.data()[1];  // 0 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + iAtom] += 0.5 * perm * xprefac * intValues.data()[2];  // 0 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + jAtom] += 0.5 * perm * xprefac * intValues.data()[3];  // 1 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + jAtom] += 0.5 * perm * xprefac * intValues.data()[4];  // 1 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + jAtom] += 0.5 * perm * xprefac * intValues.data()[5];  // 1 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + aAtom] += 0.5 * perm * xprefac * intValues.data()[6];  // 2 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + aAtom] += 0.5 * perm * xprefac * intValues.data()[7];  // 2 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + aAtom] += 0.5 * perm * xprefac * intValues.data()[8];  // 2 * 3 + 2 = (at, xyz)
+    xPriv[threadID].data()[0 * nAtoms + bAtom] += 0.5 * perm * xprefac * intValues.data()[9];  // 3 * 3 + 0 = (at, xyz)
+    xPriv[threadID].data()[1 * nAtoms + bAtom] += 0.5 * perm * xprefac * intValues.data()[10]; // 3 * 3 + 1 = (at, xyz)
+    xPriv[threadID].data()[2 * nAtoms + bAtom] += 0.5 * perm * xprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
   };
 
   looper.loop(looperFunction);
 
-  libint.finalize(libint2::Operator::coulomb,1,4);
-
-  Matrix<double> eriContr(nAtoms,3);
-  eriContr.setZero();
+  Matrix<double> hfGrad(nAtoms, 3);
+  hfGrad.setZero();
 #ifdef _OPENMP
   // sum over all threads
-  for (unsigned int i=0; i<(unsigned int)omp_get_max_threads(); ++i) {
-    eriContr += eriContrPriv[i];
-    eriContr -= exchangeContrPriv[i]*_exc;
+  for (unsigned int i = 0; i < (unsigned int)omp_get_max_threads(); ++i) {
+    hfGrad += cPriv[i];
+    hfGrad -= xPriv[i] * _xRatio;
   }
 #else
-  eriContr += eriContrPriv[0];
-  eriContr -= exchangeContrPriv[0]*_exc;
+  hfGrad += cPriv[0];
+  hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return eriContr;
+  return hfGrad;
 }
 
-template <Options::SCF_MODES SCFMode> FockMatrix<SCFMode>&
-HFPotential<SCFMode>::getXPotential() {
-  if (!_potential or !_excPotential) getMatrix();
-  return *_excPotential;
+template<Options::SCF_MODES SCFMode>
+FockMatrix<SCFMode>& HFPotential<SCFMode>::getXPotential() {
+  if (_outOfDate)
+    this->getMatrix();
+  return *_fullXpotential;
 }
 
 template class HFPotential<Options::SCF_MODES::RESTRICTED>;
 template class HFPotential<Options::SCF_MODES::UNRESTRICTED>;
-
 
 } /* namespace Serenity */

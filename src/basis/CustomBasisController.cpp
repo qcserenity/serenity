@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,18 +21,14 @@
 /* Include Class Header*/
 #include "basis/CustomBasisController.h"
 
-
 namespace Serenity {
 using namespace std;
 
-CustomBasisController::CustomBasisController(
-    std::vector<std::shared_ptr<const Shell> >& basisFunctions,
-    const std::string& basisString):
-    BasisController(basisString){
-
+CustomBasisController::CustomBasisController(std::vector<std::shared_ptr<const Shell>>& basisFunctions,
+                                             const std::string& basisString)
+  : BasisController(basisString) {
   _basis = unique_ptr<Basis>(new Basis());
   _basis->insert(_basis->end(), basisFunctions.begin(), basisFunctions.end());
-
 
   const unsigned int nBasRed = _basis->size();
   _extendedIndex.resize(nBasRed);
@@ -71,16 +67,13 @@ CustomBasisController::CustomBasisController(
     }
     i += (*_basis)[iRed]->getNContracted();
   }
-
-
 }
 
-
-std::unique_ptr<Basis>  CustomBasisController::produceBasisFunctionVector() {
+std::unique_ptr<Basis> CustomBasisController::produceBasisFunctionVector() {
   return move(_basis);
 }
 
 void CustomBasisController::postConstruction() {
 }
 
-}
+} // namespace Serenity

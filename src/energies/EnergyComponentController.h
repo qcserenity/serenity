@@ -6,19 +6,19 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef ENERGYCOMPONENTCONTROLLER_H
-#define	ENERGYCOMPONENTCONTROLLER_H
+#define ENERGYCOMPONENTCONTROLLER_H
 /* Include Serenity Internal Headers */
 #include "energies/EnergyComponentPrinter.h"
 /* Include Std and External Headers */
@@ -35,7 +35,7 @@ enum class ENERGY_CONTRIBUTIONS;
  * @brief Manages different energy contributions for a specific system/calculation/...
  */
 class EnergyComponentController {
-public:
+ public:
   EnergyComponentController();
   virtual ~EnergyComponentController() = default;
   /**
@@ -46,7 +46,7 @@ public:
   }
   /**
    * @brief Prints all currently held data and the value of the managed energy type.
-   * 
+   *
    * This method will fail if no value for the managed energy type can be calculated, i.e. if the
    * data is incomplete.
    */
@@ -83,31 +83,31 @@ public:
    * @param contr Energy type.
    * @param newData Energy value.
    */
-  void addOrReplaceComponent(
-      const ENERGY_CONTRIBUTIONS contr, const double newData);
+  void addOrReplaceComponent(const ENERGY_CONTRIBUTIONS contr, const double newData);
   /**
    * @brief Checks if all the data is there for the reference energy.
    * @param energyType Reference energy.
    */
-  bool checkEnergyComponentFromChildren(const ENERGY_CONTRIBUTIONS energyType) const ;
+  bool checkEnergyComponentFromChildren(const ENERGY_CONTRIBUTIONS energyType) const;
 
   /**
    * @brief Writes the data to file.
    * @param fBaseName The filename with path.
    * @param id The identifier corresponding to the system.
    */
-  void toHDF5(std::string fBaseName, std::string id);
+  void toFile(std::string fBaseName, std::string id);
 
   /**
    * @brief Reads data from file.
    * @param fBaseName The filename with path.
    * @param id The identifier corresponding to the system.
    */
-  void fromHDF5(std::string fBaseName, std::string id);
-private:
+  void fromFile(std::string fBaseName, std::string id);
+
+ private:
   /*
    * @brief calculates an energy component that is not directly available
-   * 
+   *
    * , but can be obtained through the 'children' of this energy contribution
    */
   double getEnergyComponentFromChildren(ENERGY_CONTRIBUTIONS energyType) const;
@@ -117,12 +117,12 @@ private:
    * @param energyType Reference energy.
    */
   void printChildrenIfNotStored(ENERGY_CONTRIBUTIONS energyType) const;
-  
+
   /**
    * @brief Prints all energies available that are in part composed of the reference energy.
    * @param energyType Reference energy.
    */
-  void printDerived(const ENERGY_CONTRIBUTIONS energyType) const ;
+  void printDerived(const ENERGY_CONTRIBUTIONS energyType) const;
 
   std::map<ENERGY_CONTRIBUTIONS, double> _data;
 
@@ -131,7 +131,8 @@ private:
    * ===========================================*/
   std::unique_ptr<double> _naddXCSub;
   std::unique_ptr<double> _naddKinSub;
-public:
+
+ public:
   /**
    * @brief Returns the kinetic energy calculated for this system on a supersystem grid.
    *
@@ -141,7 +142,7 @@ public:
    *
    * @return The kinetic energy of this subsystem generated on a supersystem grid.
    */
-  double getNAddKinSub(){
+  double getNAddKinSub() {
     assert((_naddKinSub != nullptr) && "No _naddKinSub set in the EnergyComponentController.");
     return *_naddKinSub;
   }
@@ -154,7 +155,7 @@ public:
    *
    * @return The XC energy of this subsystem generated on a supersystem grid.
    */
-  double getNAddXCSub(){
+  double getNAddXCSub() {
     assert((_naddXCSub != nullptr) && "No _naddKinSub set in the EnergyComponentController.");
     return *_naddXCSub;
   }
@@ -163,14 +164,14 @@ public:
    * @brief Checks if kinetic energy of this subsystem generated on a supersystem grid is present.
    * @return Returns true is the energy is available.
    */
-  bool checkNAddKinSub(){
+  bool checkNAddKinSub() {
     return (_naddKinSub != nullptr);
   };
   /**
    * @brief Checks if XC energy of this subsystem generated on a supersystem grid is present.
    * @return Returns true is the energy is available.
    */
-  bool checkNAddXCSub(){
+  bool checkNAddXCSub() {
     return (_naddXCSub != nullptr);
   };
 
@@ -178,29 +179,29 @@ public:
    * @brief Sets the kinetic energy of this subsystem generated on a supersystem grid.
    * @param val The energy.
    */
-  void setNAddKinSub(double val){
+  void setNAddKinSub(double val) {
     this->_naddKinSub.reset(new double(val));
   }
   /**
    * @brief Sets the XC energy of this subsystem generated on a supersystem grid.
    * @param val The energy.
    */
-  void setNAddXCSub(double val){
+  void setNAddXCSub(double val) {
     this->_naddXCSub.reset(new double(val));
   }
   /**
    * @brief Clears the kinetic energy of this subsystem generated on a supersystem grid.
    */
-  void clearNAddKinSub(){
+  void clearNAddKinSub() {
     this->_naddKinSub.reset(nullptr);
   }
   /**
    * @brief Clears the XC energy of this subsystem generated on a supersystem grid.
    */
-  void clearNAddXCSub(){
+  void clearNAddXCSub() {
     this->_naddXCSub.reset(nullptr);
   }
 };
 
 } /* namespace Serenity */
-#endif	/* ENERGYCOMPONENTCONTROLLER_H */
+#endif /* ENERGYCOMPONENTCONTROLLER_H */

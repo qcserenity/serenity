@@ -6,34 +6,36 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef BASISCONTROLLER_H
-#define	BASISCONTROLLER_H
+#define BASISCONTROLLER_H
 /* Include Serenity Internal Headers */
 #include "basis/Basis.h"
 /* Include Std and External Headers */
+#include <Eigen/SparseCore>
 #include <memory>
 #include <string>
 #include <vector>
 
-
 namespace Serenity {
+
+typedef Eigen::SparseMatrix<int> SparseMap;
 /**
  * @class ShellPairData
  * @brief Prescreening data for a shell pair
  */
 class ShellPairData {
-public:
+ public:
   /**
    * @brief Default Constructor.
    */
@@ -45,28 +47,23 @@ public:
    * @param shellJ The second index of the shell pair.
    * @param prescreeningfactor The prescreening factor.
    */
-  ShellPairData(unsigned int indexI,
-    unsigned int indexJ,
-    double prescreeningfactor,
-    bool sameBasis = true):
-      bf1(indexI),
-      bf2(indexJ),
-      factor(prescreeningfactor) {
-    if (sameBasis) assert(bf2<=bf1);
+  ShellPairData(unsigned int indexI, unsigned int indexJ, double prescreeningfactor, bool sameBasis = true)
+    : bf1(indexI), bf2(indexJ), factor(prescreeningfactor) {
+    if (sameBasis)
+      assert(bf2 <= bf1);
   }
   /**
    * @brief Default destructor.
    */
-  virtual ~ShellPairData() =default;
+  virtual ~ShellPairData() = default;
   /**
    * @brief Less than operator for sorting purposes.
    * @param rhs Right hand side of the comparison.
    * @return Returns true if the factor in lhs is smaller than the one in the rhs.
    */
-  bool operator < (const ShellPairData& rhs) const
-      {
-          return (factor < rhs.factor);
-      }
+  bool operator<(const ShellPairData& rhs) const {
+    return (factor < rhs.factor);
+  }
   /**
    * @brief The index of the first shell of the shell pair.
    */
@@ -86,22 +83,22 @@ public:
 /**
  * @class BasisController BasisController.h
  * @brief Manages a basis set, e.g. for a whole molecule.
- * 
+ *
  * Usually one would work with atom-centered basis functions (see AtomCenteredBasisController).
  * However, most functionalities work without that assumption, thus this abstract class is created
  * to stay general.
  */
-class BasisController : public NotifyingClass<Basis>,
-                        public ObjectSensitiveClass<Shell>{
+class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClass<Shell> {
   friend class BasisController__TEST_SUPPLY;
 
-public:
+ public:
   /**
    * @brief Constructor.
    * @param basisString  The name of the controlled basis.
    */
-  BasisController(const std::string& basisString) :  _basis(nullptr), _shellPairList(nullptr) ,
-                                                     _RIPrescreeningFactors(nullptr), _basisString(basisString) {}
+  BasisController(const std::string& basisString)
+    : _basis(nullptr), _shellPairList(nullptr), _RIPrescreeningFactors(nullptr), _basisString(basisString) {
+  }
 
   virtual ~BasisController() = default;
   /**
@@ -112,7 +109,8 @@ public:
    * @returns the underlying data object
    */
   inline const Basis& getBasis() {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return *_basis;
   }
   /**
@@ -125,8 +123,8 @@ public:
    * @returns the actual number of basis functions. Not to confuse with getReducedNBasisFunctions().
    */
   inline unsigned int getNBasisFunctions() {
-    if (!_basis){
-    	produceBasis();
+    if (!_basis) {
+      produceBasis();
     }
     return _nBasisFunctions;
   }
@@ -135,7 +133,8 @@ public:
    *          Cartesian counting is enforced.
    */
   inline unsigned int getNBasisFunctionsCartesian() {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _nBasisFunctionsCart;
   }
   /**
@@ -143,7 +142,8 @@ public:
    *          Not to confuse with getReducedNBasisFunctions() and getNBasisFunctions().
    */
   inline unsigned int getNBasisFunctionsSpherical() {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _nBasisFunctionsSpherical;
   }
   /**
@@ -152,7 +152,8 @@ public:
    *          number by one).
    */
   inline size_t getReducedNBasisFunctions() {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _basis->size();
   }
   /**
@@ -161,7 +162,8 @@ public:
    *          returned).
    */
   inline unsigned int reducedIndex(unsigned int index) {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _reducedIndex[index];
   }
   /**
@@ -169,7 +171,8 @@ public:
    *          input.
    */
   inline unsigned int extendedIndex(unsigned int index) {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _extendedIndex[index];
   }
   /**
@@ -177,7 +180,8 @@ public:
    *          input. Counting in terms of Cartesian functions is enforced.
    */
   inline unsigned int extendedIndexCartesian(unsigned int index) {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _extendedIndexCart[index];
   }
   /**
@@ -185,17 +189,19 @@ public:
    *          input (pure spherical harmonics counting is enforced).
    */
   inline unsigned int extendedIndexSpherical(unsigned int index) {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _extendedIndexSpherical[index];
   }
   /**
    * @returns the highest angular momentum present in the basis functions of this basis
    */
   unsigned int getMaxAngularMomentum() {
-    if (!_basis) produceBasis();
+    if (!_basis)
+      produceBasis();
     return _maxAngularMomentum;
   }
-  void notify(){
+  void notify() {
     this->notifyObjects();
     this->_shellPairList = nullptr;
     this->_RIPrescreeningFactors = nullptr;
@@ -212,33 +218,56 @@ public:
   bool isPureSpherical() const {
     return _pureSpherical;
   }
-
-  std::shared_ptr<std::vector<ShellPairData> > getShellPairData(){
-    if (!_shellPairList) createShellPairData();
+  /**
+   * @brief Getter for the shell-pair data.
+   * @return The shell-pair data.
+   */
+  std::shared_ptr<std::vector<ShellPairData>> getShellPairData() {
+    if (!_shellPairList)
+      createShellPairData();
     return _shellPairList;
   }
 
-  std::shared_ptr<std::vector<ShellPairData> > getRIPrescreeningFactors(){
-    if (!_RIPrescreeningFactors) calculateRIPrescreeningFactors();
-    return _RIPrescreeningFactors;
+  /**
+   * @brief Getter for Schwartz prescreening parameters.
+   * @return Schwartz prescreening parameters as a matrix.
+   */
+  const Eigen::MatrixXd& getSchwartzParams() {
+    return _schwartzParams;
   }
 
-protected:
+  /**
+   * @brief Getter for the RI-prescreening factors.
+   * @return The RI prescreening factors.
+   */
+  std::shared_ptr<std::vector<ShellPairData>> getRIPrescreeningFactors() {
+    if (!_RIPrescreeningFactors)
+      calculateRIPrescreeningFactors();
+    return _RIPrescreeningFactors;
+  }
+  /**
+   * @brief Getter for the map between shells and functions.
+   * @return The map between shells and functions.
+   */
+  const SparseMap& getFunctionToShellMap();
+
+ protected:
   void produceBasis();
 
   std::unique_ptr<Basis> _basis;
-  std::shared_ptr<std::vector<ShellPairData> > _shellPairList;
-  std::shared_ptr<std::vector<ShellPairData> > _RIPrescreeningFactors;
+  std::shared_ptr<std::vector<ShellPairData>> _shellPairList;
+  std::shared_ptr<std::vector<ShellPairData>> _RIPrescreeningFactors;
   void calculateRIPrescreeningFactors();
   void createShellPairData();
   virtual std::unique_ptr<Basis> produceBasisFunctionVector() = 0;
   virtual void postConstruction() = 0;
 
   std::string _basisString;
-  
+
   unsigned int _nBasisFunctions;
   unsigned int _nBasisFunctionsCart;
   unsigned int _nBasisFunctionsSpherical;
+
   /*
    * Holds precalculated values for the corresponding function
    */
@@ -249,12 +278,16 @@ protected:
   std::vector<unsigned int> _extendedIndex;
   std::vector<unsigned int> _extendedIndexCart;
   std::vector<unsigned int> _extendedIndexSpherical;
-  
+
   unsigned int _maxAngularMomentum;
-  
+
   bool _pureCartesian;
   bool _pureSpherical;
+
+  Eigen::MatrixXd _schwartzParams;
+
+  std::shared_ptr<SparseMap> _functionToShellMap = nullptr;
 };
 
 } /* namespace Serenity */
-#endif	/* BASISCONTROLLER_H */
+#endif /* BASISCONTROLLER_H */

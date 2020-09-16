@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,35 +22,33 @@
 #define LRSCF_ITERATIVESOLVER
 
 /* Include Serenity Internal Headers */
+#include "io/FormattedOutput.h"
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
-#include "io/FormattedOutput.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
-#include <iostream>
 #include <iomanip>
-#include <vector>
+#include <iostream>
 #include <memory>
+#include <vector>
 
 namespace Serenity {
-  
-  /**
-   * @class IterativeSolver IterativeSolver.h
-   *
-   * @brief Base class for iterative eigenvalue and response solver (not in the current release).
-   */
-  class IterativeSolver {
 
-  public:
-
+/**
+ * @class IterativeSolver IterativeSolver.h
+ *
+ * @brief Base class for iterative eigenvalue and response solver (not in the current release).
+ */
+class IterativeSolver {
+ public:
   /**
    * @brief Constructor.
-   * @param nSets The number of guess vector sets (one and two for Hermitian 
+   * @param nSets The number of guess vector sets (one and two for Hermitian
    *        and symplectic problems, respectively).
    * @param nDimension Dimension of the response problem.
    * @param nEigen Number of the lowest eigenvalues to be obtained.
    * @param diagonal Orbital-energy difference of the response problem.
-   * @param convergenceCriterion If the norm of a residual vector of a root falls beneath this 
+   * @param convergenceCriterion If the norm of a residual vector of a root falls beneath this
    *        threshold, the root will be considered converged.
    * @param maxIterations If not converged after this number of iterations, abort.
    * @param maxSubspaceDimension Will perform a subspace collapse if the number of guess vectors
@@ -59,26 +57,19 @@ namespace Serenity {
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
    * @param initialGuess The initial guess space might also be passed to the eigenvalue solver.
    */
-  IterativeSolver(
-    unsigned nSets,
-    unsigned nDimension,
-    unsigned nEigen,
-    Eigen::VectorXd& diagonal,
-    double convergenceCriterion,
-    unsigned maxIterations,
-    unsigned maxSubspaceDimension,
-    std::function<std::unique_ptr<std::vector<Eigen::MatrixXd> >(
-      std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-    std::shared_ptr<std::vector<Eigen::MatrixXd> > initialGuess) :
-    _nSets(nSets),
-    _nDimension(nDimension),
-    _nEigen(nEigen),
-    _diagonal(diagonal),
-    _convergenceCriterion(convergenceCriterion),
-    _maxIterations(maxIterations),
-    _maxSubspaceDimension(maxSubspaceDimension),
-    _sigmaCalculator(sigmaCalculator),
-    _initialGuess(initialGuess){
+  IterativeSolver(unsigned nSets, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal,
+                  double convergenceCriterion, unsigned maxIterations, unsigned maxSubspaceDimension,
+                  std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
+                  std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess)
+    : _nSets(nSets),
+      _nDimension(nDimension),
+      _nEigen(nEigen),
+      _diagonal(diagonal),
+      _convergenceCriterion(convergenceCriterion),
+      _maxIterations(maxIterations),
+      _maxSubspaceDimension(maxSubspaceDimension),
+      _sigmaCalculator(sigmaCalculator),
+      _initialGuess(initialGuess) {
   }
 
   /**
@@ -89,24 +80,26 @@ namespace Serenity {
   /**
    * @brief Triggers the iterative solution procedure.
    */
-  void solve(){
-
-    do{
+  void solve() {
+    do {
       ++_nIter;
       this->iterate();
-      if(_nIter >= _maxIterations){
+      if (_nIter >= _maxIterations) {
         printf("\n Reached maximum number of iterations.\n");
         break;
       }
-      if(_nConverged == _nEigen) _converged = true;
-    }while(_converged == false);
-    //Print information if converged or not
-    if(_converged){
+      if (_nConverged == _nEigen)
+        _converged = true;
+    } while (_converged == false);
+    // Print information if converged or not
+    if (_converged) {
       printf("\n Reached convergence criterion.\n\n");
-    }else if(_maxIterations == 1){
+    }
+    else if (_maxIterations == 1) {
       printf("\n Finished FDEc step.\n\n");
-    }else{
-      WarningTracker::printWarning("Warning: convergence criterion not reached.",true);
+    }
+    else {
+      WarningTracker::printWarning("Warning: convergence criterion not reached.", true);
     }
     this->postProcessing();
     _done = true;
@@ -115,15 +108,15 @@ namespace Serenity {
   /**
    * @brief Returns true if converged.
    */
-  bool isConverged(){
+  bool isConverged() {
     return _converged;
   } /* this->isConverged() */
 
   /**
    * @brief Returns the current approximate eigenvalues.
    */
-  Eigen::VectorXd& getEigenvalues(){
-    if(!_done){
+  Eigen::VectorXd& getEigenvalues() {
+    if (!_done) {
       this->solve();
     }
     return _eigenvalues;
@@ -132,14 +125,14 @@ namespace Serenity {
   /**
    * @brief Returns the current approximate eigenvectors.
    */
-  std::vector<Eigen::MatrixXd>& getEigenvectors(){
-    if(!_done){
+  std::vector<Eigen::MatrixXd>& getEigenvectors() {
+    if (!_done) {
       this->solve();
     }
     return _eigenvectors;
   } /* this->getEigenvectors() */
 
-  protected:
+ protected:
   /**
    * @brief Initializes the eigenvalue solver by printing some info, getting the needed\n
    *        matrices right, calculating the seed and the corresponding sigma vectors.\n
@@ -160,89 +153,91 @@ namespace Serenity {
    */
   virtual void postProcessing() = 0;
 
-
   ///@brief Prints some information.
   void printHeader(std::string caption) {
-    //Print caption and some general information
+    // Print caption and some general information
     printBigCaption(caption);
-    print((std::string)"Number of sets                        : " + _nSets);
-    print((std::string)"Dimension of the eigenvalue problem   : " + _nDimension);
-    print((std::string)"Number of roots to be determined      : " + _nEigen);
-    print((std::string)"Convergence threshold                 : " + _convergenceCriterion);
-    print((std::string)"Maximum number of iterations          : " + _maxIterations);
-    print((std::string)"Maximum subspace dimension            : " + _maxSubspaceDimension);
+    print((std::string) "Number of sets                        : " + _nSets);
+    print((std::string) "Dimension of the eigenvalue problem   : " + _nDimension);
+    print((std::string) "Number of roots to be determined      : " + _nEigen);
+    print((std::string) "Convergence threshold                 : " + _convergenceCriterion);
+    print((std::string) "Maximum number of iterations          : " + _maxIterations);
+    print((std::string) "Maximum subspace dimension            : " + _maxSubspaceDimension);
   }
 
   ///@brief Expands the guess space with the current correction vectors.
-  void expandSubspace(){
-    //Normalize correction vectors in case of non-Hermitian problem
-    if(_nSets > 1){
-      for(unsigned iSet = 0; iSet < _nSets; ++iSet){
+  void expandSubspace() {
+    // Normalize correction vectors in case of non-Hermitian problem
+    if (_nSets > 1) {
+      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
         _correctionVectors[iSet].colwise().normalize();
       }
     }
 
-    //Subspace expansion
+    // Subspace expansion
     unsigned nAppend = 0;
     Eigen::VectorXd norm(_nSets);
 
-    //Orthogonalization against all guess vectors
-    for (unsigned iNew = 0; iNew < _correctionVectors[0].cols(); ++iNew){
-      for(unsigned iSet = 0; iSet < _nSets; ++iSet){
+    // Orthogonalization against all guess vectors
+    for (unsigned iNew = 0; iNew < _correctionVectors[0].cols(); ++iNew) {
+      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
         double oldNorm = _correctionVectors[iSet].col(iNew).norm();
-        for(unsigned j = 0; j < _guessVectors[0].cols(); ++j){
+        for (unsigned j = 0; j < _guessVectors[0].cols(); ++j) {
           double ij = _correctionVectors[iSet].col(iNew).dot(_guessVectors[iSet].col(j));
           double jj = _guessVectors[iSet].col(j).dot(_guessVectors[iSet].col(j));
           _correctionVectors[iSet].col(iNew) -= ij / jj * _guessVectors[iSet].col(j);
         }
         norm(iSet) = _correctionVectors[iSet].col(iNew).norm() / oldNorm;
       }
-      
-      //Determine if to be appended
-      if(norm.sum() / std::sqrt(_nSets) > _appendThresh){
-        for(unsigned iSet = 0; iSet < _nSets; ++iSet){
+
+      // Determine if to be appended
+      if (norm.sum() / std::sqrt(_nSets) > _appendThresh) {
+        for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
           _guessVectors[iSet].conservativeResize(_nDimension, _guessVectors[iSet].cols() + 1);
-          _guessVectors[iSet].rightCols(1) = _correctionVectors[iSet].col(iNew) / (_nSets == 1 ? 1.0 : _correctionVectors[iSet].col(iNew).norm());
+          _guessVectors[iSet].rightCols(1) =
+              _correctionVectors[iSet].col(iNew) / (_nSets == 1 ? 1.0 : _correctionVectors[iSet].col(iNew).norm());
         }
         ++nAppend;
       }
     }
 
-    //Reset correction vectors to only those that got appended
-    for(unsigned iSet = 0; iSet < _nSets; ++iSet){
-      _correctionVectors[iSet].conservativeResize(_nDimension,nAppend);
+    // Reset correction vectors to only those that got appended
+    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+      _correctionVectors[iSet].conservativeResize(_nDimension, nAppend);
       _correctionVectors[iSet] = _guessVectors[iSet].rightCols(nAppend);
     }
- 
-    //Set dimension after expansion
+
+    // Set dimension after expansion
     unsigned newDim = _subDim + nAppend;
 
-    //Perform subspace collapse if needed and calculate new sigma vectors
-    if(nAppend > 0){
+    // Perform subspace collapse if needed and calculate new sigma vectors
+    if (nAppend > 0) {
       auto newSigma = (*_sigmaCalculator(_correctionVectors));
-      for(unsigned iSet = 0; iSet < _nSets; ++iSet){
-        //If there is more space, then just append new sigma vectors
-        if(newDim <= _maxSubspaceDimension){
-          _sigmaVectors[iSet].conservativeResize(_nDimension,newDim);
+      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+        // If there is more space, then just append new sigma vectors
+        if (newDim <= _maxSubspaceDimension) {
+          _sigmaVectors[iSet].conservativeResize(_nDimension, newDim);
           _sigmaVectors[iSet].rightCols(nAppend) = newSigma[iSet];
-        //Otherwise, collapse subspace and then append new sigma vectors
-        }else{
-          //Set guessVectors to current ritz vectors
+          // Otherwise, collapse subspace and then append new sigma vectors
+        }
+        else {
+          // Set guessVectors to current ritz vectors
           _guessVectors[iSet] = _eigenvectors[iSet];
           _sigmaVectors[iSet] = _sigmaVectors[iSet] * _expansionVectors[iSet];
 
-          //Don't neglect current correction vectors
-          _guessVectors[iSet].conservativeResize(_nDimension,_nEigen+nAppend);
+          // Don't neglect current correction vectors
+          _guessVectors[iSet].conservativeResize(_nDimension, _nEigen + nAppend);
           _guessVectors[iSet].rightCols(nAppend) = _correctionVectors[iSet];
 
-          //Append corresponding sigma vectors
-          _sigmaVectors[iSet].conservativeResize(_nDimension,_nEigen+nAppend);
+          // Append corresponding sigma vectors
+          _sigmaVectors[iSet].conservativeResize(_nDimension, _nEigen + nAppend);
           _sigmaVectors[iSet].rightCols(nAppend) = newSigma[iSet];
         }
       }
-    }else{
-      //If no appropriate correction vectors were found, just collapse
-      for(unsigned iSet = 0; iSet < _nSets; ++iSet){
+    }
+    else {
+      // If no appropriate correction vectors were found, just collapse
+      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
         _guessVectors[iSet] = _eigenvectors[iSet];
         _sigmaVectors[iSet] = _sigmaVectors[iSet] * _expansionVectors[iSet];
       }
@@ -258,11 +253,11 @@ namespace Serenity {
   ///@brief The number of roots to be determined.
   unsigned _nEigen;
 
-  ///@brief Orbital-energy difference of the response problem. 
+  ///@brief Orbital-energy difference of the response problem.
   Eigen::VectorXd _diagonal;
 
   /**
-   * /@brief If the norm of a residual vector of a root falls beneath this 
+   * /@brief If the norm of a residual vector of a root falls beneath this
    *        threshold, the root will be considered converged.
    */
   double _convergenceCriterion;
@@ -274,11 +269,10 @@ namespace Serenity {
   unsigned _maxSubspaceDimension;
 
   ///@brief A lambda to conveniently form response matrix -- guess vector products.
-  std::function<std::unique_ptr<std::vector<Eigen::MatrixXd> >(
-      std::vector<Eigen::MatrixXd>& guessVectors)> _sigmaCalculator;
+  std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> _sigmaCalculator;
 
   ///@brief The initial guess space might also be passed to the eigenvalue solver.
-  std::shared_ptr<std::vector<Eigen::MatrixXd> > _initialGuess;
+  std::shared_ptr<std::vector<Eigen::MatrixXd>> _initialGuess;
 
   ///@brief Stores the matrix to be directly diagonalized in each iteration.
   Eigen::MatrixXd _subspaceMatrix;
@@ -291,7 +285,7 @@ namespace Serenity {
 
   ///@brief Subspace dimension, equals number of guess/sigma vectors.
   unsigned _subDim;
-  
+
   ///@brief Contains _nSets matrices containing the guess vectors.
   std::vector<Eigen::MatrixXd> _guessVectors;
 
@@ -334,7 +328,7 @@ namespace Serenity {
   ///@brief Number of converged roots. If this is equal to _nEigen, the iterative procedure is finished.
   unsigned _nConverged = 0;
 
-  }; /* class IterativeSolver */
+}; /* class IterativeSolver */
 } /* namespace Serenity */
 
 #endif /* LRSCF_ITERATIVESOLVER */

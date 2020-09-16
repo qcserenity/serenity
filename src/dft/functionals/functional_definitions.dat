@@ -1,0 +1,100 @@
+# @file   functional_definitions.dat
+# @date   Sep 3 2002
+# @author Jan Unsleber
+# @copyright
+#  This file is part of the program Serenity.
+#  Serenity is free software you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation either version 3 of
+#  the License or (at your option any later version.
+#  Serenity is distributed in the hope that it will be useful
+#  but WITHOUT ANY WARRANTY without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU Lesser General
+#  Public License along with Serenity.
+#  If not see <http//www.gnu.org/licenses/>.
+# ==================================================================
+#
+#   This file contains the compositions of all functionals
+#   present in Serenity.
+#
+#   Each functional is given by the following data:
+#   1. Its name (must match an entry in composite_functionals.dat)
+#   2. Its intended implementation resolution (LIBXC, XCFUN or
+#      EITHER_OR) in which all named basic functionals must be
+#      present.
+#   3. A list of basic functionals.
+#   4. A list of mixing factors for all basic functionals.
+#   5. The amount of exact Hartree-Fock exchange to be added.
+#   6. The amount ot MP2 like correlation to be added.
+#   7. The amount of long-range only Hartree-Fock exchange to be
+#      added. Note that short range HF exchange can be added by
+#      requesting exact exchange (point 5) and subtracting the
+#      amount from the long-range only Hartree-Fock exchange.
+#   8. The range separation paremter.
+#   9. The same spin scaling factor for MP2 correlation.
+#  10. The oposite spin scaling factor for MP2 correlation.
+#
+# ==================================================================
+# Name, Implementation | Basic functionals                 | Mixing factors                   |   HFx       MP2c lrHFx     mu   ssS  osS
+NONE         EITHER_OR | NONE                              | 0.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+HF           EITHER_OR | NONE                              | 1.0                              |   1.0       0.0   0.0      0.0  1.0  1.0
+SAOP         EITHER_OR | XC_SAOP                           | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+LDA          EITHER_OR | X_SLATER C_VWN                    | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+BLYP         EITHER_OR | X_B86 C_LYP                       | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE          EITHER_OR | X_PBE C_PBE                       | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+BP86         EITHER_OR | X_B86 C_P86                       | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+KT1          EITHER_OR | X_SLATER X_KT1 C_VWN              | 1.0 -0.006 1.0                   |   0.0       0.0   0.0      0.0  1.0  1.0
+KT2          EITHER_OR | X_SLATER X_KT1 C_VWN              | 1.07173 -0.006 0.576727          |   0.0       0.0   0.0      0.0  1.0  1.0
+KT3          EITHER_OR | X_SLATER X_KT1 C_OPTC C_LYP       | 1.092 -0.004 -0.925452 0.864409  |   0.0       0.0   0.0      0.0  1.0  1.0
+LDAERF       XCFUN     | X_LDA_ERF C_LDA_ERF               | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+LDAERF_JT    XCFUN     | X_LDA_ERF C_LDA_ERF_JT            | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE0         EITHER_OR | X_PBE C_PBE                       | 0.75 1.0                         |   0.25      0.0   0.0      0.0  1.0  1.0
+B3LYP        EITHER_OR | X_SLATER X_B88 C_LYP C_VWN        | 0.80 0.72 0.81 0.19              |   0.20      0.0   0.0      0.0  1.0  1.0
+B3LYP_G      EITHER_OR | X_SLATER X_B88 C_LYP C_VWN_3      | 0.80 0.72 0.81 0.19              |   0.20      0.0   0.0      0.0  1.0  1.0
+B3P86        XCFUN     | X_SLATER X_B88 C_P86CORRC C_VWN   | 0.80 0.72 0.81 1.0               |   0.20      0.0   0.0      0.0  1.0  1.0
+B3P86_G      XCFUN     | X_SLATER X_B88 C_P86CORRC C_VWN_3 | 0.80 0.72 0.81 1.0               |   0.20      0.0   0.0      0.0  1.0  1.0
+BPW91        EITHER_OR | X_B86 C_PW91                      | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+B97          XCFUN     | X_B97 C_B97                       | 1.0 1.0                          |   0.1943    0.0   0.0      0.0  1.0  1.0
+B97_1        XCFUN     | X_B97_1 C_B97_1                   | 1.0 1.0                          |   0.21      0.0   0.0      0.0  1.0  1.0
+B97_2        XCFUN     | X_B97_2 C_B97_2                   | 1.0 1.0                          |   0.21      0.0   0.0      0.0  1.0  1.0
+B97          LIBXC     | XC_B97                            | 1.0                              |   0.1943    0.0   0.0      0.0  1.0  1.0
+B97_1        LIBXC     | XC_B97_1                          | 1.0                              |   0.21      0.0   0.0      0.0  1.0  1.0
+B97_2        LIBXC     | XC_B97_2                          | 1.0                              |   0.21      0.0   0.0      0.0  1.0  1.0
+CAMB3LYP     XCFUN     | X_B88_CAM C_VWN C_LYP             | 1.0 0.19 0.81                    |   0.19      0.0   0.46     0.33 1.0  1.0
+CAMB3LYP     LIBXC     | XC_CAM_B3LYP                      | 1.0                              |   0.19      0.0   0.46     0.33 1.0  1.0
+B97_D        LIBXC     | XC_B97_D                          | 1.0                              |   0.000000  0.0   0.000000 0.00 1.0  1.0
+WB97         LIBXC     | XC_WB97                           | 1.0                              |   0.000000  0.0   1.000000 0.40 1.0  1.0
+WB97X        LIBXC     | XC_WB97X                          | 1.0                              |   0.157706  0.0   0.842294 0.30 1.0  1.0
+WB97X_D      LIBXC     | XC_WB97X_D                        | 1.0                              |   0.222036  0.0   0.777964 0.20 1.0  1.0
+WB97X_V      LIBXC     | XC_WB97X_V                        | 1.0                              |   0.167000  0.0   0.833000 0.30 1.0  1.0
+VWN5         EITHER_OR | C_VWN                             | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+VWN3         EITHER_OR | C_VWN_3                           | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+SLATER       EITHER_OR | X_SLATER                          | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+OLYP         EITHER_OR | C_LYP X_OPTX                      | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+TF           EITHER_OR | K_TF                              | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+LCBLYP       XCFUN     | X_B88_CAM C_LYP                   | 1.0 1.0                          |   0.0       0.0   1.0      0.33 1.0  1.0
+LCBLYP_047   XCFUN     | X_B88_CAM C_LYP                   | 1.0 1.0                          |   0.0       0.0   1.0      0.47 1.0  1.0
+LCBLYP       LIBXC     | XC_LC_BLYP                        | 1.0                              |   0.0       0.0   1.0      0.33 1.0  1.0
+LCBLYP_047   LIBXC     | XC_LC_BLYP                        | 1.0                              |   0.0       0.0   1.0      0.47 1.0  1.0
+PW91K        EITHER_OR | K_PW91                            | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+PW91         EITHER_OR | C_PW91 X_PW91                     | 1.0 1.0                          |   0.0       0.0   0.0      0.0  1.0  1.0
+B2PLYP       EITHER_OR | X_B86 C_LYP                       | 0.47 0.73                        |   0.53      0.27  0.0      0.0  1.0  1.0
+B2KPLYP      EITHER_OR | X_B86 C_LYP                       | 0.28 0.58                        |   0.72      0.42  0.0      0.0  1.0  1.0
+B2TPLYP      EITHER_OR | X_B86 C_LYP                       | 0.40 0.69                        |   0.60      0.31  0.0      0.0  1.0  1.0
+B2GPPLYP     EITHER_OR | X_B86 C_LYP                       | 0.35 0.64                        |   0.65      0.36  0.0      0.0  1.0  1.0
+ROB2PLYP     EITHER_OR | X_B86 C_LYP                       | 0.41 0.72                        |   0.59      0.28  0.0      0.0  1.0  1.0
+B2PIPLYP     EITHER_OR | X_B86 C_LYP                       | 0.398 0.727                      |   0.602     0.273 0.0      0.0  1.0  1.0
+B2PPW91      EITHER_OR | X_B86 C_PW91                      | 0.8 0.9                          |   0.2       0.1   0.0      0.0  1.0  1.0
+DSDBLYP      EITHER_OR | X_B86 C_LYP                       | 0.31 0.54                        |   0.69      1.0   0.0      0.0  0.37 0.46
+DUT          EITHER_OR | X_B86 C_LYP                       | 0.30 0.59                        |   0.70      1.0   0.0      0.0  0.36 0.47
+PUT          EITHER_OR | X_B86 C_LYP                       | 0.32 0.63                        |   0.68      1.0   0.0      0.0  0.27 0.46
+DSDPBEP86    EITHER_OR | X_PBE C_P86                       | 0.30 0.43                        |   0.70      1.0   0.0      0.0  0.25 0.53
+LLP91K       EITHER_OR | K_LLP                             | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+LLP91KS      XCFUN     | K_LLPS                            | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE2K        XCFUN     | K_PBE2                            | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE2KS       XCFUN     | K_PBE2S                           | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE3K        EITHER_OR | K_PBE3                            | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+PBE4K        EITHER_OR | K_PBE4                            | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0
+E2000K       EITHER_OR | K_ERNZERHOF                       | 1.0                              |   0.0       0.0   0.0      0.0  1.0  1.0

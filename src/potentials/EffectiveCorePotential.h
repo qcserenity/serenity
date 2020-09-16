@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,31 +22,28 @@
 #define POTENTIALS_EFFECTIVECOREPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "geometry/Atom.h"
 #include "basis/BasisController.h"
+#include "geometry/Atom.h"
 #include "potentials/Potential.h"
 
 namespace Serenity {
 
 class SystemController;
 
-template <Options::SCF_MODES SCFMode>
-class EffectiveCorePotential : public Potential<SCFMode>,
-                               public ObjectSensitiveClass<Basis>{
-public:
+template<Options::SCF_MODES SCFMode>
+class EffectiveCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Basis> {
+ public:
   /**
    * @brief Constructor
    * @param atoms The atoms with potential ECPs.
    * @param basis The basis.
    */
-  EffectiveCorePotential(
-      std::shared_ptr<SystemController> system,
-      std::vector<std::shared_ptr<Atom> > atoms,
-      std::shared_ptr<BasisController> basis);
+  EffectiveCorePotential(std::shared_ptr<SystemController> system, std::vector<std::shared_ptr<Atom>> atoms,
+                         std::shared_ptr<BasisController> basis);
   /**
    * @brief Default destructor.
    */
-  virtual ~EffectiveCorePotential()=default;
+  virtual ~EffectiveCorePotential() = default;
   /**
    * @brief Getter for the actual potential.
    * @return Returns the potential in matrix form.
@@ -68,23 +65,19 @@ public:
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final{
+  void notify() override final {
     _potential = nullptr;
   };
 
-private:
+ private:
   ///@brief Flag if the the contribution has to be calculated/ ECPs are used.
   bool _notZero;
   ///@brief The system controller (gradients only).
-  std::shared_ptr<SystemController> _system;
+  std::weak_ptr<SystemController> _system;
   ///@brief The atoms.
-  std::vector<std::shared_ptr<Atom> > _atoms;
+  std::vector<std::shared_ptr<Atom>> _atoms;
   ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
-
-
-
-
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
 };
 
 } /* namespace Serenity */

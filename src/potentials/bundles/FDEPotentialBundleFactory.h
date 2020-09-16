@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,10 +22,10 @@
 #define POTENTIALS_BUNDLES_FDEPOTENTIALBUNDLEFACTORY_H_
 
 /* Include Serenity Internal Headers */
+#include "data/matrices/DensityMatrixController.h"
 #include "misc/RememberingFactory.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "tasks/FDETask.h"
-#include "data/matrices/DensityMatrixController.h"
 
 /* Include Std and External Headers */
 #include <memory>
@@ -54,19 +54,19 @@ class GridController;
  *
  *            MB
  */
-template <Options::SCF_MODES SCFMode>
-class FDEPotentialBundleFactory
-    {
-private:
+template<Options::SCF_MODES SCFMode>
+class FDEPotentialBundleFactory {
+ private:
   /**
    * @brief Default constructor.
    */
-  FDEPotentialBundleFactory()=default;
-public:
+  FDEPotentialBundleFactory() = default;
+
+ public:
   /**
    * @brief Default destructor.
    */
-  virtual ~FDEPotentialBundleFactory()=default;
+  virtual ~FDEPotentialBundleFactory() = default;
 
   /**
    * @brief Get or produce the potential bundle. Either a FDEPotentials or PBEPotentials object
@@ -89,33 +89,26 @@ public:
    *                                Applies to bottom-up calculations only.
    * @return The potential bundle. If top-down=true -> PBEPotentials, else->FDEPotentials.
    */
-  static std::shared_ptr<PotentialBundle<SCFMode> > produce(
-      std::shared_ptr<SystemController> activeSystem,
-      std::shared_ptr<DensityMatrixController<SCFMode> > activeDensMatController,
-      std::vector<std::shared_ptr<SystemController> > environmentSystems,
-      std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > envDensMatController,
-      const std::shared_ptr<EmbeddingSettings> settings,
-      std::shared_ptr<GridController> grid,
-      std::shared_ptr<SystemController> supersystem = nullptr,
-      bool topDown = false,
-      bool noSuperRecon = true,
-      double gridCutOff = -1.0,
-      std::vector<std::shared_ptr<EnergyComponentController> > eConts = {});
+  static std::shared_ptr<PotentialBundle<SCFMode>>
+  produce(std::shared_ptr<SystemController> activeSystem,
+          std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
+          std::vector<std::shared_ptr<SystemController>> environmentSystems,
+          std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
+          const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
+          std::shared_ptr<SystemController> supersystem = nullptr, bool topDown = false, bool noSuperRecon = true,
+          double gridCutOff = -1.0, std::vector<std::shared_ptr<EnergyComponentController>> eConts = {},
+          unsigned int firstPassiveSystemIndex = 99999);
 
-private:
+ private:
   // The actual worker function. For documentaion see produce(..)
-  static std::shared_ptr<PotentialBundle<SCFMode> > produceNew(
-      std::shared_ptr<SystemController> activeSystem,
-      std::shared_ptr<DensityMatrixController<SCFMode> > activeDensMatController,
-      std::vector<std::shared_ptr<SystemController> > environmentSystems,
-      std::vector<std::shared_ptr<DensityMatrixController<SCFMode> > > envDensMatController,
-      const std::shared_ptr<EmbeddingSettings> settings,
-      std::shared_ptr<GridController> grid,
-      std::shared_ptr<SystemController> supersystem,
-      bool topDown,
-      bool noSuperRecon,
-      double gridCutOff,
-      std::vector<std::shared_ptr<EnergyComponentController> > eConts);
+  static std::shared_ptr<PotentialBundle<SCFMode>>
+  produceNew(std::shared_ptr<SystemController> activeSystem,
+             std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
+             std::vector<std::shared_ptr<SystemController>> environmentSystems,
+             std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
+             const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
+             std::shared_ptr<SystemController> supersystem, bool topDown, bool noSuperRecon, double gridCutOff,
+             std::vector<std::shared_ptr<EnergyComponentController>> eConts, unsigned int firstPassiveSystemIndex);
 };
 
 } /* namespace Serenity */

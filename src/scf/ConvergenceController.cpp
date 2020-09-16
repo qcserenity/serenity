@@ -1,41 +1,42 @@
 /**
  * @file   ConvergenceController.cpp
- * 
+ *
  * @date   28. Dezember 2013, 18:13
  * @author Thomas Dresselhaus, M. Boeckers
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Class Header*/
 #include "scf/ConvergenceController.h"
 /* Include Serenity Internal Headers */
-#include "math/diis/ADIIS.h"
-#include "scf/damper/ArithmeticSeriesDamping.h"
-#include "math/diis/DIIS.h"
-#include "scf/damper/Damper.h"
 #include "data/matrices/DensityMatrixController.h"
+#include "data/matrices/FockMatrix.h"
+#include "data/matrices/MatrixInBasis.h"
 #include "energies/EnergyComponentController.h"
 #include "energies/EnergyContributions.h"
-#include "data/matrices/FockMatrix.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutput.h"
 #include "io/IOOptions.h"
-#include "data/matrices/MatrixInBasis.h"
-#include "integrals/OneElectronIntegralController.h"
+#include "math/diis/ADIIS.h"
+#include "math/diis/DIIS.h"
 #include "math/linearAlgebra/Orthogonalization.h"
-#include "settings/Settings.h"
-#include "scf/damper/StaticDamping.h"
 #include "misc/Timing.h"
+#include "scf/damper/ArithmeticSeriesDamping.h"
+#include "scf/damper/Damper.h"
+#include "scf/damper/DynamicDamping.h"
+#include "scf/damper/StaticDamping.h"
+#include "settings/Settings.h"
 /* Include Std and External Headers */
 #include <cassert>
 #include <cmath>
@@ -43,115 +44,110 @@
 #include <iomanip>
 #include <limits>
 
-
 namespace Serenity {
-using namespace std;
 
-template<Options::SCF_MODES T>
-ConvergenceController<T>::ConvergenceController(
-    const Settings& settings,
-    std::shared_ptr< DensityMatrixController<T> > densityMatrix,
-    std::shared_ptr<OrbitalController<T> > orbitalController,
-    std::shared_ptr<OneElectronIntegralController> oneIntController,
-    const std::shared_ptr<EnergyComponentController> energyComponentController) :
-      _settings(settings),
-      _dmatContr(densityMatrix),
-      _orbitalController(orbitalController),
-      _oldP(nullptr),
-      _oneIntController(oneIntController),
-      _energyComponentController(energyComponentController),
-      _oldEnergy(numeric_limits<double>::infinity()),
-      _oldOneElEnergy(numeric_limits<double>::infinity()),
-      _diisConvMeasure(numeric_limits<double>::infinity()),
-      _rmsdOfDensity(numeric_limits<double>::infinity()),
-      _orthoS(nullptr),
-      _damping(nullptr),
-      _diis(nullptr),
-      _adiis(nullptr),
-      _diisZoneStart(0),
-      _mode("---"){
+template<Options::SCF_MODES SCFMode>
+ConvergenceController<SCFMode>::ConvergenceController(const Settings& settings,
+                                                      std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrix,
+                                                      std::shared_ptr<OrbitalController<SCFMode>> orbitalController,
+                                                      std::shared_ptr<OneElectronIntegralController> oneIntController,
+                                                      const std::shared_ptr<EnergyComponentController> energyComponentController)
+  : _settings(settings),
+    _dmatContr(densityMatrix),
+    _orbitalController(orbitalController),
+    _oldP(nullptr),
+    _oneIntController(oneIntController),
+    _energyComponentController(energyComponentController),
+    _oldEnergy(std::numeric_limits<double>::infinity()),
+    _oldOneElEnergy(std::numeric_limits<double>::infinity()),
+    _diisConvMeasure(std::numeric_limits<double>::infinity()),
+    _rmsdOfDensity(std::numeric_limits<double>::infinity()),
+    _orthoS(nullptr),
+    _damping(nullptr),
+    _diis(nullptr),
+    _adiis(nullptr),
+    _diisZoneStart(0),
+    _mode("---") {
   assert(_oneIntController);
   assert(_energyComponentController);
-  _diis = std::make_shared<DIIS>(_settings.scf.diisMaxStore,
-      _settings.scf.diisConditionNumberThreshold,
-      T==Options::SCF_MODES::RESTRICTED);
-  if (settings.scf.useADIIS) _adiis = std::make_shared<ADIIS>();
-  switch(_settings.scf.damping) {
-    case(Options::DAMPING_ALGORITHMS::NONE): {
-      _damping = std::shared_ptr<Damper<T> > (new StaticDamping<T>(0));
+  _diis = std::make_shared<DIIS>(_settings.scf.diisMaxStore);
+  if (settings.scf.useADIIS)
+    _adiis = std::make_shared<ADIIS>();
+  switch (_settings.scf.damping) {
+    case (Options::DAMPING_ALGORITHMS::NONE): {
+      _damping = std::make_shared<StaticDamping<SCFMode>>(0);
       break;
     }
-    case(Options::DAMPING_ALGORITHMS::STATIC): {
-      _damping = std::shared_ptr<Damper<T> >(new StaticDamping<T>(
-          _settings.scf.staticDampingFactor));
+    case (Options::DAMPING_ALGORITHMS::STATIC): {
+      _damping = std::make_shared<StaticDamping<SCFMode>>(_settings.scf.staticDampingFactor);
       break;
     }
-    case(Options::DAMPING_ALGORITHMS::SERIES): {
-      _damping = std::shared_ptr<Damper<T> >(new ArithmeticSeriesDamping<T>(
-          _settings.scf.seriesDampingStart,
-          _settings.scf.seriesDampingStep,
-          _settings.scf.seriesDampingEnd,
-          _settings.scf.seriesDampingInitialSteps));
+    case (Options::DAMPING_ALGORITHMS::SERIES): {
+      _damping = std::make_shared<ArithmeticSeriesDamping<SCFMode>>(
+          _settings.scf.seriesDampingStart, _settings.scf.seriesDampingStep, _settings.scf.seriesDampingEnd,
+          _settings.scf.seriesDampingInitialSteps);
       break;
     }
-    case(Options::DAMPING_ALGORITHMS::DYNAMIC): {
-      throw SerenityError("Dynamic damper not yet implemented.");
+    case (Options::DAMPING_ALGORITHMS::DYNAMIC): {
+      _damping = std::make_shared<DynamicDamping<SCFMode>>();
       break;
     }
   }
-
 }
 
-enum class CONVERGENCE_CRITERIA {E_TOT, RMSD_DENSITY,FPSminusSPF};
+enum class CONVERGENCE_CRITERIA { E_TOT, RMSD_DENSITY, FPSminusSPF };
 
-template<Options::SCF_MODES T>bool ConvergenceController<T>::checkConvergence() {
+template<Options::SCF_MODES SCFMode>
+bool ConvergenceController<SCFMode>::checkConvergence() {
   bool converged = false;
-  //calculate energy difference
+  // calculate energy difference
   const double energy = _energyComponentController->getTotalEnergy();
   double deltaESquare = (energy - _oldEnergy) * (energy - _oldEnergy);
   _oldEnergy = energy;
 
-
-  //Prepare convergence map (map is initialized to false by default)
+  // Prepare convergence map (map is initialized to false by default)
   std::map<CONVERGENCE_CRITERIA, bool> convergenceMap;
 
-  if (deltaESquare <= _settings.scf.energyThreshold*_settings.scf.energyThreshold) {
+  if (deltaESquare <= _settings.scf.energyThreshold * _settings.scf.energyThreshold) {
     convergenceMap[CONVERGENCE_CRITERIA::E_TOT] = true;
-  } else {
+  }
+  else {
     convergenceMap[CONVERGENCE_CRITERIA::E_TOT] = false;
   }
   if (_rmsdOfDensity <= _settings.scf.rmsdThreshold) {
     convergenceMap[CONVERGENCE_CRITERIA::RMSD_DENSITY] = true;
-  } else {
+  }
+  else {
     convergenceMap[CONVERGENCE_CRITERIA::RMSD_DENSITY] = false;
   }
   if (_diisConvMeasure <= _settings.scf.diisThreshold) {
     convergenceMap[CONVERGENCE_CRITERIA::FPSminusSPF] = true;
-  } else {
+  }
+  else {
     convergenceMap[CONVERGENCE_CRITERIA::FPSminusSPF] = false;
   }
 
   ++_cycle;
   if (iOOptions.printSCFCycleInfo) {
-    if (_cycle==1){
-      const double inf= numeric_limits<double>::infinity();
-      std::printf("    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n","","","","","");
-      std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02u \n",
-         _cycle,energy,inf,inf,_diisConvMeasure,0,0);
-    } else {
-    timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
-    double sec = (double)(now.tv_sec- _time.tv_sec) + (now.tv_nsec- _time.tv_nsec)* 0.000000001;
-    int ms = (int)(sec*1000) - 1000*(int)sec;
-    std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02i:%03i    %3s\n",
-         _cycle, energy, sqrt(deltaESquare), _rmsdOfDensity, _diisConvMeasure,
-         (int)(sec/60),(int)(sec)%60,ms,_mode.c_str());
+    if (_cycle == 1) {
+      const double inf = std::numeric_limits<double>::infinity();
+      std::printf("    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "",
+                  "", "", "");
+      std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02u \n", _cycle, energy, inf, inf, _diisConvMeasure, 0, 0);
+    }
+    else {
+      timespec now;
+      clock_gettime(CLOCK_REALTIME, &now);
+      double sec = (double)(now.tv_sec - _time.tv_sec) + (now.tv_nsec - _time.tv_nsec) * 0.000000001;
+      int ms = (int)(sec * 1000) - 1000 * (int)sec;
+      std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02i:%03i    %3s\n", _cycle, energy, sqrt(deltaESquare),
+                  _rmsdOfDensity, _diisConvMeasure, (int)(sec / 60), (int)(sec) % 60, ms, _mode.c_str());
     }
   }
   clock_gettime(CLOCK_REALTIME, &_time);
 
-  //check for convergence
-  //ToDo: Implement option to converge below a selected combination of convergence criteria.
+  // check for convergence
+  // ToDo: Implement option to converge below a selected combination of convergence criteria.
   unsigned int nConverged = 0;
   for (auto& keyValuePair : convergenceMap) {
     nConverged += keyValuePair.second;
@@ -163,20 +159,21 @@ template<Options::SCF_MODES T>bool ConvergenceController<T>::checkConvergence() 
   return converged;
 }
 
-template<Options::SCF_MODES T>
-double ConvergenceController<T>::calcRMSDofDensity() {
+template<Options::SCF_MODES SCFMode>
+double ConvergenceController<SCFMode>::calcRMSDofDensity() {
   double rmsd = 0.0;
   if (_oldP) {
     auto P = _dmatContr->getDensityMatrix();
-    DensityMatrix<T> difference =  P - (*_oldP);
+    DensityMatrix<SCFMode> difference = P - (*_oldP);
     for_spin(difference) {
-      double tmp = (difference_spin.array()*difference_spin.array()).sum();
-      rmsd = std::max(rmsd, std::sqrt(tmp/(difference_spin.cols() * difference_spin.cols())));
+      double tmp = (difference_spin.array() * difference_spin.array()).sum();
+      rmsd = std::max(rmsd, std::sqrt(tmp / (difference_spin.cols() * difference_spin.cols())));
     };
     (*_oldP) = P;
-  } else {
+  }
+  else {
     rmsd = std::numeric_limits<double>::infinity();
-    _oldP = make_shared<DensityMatrix<T> >(_dmatContr->getDensityMatrix());
+    _oldP = make_shared<DensityMatrix<SCFMode>>(_dmatContr->getDensityMatrix());
   }
   return rmsd;
 }
@@ -186,34 +183,33 @@ double ConvergenceController<T>::calcRMSDofDensity() {
  * in his second DIIS paper is FPS-SPF in the orthonormal basis.
  * Experience shows that this actually does work pretty well.
  */
-template<Options::SCF_MODES T>SpinPolarizedData<T, Eigen::MatrixXd >
-ConvergenceController<T>::calcFPSminusSPF(FockMatrix<T>& F) {
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, Eigen::MatrixXd> ConvergenceController<SCFMode>::calcFPSminusSPF(FockMatrix<SCFMode>& F) {
   takeTime("Optimizer 1");
-  SpinPolarizedData<T, Eigen::MatrixXd > result(
-      F.getNBasisFunctions(),
-      F.getNBasisFunctions());
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> result(F.getNBasisFunctions(), F.getNBasisFunctions());
   const auto& S = _oneIntController->getOverlapIntegrals();
   auto P = _dmatContr->getDensityMatrix();
   for_spin(result, F, P) {
     result_spin = (F_spin * P_spin * S);
     result_spin -= (S * P_spin * F_spin);
   };
-  timeTaken(3,"Optimizer 1");
+  timeTaken(3, "Optimizer 1");
   /*
    * Transform the new error vector to orthogonal basis.
    */
   takeTime("Optimizer 2");
-  if (!_orthoS) _orthoS.reset(new Eigen::MatrixXd(S.householderQr().householderQ()));
+  if (!_orthoS)
+    _orthoS.reset(new Eigen::MatrixXd(S.householderQr().householderQ()));
   for_spin(result) {
-    result_spin = (*_orthoS) * result_spin* (*_orthoS).transpose();
+    result_spin = (*_orthoS) * result_spin * (*_orthoS).transpose();
   };
-  timeTaken(3,"Optimizer 2");
+  timeTaken(3, "Optimizer 2");
 
   return result;
 }
 
-template<Options::SCF_MODES T>
-std::pair<Eigen::VectorXd,SpinPolarizedData<T, Eigen::VectorXd > > ConvergenceController<T>::getLevelshift() {
+template<Options::SCF_MODES SCFMode>
+std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> ConvergenceController<SCFMode>::getLevelshift() {
   /*
    * Generate levelshift data to modify FockMatrix:
    * F_{aa}+=levelshift[0]; levelshift[0] >= 0
@@ -228,43 +224,42 @@ std::pair<Eigen::VectorXd,SpinPolarizedData<T, Eigen::VectorXd > > ConvergenceCo
   Eigen::VectorXd levelshift(2);
   levelshift[0] = 0.0;
   levelshift[1] = 1.0;
-  if (_diisConvMeasure > min(_settings.scf.diisThreshold*100.0,1e-5)
-       and _settings.scf.useLevelshift) levelshift[0]=sqrt(log(_diisConvMeasure+1));
-  if (_diisConvMeasure > min(_settings.scf.diisThreshold*100.0,1e-5)
-       and _settings.scf.useOffDiagLevelshift) levelshift[1]=(1.0/(_diisConvMeasure+2))+0.5;
-  return std::pair<Eigen::VectorXd,SpinPolarizedData<T, Eigen::VectorXd > >(levelshift,_dmatContr->getOccupations());
-
+  if (_diisConvMeasure > _settings.scf.diisThreshold * 100.0 and _settings.scf.useLevelshift)
+    levelshift[0] = std::max(sqrt(log(_diisConvMeasure + 1)), _settings.scf.minimumLevelshift);
+  if (_diisConvMeasure > min(_settings.scf.diisThreshold * 100.0, 1e-5) and _settings.scf.useOffDiagLevelshift)
+    levelshift[1] = (1.0 / (_diisConvMeasure + 2)) + 0.5;
+  return std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>>(levelshift, _dmatContr->getOccupations());
 }
 
 template<>
-void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergence(
-    FockMatrix<RESTRICTED>& F) {
+void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergence(FockMatrix<RESTRICTED>& F,
+                                                                                  DensityMatrix<RESTRICTED> D) {
   Timings::takeTime("Tech. -           DIIS/Damping");
 
-  if (_first) _orthoS.reset(new Eigen::MatrixXd((*_orbitalController->getTransformMatrix(_oneIntController)).transpose()));
+  if (_first)
+    _orthoS.reset(new Eigen::MatrixXd((*_orbitalController->getTransformMatrix(_oneIntController)).transpose()));
 
   /*
    * Optimizer part: set up the new error vector
    */
   takeTime("Optimizer error measure");
   Eigen::MatrixXd errorVector = calcFPSminusSPF(F);
-  timeTaken(3,"Optimizer error measure");
+  timeTaken(3, "Optimizer error measure");
   /*
    * Get the convergence measure.
    */
   _diisConvMeasure = errorVector.maxCoeff();
-//  std::cout << errorVector << std::endl;
-//  std::cout << "-------------" << std::endl;
-  //calculate root mean square change of density matrix
+  // calculate root mean square change of density matrix
   _rmsdOfDensity = calcRMSDofDensity();
   /*
    * Switch on DIIS if electronic gradient falls below threshold, else damp
    */
-//  const double energy = _energyComponentController->getTotalEnergy();
-  if (_rmsdOfDensity <= _settings.scf.diisStartError and _cycle>2) _diisZoneStart=_cycle;
+  if (_diisConvMeasure <= _settings.scf.diisStartError && _diis->getNVectorsStored() > 0 && _cycle > 0)
+    _diisZoneStart = _cycle;
   _mode = "---";
-  if (this->getLevelshift().first[0]>0.0) _mode[2] = 'L';
-  if(_diisZoneStart){
+  if (this->getLevelshift().first[0] > 0.0)
+    _mode[2] = 'L';
+  if (_diisZoneStart) {
     /*
      * Make an Optimizer step: the Fock matrix is updated.
      */
@@ -272,20 +267,31 @@ void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergenc
     _adiis = nullptr;
     /* Optimize */
     Eigen::MatrixXd tmp(F);
-    _diis->optimize(_oldEnergy,tmp,errorVector);
+    _diis->optimize(tmp, errorVector);
     F = tmp;
     _mode[1] = 'D';
-    timeTaken(3,"Optimizer update");
-  } else if (_adiis and !_first) {
-   F = _adiis->optimize(F,_dmatContr->getDensityMatrix());
-   _mode[1] = 'A';
+    timeTaken(3, "Optimizer update");
   }
-  if (_diisConvMeasure>=_settings.scf.endDampErr){
-    _damping->damp(F);
+  else if (_adiis and !_first) {
+    F = _adiis->optimize(F, _dmatContr->getDensityMatrix());
+    _mode[1] = 'A';
+  }
+  if (_diisConvMeasure >= _settings.scf.endDampErr or _cycle < 2) {
+    if (_diisConvMeasure <= 10.0 * _settings.scf.diisStartError && not _diisZoneStart)
+      _diis->storeMatrix(F, errorVector);
+    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
+      _damping->dynamicDamp(F, D);
+    }
+    else {
+      _damping->damp(F);
+    }
     _mode[0] = 'D';
   }
   _first = false;
-  
+  if (_cycle % _settings.scf.diisFlush == 0 && _cycle > 0) {
+    _diis->reinit();
+  }
+
   /*
    * Done. _F (and thus the SCF procedure) now contains a Fock matrix that
    * should yield way better orbitals.
@@ -294,24 +300,25 @@ void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergenc
 }
 
 template<>
-void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConvergence(
-    FockMatrix<UNRESTRICTED>& F) {
+void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConvergence(FockMatrix<UNRESTRICTED>& F,
+                                                                                    DensityMatrix<UNRESTRICTED> D) {
   Timings::takeTime("Tech. -           DIIS/Damping");
 
-  if (_first) _orthoS.reset(new Eigen::MatrixXd((*_orbitalController->getTransformMatrix(_oneIntController)).transpose()));
+  if (_first)
+    _orthoS.reset(new Eigen::MatrixXd((*_orbitalController->getTransformMatrix(_oneIntController)).transpose()));
 
   /*
    * Optimizer part: set up the new error vector
    */
   takeTime("Optimizer error measure");
   auto errorVectors = calcFPSminusSPF(F);
-  timeTaken(3,"Optimizer error measure");
+  timeTaken(3, "Optimizer error measure");
 
   /*
    * Get the convergence measure.
    */
   _diisConvMeasure = errorVectors.alpha.maxCoeff();
-  //calculate root mean square change of density matrix
+  // calculate root mean square change of density matrix
   _rmsdOfDensity = calcRMSDofDensity();
 
   if (errorVectors.beta.maxCoeff() > _diisConvMeasure)
@@ -319,10 +326,12 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
   /*
    * Check whether DIIS is or should be switched on.
    */
-  if (_diisConvMeasure <= _settings.scf.diisStartError) _diisZoneStart=_cycle;
+  if (_diisConvMeasure <= _settings.scf.diisStartError && _diis->getNVectorsStored() > 0 && _cycle > 0)
+    _diisZoneStart = _cycle;
   _mode = "---";
-  if (this->getLevelshift().first[0]>0.0) _mode[2] = 'L';
-  if(_diisZoneStart){
+  if (this->getLevelshift().first[0] > 0.0)
+    _mode[2] = 'L';
+  if (_diisZoneStart) {
     takeTime("Optimizer update");
     /*
      * Make an Optimizer step: the Fock matrix is updated.
@@ -333,21 +342,34 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
     assert(F.alpha.rows() == F.beta.rows());
     assert(F.alpha.cols() == F.beta.cols());
 
-    Matrix<double> eTot(errorVectors.alpha.rows(),2*errorVectors.alpha.cols());
-    Matrix<double> fTot(F.alpha.rows(),2*F.alpha.cols());
+    Matrix<double> eTot(errorVectors.alpha.rows(), 2 * errorVectors.alpha.cols());
+    Matrix<double> fTot(F.alpha.rows(), 2 * F.alpha.cols());
 
     eTot << errorVectors.alpha, errorVectors.beta;
     fTot << F.alpha, F.beta;
 
-    _diis->optimize(_oldEnergy,fTot,eTot);
+    _diis->optimize(fTot, eTot);
 
     F.alpha = fTot.leftCols(F.alpha.cols());
     F.beta = fTot.rightCols(F.beta.cols());
 
-    timeTaken(3,"Optimizer update");
+    timeTaken(3, "Optimizer update");
   }
-  if(_diisConvMeasure >= _settings.scf.endDampErr){
-    _damping->damp(F);
+  if (_diisConvMeasure >= _settings.scf.endDampErr or _cycle < 2) {
+    if (_diisConvMeasure <= 10.0 * _settings.scf.diisStartError && not _diisZoneStart) {
+      Matrix<double> eTot(errorVectors.alpha.rows(), 2 * errorVectors.alpha.cols());
+      Matrix<double> fTot(F.alpha.rows(), 2 * F.alpha.cols());
+
+      eTot << errorVectors.alpha, errorVectors.beta;
+      fTot << F.alpha, F.beta;
+      _diis->storeMatrix(fTot, eTot);
+    }
+    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
+      _damping->dynamicDamp(F, D);
+    }
+    else {
+      _damping->damp(F);
+    }
     _mode[0] = 'D';
   }
   _first = false;
@@ -359,16 +381,7 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
   Timings::timeTaken("Tech. -           DIIS/Damping");
 }
 
-template<Options::SCF_MODES T>
-void ConvergenceController<T>::reinitDIIS() {
-    _diis->reinit();
-
-}
-
 template class ConvergenceController<Options::SCF_MODES::RESTRICTED>;
 template class ConvergenceController<Options::SCF_MODES::UNRESTRICTED>;
 
 } /* namespace Serenity */
-
-
-

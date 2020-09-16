@@ -7,14 +7,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -25,10 +25,10 @@
 /* Include Serenity Internal Headers */
 #include "io/HDF5.h"
 /* Include Std and External Headers */
-#include <memory>
 #include <Eigen/Dense>
-#include <vector>
+#include <memory>
 #include <stack>
+#include <vector>
 
 namespace Serenity {
 
@@ -40,15 +40,13 @@ namespace Serenity {
  *        content if one desires. Additional segments can be added ad any time.
  */
 class VectorOnDiskStorageController {
-public:
+ public:
   /**
    * @brief Constructor.
    * @param cacheLimit The cache limit.
    * @param fileName The appendix for the file names. Must end with ".h5".
    */
-  VectorOnDiskStorageController(
-      double cacheLimit,
-      std::string fileName);
+  VectorOnDiskStorageController(double cacheLimit, std::string fileName);
 
   /**
    * @brief Default copy constructor is invalid!
@@ -60,9 +58,7 @@ public:
    * @param old
    * @param fileName
    */
-  VectorOnDiskStorageController(
-      VectorOnDiskStorageController& old,
-      std::string fileName);
+  VectorOnDiskStorageController(VectorOnDiskStorageController& old, std::string fileName);
   /**
    * @brief Destructor. Removes remaining files from the disk.
    */
@@ -80,17 +76,14 @@ public:
    * @param vectorPart The vector part.
    * @param label The label of the vector part.
    */
-  void storeVectorSegment(
-      std::shared_ptr<Eigen::VectorXd> vectorPart,
-      std::string label);
+  void storeVectorSegment(std::shared_ptr<Eigen::VectorXd> vectorPart, std::string label);
 
   /**
    * @brief Calculates the scalar product of the underlying vectors.
    * @param rhs The second vector.
    * @return Returns the scalar product.
    */
-  double operator*(
-      VectorOnDiskStorageController& rhs);
+  double operator*(VectorOnDiskStorageController& rhs);
 
   /**
    * @brief Returns the total number of stored doubles.
@@ -124,27 +117,24 @@ public:
    * @brief Returns the appendix for the HDF5 files.
    * @return
    */
-  inline std::string getHDF5FileName(){
+  inline std::string getHDF5FileName() {
     return _fileName;
   }
 
-private:
+ private:
   /**
    * @brief Loads the vector segment with label <label>.
    * @param label The vector segment-label.
    * @return The vector segment.
    */
-  std::shared_ptr<Eigen::VectorXd> loadVectorSegment(
-      std::string label);
+  std::shared_ptr<Eigen::VectorXd> loadVectorSegment(std::string label);
 
   /**
    * @brief Saves a segment to tmp/<label>_<_fileName>
    * @param vectorSegment The vector segment which is saved.
    * @param label The label of the vector segment.
    */
-  void saveVectorSegment(
-      Eigen::VectorXd& vectorSegment,
-      std::string label);
+  void saveVectorSegment(Eigen::VectorXd& vectorSegment, std::string label);
 
   /**
    * @brief Removes a vector segment with the label <label> from the cache.
@@ -168,11 +158,11 @@ private:
   /// @brief The appendix for the file names.
   std::string _fileName;
   /// @brief The cache.
-  std::map<std::string, std::shared_ptr<Eigen::VectorXd> > _vectorPool;
+  std::map<std::string, std::shared_ptr<Eigen::VectorXd>> _vectorPool;
   /// @brief The sizes of the vector segments.
-  std::map<std::string, int > _segmentSizes;
+  std::map<std::string, int> _segmentSizes;
   /// @brief The files for the vector segments.
-  std::map<std::string, std::shared_ptr<H5::H5File> > _files;
+  std::map<std::string, std::shared_ptr<H5::H5File>> _files;
 };
 
 } /* namespace Serenity */

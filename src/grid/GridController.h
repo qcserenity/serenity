@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -26,7 +26,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-
 
 namespace Serenity {
 /* Forward declarations */
@@ -42,13 +41,14 @@ class Point;
  * the notification system properly.
  */
 class GridController : public NotifyingClass<Grid> {
-public:
+ public:
   /**
    * @brief Directly controls a supplied grid instead of producing one itself.
    * @param grid
    */
   GridController(std::unique_ptr<Grid> grid);
-public:
+
+ public:
   virtual ~GridController() = default;
   /**
    * @brief   gathers grid points from all atoms of the underlying system
@@ -68,19 +68,22 @@ public:
    */
   unsigned int getNGridPoints();
 
-protected:
+ protected:
   /**
    * @brief Construct the object without a grid. Only makes sense to use in derived classes.
    * This constructor makes a lazy grid construction easily possible.
    */
-  GridController() : _grid(nullptr) {}
+  GridController() : _grid(nullptr) {
+  }
   /**
    * @brief Creates a new integration grid.
    * This base class cannot create an integration grid by itself, so this function must be
    * overridden in derived classes. However, if a pre-defined grid is already available, a
    * GridController may already be constructed. In that case, this method must not be called.
    */
-  virtual void produceGrid() { assert(false); }
+  virtual void produceGrid() {
+    assert(false);
+  }
   /**
    * @brief the currently controlled grid
    */

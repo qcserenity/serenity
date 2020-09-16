@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,26 +22,24 @@
 #define POTENTIALS_HCOREPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
 #include "potentials/Potential.h"
+#include "settings/Options.h"
 #include "system/SystemController.h"
-
 
 namespace Serenity {
 /**
  * @class HCorePotential HCorePotential.h
  */
-template <Options::SCF_MODES SCFMode>
-class HCorePotential : public Potential<SCFMode>,
-                       public ObjectSensitiveClass<Basis>{
-public:
+template<Options::SCF_MODES SCFMode>
+class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Basis> {
+ public:
   /**
    * @brief Constructor
    * @param system The system this potential is defined for.
    */
   HCorePotential(std::shared_ptr<SystemController> system);
   /// @brief Default destructor.
-  virtual ~HCorePotential() =default;
+  virtual ~HCorePotential() = default;
   /**
    * @brief Getter for the actual potential.
    *
@@ -74,9 +72,8 @@ public:
    * @param basisIndicesRed see AtomCenteredBasisController
    * @param nBasisFunctionRed the (reduced) number of basis functions
    */
-  std::vector<unsigned int> createBasisToAtomIndexMapping(
-      const std::vector<std::pair<unsigned int, unsigned int> >& basisIndicesRed,
-      unsigned int nBasisFunctionsRed);
+  std::vector<unsigned int> createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
+                                                          unsigned int nBasisFunctionsRed);
 
   /**
    * @brief Calculates the energy weighted density matrix.
@@ -84,25 +81,23 @@ public:
    * @param orbitalSet The chosen orbitals.
    * @return Returns the energy weighted density matrix.
    */
-  DensityMatrix<SCFMode> calcEnergyWeightedDensityMatrix(
-      std::shared_ptr<SystemController> systemController,
-      const std::shared_ptr <OrbitalController<SCFMode> >& orbitalSet);
+  DensityMatrix<SCFMode> calcEnergyWeightedDensityMatrix(std::shared_ptr<SystemController> systemController,
+                                                         const std::shared_ptr<OrbitalController<SCFMode>>& orbitalSet);
 
   /**
    * @brief Potential is linked to the basis it is defines in.
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final{
+  void notify() override final {
     _potential = nullptr;
   };
 
-
-private:
+ private:
   ///@brief The system potential is defined for.
-  std::shared_ptr<SystemController> _system;
+  std::weak_ptr<SystemController> _system;
   ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
 };
 
 } /* namespace Serenity */

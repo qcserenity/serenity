@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,9 +23,10 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
-#include "settings/Options.h"
+#include "potentials/IncrementalFockMatrix.h"
 #include "potentials/Potential.h"
-
+#include "settings/Options.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 /**
@@ -36,20 +37,23 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 class LRXPotential : public Potential<SCFMode>,
                      public ObjectSensitiveClass<Basis>,
-                     public ObjectSensitiveClass<DensityMatrix<SCFMode> >{
-public:
-	/**
-	 * @brief Constructor.
-	 * @param dMat The density matrix controller.
-	 * @param exchangeRatio The exchange ratio.
-	 * @param prescreeningThreshold The schwartz prescreening threshold.
-	 * @param mu The range seperation parameter.
-	 */
-  LRXPotential(
-      std::shared_ptr<DensityMatrixController<SCFMode> > dMat,
-      const double exchangeRatio,
-      const double prescreeningThreshold,
-      const double mu);
+                     public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
+                     public IncrementalFockMatrix<SCFMode> {
+ public:
+  /**
+   * @brief Constructor.
+   * @param systemController The system controller.
+   * @param dMat The density matrix controller.
+   * @param exchangeRatio The exchange ratio.
+   * @param prescreeningThreshold The schwartz prescreening threshold.
+   * @param prescreeningIncrementStart The start integrals prescreening thresold for the incremental Fock-matrix build
+   * @param prescreeningIncrementEnd The end integrals prescreening thresold for the incremental Fock-matrix build
+   * @param incrementSteps The number of steps of an incremental Fock-matrix build until it gets rebuild
+   * @param mu The range seperation parameter.
+   */
+  LRXPotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
+               const double exchangeRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
+               double prescreeningIncrementEnd, unsigned int incrementSteps, const double mu);
 
   /**
    * @brief Getter for the actual potential.
@@ -66,9 +70,7 @@ public:
    * @param F      A reference to the potential to be added to.
    * @param deltaP An increment of the density matrix.
    */
-  void addToMatrix(
-      FockMatrix<SCFMode>& F,
-      const DensityMatrix<SCFMode>& deltaP);
+  void addToMatrix(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP);
 
   /**
    * @brief Getter for the energy associated with this potential.
@@ -76,7 +78,6 @@ public:
    * @return The energy of the potential when acting on this density.
    */
   double getEnergy(const DensityMatrix<SCFMode>& P) override final;
-
 
   /**
    * @brief Geometry gradient contribution from this Potential.
@@ -91,23 +92,35 @@ public:
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final{
-    _potential.reset(nullptr);
+  void notify() override final {
+    _outOfDate = true;
   };
 
   virtual ~LRXPotential() = default;
 
-private:
-  ///@brief Threshold for the integral prescreening.
-  const double _prescreeningThreshold;
+ private:
+  /**
+   * @brief Matches each basis function to its respective atom center.
+   * @param basis The AtomCenteredBasisController holding tha basis to be mapped.
+   * @return A vector mapping a basis function index to an atom index.
+   */
+  static Eigen::VectorXi createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis);
+  ///@brief The system
+  std::weak_ptr<SystemController> _systemController;
   ///@brief The exchange ratio.
   const double _exc;
   ///@brief Density matrix controller for this potential
-  std::shared_ptr<DensityMatrixController<SCFMode> > _dMatController;
-  ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::shared_ptr<DensityMatrixController<SCFMode>> _dMatController;
+  ///@brief The entire potential
+  std::shared_ptr<FockMatrix<SCFMode>> _fullpotential;
   ///@brief The range separation parameter
   const double _mu;
+  ///@brief Checks if the data is up to date
+  bool _outOfDate;
+  ///@brief Screening Threshold for the current iteration
+  double _screening;
+  ///@brief Internal iteration counter
+  unsigned int _counter = 0;
 };
 
 } /* namespace Serenity */

@@ -6,23 +6,24 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef ONEELECTRONINTEGRALCONTROLLER_H
-#define	ONEELECTRONINTEGRALCONTROLLER_H
+#define ONEELECTRONINTEGRALCONTROLLER_H
 /* Include Serenity Internal Headers */
+#include "data/matrices/MatrixInBasis.h"
+#include "geometry/Point.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "settings/Options.h"
-#include "data/matrices/MatrixInBasis.h"
 /* Include Std and External Headers */
 #include <memory>
 
@@ -31,7 +32,8 @@ namespace Serenity {
 class Basis;
 class BasisController;
 class Geometry;
-template <Options::SCF_MODES> class MatrixInBasis;
+template<Options::SCF_MODES>
+class MatrixInBasis;
 /**
  * @class OneElectronIntegralController OneElectronIntegralController.h
  *
@@ -40,16 +42,15 @@ template <Options::SCF_MODES> class MatrixInBasis;
  * i.e. only on the first request.
  */
 class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
-public:
+ public:
   /**
-   * @param oneIntCalculator
-   * @param basis
-   * @param geometry         A Geometry fitting to the Basis must be specified for the nuclei-
-   *                         electron attraction integrals.
+   * @brief Constructor
+   * @param basisController   The reference basis.
+   * @param geometry          The reference geometry, needed for the nuclei-electron attraction integrals.
+   * @param gaugeOrigin       Gauge origin for dipole integrals.
    */
-  OneElectronIntegralController(
-      std::shared_ptr<BasisController> basisController,
-      std::shared_ptr<const Geometry> geometry);
+  OneElectronIntegralController(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry);
+
   // Not defaulted to avoid includes
   virtual ~OneElectronIntegralController();
   /**
@@ -60,20 +61,6 @@ public:
   void notify() override final {
     this->clearOneInts();
   }
-  /**
-   * @brief Direct access to an overlap integral (slow)
-   *
-   * @param i,j (Extended) Indices of the basis functions
-   */
-  double S(unsigned int i, unsigned int j);
-  /**
-   * @brief Direct access to a one-electron integral (slow)
-   *
-   * , i.e. kinetic plus potential (nuclei-electron attraction) energy integrals.
-   *
-   * @param i,j (Extended) Indices of the basis functions
-   */
-  double h(unsigned int i, unsigned int j);
   /* Getters */
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
@@ -120,37 +107,76 @@ public:
     }
     return *_oneElectronIntegrals;
   }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
+   * @return Returns the electric dipole integrals in length representation of the form <mu|-r|nu>
+   *         for a given set of basis functions mu and nu.
+   *         Note that the negative sign is included to be consistent with response theory.
+   */
+  const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleLengths(Point gaugeOrigin = Point(0, 0, 0)) {
+    if (!_diplen) {
+      this->calcDipoleLengths(gaugeOrigin);
+    }
+    return *_diplen;
+  }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
+   * @return Returns the dipole integrals in velocity representation of the form <mu|-p|nu>
+   *         for a given set of basis functions mu and nu.
+   *         Note that the negative sign is included to be consistent with response theory.
+   */
+  const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleVelocities(Point gaugeOrigin = Point(0, 0, 0)) {
+    if (!_dipvel) {
+      this->calcDipoleVelocities(gaugeOrigin);
+    }
+    return *_dipvel;
+  }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
+   * @return Returns the angular momentum integrals of the form 0.5 <mu|L|nu>
+   *         for a given set of basis functions mu and nu.
+   *         Note that the factor of 0.5 is included to be consistent with response theory.
+   */
+  const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleMagnetics(Point gaugeOrigin = Point(0, 0, 0)) {
+    if (!_angmom) {
+      this->calcDipoleMagnetics(gaugeOrigin);
+    }
+    return *_angmom;
+  }
+
   /**
    * @returns the Controller of the Basis for which integrals are calculated.
    */
   std::shared_ptr<BasisController> getBasisController() const {
     return _basisController;
   }
-  /* Print methods */
-  /**
-   * @brief Prints to stdout
-   */
-  void printOneElectronIntegrals();
-  /**
-   * @brief Prints to stdout
-   */
-  void printOverlapIntegrals();
 
-private:
+ private:
   const std::shared_ptr<BasisController> _basisController;
   const std::shared_ptr<const Geometry> _geometry;
 
-  std::unique_ptr<MatrixInBasis<RESTRICTED> > _overlapIntegrals;
-  std::unique_ptr<MatrixInBasis<RESTRICTED> > _oneElectronIntegrals;
-  std::unique_ptr<MatrixInBasis<RESTRICTED> > _oneElectronIntegralsTotal;
-  std::unique_ptr<MatrixInBasis<RESTRICTED> > _ecpIntegrals;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _overlapIntegrals;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _oneElectronIntegrals;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _oneElectronIntegralsTotal;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _ecpIntegrals;
+
+  std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _diplen;
+  std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _dipvel;
+  std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _angmom;
 
   bool _calcECPs;
 
   void calcHCoreIntegrals();
   void calcOverlapIntegrals();
   void cleanMem();
+
+  void calcDipoleLengths(Point gaugeOrigin);
+  void calcDipoleVelocities(Point gaugeOrigin);
+  void calcDipoleMagnetics(Point gaugeOrigin);
 };
 
 } /* namespace Serenity */
-#endif	/* ONEELECTRONINTEGRALCONTROLLER_H */
+#endif /* ONEELECTRONINTEGRALCONTROLLER_H */

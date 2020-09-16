@@ -6,19 +6,19 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef NORMALIZATION_H
-#define	NORMALIZATION_H
+#define NORMALIZATION_H
 /* Include Serenity Internal Headers */
 #include "math/IntegerMaths.h"
 /* Include Std and External Headers */
@@ -32,23 +32,24 @@ namespace Serenity {
  */
 class Normalization {
   Normalization() = delete;
-public:
+
+ public:
   /*
    * This function is switched off because normalization is always done in two
    * steps. (Computational efficiency reasons)
    */
-//    static double norm_const(unsigned int l1, unsigned int m1, unsigned int n1,
-//                    double alpha1, const double* A) {
-//        const static unsigned int MAXFAC = 100;
-//        static vector<double> df(2*MAXFAC);
-//        df[0] = 1ul;
-//        df[1] = 1ul;
-//        df[2] = 1ul;
-//        for(unsigned long i=3; i<MAXFAC*2; i++) {
-//          df[i] = (i-1)*df[i-2];
-//        }
-//        return pow(2*alpha1/M_PI,0.75)*pow(4*alpha1,0.5*(l1+m1+n1))/sqrt(df[2*l1]*df[2*m1]*df[2*n1]);
-//    }
+  //    static double norm_const(unsigned int l1, unsigned int m1, unsigned int n1,
+  //                    double alpha1, const double* A) {
+  //        const static unsigned int MAXFAC = 100;
+  //        static vector<double> df(2*MAXFAC);
+  //        df[0] = 1ul;
+  //        df[1] = 1ul;
+  //        df[2] = 1ul;
+  //        for(unsigned long i=3; i<MAXFAC*2; i++) {
+  //          df[i] = (i-1)*df[i-2];
+  //        }
+  //        return pow(2*alpha1/M_PI,0.75)*pow(4*alpha1,0.5*(l1+m1+n1))/sqrt(df[2*l1]*df[2*m1]*df[2*n1]);
+  //    }
   /**
    * @brief This is the first step of the normalization.
    *
@@ -77,12 +78,12 @@ public:
    * @returns a normalization factor which needs to be combined with the result of
    *          normalizeTotalAngMom
    */
-  inline static double finalNormalization(unsigned int amX, unsigned int amY, unsigned int amZ) {;
-    return 1.0 / sqrt(double_factorial(2 * amX -1) * double_factorial(2 * amY -1) * double_factorial(2 * amZ -1));
+  inline static double finalNormalization(unsigned int amX, unsigned int amY, unsigned int amZ) {
+    ;
+    return 1.0 / sqrt(double_factorial(2 * amX - 1) * double_factorial(2 * amY - 1) * double_factorial(2 * amZ - 1));
   }
 
-
-public:
+ public:
   /**
    * This does the finalNormalization() for a whole
    * shell set of 1-el-integrals, which are computed together anyway. The
@@ -92,21 +93,20 @@ public:
    * @param amA, amB  the angular momenta of the basis functions (e.g 0 for s and 2 for d).
    */
   static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB) {
-    const double undo = sqrt(double_factorial(amA*2 -1)*double_factorial(2*amB-1));
+    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1));
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
         for (int bX = amB; bX >= 0; --bX) {
           for (int bY = amB - bX; bY >= 0; --bY) {
             int bZ = amB - bY - bX;
-            integrals[index] *= finalNormalization(aX, aY, aZ) * finalNormalization(bX, bY, bZ) *undo ;
+            integrals[index] *= finalNormalization(aX, aY, aZ) * finalNormalization(bX, bY, bZ) * undo;
             ++index;
           }
         }
       }
     }
   }
-
 
   /**
    * This does the finalNormalization() (see above) for a whole
@@ -118,13 +118,8 @@ public:
    * @param integrals
    * @param amA, amB, amC
    */
-  static void normalizeShell(
-      Eigen::Ref<Eigen::VectorXd> integrals,
-      unsigned int amA,
-      unsigned int amB,
-      unsigned int amC) {
-    const double undo = sqrt( double_factorial(amA*2 -1)*double_factorial(2*amB-1)
-                             *double_factorial(2*amC-1));
+  static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB, unsigned int amC) {
+    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1) * double_factorial(2 * amC - 1));
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
@@ -155,14 +150,10 @@ public:
    * @param integrals
    * @param amA, amB, amC, amD
    */
-  static void normalizeShell(
-      Eigen::Ref<Eigen::VectorXd> integrals,
-      unsigned int amA,
-      unsigned int amB,
-      unsigned int amC,
-      unsigned int amD) {
-    const double undo = sqrt( double_factorial(amA*2 -1)*double_factorial(2*amB-1)
-        *double_factorial(2*amC-1)*double_factorial(2*amD-1));
+  static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB,
+                             unsigned int amC, unsigned int amD) {
+    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1) *
+                             double_factorial(2 * amC - 1) * double_factorial(2 * amD - 1));
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
@@ -192,4 +183,4 @@ public:
 };
 
 } /* namespace Serenity */
-#endif	/* NORMALIZATION_H */
+#endif /* NORMALIZATION_H */

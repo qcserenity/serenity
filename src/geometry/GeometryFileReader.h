@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -28,7 +28,6 @@
 #include <string>
 #include <vector>
 
-
 namespace Serenity {
 /* Forward declarations */
 /**
@@ -36,7 +35,7 @@ namespace Serenity {
  * @brief Abstract file reading kind of GeometryFactory.
  */
 class GeometryFileReader : public GeometryFactory {
-public:
+ public:
   GeometryFileReader() = default;
   /**
    * @param filePath inside the file with this path the geometry resides in some form.
@@ -80,14 +79,14 @@ public:
   /**
    * @returns New instances for all geometries present in the currently loaded file.
    */
-  std::vector<std::unique_ptr<Geometry> > readAllGeometries();
+  std::vector<std::unique_ptr<Geometry>> readAllGeometries();
   /**
    * @param   filePath The full (relative) path to the file from which the geometries will be read.
    * @returns New instances for all geometries present in the specified file.
    */
-  std::vector<std::unique_ptr<Geometry> > readAllGeometries(std::string filePath);
+  std::vector<std::unique_ptr<Geometry>> readAllGeometries(std::string filePath);
 
-protected:
+ protected:
   /**
    * @brief The actually working method.
    *

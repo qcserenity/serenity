@@ -6,36 +6,36 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
 /* Include Serenity Internal Headers */
 #include "analysis/localizationFunctions/ELFCalculator.h"
-#include "grid/GridController.h"
 #include "data/grid/GridData.h"
+#include "grid/GridController.h"
 #include "system/SystemController.h"
 #include "tasks/ScfTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 
-
 namespace Serenity {
-template<Options::SCF_MODES SPIN>class ELFCalculator;
+template<Options::SCF_MODES SPIN>
+class ELFCalculator;
 
 class ELFCalculatorTest : public ::testing::Test {
-protected:
-    ELFCalculatorTest():  systemController(
-      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::CO_MINBAS)){
+ protected:
+  ELFCalculatorTest()
+    : systemController(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::CO_MINBAS)) {
   }
   virtual ~ELFCalculatorTest() = default;
   static void TearDownTestCase() {
@@ -55,11 +55,11 @@ TEST_F(ELFCalculatorTest, TotalELF) {
 
   auto grid = systemController->getGridController(Options::GRID_PURPOSES::SMALL);
 
-  auto elfRes= calcres.calculateTotalELFOnGrid(grid);
-  auto elfUnres= calcunres.calculateTotalELFOnGrid(grid);
+  auto elfRes = calcres.calculateTotalELFOnGrid(grid);
+  auto elfUnres = calcunres.calculateTotalELFOnGrid(grid);
 
-  for (unsigned int i=0;i<elfRes.size();i++){
-    EXPECT_NEAR(elfRes[i],elfUnres[i],1e-10);
+  for (unsigned int i = 0; i < elfRes.size(); i++) {
+    EXPECT_NEAR(elfRes[i], elfUnres[i], 1e-10);
   }
 }
 /**
@@ -72,12 +72,12 @@ TEST_F(ELFCalculatorTest, TotalELFTS) {
 
   auto grid = systemController->getGridController(Options::GRID_PURPOSES::SMALL);
 
-  auto elfRes= calcres.calculateTotalELFTSOnGrid(grid);
-  auto elfUnres= calcunres.calculateTotalELFTSOnGrid(grid);
+  auto elfRes = calcres.calculateTotalELFTSOnGrid(grid);
+  auto elfUnres = calcunres.calculateTotalELFTSOnGrid(grid);
 
-  for (unsigned int i=0;i<elfRes.size();i++){
+  for (unsigned int i = 0; i < elfRes.size(); i++) {
     // less accurate due to 2nd derivatives of density on grid
-    EXPECT_NEAR(elfRes[i],elfUnres[i],1e-6);
+    EXPECT_NEAR(elfRes[i], elfUnres[i], 1e-6);
   }
 }
 
@@ -102,7 +102,6 @@ TEST_F(ELFCalculatorTest, TotalELFTS) {
  *
  */
 
-
 /**
  * @test
  * @brief Tests specific gridpoints of the ELF of CO in a minimal basis
@@ -111,7 +110,7 @@ TEST_F(ELFCalculatorTest, TotalELFTS) {
  * run on 16 cores or might otherwise fail in very random fashions. As i am writing this, the GitLab
  * server runs all tests on 16 cores, but since this might change in the future, heed my warning.
  */
-//TEST_F(ELFCalculatorTest, TotalELFReference) {
+// TEST_F(ELFCalculatorTest, TotalELFReference) {
 //  ELFCalculator<Options::SCF_MODES::RESTRICTED> calcres(systemController);
 //
 //  auto grid = systemController->getGridController(Options::GRID_PURPOSES::SMALL);
@@ -133,7 +132,7 @@ TEST_F(ELFCalculatorTest, TotalELFTS) {
  * run on 16 cores or might otherwise fail in very random fashions. As i am writing this, the GitLab
  * server runs all tests on 16 cores, but since this might change in the future, heed my warning.
  */
-//TEST_F(ELFCalculatorTest, TotalELFTSReference) {
+// TEST_F(ELFCalculatorTest, TotalELFTSReference) {
 //  ELFCalculator<Options::SCF_MODES::RESTRICTED> calcres(systemController);
 //
 //  auto grid = systemController->getGridController(Options::GRID_PURPOSES::SMALL);
@@ -147,4 +146,4 @@ TEST_F(ELFCalculatorTest, TotalELFTS) {
 //
 //}
 
-} /* QCPack */
+} // namespace Serenity

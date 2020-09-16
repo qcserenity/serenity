@@ -6,22 +6,21 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef POINT_H
-#define	POINT_H
+#define POINT_H
 /* Include Std and External Headers */
 #include <cmath>
-
 
 namespace Serenity {
 /**
@@ -30,16 +29,17 @@ namespace Serenity {
  * @brief x,y,z
  */
 class Point {
-public:
+ public:
   /**
    * @param x
    * @param y
    * @param z
    */
-  constexpr Point(double x, double y, double z) : _x(x), _y(y), _z(z) {}
-  
+  constexpr Point(double x, double y, double z) : _x(x), _y(y), _z(z) {
+  }
+
   virtual ~Point() = default;
-  
+
   virtual void addToX(double add_to_x) {
     _x += add_to_x;
   }
@@ -52,15 +52,15 @@ public:
     _z += add_to_z;
   }
 
-    /// @returns the x-coordinate
+  /// @returns the x-coordinate
   inline const double& getX() const {
     return _x;
   }
 
   /// @param x new x coordinate
-	virtual void setX(double x) {
-		_x = x;
-	}
+  virtual void setX(double x) {
+    _x = x;
+  }
 
   /// @returns the y-coordinate
   inline const double& getY() const {
@@ -69,8 +69,8 @@ public:
 
   /// @param y new y coordinate
   virtual void setY(double y) {
-		_y = y;
-	}
+    _y = y;
+  }
 
   /// @returns the z-coordinate
   inline const double& getZ() const {
@@ -79,19 +79,19 @@ public:
 
   /// @param z new z coordinate
   virtual void setZ(double z) {
-		_z = z;
-	}
+    _z = z;
+  }
   /**
    * @returns the absolute value of the vector (x,y,z)
    */
   double distanceToOrigin() const {
-    return sqrt(_x*_x + _y*_y + _z*_z);
+    return sqrt(_x * _x + _y * _y + _z * _z);
   }
   /**
    * @param   rhs
    * @returns the shifted point
    */
-  Point& operator+= (const Point& rhs) {
+  Point& operator+=(const Point& rhs) {
     _x += rhs._x;
     _y += rhs._y;
     _z += rhs._z;
@@ -101,7 +101,7 @@ public:
    * @param   rhs
    * @returns the shifted point
    */
-  Point& operator-= (const Point& rhs) {
+  Point& operator-=(const Point& rhs) {
     _x -= rhs._x;
     _y -= rhs._y;
     _z -= rhs._z;
@@ -111,7 +111,7 @@ public:
    * @param   factor
    * @returns the shifted point
    */
-  Point& operator*= (const double factor) {
+  Point& operator*=(const double factor) {
     _x *= factor;
     _y *= factor;
     _z *= factor;
@@ -121,14 +121,14 @@ public:
    * @param   factor
    * @returns the shifted point
    */
-  Point& operator/= (const double factor) {
+  Point& operator/=(const double factor) {
     _x /= factor;
     _y /= factor;
     _z /= factor;
     return *this;
   }
 
-protected:
+ protected:
   double _x;
   double _y;
   double _z;
@@ -139,16 +139,14 @@ protected:
  * @returns the distance between a and b in atomic units
  */
 inline double distance(const Point& a, const Point& b) {
-  return sqrt(
-      (a.getX() - b.getX()) * (a.getX() - b.getX()) + (a.getY() - b.getY())
-          * (a.getY() - b.getY())
-      + (a.getZ() - b.getZ()) * (a.getZ() - b.getZ()));
+  return sqrt((a.getX() - b.getX()) * (a.getX() - b.getX()) + (a.getY() - b.getY()) * (a.getY() - b.getY()) +
+              (a.getZ() - b.getZ()) * (a.getZ() - b.getZ()));
 }
 
-Point operator+ (Point lhs, const Point& rhs);
-Point operator- (Point lhs, const Point& rhs);
-Point operator* (Point lhs, const double rhs);
-Point operator/ (Point lhs, const double rhs);
+Point operator+(Point lhs, const Point& rhs);
+Point operator-(Point lhs, const Point& rhs);
+Point operator*(Point lhs, const double rhs);
+Point operator/(Point lhs, const double rhs);
 
-}
-#endif  /* POINT_H */
+} // namespace Serenity
+#endif /* POINT_H */

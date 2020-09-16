@@ -1,7 +1,8 @@
-\documentclass[bibliography=totocnumbered,a4paper,10pt]{scrartcl}
+\documentclass[bibliography=totocnumbered,a4paper,10pt,oneside]{scrbook}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,amsthm, amssymb, latexsym}
-\usepackage{epstopdf,graphicx,hyperref}
+\usepackage{epstopdf,graphicx}
+\usepackage[hidelinks]{hyperref}
 \usepackage{listings,xcolor,float,multirow}
 \usepackage{array}
 \usepackage{longtable}
@@ -11,80 +12,39 @@
 %==============%
 %  Code Style  %
 %==============%
-\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{serenity-green}{rgb}{0.1875,0.46875,0.0}
 \lstset{
   basicstyle=\ttfamily,
   commentstyle=\color{gray}\ttfamily,
   columns=fullflexible,
-  language=bash, 
+  language=bash,
   frame=l,
-  showstringspaces=false
+  showstringspaces=false,
+  backgroundcolor = \color{serenity-green!30}
+}
+
+
+
+%==========%
+%  Macros  %
+%==========%
+
+\newcommand{
+\serenity}{\textsc{Serenity}\xspace}
+
+\newcommand{\ttt}[1]{%
+  \begingroup\setlength{\fboxsep}{1pt}%
+  \colorbox{serenity-green!30}{\texttt{\hspace*{2pt}\vphantom{(g}#1\hspace*{2pt}}}%
+  \endgroup
 }
 
 %==============%
 %  References  %
 %==============%
-\usepackage[backend=biber,
+\usepackage[backend=bibtex,
             sorting=none,
-            style=chem-acs]{biblatex}
+            style=chem-angew]{biblatex}
 \addbibresource{SerenityUserManual.bib}
-\renewcommand{\cite}[1]{\supercite{#1}}
-%==========%
-%  Macros  %
-%==========%
-
-\makeatletter
-\def\ifemptyarg#1{%
-  \if\relax\detokenize{#1}\relax %
-    \expandafter\@firstoftwo
-  \else
-    \expandafter\@secondoftwo
-  \fi}
-\makeatother
-
-\newcommand{
-\serenity}{\textsc{Serenity}\xspace}
-
-\definecolor{expert}{HTML}{7D0C0C}
-
-%
-% Normal Keyword
-%
-\newcommand\nkeyword[4]{\parbox[c]{3.5cm}{\vspace{.3\baselineskip} \centering #1 \vspace{.3\baselineskip}} & 
-                        \parbox[c]{3cm}{\vspace{.3\baselineskip}\centering #2 \vspace{.3\baselineskip}} & 
-                        \parbox[c]{8cm}{\vspace{.3\baselineskip}\textit{#3}\ifemptyarg{#4}{}{\\#4}\vspace{.3\baselineskip}}\\ \hline}
-%
-% Expert Keyword
-%
-\newcommand\ekeyword[4]{
-                        \parbox[c]{3.5cm}{\vspace{.3\baselineskip} \centering \color{expert}{#1} \vspace{.3\baselineskip}} & 
-                        \parbox[c]{3cm}{\vspace{.3\baselineskip}\centering\color{expert}{#2}\vspace{.3\baselineskip}} & 
-                        \parbox[c]{8cm}{\vspace{.3\baselineskip}\color{expert}{\textit{#3}\ifemptyarg{#4}{}{\\#4}}\vspace{.3\baselineskip}}\\ \hline}
-%
-% Headder
-%
-\newcommand\headder{\parbox[c]{3.5cm}{\vspace{.3\baselineskip} \centering Keyword \vspace{.3\baselineskip}} & 
-                       \parbox[c]{3cm}{\vspace{.3\baselineskip} \centering \textit{Type} or VALUES [Default] \vspace{.3\baselineskip}} & 
-                       \parbox[c]{8cm}{\vspace{.3\baselineskip} \centering \textit{Keyword Description} \& Options Descriptions \vspace{.3\baselineskip} }\\ \hline}
-
-\newcommand{\taskoptions}[5]{
-\begin{longtable}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline
-    \multicolumn{3}{|c|}{\parbox[c]{14.5cm}{\centering\vspace{.3\baselineskip}\textbf{Standard Keywords}\vspace{.3\baselineskip}}} \\ \hline
-    \parbox[c]{3.5cm}{\centering\vspace{.3\baselineskip}Task Name\vspace{.3\baselineskip}} 
-      & \multicolumn{2}{l|}{\parbox[c]{11cm}{\vspace{.3\baselineskip}\texttt{#1}\vspace{.3\baselineskip}}} \\ \hline 
-    \parbox[c]{3.5cm}{\centering\vspace{.3\baselineskip}Active Systems\vspace{.3\baselineskip}} 
-      & \multicolumn{2}{l|}{\parbox[c]{11cm}{\vspace{.3\baselineskip}#2\vspace{.3\baselineskip}}}          \\ \hline
-    \parbox[c]{3.5cm}{\centering\vspace{.3\baselineskip}Environment Systems\vspace{.3\baselineskip}} 
-      & \multicolumn{2}{l|}{\parbox[c]{11cm}{\vspace{.3\baselineskip}#3\vspace{.3\baselineskip}}}   \\ \hline
-    \parbox[c]{3.5cm}{\centering\vspace{.3\baselineskip}Possible Blocks\vspace{.3\baselineskip}} 
-      & \multicolumn{2}{l|}{\parbox[c]{11cm}{\vspace{.3\baselineskip}#4\vspace{.3\baselineskip}}}   \\ \hline \hline
-    \multicolumn{3}{|c|}{\parbox[c]{14.5cm}{\centering\vspace{.3\baselineskip}\textbf{Specific Keywords}\vspace{.3\baselineskip}}} \\ \hline 
-    \parbox[c]{3.5cm}{\vspace{.3\baselineskip} \centering Keyword \vspace{.3\baselineskip}} & 
-                       \parbox[c]{3cm}{\vspace{.3\baselineskip} \centering \textit{Type} or VALUES [Default] \vspace{.3\baselineskip}} & 
-                       \parbox[c]{8cm}{\vspace{.3\baselineskip} \centering \textit{Keyword Description} \& Options Descriptions \vspace{.3\baselineskip} }\\ \hline
-    #5
-\end{longtable} 
-}
 
 %============%
 %  Document  %
@@ -103,17 +63,17 @@ User Manual
 }}\\
 \vspace{1cm}
 {\large\textbf{
-Program Version: 1.2.2\\
+Program Version: 1.3.0\\
 Manual Generated: \today
 }}\\
 \vspace{2cm}
-{\large\textbf{ 
-The Serenity Developers$^{\dagger}$\footnote{Release Repository: \texttt{http://guthub.com/qcserenity/serenity}\\
+{\large\textbf{
+The Serenity Developers$^{\dagger}$\footnote{Release Repository: \texttt{http://github.com/qcserenity/serenity}\\
                                              Developer Repository: \texttt{http://thclab.uni-muenster.de/serenity/serenity}}
 \footnote{For questions and requests pertaining the manual please contact:\\ \texttt{serenity@uni-muenster.de}}
 }}\\
 \vspace{2cm}
-{\large Manual edited by: \\
+{\large Manual layout by: \\
 Jan P.\ Unsleber
 }
 \\[2ex]
@@ -134,8 +94,8 @@ Corrensstra{\ss}e 40, 48149 M\"unster, Germany\\[2ex]
 \newpage
 \pagenumbering{arabic}
 \setcounter{page}{1}
-\numberwithin{equation}{subsubsection}
-\section{Preface}
+\numberwithin{equation}{subsection}
+\chapter{Preface}
 Subsystem and quantum embedding approaches are currently among the most quickly developing
 methods in quantum chemistry. This is mostly due to their computational efficiency
 and their easy interpretability in terms of intuitive, well-defined chemical subunits.
@@ -158,87 +118,76 @@ embedding features. As an open-source project, it may be tailored to user-specif
 whenever desired.\\
 \\
 The following manual shows how to use \serenity as a standalone program. Its usage as a
-library is best explained through the source code (detailed manual 
+library is best explained through the source code (detailed manual
 information may follow at a later point).
 
 
-
-\newpage
-\section{Install}
+\chapter{Install}
 Please read the following instructions carefully, these instructions can also be found in the \texttt{README.md} distributed with
 the source code.
 
-\subsection{Prerequisites}
+\section{Prerequisites}
 
-The code has been tested and compiled with GCC/G++ (Versions 4.X, 5.X, 6.X and 7.X)
-and ICC/ICPC (Versions 17.X) compilation with other compilers and versions might still
-be possible though.\\
-
-The compilation of the code is supported on Linux systems, and should be possible on MacOS
-the latter however is still to be tested thoroughly.\\
-
-In order to allow for the correct installation of Serenity unsing the source code, 
-the compilation process will need to download the pre-configured version of Libint hosted 
-in the ext-libint project on thclab.uni-muenster.de.
-Libint will be downloaded using an SSH connection, to this end please make sure that
-a public SSH key is added to your profile on the GitLab server.\\
-
+The code has been tested and compiled with GCC/G++ (Versions 7 and newer)
+and ICC/ICPC (Versions 17.X) compilation with other compilers and compiler versions
+could still be possible.\\
+\\
+The compilation of the code is supported and tested on Linux systems.
+The compilation on MacOS should also be possible.\\
+\\
 The following programs/libraries must be available on your system:
 \begin{itemize}
- \item CMake (Version >= 3.9)
+ \item CMake (Version $>=$ 3.12)
  \item Boost (for package managers: including boost-devel)
  \item OpenMP
- \item Eigen3 
- \item HDF5 (Version >= 1.10.1; including header files and cmake files)
+ \item Eigen3
+ \item HDF5 (Version $>=$ 1.10.1; including header files and cmake files)
  \item A recent GMP version, including C++ support (for libint2)
- \item The standard GNU toolchain (make, tar, autoconf, libtool)  
-\end{itemize} 
-The following libraries may be preinstalled and will otherwise be automatically 
-downloaded and installed locally:
+ \item The standard GNU tool chain (make, tar, autoconf, libtool)
+\end{itemize}
+The following libraries will be automatically downloaded and installed together
+with \serenity:
 \begin{itemize}
- \item xcfun (The Serenity verison is forked to: https://github.com/moritzBens/xcfun.git)  
- \item libecpint (The Serenity version is forked to: https://github.com/moritzBens/libecpint.git)  
-\end{itemize} 
-The following libraries will be downloaded and installed locally regardless of their earlier
-presence:
-\begin{itemize}
+ \item libint2 (Version 2.2.0-beta3, pre-configured and hosted at: \url{https://thclab.uni-muenster.de/serenity/libint})
+ \item libecpint (The Serenity version is forked to: \url{https://github.com/qcserenity/libecpint})
+ \item libxc (v5.0.0 from \url{https://gitlab.com/libxc/libxc})
+ \item xcfun (The Serenity verison is forked to: \url{https://github.com/qcserenity/xcfun})
  \item GTest (Google Test and Google Mock)
- \item libint2 (Version 2.2.0-beta3, pre-configured and hosted at: https://thclab.uni-muenster.de/serenity/ext-libint)
-\end{itemize} 
+\end{itemize}
 The following libraries are optional and needed for additional features:
 \begin{itemize}
  \item Intel MKL (for SMP parallel Eigen3 eigenvalue solvers)
  \item Doxygen (for the documentation)
- \item Python-devel (for the python wrapper)   
+ \item Python-devel (for the python wrapper)
  \item pybind11 (for the python wrapper)
-\end{itemize} 
+\end{itemize}
 
-\subsection{Install Using CMake and Make}
+\section{Install Using CMake and Make}
 
 Extract or pull the source code, then create a build directory:
 \begin{lstlisting}
 cd serenity
-mkdir build  
-cd build  
+mkdir build
+cd build
 \end{lstlisting}
 Then run cmake:
 \begin{lstlisting}
-cmake ..    
+cmake ..
 \end{lstlisting}
 (If the build folder is not located inside the main directory of \textsc{Serenity}
 please adapt the path accordingly.)
 
 Finally run make and make install to build the program:
 \begin{lstlisting}
-make         
+make
 \end{lstlisting}
-Please source serenity.sh located in the main folder to set all necessary environment 
+Please source serenity.sh located in the main folder to set all necessary environment
 variables:
 \begin{lstlisting}
-cd ..  
+cd ..
 source serenity.sh
 \end{lstlisting}
-\subsection{Install Including Python Interface}
+\section{Install Including Python Interface}
 In order to activate the compilation of a Python interface to the code
 a flag can be set as follows
 \begin{lstlisting}
@@ -249,79 +198,77 @@ additionally this and other flags can be toggled using `ccmake`
 ccmake ..
 \end{lstlisting}
 The wrapper will be build for the Python version that CMake finds first
-In order to point CMake to a specific version of Python the following 
+In order to point CMake to a specific version of Python the following
 option can be used:
 \begin{lstlisting}
 cmake -DPYTHON_EXECUTABLE=/usr/bin/python3 ..
 \end{lstlisting}
 The wrapper is shipped in form of a shared library (serenipy.so).
-In order for Python to find this package the library folder has to be present 
-in the \texttt{PYTHONPATH} environment variable and the Serenity library has to be 
-present in a path searchd by the system for shared libraries.
-The latter is done when sourceing the \texttt{serenith.sh} script, the former requires 
-to uncomment one line in this file.
+In order for Python to find this package the library folder has to be present
+in the \texttt{PYTHONPATH} environment variable and the Serenity library has to be
+present in a path searched by the system for shared libraries.
+The latter is done when sourcing the \texttt{serenity.sh} script, the former requires
+to un-comment one line in this file.
 Afterwards the interface should importable as follows:
 \begin{lstlisting}
 python3
-import serenipy as spy  
+import serenipy as spy
 \end{lstlisting}
-\subsection{Tests}
-Serenity comes with a decent set of unittests in order to run them source 
+\section{Tests}
+Serenity comes with a decent set of unittests in order to run them source
 the \texttt{serenity.sh} script and run
 \begin{lstlisting}
 PATH_TO_BUILD_DIR/bin/serenity_tests
 \end{lstlisting}
-Please use the complete path, or else GTEST might run into problems.  
-  
+Please use the complete path, or else GTEST might run into problems.
+
 The Python wrapper comes with its own set of tests, these can be run using
 \begin{lstlisting}
 python -m unittest discover PATH_TO_SERENITY/src/python/tests
 \end{lstlisting}
-\subsection{Documentation}
-After configuring the project using CMake it is possible to create the documentation 
+\section{Documentation}
+After configuring the project using CMake it is possible to create the documentation
 using:
 \begin{lstlisting}
 make doc
 \end{lstlisting}
-Then you can open up the doc/html/index.html in a browser.  
+Then you can open up the doc/html/index.html in a browser.
 The python wrapper is not featured inside the documentation.
 Its documentation is available via pythons help() function,
 which displays the build-in doc-strings.
 
 \clearpage
-\section{Text Input}
+\chapter{Text Input}
 
-The input of \serenity has two main types of sections, the \texttt{system} blocks and the \texttt{task} blocks.
-A chart depicting how \serenity handles input can be seen in Figure~\ref{fig:input}. 
+The input of \serenity has two main types of sections, the \ttt{system} blocks and the \ttt{task} blocks.
+A chart depicting how \serenity handles input can be seen in Figure~\ref{fig:input}.
 While the chart is already quite technical, it displays how to read the sectioned input.
 Starting from the right, the main job of the program is to run tasks in a certain order.
-These tasks can be related \textit{via} the systems they use, \textit{i.e.} a \texttt{MP2Task} will used
-orbital data from a previous \texttt{SCFTask} if both of them are working with the same system.
-Accordingly the input first needs a set of definitions for all the systems in this run, and then
+These tasks can be related \textit{via} the systems they use, \textit{i.e.} a \ttt{MP2Task} will used
+orbital data from a previous \ttt{SCFTask} if both of them are working with the same system.
+Accordingly, the first part of the input has to be the system definitions which is followed by
 a list of tasks to complete with these systems.
-Here the systems are in a minimal case just a geometry and a set of settings (such as charge, spin, basis set, and so on).
+In a minimal case, the systems are just a geometry and a set of settings (such as charge, spin, basis set, and so on).
 During the run these systems will be populated with more (calculated) data, such as orbitals, energies and electron densities.
 This additional data can also be read from previous runs (see the following section).
 Any feature that \serenity has is implemented as a task (or a part of a task).
 For a list of available features/tasks, see Section~\ref{sec:tasks}.
 \begin{figure}[h!]
 \label{fig:input}
-\includegraphics[width=0.95\textwidth]{./figs/SerenityInput.png}
+\includegraphics[width=0.95\textwidth]{./figs/SerenityInput.pdf}
 \caption{Input flow of \serenity.}
 \end{figure}\\
-As stated above, the text input of \serenity is structured into blocks, and each block then contains keywords.
-A keyword consists of a name and a value and is always given inside of a block. 
-Each keyword-value pair has to be given in one separate line. 
-As for the blocks, there are two main types, those are \texttt{system} and \texttt{task}. 
-A block in the {\serenity} text input is started by a \texttt{+<blockname>} and ended with a
-\texttt{-<blockname>}.
-The \texttt{system} block can have one layer of sub-blocks, other than that, there is no further nesting
-of blocks.\\
-The the main blocks of a simple input might thus look like this:
+As stated above, the text input of \serenity is structured into blocks containing the keywords.
+A keyword consists of a name and a value and is always given inside of a block.
+Each keyword-value pair has to be given in one separate line.
+As for the blocks, there are two main types, those are \ttt{system} and \ttt{task}.
+A block in the {\serenity} text input is started by a \ttt{+<blockname>} and ended with a
+\ttt{-<blockname>}.
+The main blocks of a simple input might thus look like this:
 \begin{lstlisting}
 +system
  name water
- xyz ./water.xyz
+ geometry ./water.xyz
  method dft
  +dft
   functional PBE
@@ -336,12 +283,13 @@ While there are many settings and thus many keywords, all of them are defaulted,
 each run of the program will create a file containing all settings (even the default ones)
 for restart purposes.\\
 The input accepts comments just like shell scripts.
-Thus everything preceded  by a hash is not parsed. 
+Thus everything preceded  by a hash is not parsed.
 This holds for entire lines but also for parts of a line.
 \begin{lstlisting}
 # not parsed
 +system # also not parsed
  name test
+ geometry test.xyz
  # you guessed it, this is also not parsed
 -system
 \end{lstlisting}
@@ -357,200 +305,480 @@ A list of values for a keyword can be parsed by enclosing them into curly bracke
 \begin{lstlisting}
   orbitals {1 2 3 4}
 \end{lstlisting}
-A list of settings (keywords) inside the \texttt{system} and \texttt{task} blocks will be 
+A list of settings (keywords) inside the \ttt{system} and \ttt{task} blocks will be
 presented in the following two sections.
 
 \newpage
-\subsection{Systems}\label{sec:system}
+\section{Systems}\label{sec:system}
 Each system is defined by one system block, a system block contains general keywords and can contain one layer of sub-blocks.
 All relevant keywords are discussed in this section.
-The values given in square brackets ``\texttt{[..]}" or marked with a ``\texttt{[d]}" are the defaults.
-The keywords given in red are suggested only to be used by advanced/expert users.
-\subsubsection{General Keywords}\label{sec:system:general}
+\subsection{General Keywords}\label{sec:system:general}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   The system name.
+ \item [\texttt{geometry}]\hfill \\
+   The path to the geometry (.xyz). This or \ttt{load} has to be given.
+   \item [\texttt{path}]\hfill \\
+   The path to store HDF5 files.
+   \item [\texttt{load}]\hfill \\
+   The path to load HDF5 and settings files from. If this is given all other settings are replaced by the loaded settings. \serenity will search 
+   for a directory with \ttt{name} at the given path.
+   \item [\texttt{charge}]\hfill \\
+   The charge of the system. Default is $0$.
+   \item [\texttt{spin}]\hfill \\
+   The spin of the system. Given as alpha spin electron excess. Default is $0$.
+ \item [\texttt{scfmode}]\hfill \\
+   The orbital mode of the SCF. Default is \ttt{RESTRICTED}. If \ttt{UNRESTRICTED} is chosen a unrestricted calculation is enforced.
+  \item [\texttt{method}]\hfill \\
+  The general electronic structure method for this system. By default \ttt{HF} (Hartree-Fock) is chosen. Other options are \ttt{DFT}.
+\end{description}
+
 The keywords given directly inside the system block and not within one of the nested blocks are presented
 in this section.\\
-A regular system will need both the \texttt{geometry} and also the \texttt{name} keyword.
+A regular system will need both the \ttt{geometry} and also the \ttt{name} keyword.
 Further keywords can be given if their values need to differ from the defaults.
-A loaded system only needs the \texttt{load} keyword and a \texttt{name}.
+A loaded system only needs the \ttt{load} keyword and a \ttt{name}.
 All other keywords will be deduced from the stored settings.
-\begin{table}[H]\small \centering  \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\headder
-\nkeyword{name}    {\textit{str} [default]}{The name of the system.}{}
-\nkeyword{geometry}{\textit{str}          }{The path to the geometry (.xyz)}{This or \texttt{load} has to be given.}
-\nkeyword{path}    {\textit{str} [./]     }{The path to store HDF5 files.}{}
-\nkeyword{load}    {\textit{str} [ ]      }{The path to load HDF5 files from.}{If this is given all other settings are read, and given ones replaced.}
-\nkeyword{charge  }{\textit{int} [0]      }{The charge of the system.}{}
-\nkeyword{spin    }{\textit{int} [0]      }{The spin of the system.}{Given as alpha spin electron excess.}
-\nkeyword{scfmode }{RESTRICTED [d] \\UNRESTRICTED}{The orbital mode of the SCF.}{
-Use closed shell calculations for this system (\texttt{RESTRICTED}), or use open shell calculations for this system (\texttt{UNRESTRICTED}).}
-\nkeyword{method  }{HF [d] \\ DFT}{The general electronic structure method for this system.}{Generate Hartree-Fock orbitals, or generate DFT orbitals.}
-\end{tabular}\end{table}
 
-
-\newpage
-\subsubsection{SCF Block}\label{sec:system:scf}
+\subsection{SCF Block}\label{sec:system:scf}
 All settings available pertaining the SCF and its convergence are given in this sub-block of the system block.
-\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\headder
-\nkeyword{initialguess}{HCORE\\EHT\\ATOM\_DENS\\ATOM\_SCF [d]\\SAP}{The initial guess for the electronic structure.}{
-$h_{core}$ guess, i.e. ignoring electron-electron interactions, or an
-extended Hueckel theory (EHT) guess, or a guess of combined atomic densities (\texttt{ATOM\_DENS}).
-\texttt{ATOM\_SCF} is similar to \texttt{ATOM\_DENS}, but the atomic densities 
-themselves are calculated with a proper SCF for each atom type, furthermore a superposition of
-atomic potentials (SAP) is available.}{}
-\nkeyword{damping}{NONE\\SERIES [d]\\STATIC}{The mode of damping of the new Fock matrix with the last one during the SCF.}{
-No damping (\texttt{NONE}), or a damping value decreasing in each step (\texttt{SERIES}), 
-or a static damping value set by the \texttt{staticDampingFactor} keyword.}{}
-\nkeyword{maxCycles          }{ \textit{ int} [100]     }{Maximum number of SCF cycles. }{} 
-\nkeyword{writeRestart       }{ \textit{ int} [5]       }{Interval to write checkpoints during SCF. }{}
-\nkeyword{energyThreshold    }{ \textit{ double} [1e-8] }{Convergence criterion for the energy.}{}
-\nkeyword{rmsdThreshold      }{ \textit{ double} [1e-8] }{Convergence criterion for the density matrix.} {}
-\nkeyword{diisThreshold      }{ \textit{ double} [1e-7] }{The convergence criterion for the DIIS ([F,P]) error. } {}
-\nkeyword{densityFitting}{NONE\\RI [d]\\CHOLESKY}{Modes of fitting the density in 2e-4c-integrals.}{
-No density fitting, full two electron four center evaluation $(n^4)$, or
-Resolution of identity fitting (\texttt{RI}) for the Coulomb part $(n^3)$ (non-hybrid DFT only).
-Cholesky decomposition for all four center integrals $(n^3)$, is NOT YET AVAILABLE!} 
-\ekeyword{seriesDampingStart }{ \textit{ double} [0.7]   }{Start value for the series damping. } {}
-\ekeyword{seriesDampingEnd   }{ \textit{ double} [0.6]   }{End value for the series damping. } {}
-\ekeyword{seriesDampingStep  }{ \textit{ double} [0.05]  }{Increment value for the series damping. } {}
-\ekeyword{seriesDamping\\InitialSteps}{ \textit{ int} [2]}{Number of initial steps without increment } {}
-\ekeyword{staticDampingFactor}{ \textit{ double} [0.7]   }{Damping value for the static damping.}{} 
-\ekeyword{diisStartError     }{ \textit{ double} [0.1]   }{[F,P] value at which the DIIS starts. } {}
-\ekeyword{diisMaxStore       }{ \textit{ int} [5]        }{The number of Fock Matrices stored int the DIIS} {}
-\ekeyword{diisCondition\\NumberThreshold}{\textit{double} [1000.0]}{Inverse SVD threshold for the DIIS.} {}
-\end{tabular}\end{table}
-\newpage
-\subsubsection{Basis Block}\label{sec:system:basis}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+    +scf
+      maxCycles 100
+      damping dynamic
+    -scf
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{initialguess}]\hfill \\
+   The initial guess for the electronic structure. Possible options are:\\
+   \ttt{HCORE}: $h_{core}$ guess, i.e. ignoring electron-electron interactions.\\
+   \ttt{EHT}: extended Hueckel theory guess.\\
+   \ttt{ATOM\_DENS}: guess of combined atomic densities (minimal basis).\\
+   \ttt{ATOM\_SCF}: similar to \ttt{ATOM\_DENS}, combined atomic densities (def2-QZVP basis).\\
+   \ttt{ATOM\_SCF\_INPLACE}: generate the atomic densities on the fly with atom-wise SCFs.\\
+   \ttt{SAP}: superposition of atomic potentials.\\
+   The default is \ttt{ATOM\_SCF}. For atoms using effective core potentials, the \ttt{ATOM\_SCF\_INPLACE}
+   guess is used as the default.
+ \item [\texttt{damping}]\hfill \\
+   The mode of damping of the new Fock matrix with the last one during the SCF.\\
+   \ttt{NONE}: no damping.\\
+   \ttt{SERIES}: damping value decreases in each step.\\
+   \ttt{STATIC}: static damping value.\\
+   \ttt{DYNAMIC}: dynamic damping value adjustment (see Ref.~\cite{cances2000can}).\\
+   The default is \ttt{SERIES}.
+   \item [\texttt{maxCycles}]\hfill \\
+   Maximum number of SCF cycles. Default is $100$.
+   \item [\texttt{energyThreshold}]\hfill \\
+   Convergence criterion for the energy. Default is 1e-8.
+   \item [\texttt{rmsdThreshold}]\hfill \\
+   Convergence criterion for the density matrix. Default is 1e-8.
+  \item [\texttt{diisThreshold}]\hfill \\
+   The convergence criterion for the DIIS ([F,P]) error. Default is 1e-7.
+   \item [\texttt{minimumLevelshift}]\hfill \\
+   Minimum diagonal level-shift to be used. Default is $0.0$. Typical values are $0.3$ or $0.1$. Setting this to values larger than $0$ will
+   help non-converging SCF procedures. However, it increases the number of iterations.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{writeRestart}]\hfill \\
+    Interval to write checkpoints during SCF. Default is $5$.
+   \item [\texttt{seriesDampingStart}]\hfill \\
+    Start value for the series damping. Default is $0.7$.
+    \item [\texttt{seriesDampingEnd}]\hfill \\
+    End value for the series damping. Default is $0.2$.
+    \item [\texttt{seriesDampingStep}]\hfill \\
+    Increment value for the series damping. Default is $0.05$.
+    \item [\texttt{seriesDampingStart}]\hfill \\
+    Start value for the series damping. Default is $0.7$.
+    \item [\texttt{seriesDampingInitialSteps}]\hfill \\
+    Number of initial steps without increment. Default is $2$.
+    \item [\texttt{staticDampingFactor}]\hfill \\
+    Damping value for the static damping. Default is $0.7$.
+    \item [\texttt{endDampErr}]\hfill \\
+    $\text{[F,P]}$ value at which the damping ends. Default is $0.05$.
+    If the SCF has problems converging it may help to stop the damping at a lower error. However, this can
+    increase the number of SCF iterations needed significantly.
+    \item [\texttt{diisStartError}]\hfill \\
+    $\text{[F,P]}$ value at which the DIIS starts. Default is $0.05$.
+    \item [\texttt{diisMaxStore}]\hfill \\
+    The number of Fock Matrices stored int the DIIS. Default is $10$. If oscillations in the SCF occur, it can
+    help to change this number. Typical values are between $5$ and $15$.
+    \item [\texttt{useLevelshift}]\hfill \\
+    Use a level-shift for the diagonal elements of the virtual--virtual Fock matrix block. Default is \ttt{true}.
+    \item [\texttt{useOffDiagLevelshift}]\hfill \\
+    Use a scaling for the virtual--occupied Fock matrix block. Default is \ttt{false}.
+    \item [\texttt{canOrthThreshold}]\hfill \\
+    Minimum eigenvalue of the overlap matrix to be tolerated. Default is 1e-7. This eliminates linear dependencies
+    in the basis set. The default threshold is quite conservative. Linear dependencies can lead to numerical instability
+    for procedures that depend explicitly on the orbital coefficients, e.g. coupled cluster.
+    \item [\texttt{useADIIS}]\hfill \\
+    Use the A-DIIS\cite{hu2010} procedure at the beginning of the SCF. Default is \ttt{false}. This interpolation scheme
+    includes an energy minimization criterion into the Fock-matrix update. The A-DIIS is supposed to be stable even for a
+    bad initial guess. The A-DIIS is turned off automatically, when the DIIS procedure starts.
+ \end{description}
+
+\subsection{Basis Block}\label{sec:system:basis}
 All settings available pertaining the usage and generation of basis sets.
 The basis sets can be found in \texttt{data/basis}. These are not exclusive. Any folder with \textsc{Turbomole}
-style basis sets can be given and every file can be added to it, given that the file names are spelled in 
+style basis sets can be given and every file can be added to it, given that the file names are spelled in
 uppercase.
-\begin{table}[H]\small \centering  \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\headder
-\nkeyword{label             }{ \textit{ str} [6-31Gs]        }{Basis set name. }{}
-\nkeyword{makeSphericalBasis}{ \textit{ bool} [false]        }{Use spherical harmonics basis (slow; not recommended). }{} 
-\nkeyword{basisLibPath      }{ \textit{ str} [\$ENV]         }{Basis set file location (default taken from environment variable). }{} 
-\nkeyword{auxJLabel         }{ \textit{ str} [RI\_J\_Weigend]}{Auxiliary basis set name for Coulomb interactions (RI). }{} 
-\nkeyword{auxCJLabel        }{ \textit{ str} [auto]          }{Auxiliary basis set name for Correlation interactions (RI). }{}
-\nkeyword{firstECP          }{ \textit{ int} [37]            }{Atomic number threshold for the use of ECPs if available in the basis set. }{}
-\ekeyword{integralThreshold }{ \textit{ double} [1e-10s]     }{Threshold for the prescreening in integral evaluations.}{} 
-\end{tabular}\end{table}
 
-\subsubsection{Grid Block}\label{sec:system:grid}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+    +basis
+      label def2-SVP
+    -basis
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{label}]\hfill \\
+ Basis set name. \serenity will search for a file with the given label in uppercase at the \ttt{basisLibPath}. Default is \ttt{6-31GS}.
+
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{makeSphericalBasis}]\hfill \\
+    Use spherical harmonics basis. Default is \ttt{true}. If \ttt{false}, a Cartesian basis set is constructed.
+    \item [\texttt{basisLibPath}]\hfill \\
+    Basis set file location (default taken from environment variable).
+    \item [\texttt{auxJLabel}]\hfill \\
+    Auxiliary basis set name for Coulomb interactions (RI). Default is \ttt{RI\_J\_Weigend}
+    \item [\texttt{auxCLabel}]\hfill \\
+    Auxiliary basis set name for Correlation interactions (RI). If none is given, \serenity will search for a
+    basis-set file for the given basis with a filename \ttt{label}-RI-C.
+    \item [\texttt{firstECP}]\hfill \\
+    Atomic number threshold for the use of ECPs if available in the basis-set file. Default is $37$ (starting from the 5'th period).
+    It is possible to manipulate/add the ECP definition to any basis-set file. For an example see the DEF2-SVP basis-set file.
+    \item [\texttt{integralThreshold}]\hfill \\
+    Threshold for the prescreening in integral evaluations. Default is 1e-10.
+    \item [\texttt{integralIncrementThresholdStart}]\hfill \\
+    Initial integral prescreening threshold. Default is 1e-8.
+    \item [\texttt{integralIncrementThresholdEnd}]\hfill \\
+    Final integral prescreening threshold. Default is 1e-12.
+    \item [\texttt{incrementalSteps}]\hfill \\
+    SCF-step interval to tighten the integral threshold by a factor of 100. Default is $5$.
+ \end{description}
+
+\subsection{Grid Block}\label{sec:system:grid}
 All settings available to tune the generation of integration grids.
-\begin{table}[H]\small \centering  \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\headder
-\nkeyword{smallGridAccuracy     }{ \textit{int} [2]        }{Accuracy for intermediate grids.}{Range: 1-7, with 7 being most accurate.} 
-\nkeyword{accuracy              }{ \textit{int} [4]        }{Overall accuracy of the integration grid.}{Range: 1-7, with 7 being most accurate.} 
-\nkeyword{gridType}{BECKE\\ SSF [d]\\VORONOI}{The options how to combine atomic grids.}{
-  The fuzzy cells (\texttt{BECKE}\cite{beck1988}), 
-  the algorithm by Stratmann, Scuseria and Frisch (\texttt{SSF}\cite{stra1996}), 
-  or sharp cuts between the atoms (\texttt{VORONOI}).} 
-\ekeyword{blocksize             }{ \textit{int} [128]      }{Size of blocked grid data  for parallelisation.}{} 
-\ekeyword{blockAveThreshold     }{ \textit{double} [1e-11] }{Threshold for average weights of blocks of data.}{} 
-\ekeyword{basFuncRadialThreshold}{ \textit{ double} [1e-9] }{Threshold for the evaluation of basis functions on grid points}{}
-\ekeyword{weightThreshold       }{ \textit{double} [1e-14] }{Threshold for grid point reduction.}{} 
-\ekeyword{smoothing             }{ \textit{int} [3]        }{Smoothing parameters for grid cells.}{This is the number of recursions on Becke's smoothing 
-                                                             function if \texttt{BECKE} is chosen as \texttt{gridType}, see Ref.~\cite{beck1988}} 
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method DFT
+    charge 0
+    spin 1
+    +grid
+      accuracy 5
+      smallGridAccuracy 3
+    -grid
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{accuracy}]\hfill \\
+  Overall accuracy of the integration grid. Range: 1-7, with 7 being most accurate.\\ Default is $4$.
+ \item [\texttt{smallGridAccuracyel}]\hfill \\
+ Accuracy for intermediate grids. Range: 1-7, with 7 being most accurate. Default is $2$.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{radialGridType}]\hfill \\
+    Procedure how to combine atomic grids. Default is \ttt{SSF}.
+    All options are:\\
+    \ttt{BECKE}: the fuzzy cells\cite{beck1988}.\\ 
+    \ttt{SSF}: the algorithm by Stratmann, Scuseria and Frisch\cite{stra1996}.\\ 
+    \ttt{VORONOI}: sharp cuts between atoms.
+    \item [\texttt{sphericalGridType}]\hfill \\
+    Procedure how to construct the spherical part of the grid. Currently the only option and default is 
+    the point distribution according to the work of Lebedev (\ttt{LEBEDEV}).
+    \item [\texttt{gridPointSorting}]\hfill \\
+    Enable or disable grid point sorting in order to enhance grid evaluation efficiency. Note that it should be
+    set to \ttt{false} if using the \ttt{withAtomInfo} option within the \ttt{ExportGridTask}. Default is \ttt{true}.
+    \item [\texttt{blocksize}]\hfill \\
+    Size of blocked grid data  for parallelisation. Default is $128$.
+    \item [\texttt{blockAveThreshold}]\hfill \\
+    Threshold for average weights of blocks of data. Setting this to zero will increase accuracy and computational time of the numerical 
+    integration for DFT type calculations. Default is 1e-11.
+    \item [\texttt{basFuncRadialThreshold}]\hfill \\
+    Threshold for the evaluation of basis functions on grid points. Setting this to zero will increase accuracy and computational time of the numerical 
+    integration for DFT type calculations. Default is 1e-9.
+    \item [\texttt{weightThreshold}]\hfill \\
+    Threshold for grid point reduction. Default is 1e-14.
+    \item [\texttt{smoothing}]\hfill \\
+    Smoothing parameters for grid cells. Default is 2. This is the number of recursions on Becke's smoothing 
+    function if \ttt{BECKE} is chosen as \ttt{gridType}, see Ref.~\cite{beck1988}.
+ \end{description}
+
+
+\subsection{DFT Block}\label{sec:system:dft}
+The \ttt{DFT} block contains all options pertaining only DFT calculations.
+Note that changes in this block do not automatically enable the \ttt{method dft}
+keyword from the general system settings.
+This keyword is still required in order to use \ttt{DFT} instead of the default \ttt{HF}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl 
+    geometry methyl.xyz
+    method DFT 
+    charge 0
+    spin 1
+    +dft
+      functional PBE0
+    -dft
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{functional}]\hfill \\
+  The exchange--correlation energy functional to use. A full list of functionals is given in the table below.
+  The default is \ttt{BP86}.
+ \item [\texttt{dispersion}]\hfill \\
+ The version of Grimme's dispersion correction. The fefault is \ttt{NONE}. The options are:
+ No correction (\ttt{NONE}), the third set of parameters (with zero damping, also called D3(0)) (\ttt{D3}),
+ the third set of parameters (with zero damping, also called D3(0)) and 3 center correction term (\ttt{D3ABC}),
+ the third set of parameters with Becke-Johnson damping (\ttt{D3BJ}),
+ or the third set of parameters with Becke-Johnson damping and 3 center correction term (\ttt{D3BJABC}).
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{densityFitting}]\hfill \\
+    The density fitting approach to be used. By default the \ttt{RI} approximation is used for the electron-electron
+    Coulomb integrals. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densityFitting}.
+ \end{description}
+
+The following two tables list all possible exchange--correlation energy functionals and kinetic energy functionals.
+The latter may be used for embedding calculations :
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|>{\ttfamily}c|l|} \hline
+\multicolumn{4}{|c|}{\textbf{Kinetic Energy Functionals}} \\ \hline
+Functional & \multicolumn{1}{c|}{Notes} & Functional & \multicolumn{1}{c|}{Notes} \\ \hline
+NONE     & No functional will be used. && \\ \hline
+\hline \multicolumn{4}{|c|}{LDA} \\ \hline
+TF       & & &\\ \hline
+\hline \multicolumn{4}{|c|}{GGA} \\ \hline
+PW91K    &                       &PBE2KS   & sDFT optimized PBE2K\\ \hline
+LLP91K   &                       &PBE3K    & \\ \hline
+LLP91KS  & sDFT optimized LLP91K &PBE4K    & \\ \hline
+PBE2K    &                       &E2000K   & \\ \hline
+\end{tabular}\end{table}
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|>{\ttfamily}c|l|} \hline
+\multicolumn{4}{|c|}{\textbf{Exchange--Correlation Energy Functionals}} \\ \hline
+Functional & \multicolumn{1}{c|}{ Notes} & Functional & \multicolumn{1}{c|}{ Notes} \\ \hline
+NONE     & No functional will be used. & & \\ \hline
+\hline \multicolumn{4}{|c|}{LDA} \\ \hline
+SLATER   & & LDA       & \\ \hline
+VWN3     & & LDAERF    & \\ \hline
+VWN5     & & LDAERF\_JT& \\ \hline
+\hline \multicolumn{4}{|c|}{GGA} \\ \hline
+OLYP     & &B97      & \\ \hline
+BLYP     & &B97\_1   & \\ \hline
+PBE      & &B97\_2   & \\ \hline
+BP86     & &B97\_D   & \\ \hline
+KT1      & &KT3      & \\ \hline
+KT2      & &PW91     & \\ \hline
+\hline \multicolumn{4}{|c|}{Hybrid} \\ \hline
+PBE0     & & B3P86\_G & As implemented in Gaussian \\ \hline
+B3LYP    & As implemented in Turbomole & BPW91    & \\ \hline
+B3LYP\_G & As implemented in Gaussian & HF       & Performs a HF calculation.\\ \hline
+B3P86    & As implemented in Turbomole & & \\ \hline
+\hline \multicolumn{4}{|c|}{Double Hybrid} \\ \hline
+B2PLYP   & &ROB2PLYP & \\ \hline
+B2GPPLYP & &B2PIPLYP & \\ \hline
+DSDBLYP  & &B2PPW91  & \\ \hline
+DSDPBEP86& &DUT      & \\ \hline
+B2KPLYP  & &PUT      & \\ \hline
+B2TPLYP  & &&\\ \hline
+\hline \multicolumn{4}{|c|}{Range-Separated Hybrid} \\ \hline
+CAMB3LYP  & &WB97X     & \\ \hline
+LCBLYP    & &WB97X\_V  & \\ \hline
+LCBLYP\_47& &WB97X\_D  & \\ \hline
+WB97      & &&\\ \hline
+\hline \multicolumn{4}{|c|}{Model Potential} \\ \hline
+SAOP     & & &\\ \hline
 \end{tabular}\end{table}
 
-\newpage
-\subsubsection{DFT Block}\label{sec:system:dft}
-The \texttt{DFT} block contains all options pertaining only DFT calculations.
-Note that changes in this block do not automatically enable the \texttt{method dft}
-keyword from the general system settings.
-This keyword is still required in order to use \texttt{DFT} instead of the default \texttt{HF}.
-\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\multicolumn{1}{|c|}{Keyword} & \multicolumn{1}{c|}{Values} & \multicolumn{1}{c|}{Description} \\ \hline 
-\nkeyword{functional}{\textit{XC FUNCTIONAL} [PBE]}{An exchange--correlation energy functional to use.}{Find a full list of functionals in the table below.}
-\nkeyword{dispersion}{NONE [d]\\D3\\D3ABC\\D3BJ\\D3BJABC\\}{The version of Grimme's dispersion correction.}{
-No correction (\text{NONE}), the third set of parameters (with zero damping, also called D3(0)) (\texttt{D3}),
-the third set of parameters (with zero damping, also called D3(0)) and 3 center correction term (\texttt{D3ABC}),
-the third set of parameters with Becke-Johnson damping (\texttt{D3BJ}),
-or the third set of parameters with Becke-Johnson damping and 3 center correction term (\texttt{D3BJABC}).}
-\end{tabular}
-\end{table}
-The following two tables list all possible exchange--correlation energy functionals and kinetic energy functionals:
+
+\subsection{PCM Block}\label{sec:system:pcm}
+
+The PCM block contains all options for implicit solvent models. Note that this block can
+be used not only in the system definition but in the task definition, too. If set for
+a system, the PCM settings will apply to the system. For tasks the PCM settings will apply
+to the task, which may affect multiple systems. For the embedding step of FDE-type
+calculations any system-specific PCM-settings are ignored and only the task specific settings
+are applied.
+
+GEPOL-type\cite{Pascual-Ahuir1987} (solvent-excluded and solvent-accessible-surface) and
+a Delley-type\cite{Delley2006} surface are available. Note, that the GEPOL-type surfaces
+show discontinuities at the intersection between spheres surrounding atoms. The Delley-type
+surface does not show these problems.
+
+The parameters for the tabulated solvents are taken from
+\url{{https://pcmsolver.readthedocs.io}}.
+Note that this data is provided for convenience and may contain errors.
+
+A detailed description of the implementation of the Delley-type surface is given in Sec.~\ref{sec:MolcSurface}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name water  
+    geometry water.xyz
+    method HF  
+    charge 0
+    spin 0
+    +pcm 
+      use true
+      solverType CPCM 
+      solvent ETHANOL
+    -pcm 
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{use}]\hfill \\
+  If true, the implicit solvent model is used. The default is \ttt{false}.
+ \item [\texttt{solverType}]\hfill \\
+ The type of solver continuum model to be used. \ttt{CPCM} selects the continuum-like PCM and 
+ \ttt{IEFPCM} selects the integral equation formalism variant of PCM. \ttt{IEFPCM} is the default.
+ \item [\texttt{solvent}]\hfill \\
+ Select a predefinet and tabulated solvent. The default is \ttt{WATER}. All options are given in the table below.
+ The manual solvent definition can be triggered by selecting \ttt{EXPLICIT} as the solvent. If done so, the keywords 
+ \ttt{eps} (static permittivity) and \ttt{probeRadius} (solvent probe radius) have to be set manually.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{scaling}]\hfill \\
+    If true, the atom-radii used for the cavity construction are scaled by a factor of $1.2$. This is commonly done 
+    when using the \texttt{BONDI} (VdW radii) of the atoms for cavity construction. For the \ttt{UFF} radii set it is 
+    adviced to turn this scaling off. The default is \ttt{true}.
+    \item [\texttt{cavity}]\hfill \\
+    The type of cavity used with the PCM. The default is a Delley-type cavity (\ttt{DELLEY}). Other options are 
+    a primitive version of the GEPOL cavity which is available as a solvent excluded surface \ttt{GEPOL\_SES} and 
+    solvent accessible surface \ttt{GEPOL\_SAS}.
+    \item [\texttt{radiiType}]\hfill \\
+    The atomic radii-set to be used in the cavity construction. The default is the Bondi-Mantina radii set \ttt{BONDI}.
+    Note that not for all atoms radii are tabulated in this set. For the \ttt{UFF} radii set all atoms are supported.
+    If the \texttt{UFF} radii set is used, it is adviced to select \ttt{scaling} as \ttt{false}.   
+    \item [\texttt{minRadius}]\hfill \\
+    Minimal radius for additional spheres not centered on atoms (GEPOL-type surfaces only). The default is $0.377$ au.
+    \item [\texttt{correction}]\hfill \\
+    Correction $k$ for the apparent surface charge scaling factor in the CPCM. The default is $0.0$. In the related 
+    COSMO solvation model $k$ is chosen as $0.5$. This has little effect on solvent with a high static permittivity
+    but may be important for others.
+    \item [\texttt{probeRadius}]\hfill \\
+    Radius of the spherical probe approximating a solvent molecule. The default is $1.0$. This is only used if 
+    the explicit solvent definition is used by selecting \ttt{solvent=EXPLICIT}. Otherwise the tabulated
+    data is used.
+    \item [\texttt{eps}]\hfill \\
+    The static dielectric permittivity of the medium. The default is $1.0$. This is only used if 
+    the explicit solvent definition is used by selecting \ttt{solvent=EXPLICIT}. Otherwise the tabulated
+    data is used.  
+    \item [\texttt{patchLevel}]\hfill \\
+    Wavelet cavity mesh patch level for GEPOL cavities. The default is $0$. This increases the resoluation of the 
+    GEPOL-type cavity at the intersection between spheres.
+    \item [\texttt{overlapFactor}]\hfill \\
+    Maximum ratio of a new sphere to be allowed to be covered within the already present ones. This is only used for 
+    GEPOL-type surfaces. The default is $0.7$.  
+    \item [\texttt{lLarge}]\hfill \\
+    Angular momentum used for the spherical grid construction for non-hydrogen atoms for DELLEY-type surfaces. The default
+    is $7$, which corresponds to 110 spherical grid points for each  non-hydrogen atom.
+    \item [\texttt{lSmall}]\hfill \\
+    Angular momentum used for the spherical grid construction for hydrogen atoms for DELLEY-type surfaces. The default
+    is $4$, which corresponds to 50 spherical grid points for each hydrogen atom.
+    \item [\texttt{alpha}]\hfill \\
+    The sharpness parameter for the molecular surface model function for DELLEY-type surfaces. The default
+    is $50$, which corresponds to fairly sharp surfaces. Since the model employes an exponential 
+    molecular surface model function, results are relatively stable with vaiation of the parameter. The surface 
+    will typically become obese for values smaller than $10$, which leads to a lowered dielectric interaction with 
+    the continuum.
+    \item [\texttt{projectionCutOff}]\hfill \\
+    The cut-off for the projection to the molecular surface for DELLEY-type surfaces. Each atom-wise grid 
+    point is projected to the molecular surface. If the molecular surface is too far away, the grid point is 
+    assumed to be unimportant and covered within the molecule. The value is given in atomic units. Its default is 
+    $5.0$.
+    \item [\texttt{oneCavity}]\hfill \\
+    Only cavity points connected to the point with the most extreme
+    x-coordinate are kept after cavity construction. Two points are connected if they are within
+    $connectivityFactor\times probeRadius$ from another. This can be used to eliminate cavity points within a 
+    moleular cluster. The default is \ttt{false}.
+    \item [\texttt{connectivityFactor}]\hfill \\
+    The scaling factor for point connection. The default is $2.0$. Increase this for low
+    resolution cavities. This is only used for \ttt{oneCavity=true}.
+ \end{description}
+
 \begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|} \hline 
-		\multicolumn{2}{|c|}{\textbf{Kinetic Energy Functionals}} \\ \hline
-		Functional & \multicolumn{1}{c|}{ Description} \\ \hline 
-		NONE     & No functional will be used.\\ \hline
-		\hline \multicolumn{2}{|c|}{LDA} \\ \hline
-		TF       & \\ \hline
-		\hline \multicolumn{2}{|c|}{GGA} \\ \hline
-		TW       & \\ \hline
-		PW91K    & \\ \hline
-		LLP91K   & \\ \hline
-		LLP91KS  & \\ \hline
-		PBE2K    & \\ \hline
-		PBE2KS   & \\ \hline
-		PBE3K    & \\ \hline
-		PBE4K    & \\ \hline
-		E2000K   & \\ \hline
-	\end{tabular}\end{table}
-\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|} \hline 
-\multicolumn{2}{|c|}{\textbf{Exchange--Correlation Energy Functionals}} \\ \hline
-Functional & \multicolumn{1}{c|}{ Description} \\ \hline 
-NONE     & No functional will be used.\\ \hline
-\hline \multicolumn{2}{|c|}{LDA} \\ \hline
-SLATER   & \\ \hline
-VWN3     & \\ \hline
-VWN5     & \\ \hline
-LDA      & \\ \hline
-LDAERF   & \\ \hline
-\hline \multicolumn{2}{|c|}{GGA} \\ \hline
-B97      & \\ \hline
-B97\_1   & \\ \hline
-B97\_2   & \\ \hline
-OLYP     & \\ \hline
-BLYP     & \\ \hline
-PBE      & \\ \hline
-BP86     & \\ \hline
-KT1      & \\ \hline
-KT2      & \\ \hline
-KT3      & \\ \hline
-PW91     & \\ \hline
-\hline \multicolumn{2}{|c|}{Hybrid} \\ \hline
-PBE0     & \\ \hline
-B3LYP    & \\ \hline
-B3LYP\_G & \\ \hline
-B3P86    & \\ \hline
-B3P86\_G & \\ \hline
-BPW91    & \\ \hline
-\hline \multicolumn{2}{|c|}{Double Hybrid} \\ \hline
-B2PLYP   & \\ \hline
-B2GPPLYP & \\ \hline
-DSDBLYP  & \\ \hline
-DSDPBEP86& \\ \hline
-B2KPLYP  & \\ \hline
-B2TPLYP  & \\ \hline
-ROB2PLYP & \\ \hline
-B2PIPLYP & \\ \hline
-B2PPW91  & \\ \hline
-DUT      & \\ \hline
-PUT      & \\ \hline
-PWPB95   & \\ \hline
-\hline \multicolumn{2}{|c|}{Range-Separated Hybrid} \\ \hline
-CAMB3LYP & \\ \hline
-LCBLYP   & \\ \hline
-\hline \multicolumn{2}{|c|}{Model Potential} \\ \hline
-SAOP     & \\ \hline 
+\multicolumn{2}{|c|}{\textbf{PCM Solvents}} \\ \hline
+Solvent & \multicolumn{1}{c|}{ Keyword} \\ \hline 
+Water               & WATER, H2O \\ \hline 
+Propylenecarbonate  & PROPYLENECARBONATE, C4H6O3 \\ \hline 
+Dimethylsulfoxide   & DIMETHYLSULFOXIDE, DMSO, C2H6OS \\ \hline 
+Nitromethane        & NITROMETHANE, CH3NO2 \\ \hline 
+Acetonitrile        & ACETONITRILE, CH3OH \\ \hline 
+Methanol            & METHANOL, MEOH, CH3OH \\ \hline 
+Ethanol             & ETHANOL, ETOH, CH3CH2OH  \\ \hline 
+Acetone             & ACETONE, C2H6CO \\ \hline 
+1,2-Dichlorethane   & 1,2-DICHLORETHANE, DICHLORETHANE, C2H4CL2  \\ \hline 
+Methylenechloride   & METHYLENECHLORIDE, CH2CL2  \\ \hline
+Tetrahydrofurane    & TETRAHYDROFURANE, THF, C4H8O  \\ \hline 
+Aniline             & ANILINE, C6H5NH2 \\ \hline 
+Chlorobenzene       & CHLOROBENZENE, C6H5CL \\ \hline 
+Chloroform          & CHLOROFORM, CHCL3 \\ \hline 
+Toluene             & TOLUENE, C6H5CH3 \\ \hline 
+1,4-Dioxane         & DIOXANE, C4H8O2, 1,4-DIOXANE \\ \hline 
+Benzene             & BENZENE, C6H6 \\ \hline 
+Carbontetrachloride & CARBONTETRACHLORIDE, CCL4 \\ \hline 
+Cyclohexane         & CYCLOHEXANE, C6H12 \\ \hline 
+N-Heptane           & N-HEPTANE, C7H16 \\ \hline 
+Explicit            & EXPLICIT (triggers explicit solvent definition) \\ \hline 
 \end{tabular}\end{table}
+
 
 \clearpage
-\subsection{Tasks}
+\section{Tasks}
 \label{sec:tasks}
 The task block accepts different options depending on the task to be run.
-These options are given in the description of each task, see Section~\ref{sec:tasks}.\\
+These task specific options, as well as the options common to all tasks will be listed and explained
+in the following section.\\
 \\
-That being said, there are a few settings common among all tasks.
-Each task block is opened by a \texttt{+task} statement followed by the name of the 
-task to be run and is ended by a \texttt{-task} statement.\\
-Furthermore each task block accepts two types of systems  systems
-(keywords: \texttt{system}, \texttt{active}, \texttt{act}) and environment systems 
-(\texttt{environment}, \texttt{env}) their meaning changes depending
-on the task type.
-The exact meaning of active versus environment system will be given in Section~\ref{sec:tasks}
+The general form of a task block is the following.
+Each task block is opened by a \ttt{+task} statement followed by the name of the
+task to be run and is ended by a \ttt{-task} statement.\\
+Furthermore each task block accepts three types of systems. Supersystem (keywords: \ttt{super}),
+Active  systems (keywords: \ttt{system}, \ttt{active}, \ttt{act}) and environment systems
+(\ttt{environment}, \ttt{env}) their meaning changes depending
+on the task type. Additionally a print level (keywords: \ttt{printLevel}) and timings
+print level (keyword: \ttt{timingsPrintLevel}) are available
+for every task. The effect of the print levels will depend on the task. More information
+is given in Section~\ref{sec:tasksPrintLevels}.
+The exact meaning of active versus environment system will be given in this sections
 for each task specifically.
 A minimal task block for a SCF calculation could look like this:
 \begin{lstlisting}
@@ -566,532 +794,1440 @@ PBE functional for the exchange--correlation interaction may look like this:
 +task FDE
   act waterA
   env waterB
-  +EMB
+  +emb
     naddXCFunc PBE
     embeddingMode HUZINAGA
-  -EMB
+  -emb
 -task
 \end{lstlisting}
 Possible blocks are listed in the respective task documentation and their
-structure shown in Section~\ref{sec:tasksBlocks}.
-\clearpage
-\subsubsection{Blocks Used in Task-Inputs}
-\label{sec:tasksBlocks}
+structure shown in the following sections starting with~\ref{sec:scb:emb}.
 
-\subsubsection*{Embedding Settings}
-The \texttt{EMB} block contains all settings for embedding calculations. Some defaults may vary between the tasks.
-\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|} \hline 
-\multicolumn{1}{|c|}{Keyword} & \multicolumn{1}{c|}{Values} & \multicolumn{1}{c|}{Description} \\ \hline 
-\nkeyword{levelShiftParameter}{\textit{double} [1e+6]}{Energy shift for the projected MOs.}{Needs \texttt{embeddingMode}=\texttt{LEVELSHIFT}}
-\nkeyword{naddXCFunc}{\textit{FUNCTIONALS} [see tasks]}{Exchange--correlation interaction.}{}
-\nkeyword{naddKinFunc}{\textit{FUNCTIONALS}[PW91K]}{Non-additive kinetic energy.}{For other valid options see Section~\ref{sec:system:dft}}
-\nkeyword{longRangeNaddKinFunc}{\textit{FUNCTIONALS}[NONE]}{Long range non-additive kinetic energy for hybrid methods.}{For other valid options see Section~\ref{sec:system:dft}}
-\nkeyword{embeddingMode}{\textit{KIN EMBEDDING MODES} [see task]  }{The embedding mode.}{NADDFUNC, HUZINAGA, HOFFMANN, RECONSTRUCTION,FERMI\_SHIFTED\_HUZINAGA / FERMI}
-\nkeyword{dispersion}{NONE [d]\\D3\\D3ABC\\D3BJ\\D3BJABC\\}{The version of Grimme's dispersion correction for subsystem interaction.}{See Section ~\ref{sec:system:dft} for more details.}
-\nkeyword{smoothFactor}{\textit{double} [0.0]}{The smoothing factor for the potential reconstruction}{}
-\nkeyword{potentialBasis}{\textit{string} [""]}{The label of the basis set used for the potential reconstruction.}{}
-\nkeyword{singValThreshold}{\textit{double} [0.0]}{Threshold for the singular value decomposition in potential reconstruction.}{}
-\nkeyword{lbDamping}{\textit{double} [0.995]}{Damping for the density update in the van Leeuwen--Barends potential reconstruction.}{}
-\nkeyword{lbCycles}{\textit{int} [0]}{Number of update cycles for the van Leeuwen--Barends potential reconstruction.}{}
-\nkeyword{carterCycles}{\textit{int} [0]}{Number of update cycles for the Zhang-Carter potential reconstruction.}{}
-\nkeyword{borderAtomThreshold}{\textit{double} [0.02]}{The Mulliken population threshold used to determine if an orbital is considered "distant" or not.}{Only used in hybrid functional/projection schemes.}
-\nkeyword{basisFunctionRatio}{\textit{double} [0.0]}{The minimum ratio of retained basis function shells needed in order to consider an atom to be not "distant".}{Only used in hybrid functional/projection schemes.}
-\nkeyword{fermiShift}{\textit{double} [0.0]}{An optional shift for the Huzinaga operator}{Only used if \texttt{embeddingMode}=\texttt{FERMI\_SHIFTED\_HUZINAGA}}
-\nkeyword{truncateProjector}{\textit{bool} [false]}{A flag to truncate the projection operator in bottom-up calculations.}{Only used if any kind of projection technique is used.}
-\nkeyword{projecTruncThresh}{\textit{double} [1e+1]}{Total overlap threshold for the truncation of the projection operator.}{Only used if \texttt{truncateProjector}=\texttt{true}.}
-\nkeyword{fermiShift}{\textit{double} [1.0]}{An optional shift for the Huzinaga operator}{Only used if \texttt{embeddingMode}=\texttt{FERMI\_SHIFTED\_HUZINAGA}}
+\subsection{General Keywords}
+\label{sec:tasksPrintLevels}
+The following keywords are present, and can be changed in all tasks, regardless
+of the other keywords present.
+\begin{description}
+  \item [\texttt{printLevel}]\hfill \\
+Changing the print level may result in additional output which is indented by
+a set of characters in order to allow for easy searches. Furthermore, the number
+of eigenvalues printed to the output after converging a SCF calculation depends
+on the print level.
+The print levels for every task and their effects are:
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|l|}\hline
+   & \multicolumn{1}{c|}{Indent}&\multicolumn{1}{c|}{Number printed eigenvalues}\\\hline
+  \texttt{MINIMUM}          &       & HOMO-LUMO gap    \\\hline
+  \texttt{NORMAL }[Default] &       & HOMO-9 to LUMO+9 \\\hline
+  \texttt{VERBOSE}          & ==V== & 0 to LUMO+9      \\\hline
+  \texttt{DEBUGGING}        & ==D== & ALL              \\\hline
+\end{tabular}
+\end{table}
+\item [\texttt{timingsPrintLevel}]\hfill \\
+   The amount of timins that will be printed to the output. This settings is closer to a
+   debug/developer setting, yet it may also be interesting for an experienced user.
+   The default value is $1$, a value of $0$ will remove many timings, higer
+   values than $1$ may add additional timings.
+\end{description}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task SCF
+    actsystem water
+    printLevel debugging
+    timingsPrintLevel 0
+  -task
+\end{lstlisting}
+
+
+\subsection{Common Sub-Block: Embedding Settings}
+\label{sec:scb:emb}
+The \texttt{EMB} block contains all settings for embedding calculations. Be aware: some defaults may vary between the tasks.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task fat
+    system ammonia1
+    system ammonia2
+    +emb
+      naddXcFunc PW91
+      embeddingmode NADDFUNC
+    -emb
+  -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{embeddingMode}]\hfill \\
+    This type of embedding to be done. Possible options are:
+    \ttt{NONE}, no treatment of Pauli-repulsion.
+    \ttt{NADD\_FUNC}, the standard subsystem DFT formalism, employing two non-additive density functionals.
+    This options is the default in most cases.
+    \ttt{LEVELSHIFT}, a projector based embedding using only one non-additive density functional for exchange
+    and correlation. This method was introduced by Manby and Miller.
+    \ttt{RECONSTRUCTION}, embedding using potential reconstruction techniques.
+    Furthermore there are three more projector based embedding techniques that use only one non-additive
+    density functional for exchange and correlation. These can be used with the keywords \ttt{HUZINAGA} and
+    \ttt{FERMI\_SHIFTED\_HUZINAGA} or \ttt{FERMI}, as well as \ttt{HOFFMANN}.
+    Note that depending on the actual task. The selection of embedding modes can be limited. As an example,
+    the calculation of nuclear gradients is only possible for \ttt{NADD\_FUNC} type calculations.
+  \item [\texttt{naddXCFunc}]\hfill \\
+    The exchange--correlation functional to be used in the evaluation of the non-additive term arising in the
+    subsystem DFT formalism. The list of available functional can be found in Section~\ref{sec:system:dft}.
+    Note that double hybrid functional are not fully supported yet. 
+  \item [\texttt{naddKinFunc}]\hfill \\
+    The kinetic energy functional to be used in the evaluation of the non-additive term arising in the
+    subsystem DFT formalism. The list of available functional can be found in Section~\ref{sec:system:dft}.
+  \item [\texttt{levelShiftParameter}]\hfill \\
+    When using \ttt{embeddingMode LEVELSHIFT} this parameter determines the magnitude by which the environment
+    orbitals are shifted. The default value is \ttt{1e-6}.
+  \item [\texttt{dispersion}]\hfill \\
+    The type of dispersion interaction correction to emply for the calculation of interactions between the
+    embeded systems.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{calculateMP2Correction}]\hfill \\
+    A flag to turn off the evaluation of the MP2 correction for double hybrid functionals. By default it will
+    be calculated.
+  \item [\texttt{longRangeNaddKinFunc}]\hfill \\
+    Long-range non-additive kinetic energy for hybrid methods. Only used if \ttt{embeddingMode} is one of
+    the projection based methods is used. This option is intended to manly be used in conjunction with
+    \ttt{embeddingMode LEVELSHIFT}. By default this option is disabled\\ (\ttt{longRangeNaddKinFunc NONE}).
+    For a list of posssible functionals see the kinetic energy functionals in Section~\ref{sec:system:dft}.
+  \item [\texttt{borderAtomThreshold}]\hfill \\
+    The Mulliken population threshold used to determine if an orbital is considered ``distant'' or not.
+    Only used in hybrid functional/projection schemes. By default \ttt{0.02}.
+  \item [\texttt{basisFunctionRatio}]\hfill \\
+    The minimum ratio of retained basis function shells needed in order to consider an atom to be not
+    ``distant''. Only used in hybrid functional/projection schemes. By default \ttt{0.0}.
+  \item [\texttt{truncateProjector}]\hfill \\
+    A flag to truncate the projection operator in bottom-up calculations. Only used if any kind of projection
+    technique is used. By default \ttt{False}.
+  \item [\texttt{projecTruncThresh}]\hfill \\
+    Total overlap threshold for the truncation of the projection operator. Only used if \\
+    \ttt{truncateProjector true} and hence only usefull in any kind of projection technique.
+    By default \ttt{1.0e+1}
+  \item [\texttt{fermiShift}]\hfill \\
+    An optional shift for the Huzinaga operator. Only used if\\ \ttt{embeddingMode FERMI\_SHIFTED\_HUZINAGA} is
+    used.
+  \item [\texttt{carterCycles}]\hfill \\
+    Number of update cycles for the Zhang-Carter potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{potentialBasis}]\hfill \\
+    The label of the basis set used for the potential reconstruction. Only relevant if\\
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{singValThreshold}]\hfill \\
+    Threshold for the singular value decomposition in potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{lbDamping}]\hfill \\
+    Damping for the density update in the van Leeuwen--Barends potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{lbCycles}]\hfill \\
+    Number of update cycles for the van Leeuwen--Barends potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{smoothFactor}]\hfill \\
+    The smoothing factor for the potential reconstruction. Only relevant if\\
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+\end{description}
+
+\subsection{Common Sub-Block: Local Correlation Settings}
+The \texttt{LC} block contains all settings for calculations based on local-correlation schemes.
+Some defaults may vary between the tasks and the pair natural orbital-(PNO-)macro flag
+(\ttt{pnoSettings}) used (\ttt{TIGHT}, \ttt{NORMAL} or \ttt{LOOSE}).
+All defaults set by the PNO-macro flag \ttt{pnoSettings} can be overwritten.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task MP2
+    system water  
+    mp2Type local
+    +lc 
+      pnoSettings TIGHT    #the PNO-macro flag
+      pnoThreshold 3.3e-8  #overrides the value given by the macro
+      useFrozenCore true
+    -lc 
+  -task
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{pnoSettings}]\hfill \\
+  The PNO-macro flag. This flag can be used to manipulate several settings at once. The default value is
+  \ttt{NORMAL}. The other options are \ttt{LOOSE} and \ttt{TIGHT} with looser and tighter thresholds
+  respectively. The actual values associated with this setting are given below and are different for
+  coupled-cluster and MP2.
+ \item [\texttt{useFrozenCore}]\hfill \\
+ If true, the frozen core approximation is used. Frozen core orbitals are determined by the orbital energy
+ threshold \texttt{energyCutOff}. By default, no frozen-core approximation (\ttt{false}) is used. Note
+ that using a frozen-core approximation requires that the core and valence orbitals have been localized
+ independently.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{projectedEnvironment}]\hfill \\
+    Apply an additional energy shift (1e+6 Hartree) for environment orbitals.
+    This turned off by default (\ttt{false}).
+    \item [\texttt{useBPAlgorithm}]\hfill \\
+    If true, the Boughton--Pulay algorithm is used for the selection of projected atomic orbitals. The size of the
+    virtual domains is controlled by the threshold (\ttt{completenessThreshold}). This is turned off by default
+    (\ttt{false}) in favor of a differential-overlap-integral based selection. The latter is argued to be more robust.
+    \item [\texttt{completenessThreshold}]\hfill \\
+    The Boughton--Pulay completeness threshold. The default is $0.02$. Lowering this thresholds will lead to
+    increased virtual domains if the Boughton--Pulay algorithm is used.
+    \item [\texttt{doiPairThreshold}]\hfill \\
+    Differential-overlap-integral pair-prescreening threshold. In combination with the pair energy threshold
+    (\ttt{ccsdPairThreshold}), this threshold controlls the number of orbital pairs.
+    The default is 1e-5.
+    \item [\texttt{doiPAOThreshold}]\hfill \\
+    The differential-overlap-integral threshold for the projected atomic orbital (PAO) selection. Lowering this
+    thresholds leads to larger virtual PAO domains. The default depends on the PNO macro flag,
+    \ttt{pnoSetting}. Setting this manually, overrides the value given by the macro setting.
+    \item [\texttt{collinearDipoleScaling}]\hfill \\
+    The scaling factor of \ttt{ccsdPairThreshold} for the very-distant pair selection.
+    The default is $0.01$.
+    \item [\texttt{ccsdPairThreshold}]\hfill \\
+    Pair energy threshold for close-pairs. The default depends on the PNO macro flag, \ttt{pnoSetting}.
+    Setting this manually, overrides the value given by the macro setting.
+    \item [\texttt{triplesSCMP2Scaling}]\hfill \\
+    The scaling factor of \ttt{ccsdPairThreshold} for the pair selection which are used for the triples
+    selection in coupled cluster. The default is $0.1$.
+    \item [\texttt{pnoThreshold}]\hfill \\
+    Pair natural orbital occupation number selection threshold. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually, overrides the value given by the macro setting.
+    \item [\texttt{tnoThreshold}]\hfill \\
+    Triples natural orbital occupation number selection threshold. The default is 1e-9.
+    \item [\texttt{singlesPNOFactor}]\hfill \\
+    The scaling factor for \ttt{pnoThreshold} for the singles virtual domain construction. The default
+    is $0.03$. This recovers the singles contributions nearly completely.
+    \item [\texttt{pnoCoreScaling}]\hfill \\
+    The scaling factor for the \ttt{pnoThreshold} for orbital pairs containing core orbitals. The
+    default is $0.01$. Calculating the electron correlation correctly for core like orbitals requires
+    significantly stricter thresholds.
+    \item [\texttt{orbitalToShellThreshold}]\hfill \\
+    The orbital coefficients are prescreened based on their absolute value. If they are smaller than this
+    threshold, integrals associated with them are neglected. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually, overrides the value given by the macro setting.
+    \item [\texttt{mullikenThreshold}]\hfill \\
+    The Mulliken population threshold which is used to determine the pair wise fitting domains. Lowering this
+    thresholds leads to increased accuracy of the integral transformation but will increase the computational
+    cost significantly. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually, overrides the value given by the macro setting.
+    \item [\texttt{crudeDomainFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the initial,
+    crude fitting domains which are used for orbital pair prescreening. The default is $10.0$.
+    \item [\texttt{crudeStrongTripFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the strong triples
+    fitting domains. The default is $10.0$. A strong triple is a orbital triple constructed from
+    close orbital pairs only.
+    \item [\texttt{crudeWeakTripFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the weak triples
+    fitting domains. The default is $100.0$.
+    \item [\texttt{fockMatrixPreescreeningThreshold}]\hfill \\
+    The Fock matrix prescreening threshold for local MP2. The default is 1e-5.
+    \item [\texttt{doiNetThreshold}]\hfill \\
+    Orbital coefficient prescreening threshold for differential-overlap-integral calculation. The default
+    is 1e-7.
+    \item [\texttt{paoNormalizationThreshold}]\hfill \\
+    The canonical orthogonalization threshold for non-redundant projected atomic orbital (PAO) construction.
+    The initial PAO domains often contain linear dependencies. This is resolved by canonical orthogonalization of
+    the PAO--PAO overlap matrix. The default for the smallest tolerated overlap matrix eigenvalues is
+    1e-6.
+    \item [\texttt{maximumMemoryRatio}]\hfill \\
+    Maximum ratio of the available memory used for integral storage. The default is $0.5$.
+    \item [\texttt{dumpIntegrals}]\hfill \\
+    If true, all pair wise integrals are written to file. Warning: this may take a lot of disk space.
+    The default is \ttt{false}.
+    \item [\texttt{diisStartResidual}]\hfill \\
+    Starting residual threshold for the DIIS. The default is $0.05$.
+    \item [\texttt{dampingFactor}]\hfill \\
+    The initial damping factor for amplitude update. The default is $0.4$.
+    \item [\texttt{dampingChange}]\hfill \\
+    The damping factor is lowered by this value in each iteration. The default is $0.1$.
+    \item [\texttt{finalDamping}]\hfill \\
+    The final damping factor for the amplitude update. The default is $0.0$.
+    \item [\texttt{diisMaxStore}]\hfill \\
+    The maximum number of DIIS vectors stored during amplitude optimization. The default is $10$.
+    \item [\texttt{setFaiZero}]\hfill \\
+    Force the $F_{ai}$ (occupied--virtual) block of the Fock matrix to be zero. The default is \ttt{false}.
+    \item [\texttt{energyCutOff}]\hfill \\
+    The orbital energy cut-off for core-orbital selection. The default is $-5.0$ au.
+    \item [\texttt{useTriplesCoreScaling}]\hfill \\
+    If true, the \texttt{pnoCoreScaling} factor is used for the triples natural orbital truncation for
+    triples containing core orbitals. The default is \ttt{false}.
+ \end{description}
+
+The settings used in local correlation methods based on the PNO-approximation can
+be adjusted using the macro-flags \ttt{LOOSE}, \ttt{NORMAL} or \ttt{TIGHT}.
+These flags affect multiple parameters. The values set by the flags will vary between
+local coupled cluster and MP2 calculations. The affected parameters and values for
+MP2/coupled cluster are given below.
+
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|>{\ttfamily}c|l|}\hline
+   & \multicolumn{1}{c|}{\texttt{LOOSE}}& \multicolumn{1}{c|}{\texttt{NORMAL}}& \multicolumn{1}{c|}{\texttt{TIGHT}}\\\hline
+   \multicolumn{4}{|c|}{\texttt{Local Coupled Cluster}}  \\\hline
+  \texttt{ccsdPairThreshold}       &  1e-3  & 1e-4     & 1e-5    \\\hline
+  \texttt{pnoThreshold}            &  1e-6  & 3.33e-7  & 1e-7    \\\hline
+  \texttt{orbitalToShellThreshold} &  1e-3  & 1e-3     & 1e-3    \\\hline
+  \texttt{mullikenThreshold}       &  1e-3  & 1e-3     & 1e-4    \\\hline
+  \texttt{doiPAOThreshold}         &  1e-2  & 1e-2     & 1e-3    \\\hline
+  \multicolumn{4}{|c|}{\texttt{Local MP2}}  \\\hline
+  \texttt{ccsdPairThreshold}       &  1e-3     &  1e-4 & 1e-5    \\\hline
+  \texttt{pnoThreshold}            &  3.33e-7  &  1e-8 & 1e-9    \\\hline
+  \texttt{orbitalToShellThreshold} &  1e-3     &  1e-3 & 1e-4    \\\hline
+  \texttt{mullikenThreshold}       &  1e-4     &  1e-4 & 1e-5    \\\hline
+  \texttt{doiPAOThreshold}         &  1e-2     &  1e-3 & 1e-3    \\\hline
 \end{tabular}
 \end{table}
 
+\subsection{Task: Active-Space Selection}
+This tasks performs an occupied orbital selection for the calculation of relative
+energies along a reaction path. The atoms of all supersystems have to be identical
+and ordered in the same way. If active and environment systems are provided via the
+input, the results of the selection is saved in these systems. The charge, atoms, basis
+set and spin may be changed. If no environment and/or active systems are provided
+via the input, systems are constructed and written to disk with the names
+supersystem name + ``\_act''/``\_env'' for active and environment system, respectively.
+For information regarding the methodology we refer to the original publications~\cite{Bensberg2019a,Bensberg2020}.
 
-\clearpage
-\subsubsection{Basis Set Truncation Task}
-\taskoptions{
-BasisSetTasks, BST
-}{
-Will use the first active system and truncate the basis set based on the density of the given system.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{truncAlgorithm}{\textit{BASIS SET TRUNCATION ALGORITHMS} [NETPOPULATION]}{The algorithm used for basis set truncation.}{NETPOPULATION, PRIMITIVENETPOP}
-\nkeyword{netThreshold}{\textit{double} [1e-4]}{Mulliken-net-population (MnP) up to which an environment basis function is not truncated.}{Needs \texttt{truncAlgorithm}=\texttt{NETPOPULATION}}
-\nkeyword{truncationFactor}{\textit{double} [0.0]}{The ratio of environment basis functions used in addition order by importance in their MnP.}{Needs \texttt{truncAlgorithm}=\texttt{PRIMITIVENETPOP}}
-}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task AS
+    super reactant  
+    super transition
+    super product
+    similarityLocThreshold 1e-2
+    similarityKinEnergyThreshold 1e-2
+    checkDegeneracies true
+    locType IBO
+  -task
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{Name}]\hfill \\
+ Aliases for this task are \ttt{ACTIVESPACETASK} and \ttt{AS}.  
+ \item [\texttt{Supersystems}]\hfill \\
+ Accepts multiple supersystems (\ttt{super}) which are used for the orbital comparison.   
+ \item [\texttt{ActiveSystems}]\hfill \\
+ Accepts multiple active systems to which the active orbitals are parsed. The first
+ active system is assumed to correspond to the first super system, the second to the second
+ supersystem etc. 
+ \item [\texttt{EnvironmentSystems}]\hfill \\
+ Accepts multiple environment systems to which the environment orbitals are parsed. The first
+ environment system is assumed to correspond to the first supersystem. 
+ \item [\texttt{similarityLocThreshold}]\hfill \\
+ The threshold for the comparison of partial charges. The default is $0.05$.
+ \item [\texttt{similarityKinEnergyThreshold}]\hfill \\
+ The threshold for the comparison of the orbital kinetic energy. The default is $0.05$.
+ \item [\texttt{populationAlgorithm}]\hfill \\
+ The algorithm used to calculate partial charges. The default are shell-wise intrinsic atomic orbital (IAO)
+ charges (\ttt{IAOShell}). Other useful options are Mulliken charges (\ttt{MULLIKEN}) and atom-wise IAO
+ charges (\ttt{IAO}).
+ \item [\texttt{locType}]\hfill \\
+ The orbital localization method which is used for the initial orbital localization. The default is the
+ intrinsic bond orbital scheme \ttt{IBO}. For more options see Sec.~\ref{task:localization}.
+ \item [\texttt{alignPiOrbitals}]\hfill \\
+ Align the orbitals of all supersystems to the orbitals of the first supersystem (after localization). This
+ is useful to avoid degenerate localization minima especially for $\pi$-systems. 
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{localizationThreshold}]\hfill \\
+    The atom-wise Mulliken population threshold for the assignment of atoms to the subsystems. This is done
+    after the supersystem orbital set has been separated into active and environment orbitals. If the total
+    population of the active orbitals on a given atoms exceeds this threshold it is assigned to the active
+    system. The default is $0.8$ au.
+    \item [\texttt{load}]\hfill \\
+    If true, the SCF procedure is skipped and the tasks tries to load the supersystem results. The default
+    is \ttt{false}.
+    \item [\texttt{noIsolatedMOs}]\hfill \\
+    Isolated environment orbitals are set as active. An orbital map--atom map is constructed and the
+    atom--atom connectivity determined to classify the connectivity between orbitals. The default is
+    \ttt{false}.
+    \item [\texttt{clusterThreshold}]\hfill \\
+    The threshold for the atom to orbital mapping in order to construct a connectivity map for \ttt{noIsolatedMOs}. The default is $0.3$.
+    \item [\texttt{checkDegeneracies}]\hfill \\
+    Check the orbital--orbital maps for incorrect mappings by grouping orbitals into groups which are similar
+    with respect to the selection criteria. The default is \ttt{false}.
+    \item [\texttt{degeneracyFactor}]\hfill \\
+    The scaling factor for the orbital map construction with itself used for
+    \ttt{checkDegeneracies true}. The default is $10.0$.
+    \item [\texttt{alignCycles}]\hfill \\
+    Maximum number of orbital alignment cycles to be used. The default is $10$. The purpose of the orbital
+    alignment is to align the orbitals before localization. Thus, the alignment does not have to be fully
+    converged.
+    \item [\texttt{usePiBias}]\hfill \\
+    Use a selection threshold scaling based on the number of significant, orbital-wise partial charges for
+    each orbital. This is used to reduce the over-selection of $\pi$-orbitals. The default is \ttt{false}.
+    \item [\texttt{biasThreshold}]\hfill \\
+    The threshold for the evaluation of the number of significant partial charges for. The default is
+    \ttt{0.01}.
+    \item [\texttt{biasAverage}]\hfill \\
+    The averaging-parameter for the threshold scaling used for \ttt{usePiBias true}.
+    The default is $12.0$.
+    \item [\texttt{alignExponent}]\hfill \\
+    The exponent for the penalty function used in the orbital alignment. This has to be an even integer
+    larger or equal to $2$. The default is $2$. Exponents of $8$ or larger are not recommended since they
+    may lead to numerical instabilities.
+    \item [\texttt{kineticAlign}]\hfill \\
+    If \ttt{true}, the orbital-kinetic energy is used as an additional constrain in the orbital alignment.
+    The default is \ttt{false}.
+    \item [\texttt{skipLocalization}]\hfill \\
+    If \ttt{true}, the localization step is skipped. This can be useful if the orbitals were already
+    localized. The default is \ttt{false}.
+    \item [\texttt{splitValenceAndCore}]\hfill \\
+    If \ttt{true}, valence and core orbitals are localized independently. This is important for local
+    correlation methods. The default is \ttt{false}.
+ \end{description}
 
-\clearpage
-\subsubsection{Coupled Cluster Tasks}
-\taskoptions{
-CoupledClusterTasks, CC
-}{
-Will use the first active system and run a CC calculation on its orbitals.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{level}{CCSD [d]\\ CCSD\_T}{The amount of included excitations.}{\texttt{CCSD} or CCSD(T) (\texttt{CCSD\_T}).}
-}
 
-\clearpage
-\subsubsection{Cube File Task}
-A task to export properties on cube files.
-\taskoptions{
-CubeFileTask, CubeFile, Cube
-}{
-Combines all actives systems into one supersystem and plots its properties 
-if available.
-}{
-Any environment system will be added into the geometry and cube grid size 
-only, thus subsystem properties can be displayed on a supersystem cube grid.
-}{
-None.
-}{
-\nkeyword{ntos            }{\textit{bool} [false]}{Plots NTOs with eigenvalues larger than ntoPlotThreshold.} {}
-\nkeyword{ntoPlotThreshold}{\textit{double} [0.1]}{Energy cutoff for the plotting of NTOs.} {}
-\nkeyword{density         }{\textit{bool} [false]}{Plots the electron density.}{}
-\nkeyword{orbitals         }{\textit{vector\{int\}}         }{Plots the orbitals with the given numbers.}{}
-\nkeyword{allOrbitals     }{\textit{bool} [false]}{Plots all orbitals.}{}
-\nkeyword{occOrbitals     }{\textit{bool} [false]}{Plots all occupied orbitals.}{}
-\nkeyword{sedd            }{\textit{bool} [false]}{Plots the SEDD.}{}
-\nkeyword{dori            }{\textit{bool} [false]}{Plots the DORI.}{}
-\nkeyword{signedDensity   }{\textit{bool} [false]}{Plots the 'signed density' defined as: $\mathrm{sign}(\nabla^2\rho(r))\rho(r)$ .}{}
-\nkeyword{electrostaticPot}{\textit{bool} [false]}{Plots the electrostatic potential.}{}
-\ekeyword{cubeSpacing}{\textit{double} [0.2]}{Step width between gird points in Bohr.}{}
-\ekeyword{cubeBorder}{ \textit{double} [4.0]}{Cube border around the molecule.}{}
-}
+\subsection{Task: Basis-Set Truncation\label{task:truncation}}
+Performs a truncation of the basis set of the given system. Only basis functions centred
+on dummy atoms are truncated. All others are considered to be the core basis of the
+system. Note that this task can manipulate the geometry of the given system such that 
+dummy atoms without any basis functions will not survive. This effectively truncates any associated 
+fitting basis.
 
-\clearpage
-\subsubsection{Dispersion Correction Task}
-\taskoptions{
-DispersionCorrectionTask, Dispersion, Disp
-}{
-Will use the first active system and calculate/display the dispersion \\
-correction terms only.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{dispType   }{ [D3BJ]                     }{The type of dispersion correction.}{For a list of valid options see the \texttt{dispersion} keyword in Section~\ref{sec:system:dft}.}
-\nkeyword{functional }{ \textit{XC FUNCTIONAL} [BP86] }{The functional to be corrected for.}{For a list of valid options see the functionals table in Section~\ref{sec:system:dft}.}
-\nkeyword{gradient   }{ \textit{bool} [false]      }{Additionally calculate the gradient corrections.}{} 
-\nkeyword{hessian    }{ \textit{bool} [false]      }{Additionally calculate the hessian corrections.}{}
-}
-        
-\clearpage
-\subsubsection{Export Grid Task}
-\taskoptions{
-ExportGridTask, Grid
-}{
-Will use the first active system and create and export a grid with weights in text form. 
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{withAtomInfo }{ \textit{bool} [false] }{Switch to print an additional column referencing the atom each point belongs to (Beck/Voronoi Cell).}{}
-}
+{\color{red}IMPORTANT:} There will be no orbitals available for the system after executing this
+task! Only the density matrix is available. This task should always be followed by an SCF-like step!
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task BST
+    act water
+    truncAlgorithm NETPOPULATION
+  -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{BasisSetTask} and \ttt{BST}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Will use the first active system and truncate the basis set based on the density of the given system.
+  \item [\texttt{truncAlgorithm}]\hfill \\
+    The algorithm used for basis set truncation. By default the Mulliken-net-population
+    algorithm (\ttt{NETPOPULATION}) is taken. This algorithm eliminates basis functions from the active
+    system where the sum of all squared occupied orbital coefficients is lower than \ttt{netThreshold}.
+    Alternatively the primitive net-population algorithm (\ttt{PRIMITIVENETPOP}) can be requested. This
+    algorithm reduces the number of basis functions by the factor \ttt{truncationFactor}.
+  \item[\texttt{netThreshold}] \hfill \\
+    Mulliken-net-population up to which an basis function centred on dummy atoms is not truncated, requires
+    \ttt{truncAlgorithm}=\ttt{NETPOPULATION}. By default \ttt{1e-4}.
+  \item[\texttt{truncationFactor}] \hfill \\
+    The ratio of basis functions on dummy atoms used in addition ordered by importance in their MnP, requires
+    \ttt{truncAlgorithm}=\ttt{PRIMITIVENETPOP}. By default \ttt{0.0}.
+\end{description}
 
-\clearpage
-\subsubsection{Energy Decomposition Analysis Task}
-\taskoptions{
-EDATask, EDA
-}{
-Will use the first two systems and calculate the Morokuma EDA of the supersystem build by these two systems. 
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{-}{-}{-}{}
-}
+\subsection{Task: Coupled Cluster}
+This task performs coupled cluster calculations, possibly using canonical and local coupled cluster.
+Additionally, this task also performs embedded coupled cluster calculations. Effects of an optional
+PCM are taken only into account on the level of the orbitals/Fock matrix.
 
-\clearpage
-\subsubsection{FDE Task}
-\taskoptions{
-FDETask, FDE
-}{
-The first active system will be used as active system in the FDE calculation.
-}{
-Any system given here will be added as environment interacting with
-the active system. A single point will be calculated for this system
-if needed. No inter environment effects will be calculated.
-}{
-Embedding Settings {\scriptsize[Defaults \texttt{naddXCFunc}=\texttt{PW91}, \texttt{embeddingMode}=\texttt{NADDFUNC}]}.
-}{
-\nkeyword{gridCutOff               }{ \textit{double} [-1.0]      }{A distance cutoff for the integration grid used to 
-  calculate the non-additive  energy functional potentials.}{Negative values equal no cut off.}
-\ekeyword{smallSupersystemGrid     }{ \textit{bool} [false]    }{If true will use the smallGridAccuracy of the given active  
-  system instead of the normal grid accuracy for the supersystem grid.}{}
-\ekeyword{finalGrid     }{ \textit{bool} [true] }{ If true, non-additive xc and kin energies will only be evaluated once on a supersystem grid, at the end of the orbital opitmization.}{}
-\ekeyword{locType}{ \textit{LOCAILZATION} [IBO] }{Localization type used in hybrid projection/functional approaches}{For other valid options see localization options in Section~\ref{sec:localization}.}
-}
+{\color{red}IMPORTANT:} The orbital localization step for local coupled cluster is not carried out
+within this task! Please make sure that the orbitals have been localized before using the local
+correlation version of this task (see Sec.~\ref{task:localization}).
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task CC
+   system water
+   level DLPNO-CCSD
+   +lc
+     pno_settings tight
+   -lc
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{CoupledClusterTasks} and \ttt{CC}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Accepts a single active system that will be used in the actual coupled cluster calculation.
+ \item [\texttt{environmentSystems}]\hfill \\
+   Accepts multiple environment systems that are used in embedded coupled cluster calculations.
+ \item [\texttt{sub-blocks}]\hfill \\
+   The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+   \ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+   Similarly, \ttt{pnoSettings=NORMAL} is a commonly changed default in the local correlation settings.
+ \item [\texttt{level}]\hfill \\
+   The type of coupled cluster calculation to perform. By default a (canonical) \ttt{CCSD} calculation is performed
+   Alternatively canonical \ttt{CCSD(T)} and local \ttt{DLPNO-CCSD}, \ttt{DLPNO-CCSD(T0)} calculations can be
+   requested with this keyword.
+ \item [\texttt{maxCycles}]\hfill \\
+   The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+   By default 100 cycles are allowed.
+ \item [\texttt{normThreshold}]\hfill \\
+   The threshold at which the coupled cluster iterations are considered converged. By default \ttt{1.0e-4}.
+\end{description}
 
-\clearpage
-\subsubsection{Freeze and Thaw Task}
+\subsection{Task: Dispersion Correction}
+This task evaluates different types of dispersion corrections for the given system.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task Dispersion
+   system water
+   dispType D3BJ
+   functional PBE0
+   gradient True
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{DispersionCorrectionTask}, \ttt{Dispersion},  and \ttt{Disp}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Accepts a single active system and calculates its dispersion correction.
+  \item [\texttt{dispType}]\hfill \\
+    The type of dispersion correction to calculate. By default \ttt{D3BJ} is chosen.
+    For a list of valid options see the \ttt{dispersion} keyword in Section~\ref{sec:system:dft}.
+  \item [\texttt{functional}]\hfill \\
+    Any exchange correlation functional for with parameters are available, by default no functional (\ttt{NONE}) is used.
+  \item [\texttt{gradient}]\hfill \\
+    Boolean switch, if true, will additionally calculate the cartesian nuclear gradient corrections.
+  \item [\texttt{hessian}]\hfill \\
+    Boolean switch, if true, will additionally calculate the nuclear Hessian corrections.
+\end{description}
+
+\subsection{Task: Energy-Decomposition Analysis}
+This task performs an energy-decomposition analysis as proposed by Morokuma\cite{Morokuma1971}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task EDA
+   system water_monomer_a
+   system water_monomer_b
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{EDATask},  and \ttt{EDA}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Requires two systems. Will use the two systems and calculate the Morokuma EDA of the supersystem 
+    generated by these two systems.
+\end{description}
+
+
+\subsection{Task: Energy Evaluation}
+This task performs an energy evaluation for the first active system with the settings
+and density currently assigned to the system.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task ENERGY
+    act water
+    +lc
+      PNOSETTINGS TIGHT
+    -lc
+  -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{ENERGYTASK}, \ttt{ENERGY} and \ttt{E}.
+  \item [\texttt{activeSystems}]\hfill \\
+   Evaluates the energy for the first active system, using its density and settings.
+   \item [\texttt{sub-blocks}]\hfill \\
+   The local correlation (\ttt{lc}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the local correlation block that are relevant for this task, and their defaults are:
+    \ttt{PNOSETTINGS=TIGHT}.
+    \item [\texttt{mp2Type}]\hfill \\
+    MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By default \ttt{RI}.
+    \item [\texttt{maxResidual}]\hfill \\
+    Maximum residual threshold for local MP2. By default \ttt{1e-5}.
+    \item [\texttt{maxCycles}]\hfill \\
+    Maximum number of iterations before cancelling the amplitude optimization in local MP2. By default \ttt{100}.
+\end{description}
+
+\subsection{Task: Electronic-Structure Copy}
+This task copies the first active system to all environment systems by rotating the
+orbitals to their internal frames. All systems should have the same atoms ordered
+in the same way.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task ESC
+  act waterAct
+  env waterEnv1
+  env waterEnv2
+  env waterEnv3
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{COPY} and \ttt{ESC}.
+\item [\texttt{activeSystems}]\hfill \\
+  The source system to be used.
+\item [\texttt{environmentSystems}]\hfill \\
+  The target systems to which the orbitals are to be copied.
+\item [\texttt{atomFrameIndices}]\hfill \\
+  The atom indices used for the internal frame construction.
+  If none are given, the first three atoms are used.
+\item [\texttt{orthogonalize}]\hfill \\
+  Orthogonalize the orbitals after copying using a
+  Löwdin orthogonalization. \ttt{false} by default.
+\item [\texttt{copyCharges}]\hfill \\
+  Change the charges/spins of the environment systems
+  to the charge/spin of the active system. \ttt{true} by default.
+\end{description}
+
+\subsection{Task: Export Grid}
+This task creates and exports a grid of a given system with weights in text form.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task EXPORTGRIDTASK
+  act water
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{EXPORTGRIDTASK} and \ttt{GRID}.
+\item [\texttt{activeSystems}]\hfill \\
+  The system whose grid is to be exported.
+\item [\texttt{withAtomInfo}]\hfill \\
+  Switch to print an additional column referencing the
+atom each point belongs to (Beck/Voronoi Cell). \ttt{false} by default.
+\end{description}
+
+\subsection{Task: Frozen-Density Embedding}
+\label{sec:FDE}
+This task performs frozen-density embedding (FDE) calculations, possibly using different embedding modes or local correlation settings.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task FDE
+  act acetone
+  env water1
+  env water2
+  +emb
+    embeddingMode NADDFUNC
+    naddXCFunc PW91
+    naddKinFunc PW91k
+  -emb
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	 \item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{FDE} and \ttt{FDETask}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used in the actual FDE calculation.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts mutiple environment systems that are used in embedded calculation.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=PW91K}, \ttt{embeddingMode=NADDFUNC} and \ttt{PNOSETTINGS=TIGHT}.
+	\item [\texttt{gridCutOff}] \hfill \\
+    A distance cutoff for the integration grid used to calculate the non-additive  energy functional potentials. Negative values equal no cut off. By default \ttt{-1.0}
+	\item [\texttt{mp2Type}] \hfill \\
+	MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By default \ttt{RI}.
+	\item [\texttt{maxResidual}] \hfill \\
+	Convergence threshold for the local MP2 calculation. By default \ttt{1e-5}.
+	\item [\texttt{maxCycles}] \hfill \\
+	Maximum number of iterations before canceling the amplitude optimization in local MP2. By default \ttt{100}.
+	\item [\texttt{calculateMP2Energy}] \hfill \\
+	Calculate the MP2 contribution of double-hybrid functionals. By default \ttt{true}.
+	\item [\texttt{calculateEnvironmentEnergy}] \hfill \\
+	Calculate the energy of the environment systems. By default \ttt{false}.
+	\item [\texttt{calculateSolvationEnergy}] \hfill \\
+	Calculate the interaction of the active system with the joined environment and the energy of the active system. The environment is referenced
+	as a continuum. By default \ttt{false}.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item [\texttt{smallSupersystemGrid}]\hfill \\
+	If true will use the \ttt{smallGridAccuracy} of the given active system instead of the normal grid accuracy for the supersystem grid. By default \ttt{false}.
+	\item [\texttt{finalGrid}]\hfill \\
+	If true, non-additive xc and kin energies will only be evaluated once on a supersystem grid, at the end of the orbital optimization. By default \ttt{true}.
+	\item [\texttt{locType}]\hfill \\
+	Localization type used in hybrid projection/functional approaches. For other valid options see localization options in Section~\ref{task:localization}. By default \ttt{IBO}.
+\end{description}
+
+\subsection{Task: Freeze-and-Thaw}
 \label{sec:FAT}
-\taskoptions{
-FreezeAndThawTask, FAT
-}{
-Each active system will be used in the individual FDE calculations as 
-active system only one of these systems is active at a time.
-}{
-These systems will be present, but never active during the freeze and thaw procedure.
-}{
-Embedding Settings {\scriptsize[Defaults \texttt{naddXCFunc}=\texttt{PW91}, \texttt{embeddingMode}=\texttt{NADDFUNC}]}.
-}{
-\nkeyword{maxCycles                }{ \textit{int} [50]           }{The maximum number of FaT iterations.}{}
-\nkeyword{gridCutOff               }{ \textit{double} [-1.0]  }{ A distance cutoff for the integration grid used to
-  calculate the non-additive  energy functional potentials.}{Negative values equal no cut off.}
-\nkeyword{convThresh }{ \textit{double} [1.0e-6]}{ Convergence criterion for the absolute change of the density matrices w.r.t. freeze and thaw cycles.}{}
-\nkeyword{printLevel               }{ \textit{int} [2]        }{A value to regulate the amount of output the user is provided during each FaT iteration:}{ 
-  0: No output; 1: Print SCF results and grid information; 2: Print SCF cycle info, SCF results and grid information.} 
-\ekeyword{smallSupersystemGrid     }{ \textit{bool} [false] }{ If true will use the smallGridAccuracy of the given active   
-  system instead of the normal grid accuracy for the supersystem grid.}{}
-\ekeyword{finalGrid     }{ \textit{bool} [true] }{ If true, non-additive xc and kin energies will only be evaluated once on a supersystem grid, at the end of the 
-  freeze-and-thaw procedure.}{}
-\ekeyword{extendBasis              }{ \textit{bool} [false]       }{Extend the subsystem basis with basis functions centered in the other subsystems.}{}
-\ekeyword{basisExtThresh           }{ \textit{double} [5.0e-2]    }{Overlap threshold for the extension of the subsystem basis.}{Needs \texttt{extendBasis}=\texttt{true}}
-\ekeyword{useConvAcceleration      }{ \textit{bool} [false]       }{Turn the convergence acceleration (DIIS/Damping) on.}{}
-\ekeyword{diisStart                }{ \textit{double} [5.0e-5]    }{Density RMSD threshold for the start of the DIIS.}{Needs \texttt{useConvAcceleration}=\texttt{false}}
-} 
+This task performs freeze-and-thaw (FaT) calculations, for a list of given systems. Basically, this task
+performs subsequent frozen-density embedding calculations for the given \ttt{activeSystems}, where in each
+cycle the role of the active system changes. \ttt{environmentSystems} will never be set as active.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task FAT
+  act acetone1
+  act acetone2
+  env water1
+  env water2
+  +emb
+    embeddingMode NADDFUNC
+    naddXCFunc PW91
+    naddKinFunc PW91k
+  -emb
+  maxcycles 6
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{FAT} and \ttt{FaTTask}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts multiple active systems.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts multiple environment systems.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}) and PCM (\ttt{pcm}) settings are added via sub-block in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+	\item [\texttt{maxCycles}]\hfill \\
+	The maximum number of FaT iterations. By default \ttt{50}.
+	\item [\texttt{gridCutOff}]\hfill \\
+	A distance cutoff for the integration grid used to calculate the non-additive  energy functional potentials. Negative values equal no cut off. By default \ttt{-1.0}.
+	\item [\texttt{convThresh}]\hfill \\
+	Convergence criterion for the absolute change of the density matrices w.r.t. FaT cycles. By default \ttt{1.0e-6}
+	\item [\texttt{calculateSolvationEnergy}]\hfill \\
+	Calculate the interaction of the first active system with the joined environment and the energy of the first active system. The environment is referenced as a continuum. By default \ttt{false}.
+	\item [\texttt{finalEnergyEvaluation}]\hfill \\
+	Perform a final energy evaluation on the supersystem grid after converging the freeze-and-thaw. By default \ttt{true}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item [\texttt{smallSupersystemGrid}]\hfill \\
+	If true will use the smallGridAccuracy of the given active system instead of the normal grid accuracy for the supersystem grid. By default \ttt{false}.
+	\item [\texttt{extendBasis}]\hfill \\
+	Extend the subsystem basis with basis functions centered in the other subsystems. By default \ttt{false}.
+	\item [\texttt{basisExtThresh}]\hfill \\
+	Overlap threshold for the extension of the subsystem basis. Needs \ttt{extendBasi = true}. By default \ttt{5.0e-2}.
+	\item [\texttt{useConvAcceleration}]\hfill \\
+	Turn the convergence acceleration (DIIS/Damping) on. By default \ttt{false}.
+	\item [\texttt{diisStart}]\hfill \\
+	Density RMSD threshold for the start of the DIIS. Needs \ttt{useConvAcceleration = true}. By default \ttt{5.0e-5}.
+	\item [\texttt{diisEnd}]\hfill \\
+	Density RMSD threshold for the end of the DIIS. Needs \ttt{useConvAcceleration = true}. By default \ttt{1.0e-4}.
+	\item [\texttt{keepCoulombCache}]\hfill \\
+	The Fock matrix contributions of the passive systems via their Coulomb interaction is not deleted and kept on disk. By default \ttt{false}.
+\end{description}
+
+\subsection{Task: Geometry Optimization}
+This task performs geometry optimizations for a given structure. This task can perform both a subystem-based (Freeze-and-Thaw) and a supermolecular geometry optimization.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task Opt
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{GeometryOptimizationTask} , \ttt{GeoOpt} and \ttt{Opt}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Optimizes all active systems. If more than one system is given, they are coupled via Freeze-and-Thaw calculations.
+ \item [\texttt{environmentSystems}]\hfill \\
+  Environment systems are added to Freeze-and-Thaw or Frozen-Density-Embedding calculations of the active system(s) but remain electronically frozen and are not optimized.
+ \item [\texttt{sub-blocks}]\hfill \\
+   Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+   \ttt{naddXCFunc=PW91}, \ttt{embeddingMode=naddfunc}, \ttt{naddkinfunc=PW91K}.
+ \item [\texttt{gradType}]\hfill \\
+   The type of gradients used for geometry optimization. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{ANALYTICAL}.
+ \item [\texttt{maxCycles}]\hfill \\
+   Maximum number of  geoemtry optimization cycles. The default is \ttt{100}.
+ \item [\texttt{rmsgradThresh}]\hfill \\
+   RMS convergence criterion for the gradient. The default is \ttt{1.0e-4}. 
+ \item [\texttt{energyChangeThresh}]\hfill \\
+   Convergence criterion for the energy change. The default is \ttt{5.0.0e-6}. 
+ \item [\texttt{maxGradThresh}]\hfill \\ 
+  Convergence criterion for the gradient maximum. The default is \ttt{3.0e-4}. 
+ \item [\texttt{stepThresh}]\hfill \\
+  Convergence criterion for the step threshold. The default is \ttt{2.0-3}. 
+ \item [\texttt{maxStepThresh}]\hfill \\
+  Convergence criterion for the step threshold maximum. The default is \ttt{4.0e-3}. 
+ \item [\texttt{numGradStepSize}]\hfill \\
+  Step size for numerical gradients. The default is \ttt{1.0e-3}. 
+ \item [\texttt{printLevel}]\hfill \\
+  A value to regulate the amount of output the user is provided during each FaT iteration:
+  \ttt{0}: No output; \ttt{1}: Print SCF results and grid information; \ttt{2}: Print SCF cycle info, SCF results and grid information. The default is \ttt{0}
+ \item [\texttt{transInvar}]\hfill \\
+    Make gradients translationally invariant. The default is \ttt{false}
+ \item [\texttt{dispersion}]\hfill \\
+    The dispersion correction to be added for the inter-subsystem description. The default is \ttt{NONE}.
+ \item [\texttt{FaTmaxCycles}]\hfill \\
+   The maximum number of FaT iterations. The default is \ttt{50}.
+ \item [\texttt{FaTgridCutOff}]\hfill \\
+  A distance cutoff for the integration grid used to calculate the non-additive energy functional potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+ \item [\texttt{FaTenergyConvThresh}]\hfill \\
+ Convergence criterion for the density w.r.t. Freeze-and-Thaw. The default is \ttt{1.0e-6}.
+\end{description}
 
 
-\clearpage
-\subsubsection{Geometry Optimization Task}
-\taskoptions{
-GeometryOptimizationTask, GeoOpt, Opt
-}{
-Optimizes all active systems. If more than one system is given, they are coupled via freeze-and-thaw calculations.
-}{
-Environment systems are added to freeze-and-thaw or FDE calculations of the active system(s) but remain electronically frozen and are not optimized.
-}{
-None.
-}{
-\nkeyword{gradType}{ ANALYTICAL [d] \\ NUMERICAL}{Gradient evaluation scheme.}{Use analytical expressions to calculate the gradients, or 
-calculate the gradient numerically (3 pt. scheme).}
-\nkeyword{maxCycles          }{ \textit{int} [100]       }{Maximum number of  geoemtry optimization cycles.}{}
-\nkeyword{rmsgradThresh      }{ \textit{double} [1.0e-4] }{Convergence criterion for the gradient RMS.}{}
-\nkeyword{energyChangeThresh }{ \textit{double} [1.0e-5] }{Convergence criterion for the energy change.}{}
-\nkeyword{maxGradThresh      }{ \textit{double} [1.0e-5] }{Convergence criterion for the gradient maximum.}{}
-\nkeyword{stepThresh         }{ \textit{double} [1.0e-5] }{Convergence criterion for the step threshold.}{}
-\nkeyword{maxStepThresh      }{ \textit{double} [1.0e-5] }{Convergence criterion for the step threshold maximum.}{}
-\nkeyword{numGradStepSize    }{ \textit{double} [1.0e-2] }{Step size for numerical gradients.}{}
-\nkeyword{printLevel         }{ \textit{int} [0]         }{A value to regulate the amount of output the user is provided during each FaT iteration:}{
-  0: No output; 1: Print SCF results and grid information ; 2: Print SCF cycle info, SCF results and grid information.}
-\nkeyword{transInvar         }{ \textit{bool} [false] }{Make gradients translationally invariant.}{}
-\nkeyword{naddKinFunc        }{ \textit{KIN FUNCTIONAL}[PW91K]    }{The non-additive kinetic energy functional.}{
-  For all available functionals see Section~\ref{sec:system:dft}}
-\nkeyword{naddXCFunc         }{ \textit{XC FUNCTIONAL}[PW91]  }{The non-additive exchange correlation functional.}{
-  For all available functionals see Section~\ref{sec:system:dft}}
-\nkeyword{dispersion         }{ [NONE]  }{The dispersion correction to be added for the inter-subsystem description.}{
-  For all available corrections see Section~\ref{sec:system:dft}}
-\nkeyword{FaTmaxCycles       }{ \textit{int} [50]  }{The maximum number of FaT iterations. }{Only valid if more than one active system is given.}
-\nkeyword{FaTgridCutOff      }{ \textit{double} [-1.0] }{A distance cutoff for the integration grid used to 
-  calculate the non-additive energy functional potentials.}{Negative values equal no cut off.}
-\nkeyword{FaTenergyConvThresh}{ \textit{double} [1.0e-6] }{ Convergence criterion for the density w.r.t. freeze and thaw cycles. }{}
-%\ekeyword{FaTexactNaddKin    }{ \textit{bool} [false]  }{A switch to use a reconstruction scheme in order 
-%  to replace the non-additive kinetic energy functional with an 'exact' potential (OEP).}{}
-}        
+\subsection{Task: Gradient}
+This task performs a gradient calculation for a given structure. In case of a subsystem gradient calculation, this task will use all active systems for the gradient calculation. Furthermore, all active systems will be included in the Freeze-and-Thaw procedure. When additional environment systems are given, Frozen-Density-Embedding gradients are calculated for the active subsystems.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task GradientTask
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+ Aliases for this task are \ttt{GradientTask} , \ttt{Gradient} and \ttt{Grad}.
+\item [\texttt{activeSystems}]\hfill \\
+ Optimizes all active systems. If more than one system is given, they are coupled via Freeze-and-Thaw calculations.
+\item [\texttt{environmentSystems}]\hfill \\
+ Environment systems are added to Freeze-and-Thaw or Frozen-Density-Embedding calculations of the active system(s) but remain electronically frozen and are not optimized.
+\item [\texttt{sub-blocks}]\hfill \\
+ Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+ Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+ \ttt{naddXCFunc=PW91}, \ttt{embeddingMode=naddfunc}, \ttt{naddkinfunc=PW91K}.
+\item [\texttt{gradType}]\hfill \\
+ The type of gradients used for geometry optimization. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{ANALYTICAL}.
+\item [\texttt{numGradStepSize}]\hfill \\
+ Step size for numerical gradients. The default is \ttt{1.0e-3}. 
+\item [\texttt{transInvar}]\hfill \\
+  Make gradients translationally invariant. The default is \ttt{false}
+\item [\texttt{FDEgridCutOff}]\hfill \\
+  A distance cutoff for the integration grid used to calculate the non-additive energy functional potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+\item [\texttt{dispersion}]\hfill \\
+  The dispersion correction to be added for the inter-subsystem description. The default is \ttt{NONE}.\
+\item [\texttt{FaTmaxCycles}]\hfill \\
+  The maximum number of FaT iterations. The default is \ttt{50}.
+\item [\texttt{FaTenergyConvThresh}]\hfill \\
+  Convergence criterion for the density w.r.t. Freeze-and-Thaw. The default is \ttt{1.0e-6}.
+\item [\texttt{print}]\hfill \\
+  The amount output information. The defaul is \ttt{true}.
+\end{description}
 
-\clearpage
-\subsubsection{Gradient Task}
-\taskoptions{
-GradientTask, Gradient, Grad
-}{
-Will use the first active system and calculate the geometry gradients for this system.
-}{
-Will calculate FDE gradients when given environment systems.
-}{
-None.
-}{
-\nkeyword{gradType}{ ANALYTICAL [d] \\NUMERICAL}{Gradient evaluation scheme.}{Use analytical expressions to calculate the gradients, or 
-  calculate the gradient numerically (3 pt. scheme).}
-\nkeyword{numGradStepSize }{ \textit{double} [0.001] }{The step size in case of numerical gradients in a.u. }{}
-\nkeyword{transInvar      }{ \textit{bool} [false]   }{Make gradients translationally invariant.}{}
-\nkeyword{print           }{ \textit{bool} [true]    }{Supresses output while calculating gradients if false.}{}
-\nkeyword{naddKinFunc     }{ \textit{KIN FUNCTIONAL}[PW91K] }{The non-additive kinetic energy functional.}{
-  For all available functionals see Section~\ref{sec:system:dft} }
-\nkeyword{naddXCFunc      }{ \textit{XC FUNCTIONAL}[PW91]  }{The non-additive exchange correlation functional.}{
-  For all available functionals see Section~\ref{sec:system:dft} }
-\nkeyword{dispersion      }{ [NONE]  }{The dispersion correction to be added for the inter-subsystem description.}{
-  For all available corrections see Section~\ref{sec:system:dft} }
-\nkeyword{FDEgridCutOff   }{ \textit{double} [-1.0] }{A distance cutoff for the integration grid used to 
-  calculate the non-additive  energy functional potentials.}{Negative values equal no cut off.}
-\ekeyword{FDEexactNaddKin }{ \textit{bool} [false]  }{A switch to use a reconstruction scheme in order
-  to replace the non-additive kinetic energy functional with an 'exact' potential (OEP).}{}
-}
+\subsection{Task: Hessian}
+This task performs a Hessian calculation for a given structure. In case of a subsystem gradient calculation, this task will use all active systems for the gradient calculation. Furthermore, all active systems will be included in the Freeze-and-Thaw procedure. When additional environment systems are given, Frozen-Density-Embedding Hessians are calculated for the active subsystems.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task HESS
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+ Aliases for this task are \ttt{HESSIANTASK} , \ttt{HESSIAN} and \ttt{HESS}.
+\item [\texttt{activeSystems}]\hfill \\
+ Optimizes all active systems. If more than one system is given, they are coupled via Freeze-and-Thaw calculations.
+\item [\texttt{environmentSystems}]\hfill \\
+ Environment systems are added to Freeze-and-Thaw or Frozen-Density-Embedding calculations of the active system(s) but remain electronically frozen and are not optimized.
+\item [\texttt{sub-blocks}]\hfill \\
+ Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+ Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+ \ttt{naddXCFunc=PW91}, \ttt{embeddingMode=naddfunc}, \ttt{naddkinfunc=PW91K}.
+\item{hessType}\hfill \\
+ The type of the Hessian. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} (not implemented yet) or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{NUMERICAL}. Note, that full numerical Hessians (gradient and Hessian) are numerical instable. 
+\item [\texttt{gradType}]\hfill \\
+ The type of the gradient. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{ANALYTICAL}. 
+\item [\texttt{numGradStepSize}]\hfill \\
+ Step size for numerical gradients. The default is \ttt{1.0e-3}. 
+\item [\texttt{numHessStepSize}]\hfill \\
+ Step size for numerical Hessian. The default is \ttt{1.0e-3}. 
+\item [\texttt{FaTgridCutOff}]\hfill \\
+  A distance cutoff for the integration grid used to calculate the non-additive energy functional potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+\item [\texttt{FaTmaxCycles}]\hfill \\
+  The maximum number of FaT iterations. The default is \ttt{50}.
+\item [\texttt{FaTenergyConvThresh}]\hfill \\
+  Convergence criterion for the density w.r.t. Freeze-and-Thaw. The default is \ttt{1.0e-6}.
+\item [\texttt{dispersion}]\hfill \\
+  The dispersion correction to be added for the inter-subsystem description. The default is \ttt{NONE}.
+\item [\texttt{printToFile}]\hfill \\
+  Prints the Hessian to HDF5. The default is \ttt{TRUE}.
+\end{description}
 
-\clearpage
-\subsubsection{Hessian Task}
-\taskoptions{
-HessianTask, Hessian
-}{
-Will calculate either supersystem hessian or hessian for only a single active system.
-}{
-Environment systems will never be active during the FaT procedures.
-}{
-None.
-}{
-\nkeyword{hessType}{ANALYTICAL \\ NUMERICAL [d]}{Hessian evaluation scheme.}{
-Use analytical expressions to calculate the hessian (NOT YET IMPLEMENTED!), or
-calculate the hessian numerically (3 pt. scheme). Please note that fully numerical 
-hessians (with gradType set to \texttt{NUMERICAL}) are error prone and numerically less stable.}
-\nkeyword{gradType}{ ANALYTICAL [d] \\ NUMERICAL }{Gradient evaluation scheme in the (semi-)numerical hessian scheme.}{Use analytical expressions to calculate the gradients, or
-Calculate the gradient numerically (3 pt. scheme).}
-\nkeyword{numGradStepSize      }{ \textit{double} [0.001] }{The step size in case of numerical gradients in a.u. }{} 
-\nkeyword{numHessStepSize      }{ \textit{double} [0.001] }{The step size in case of numerical hessian in a.u. }{}
-\nkeyword{activeSystemOnlyHess }{ \textit{bool} [false]   }{Calculate Hessian and frequencies only for a single active system.}{
-                                                            This option is impossible with more than one system set to active.}
-\nkeyword{printToFile          }{ \textit{bool} [true]    }{ Writes frequency calculation to molden.input file.}{}
-\nkeyword{naddKinFunc          }{ \textit{KIN FUNCTIONAL}[PW91K] }{The non-additive kinetic energy functional.}{
-  For all available functionals see Section~\ref{sec:system:dft} }
-\nkeyword{naddXCFunc           }{ \textit{XC FUNCTIONAL}[PW91]  }{The non-additive exchange correlation functional.}{
-  For all available functionals see Section~\ref{sec:system:dft} }
-\nkeyword{FaTmaxCycles         }{ \textit{int} [50]       }{Maximum amount of freeze and thaw cycles.}{}
-\nkeyword{convThresh           }{ \textit{double} [1.0e-6]}{Convergence criterion for the RMSD of the density w.r.t. freeze and thaw cycles. }{This number should be increased with the total system size.}
-\nkeyword{FaTgridCutOff        }{ \textit{double} [-1.0]  }{A distance cutoff for the integration grid used to 
-  calculate the non-additive  energy functional potentials.}{Negative values equal no cut off.}
-\ekeyword{FaTexactNaddKin      }{ \textit{bool} [false]   }{ A switch to use a reconstruction scheme in order
-  to replace the non-additive kinetic energy functional with an 'exact' potential (OEP).}{}
-}
+\subsection{Task: Localization}\label{task:localization}
+This task performs an orbital localization for the given active system. If the orbitals of
+the active system are supposed to be aligned to the orbitals of a template system, the latter
+has to be given as an environment system.
 
-\clearpage
-\subsubsection{Localization Task}
-\label{sec:localization}
-\taskoptions{
-LocalizationTask, Localization, Loc
-}{
-Will use the first active system and localize its orbitals. \\
-(The orbitals are changed in place.)
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{locType}{PM \\ FB \\ IBO [d]\\  ER\\ NO }{The localization scheme to be used. 
-  Availible options are: Pipek-Mezey (PM), Foster-Boys (FB), intrinsic bond orbitals (IBO), Edminston-Ruedenberg (EB) and
-  a non-orthogonal localization (NO)}{
-\texttt{NO} = Non-orthogonal localized orbital} 
-\nkeyword{maxSweeps }{ \textit{int} [1000] }{ Most schemes are iterative, this is the maximum number of cycles allowed.}{}
-}        
-
-\clearpage
-\subsubsection{LRSCF (TDDFT/TDHF) Task}
-\taskoptions{
-LRSCFTask, LRSCF
-}{
-Performs a LRSCF (TDHF/CIS, TDDFT/TDA) calculation for the first active system. 
-}{
-Performs FDEu/FDEc-LRSCF calculations of active system(s) embedded in environment systems. 
-Per default, the supersystem grid is used. 
-}{Embedding Settings {\scriptsize [Defaults \texttt{naddXCFunc}=\texttt{NONE}, \texttt{embeddingMode}=\texttt{NONE}]}.
-}
-{
-\nkeyword{nEigen               }{ \textit{int}    [3]}{Number of roots to be determined. }{}
-\nkeyword{pseudoDensityThreshold   }{ \textit{double} [1.0e-8]}{The pseudo density screening threshold for sigma vector evaluation.}{}
-\nkeyword{convThresh }{ \textit{double} [1.0e-5]}{Convergence criterion for iterative eigenvalue solver.}{}
-\nkeyword{maxCycles            }{ \textit{int}    [100]   }{Maximum number of iterations for the iterative eigenvalue solver.}{}
-\nkeyword{maxSubspaceDimension }{ \textit{int}    [1.0e9] }{Maximum dimension of subspace of the iterative eigenvalue solver. }{}
-\nkeyword{responseType  }{ TDA[d] \\ TDDFT \\ RPA }{Type of the LRSCF problem to be solved.}{}
-\nkeyword{tda  }{\textit{bool} [false]}{Performs a TDA/ CIS calculations.}{}
-\nkeyword{dominantThresh }{\textit{double} [10]}{Orbital transitions with squared coefficients (multiplied by a factor of 100) larger than dominantThresh are considered dominant and their contribution is written into the output.}{}
-\nkeyword{superSystemGrid }{\textit{bool} [true] }{Uses supersystem Grid for the evaluation of the Kernel Contribution in the subsystem TDDFT case}{}
-\nkeyword{func }{ \textit{XC FUNCTIONAL}  [Uses per default the xc functional of the active subsystem]  }{XC-Functional for kernel. }{For a list of all available functionals see Section~\ref{sec:system:dft}}
-\nkeyword{embeddingMode  }{\textit{Embedding Mode} \\ NONE[d] \\ NADD-FUNC \\ LEVELSHIFT \\ HUZINAGA \\ HOFFMANN \\ RECONSTRUCTION  }{Determines the embedding mode for the coupled calculation.}{}
-\nkeyword{levelShiftParameter}{ \textit{double} [1.0e6]}{Levelshiftparameter}{}
-\nkeyword{naddKinFunc          }{ \textit{KIN FUNCTIONAL}  [NONE]  }{Functional for non-additive kinetic energy kernel. }{For a list of all available functionals see Section~\ref{sec:system:dft}}
-\nkeyword{naddXFunc            }{ \textit{XC FUNCTIONAL}  [NONE]  }{Functional for non-additive XC kernel. }{For alist of all available functionals see Section~\ref{sec:system:dft}}
-\nkeyword{analysis             }{ \textit{bool} true}{If false, LRSCF analysis and excitation / CD spectra will be suppressed}{}
-\ekeyword{loadType             }{ ISOLATED \\ UNCOUPLED [d] \\ COUPLED}{Reference states used to build transformation matrix for FDEc calculation.}{}
-\ekeyword{fullFDEc             }{\textit{bool} false}{Solve full FDEc problem by root-following the approximate solutions as initial guess}{}
-\ekeyword{localMO              }{\textit{bool} false}{Perform supersystem TDDFT with local orbitals.}{}
-\ekeyword{gaugeOrigin          }{\textit{vector} \{double, double, double\}  }{The gauge origin for the dipole integrals.}{}
-\ekeyword{besleyAtoms          }{\textit{unsigned int} [0] }{Number atoms included in the orbital restriction from Besley (the first n atoms will be taken from the xyz file)}{}
-\ekeyword{besleyCutoff         }{\textit{vector} \{double, double\}}{Besley cut off for occupied and virtual orbitals}{}
-\ekeyword{excludeProjection    }{\textit{bool} [false] }{Exclude all artificially shifted virtual orbitals from the set of reference orbitals in an projection-based embedding calculation.}{}
-\ekeyword{localVirtualOrbitals }{\textit{double} [0.0] }{Select canonical virtual orbitals located on the active subsystem based on a modified overlap criterion.}{}
-\ekeyword{envVirtualOrbitals   }{\textit{double} [0.0] }{Select canonical virtual orbitals located on the environment subsystems based on a modified overlap criterion.}{}
-\ekeyword{setAlpha             }{\textit{vector} \{int\} }{Set alpha reference orbitals given a set of reference orbitals.}{}
-\ekeyword{excludeAlpha         }{\textit{vector} \{int\} }{Exclude alpha orbitals from provided reference.}{}
-\ekeyword{setBeta              }{\textit{vector} \{int\} }{Set beta reference orbitals given a set of reference orbitals.}{}
-\ekeyword{excludeBeta          }{\textit{vector} \{int\} }{Exclude beta orbitals from provided reference}{}
-\ekeyword{energyInclusion      }{\textit{vector} \{double\} }{Includes all orbitals within the given energy interval.}{}
-\ekeyword{energyExclusion      }{\textit{vector} \{double\} }{Excludes all orbitals outside the given energy interval.}{}
-\ekeyword{saveResponseMatrix   }{false }{Writes the TDA/ CIS response matrix in each iteration of the iterative eigenvalue solver.}{}
-\ekeyword{uncoupledSubspace    }{\textit{vector} \{unsigned int\} }{Uncoupled subspace for the FDEc-LRSCF problem. Given a set of active subsystems, a subspace of excitations vectors can be defined by : \\  \{ 2 1 2 \\
-	3 4 8 10 \}, \\ where the first number n gives the number of states of that subsystem and the following n numbers define the respective transitions. For this example, vectors 1 and 2 are taken from subsystem one,  and vectors 4, 8 and 10 are chosen from active subsystem 2. If uncoupledSubspace is not set, all uncoupled vectors will be used to span the subspace.}{}
-\ekeyword{couplingPattern      }{\textit{vector} \{unsigned int\} }{Sets a special coupling pattern, e.g. for coupled / uncoupled coupling.}{}
-}
-
-
-\clearpage
-\subsubsection{MP2 Task}
-\taskoptions{
-MP2Task, MP2
-}{
-Will use the first active system and calculate the MP2 correction for the latest orbitals.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{ri}{\textit{bool} [true]}{Uses the resolution of identity (RI) approximation to speed up the MP2 calculation.}{} 
-}
-
-\clearpage
-\subsubsection{Multipole Moment Task}
-\taskoptions{
-MultipoleMomentTask, Multi
-}{
-Will use the first active system to calculate its multipole moments.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{highestOrder}{\textit{int} [2]      }{Calculate up to this order of multipole moments.}{1=dipole, 2=quadrupole, 3=octupole} 
-\nkeyword{numerical   }{\textit{bool}  [false]}{Calculate dipole moments numerically.}{
-          Multipole moments are calculated using basis functions and integrals per default. 
-          If this is switched on they are calculated using the density on an integration grid.}
-\nkeyword{origin}{ORIGIN [d]\\COM}{The spacial origin for the multipole calculation}{
-          The origin of the Cartesian coordinates or the center of mass of the given system.}
-}
-
-\clearpage
-\subsubsection{Population Analysis Task}
-\taskoptions{
-PopulationAnalysisTask, Population, POP
-}{
-Will use the first active system to print the Mulliken population analysis.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{mulliken   }{ \textit{bool} [true]  }{ Prints Mulliken charges and orbital populations.}{}
-\nkeyword{hirshfeld  }{ \textit{bool} [false] }{ Prints Hirshfeld charges.}{}
-}
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task LOC
+   system water
+   locType IBO
+   splitValenceAndCore true
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{LocalizationTask}, \ttt{Localization} and \ttt{LOC}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Accepts a single active system which will be used in the orbital localization
+   (the orbitals are changed in place).
+ \item [\texttt{environmentSystems}]\hfill \\
+   Accepts a single environment systems that may be used as a template system for an orbital alignment.
+   This is only relevant for \ttt{locType=ALIGN}.
+ \item [\texttt{locType}]\hfill \\
+   The orbital localization scheme to be used. The default is the intrinsic bond orbital scheme \ttt{IBO}.
+   Other options are the  Pipek-Mezey (\ttt{PM}) scheme, the Foster--Boys (\ttt{FB}) scheme, the localization
+   by Edminston and Ruedenberg (\ttt{ER}), a localization that does not retain orbital orthogonality
+   (\ttt{NO}) and an orbital alignment procedure that aligns the orbitals to a given template system \ttt{ALIGN}\cite{Bensberg2020}.
+ \item [\texttt{splitValenceAndCore}]\hfill \\
+   If \ttt{true}, the valence and core orbitals are localized independently (no mixing). This is useful
+   for local correlation methods. Furthermore, core like orbitals will resemble e.g. their $1s$ character
+   more closely. The default is \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+ \item [\texttt{maxSweeps}]\hfill \\
+   Most orbital localization schemes are iterative, this is the maximum number of cycles allowed.
+   The default is $100$.
+ \item [\texttt{energyCutOff}]\hfill \\
+   The energy cut-off used for the core orbital selection. The default is $-5.0$ au.
+ \item [\texttt{useKineticAlign}]\hfill \\
+   If \ttt{true}, the orbital kinetic energy is used as an additional criterion in the orbital alignment.
+   The default is \ttt{false}.
+ \item [\texttt{alignExponent}]\hfill \\
+   The exponent for the penalty function used in the orbital alignment. This has to be an even integer
+   larger or equal to $2$. The default is $4$. Exponents of $8$ or larger are not recommended since they
+   may lead to numerical instabilities.
+\end{description}
 
 \clearpage
-\subsubsection{SCF Task}
-\taskoptions{
-SCFTask, SCF
-}{
-Will use the first active system and run an SCF calculation.
-}{
-No effect.
-}{
-None.
-}{
-\nkeyword{restart }{ \textit{bool} [false] }{ Will try to restart from loaded orbitals.}{}
-}
+\subsection{Task: LRSCF (TDDFT/TDHF)}
+This task performs a linear-response TDDFT/TDHF/TDA/CIS calculation. In case of an uncoupled embedding calculation additional environment subsystems needs to be added. In order to perform a coupled calculation more than one active system needs to be specified. Note that a coupled calculation requires a previous uncoupled calculation for the respective subsystem. These capabilities exist for excitation energies, oscillator strengths, rotatory strengths and both damped and regular linear-response properties (polarizabilties, optical rotation).
+\subsubsection{Example Input}
+\begin{lstlisting}
++task LRSCF
+  act water
+  nEigen 10
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{LRSCFTask} and \ttt{LRSCF}.
+    \item [\texttt{activeSystems}]\hfill \\
+    The systems for the LRSCF calculation. If only one system without an environment system is used, no additional kernel contributions due to the embedding procedure are taken into account. If more than one active system is used, a coupled calculation is performed. This requires a previous uncoupled calculation for the individual active subsystems.
+    \item [\texttt{environmentSystems}]\hfill \\
+    Additional kernel contributions are taken into account in case environmentSystems are used in the LRSCF calculation.
+    \item [\texttt{nEigen}]\hfill \\
+    Number of roots to be determined. The default is \ttt{3}.
+    \item [\texttt{convThresh}]\hfill \\
+    Convergence criterion for the iterative eigenvalue and response solvers. The default is \ttt{1.0e-5}.
+    \item [\texttt{tda}]\hfill \\
+    Whether to perform a TDA/CIS calculation. The default is \ttt{false}.
+    \item [\texttt{analysis}]\hfill \\
+    If \ttt{false}, dominant contribution analysis and absorption/CD spectra will be suppressed. The default is \ttt{true}.
+    \item [\texttt{frequencies}]\hfill \\
+    Frequencies for which dynamic polarizabilities and optical rotation are calculated for (in eV). More than one frequency can be given as~\ttt{$\{$0.1 0.2$\}$}.
+    \item [\texttt{frequencyRange}]\hfill \\
+    Calculation of linear-response properties for a certain frequency range (in eV). Expects three arguments \ttt{$\{$start stop stepwidth$\}$}.
+    \item [\texttt{damping}]\hfill \\
+    Damping parameter for response properties (finite lifetime effects, in eV), e.g. broadens the absorption spectrum. The default value is \ttt{0.0}.
+    \item [\texttt{gauge}]\hfill \\
+    The gauge chosen for the response property calculation. The options are \ttt{LENGTH} and \ttt{VELOCITY}. \ttt{LENGTH} gauge is chosen as default.
+    \item [\texttt{sub-blocks}]\hfill \\
+        Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+        Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+        \ttt{naddXCFunc=NONE}, \ttt{embeddingMode=NONE}, \ttt{naddkinfunc=NONE}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{pseudoDensityThreshold}]\hfill \\
+    The pseudo density screening threshold for sigma vector evaluation. The default is \ttt{1.0e-8}.
+    \item [\texttt{maxCycles}]\hfill \\
+    Maximum number of iterations for the iterative eigenvalue solver. The default is \ttt{100}.
+    \item [\texttt{maxSubspaceDimension}]\hfill \\
+    Maximum dimension of subspace of the iterative eigenvalue solver. The default is \ttt{1e9}.
+    \item [\texttt{responseType}]\hfill \\
+    Type of the LRSCF problem to be solved. Possible options are \ttt{TDA}, \ttt{TDDFT} (symmetrized Casida's equation), \ttt{RPA}. The default is \ttt{TDA}. Can be used to enforce the solution of the \ttt{RPA}-like (and not the symmetrized) eigenvalue problem in case of TDDFT (implying $(A-B)$ is diagonal), otherwise is set automatically according to the requested method and the input is ignored.
+    \item [\texttt{dominantThresh}]\hfill \\
+    Orbital transitions with squared coefficients (multiplied by a factor of 100) larger than dominantThresh are considered dominant and their contribution is written into the output. The default value is \ttt{10}.
+    \item [\texttt{superSystemGrid}]\hfill \\
+    Uses a supersystem grid for the evaluation of the kernel contributions in the subsystem TDDFT case. The default is \ttt{true}. It is not recommended to change this setting.
+    \item [\texttt{func}]\hfill \\
+    Exchange--correlation functional for the kernel evaluation. The default is to use the exchange--correlation functional as defined in the system settings.
+    \item [\texttt{gaugeOrigin}]\hfill \\
+    The gauge origin for the dipole integrals. The default is the center of mass of the molecule. Can be changed via \ttt{$\{x~y~z\}$}.
+    \item [\texttt{setAlpha}]\hfill \\
+    Sets a set of reference orbitals for the calculation. For example: \ttt{$\{$3 4 5 6 7$\}$} (the orbitals 3, 4, 5, 6 and 7 are included in the linear-response calculation). In case of a restricted calculation this keyword refers to all orbitals and in case of an unrestricted calculation this keyword refers to the orbitals with spin alpha.
+    \item [\texttt{excludeAlpha}]\hfill \\
+    Excludes a set of reference orbitals for the calculation. For example: \ttt{$\{$3 4 5 6 7$\}$} (the orbitals 3, 4, 5, 6 and 7 are excluded in the linear-response calculation). In case of a restricted calculation this keyword refers to all orbitals and in case of an unrestricted calculation this keyword refers to the orbitals with spin alpha.
+    \item [\texttt{setBeta}]\hfill \\
+    Sets a set of reference orbitals for the calculation (see \texttt{setAlpha}). In case of a restricted calculation this keyword is not doing anything and in case of an unrestricted calculation this keyword refers to the orbitals with spin beta.
+    \item [\texttt{excludeBeta}]\hfill \\
+    Excludes a set of reference orbitals for the calculation (see \texttt{setAlpha}). In case of a restricted calculation this keyword is not doing anything and in case of an unrestricted calculation this keyword refers to the orbitals with spin beta.
+    \item [\texttt{besleyAtoms}]\hfill \\
+    Number of atoms included in the orbital restriction according to Besley (the first $n$ atoms will be taken from the xyz file). The default is \ttt{0}.
+    \item [\texttt{besleyCutoff}]\hfill \\
+    Besley cut off for occupied and virtual orbitals. This needs to be specified in a vector \ttt{$\{$OCC VIRT$\}$}.
+    \item [\texttt{excludeProjection}]\hfill \\
+    Exclude all artificially shifted virtual orbitals from the set of reference orbitals in a projection-based embedding calculation. The default is \ttt{false}. This keyword needs to be handled carefully if chosen in combination with basis-set restriction.
+    \item [\texttt{uncoupledSubspace}]\hfill \\
+    Uncoupled subspace for the FDEc-LRSCF problem. Given a set of active subsystems, a subspace of excitations vectors can be defined by: \\  \ttt{$\{$ 2 1 2} \\
+    \ttt{3 4 8 10 $\}$}, \\ where the first number $n$ gives the number of states, which are going to be included of that subsystem and the following $n$ numbers define the respective uncoupled eigenvectors. For this example, vectors 1 and 2 are taken from subsystem one, and vectors 4, 8 and 10 are chosen from active subsystem 2. If uncoupledSubspace is not set, all uncoupled vectors will be used to span the subspace.
+    \item [\texttt{localMO}]\hfill \\
+    Performs a supersystem TDDFT calculation with localized orbitals. The default is \ttt{false}.
+    \item [\texttt{localVirtualOrbitals}]\hfill \\
+    Select canonical virtual orbitals located on the active subsystem based on a modified overlap criterion. The default value is \ttt{0.0}.
+    \item [\texttt{envVirtualOrbitals}]\hfill \\
+    Select canonical virtual orbitals located on the environment subsystems based on a modified overlap criterion. The default value is \ttt{0.0}.
+    \item [\texttt{energyInclusion}]\hfill \\
+    Includes all orbitals within the given energy interval. This can be done as \ttt{$\{$START END$\}$}.
+    \item [\texttt{energyExclusion}]\hfill \\
+    Excludes all orbitals within the given energy interval. This can be done as \ttt{$\{$START END$\}$}.
+    \item [\texttt{fullFDEc}]\hfill \\
+    Converge the \emph{approximate} FDEc roots obtained from the uncoupled initial guess to the accuracy given by \ttt{convThresh}. In order to ensure convergence to the correct roots (and not any lower lying ones), a root-following procedure is employed. The default is \ttt{false}.
+    \item [\texttt{saveResponseMatrix}]\hfill \\
+    Writes the TDA/CIS response matrix in each iteration to disk. The default is \ttt{false}.
+    \item [\texttt{loadType}]\hfill \\
+    Reference states used to build transformation matrix for FDEc calculation. The options are \ttt{ISOLATED}, \ttt{UNCOUPLED} and \ttt{COUPLED}. The default is \ttt{UNCOUPLED}.
+    \item[\texttt{couplingPattern}]\hfill\\
+    Sets a special coupling pattern, e.g. for coupled / uncoupled coupling.
+\end{description}
+
+\clearpage
+\subsection{Task: MP2}
+\label{sec:MP2}
+This task performs MP2 calculations for a given active system, probably using embedding or local correlation
+settings. Effects of an optional PCM are taken only into account on the level of the orbitals/Fock matrix.
+
+{\color{red}IMPORTANT:} The orbital localization step for local MP2 is not carried out
+within this task! Please make sure that the orbitals have been localized before using the local
+correlation version of this task (see Sec.~\ref{task:localization}).
+\subsubsection{Example Input}
+\begin{lstlisting}
++task MP2
+  system acetone
+  mp2Type RI
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{MP2} and \ttt{MP2Task}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts a single active system for whose orbitals an MP2 correction is calculated.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts mutiple environment systems that are used in embedded calculations.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+	Similarly, \ttt{pnoSettings=NORMAL} is a commonly changed default in the local correlation settings.
+	\item [\texttt{mp2Type}] \hfill \\ 
+	MP2 type used. Full four center integral MP2 (\ttt{AO}), RI-MP2 (\ttt{RI}), local MP2 (\ttt{LOCAL}). By default \ttt{RI}. 
+\end{description}
+
+\subsection{Task: Multipole Moment}
+This task calculates the multipole moments of a given system, analytically or numerically.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task MULTIPOLEMOMENTTASK
+  act water
+  highestOrder 1
+  origin COM
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{MULTIPOLEMOMENTTASK} and \ttt{MULTI}.
+\item [\texttt{system}]\hfill \\
+  The system whose multipole moments are to be calculated.
+\item [\texttt{highestOrder}]\hfill \\
+Calculate multipole moments up to this order (1=dipole, 2=quadrupole). 2 by default.
+\item [\texttt{numerical}]\hfill \\
+Multipole moments are calculated analytically using basis functions
+and integrals per default (corresponding to \ttt{false}). If this is switched on,
+they are calculated numerically using the density on an integration grid (corresponding to \ttt{true}).
+\item [\texttt{origin}]\hfill \\
+The spatial origin for the multipole calculation.
+The origin of the Cartesian coordinates (\ttt{ORIGIN}, default) or the center
+of mass of the given system (\ttt{COM}).
+\end{description}
+
+
+\subsection{Task: Plot}
+A task to export properties on 3D (cube) or 2D (planar) grid files. The .dat file containing the property on
+a 2D grid contains the values as \ttt{x, y, z, value} of the property.
+
+\subsubsection{Example Input (3D)}
+\begin{lstlisting}
+  +task Plot
+    act water
+    orbitals {3 4 5}
+  -task
+\end{lstlisting}
+
+\subsubsection{Example Input (2D)}
+\begin{lstlisting}
+  +task Plot
+    act water
+    orbitals {3 4 5}
+    atom1 1
+    atom2 2
+    atom3 3
+  -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+   \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{PlotTask}, \ttt{Plot}, \ttt{CubeFileTask}, \ttt{CubeFile} and \ttt{Cube}.
+   \item [\texttt{activeSystems}]\hfill \\
+    Combines all active systems into one supersystem and plots its properties
+    if available.
+   \item [\texttt{environmentSystems}]\hfill \\
+    Any environment system will extend the geometry and grid size
+    only, thus subsystem properties can be displayed on a supersystem grid.
+    \item [\texttt{gridSpacing}]\hfill \\
+    The grid spacing in \AA{} along the unitvectors. Note that for a 2D plot the third entry is
+    ignored. By default \ttt{\{$0.12, 0.12, 0.12$\}} (3D) or \ttt{\{$0.08, 0.08, 0.0$\}} (2D).
+    \item [\texttt{borderWidth}]\hfill \\
+    The border width in \AA{} around the geometry for which the grid is created. By default \ttt{2.0}.
+\end{description}
+
+\paragraph{Grid and plot settings for 3D plot}
+\begin{description}
+    \item [\texttt{xUnitVector}]\hfill \\
+    The first unitvector defining the orientation of the cube grid. By default \ttt{\{$1.0, 0.0, 0.0$\}}.
+    \item [\texttt{yUnitVector}]\hfill \\
+    The second unitvector defining the orientation of the cube grid. By default \ttt{\{$0.0, 1.0, 0.0$\}}.
+    \item [\texttt{zUnitVector}]\hfill \\
+    The third unitvector defining the orientation of the cube grid. By default \ttt{\{$0.0, 0.0, 1.0$\}}.
+    \item [\texttt{cavity}]\hfill \\
+    Plot values on the molecular cavity. By default \ttt{False}.
+    \item [\texttt{gridCoordinates}]\hfill \\
+    Write grid coordinates to file. By default \ttt{False}
+\end{description}
+\paragraph{Grid and plot settings for 2D plot}
+\begin{description}
+    \item [\texttt{p1}]\hfill \\
+    First point which defines the plane in a 2D plot, this is also the origin of the plane.
+    \item [\texttt{p2}]\hfill \\
+    Second point which defines the plane in a 2D plot.
+    \item [\texttt{p3}]\hfill \\
+    Third point which defines the plane in a 2D plot.
+    \item [\texttt{atom1}]\hfill \\
+    The atom which coordinates should be used as p1. The counting starts at 1.
+    \item [\texttt{atom2}]\hfill \\
+    The atom which coordinates should be used as p2. The counting starts at 1.
+    \item [\texttt{atom3}]\hfill \\
+    The atom which coordinates should be used as p3. The counting starts at 1.
+    \item [\texttt{projectCutOffRadius}]\hfill \\
+    The maximal distance in \AA{} an atom in a 2D plot is allowed to have to be projected on the plane for the generation of the grid. By default \ttt{3.0}.
+    \item [\texttt{xyHeatmap}]\hfill \\
+    Plots the heatmap which is rotated to the xy plane and saves it as \_XYPLANE.dat. The geometry rotated with the same matrix is saved as \_MOLECULE\_ROTATED\_TO\_XYPLANE.
+    This heatmap can be plotted with the \texttt{2DheatMap.py} script in the \texttt{tools} folder. By default \ttt{False}.
+\end{description}
+
+\paragraph{Properties which can be plotted}
+\begin{description}
+    \item [\texttt{density}]\hfill \\
+    Plots the electron density. By default \ttt{False}.
+    \item [\texttt{signedDensity}]\hfill \\
+    Plots the 'signed density' defined as: $\mathrm{sign}(\nabla^2\rho(r))\rho(r)$ . By default \ttt{False}.
+    \item [\texttt{orbitals}]\hfill \\
+    Plots the orbitals from the list.
+    \item [\texttt{allOrbitals}]\hfill \\
+    Plots all orbitals. By default \ttt{False}.
+    \item [\texttt{occOrbitals}]\hfill \\
+    Plots all occupied orbitals. By default \ttt{False}.
+    \item [\texttt{electrostaticPot}]\hfill \\
+    Plots the electrostatic potential. By default \ttt{False}.
+    \item [\texttt{sedd}]\hfill \\
+    Plots the Single Exponential Decay Detector (SEDD). By default \ttt{False}.
+    \item [\texttt{dori}]\hfill \\
+    Plots the Density Overlap Regions Indicator (DORI). By default \ttt{False}.
+    \item [\texttt{elf}]\hfill \\
+    Plots the Electron Localization Function (ELF). By default \ttt{False}.
+    \item [\texttt{elfts}]\hfill \\
+    Plots the approximate ELF (ELF$_\text{TS}$). By default \ttt{False}.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{maxGridPoints}]\hfill \\
+Maximum number of grid points before stopping the cube file generation (1.6 GB). By default \ttt{1e+8}.
+\end{description}
+
+
+\subsection{Task: Population Analysis}
+
+This task calculates the atom-wise electron populations of a given system.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task pop
+  act water
+  algorithm IAO
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{POPULATIONANALYSISTASK}, \ttt{POPULATION} and \ttt{POP}.
+ \item [\texttt{activeSystems}]\hfill \\
+  The system of which to calculate atomic populations.
+ \item [\texttt{algorithm}]\hfill \\
+  The algorithm used for the population analysis.
+  Options are: \ttt{Mulliken}, \ttt{Hirshfeld}, \ttt{IAO} (intrinsic atomic orbital analysis),
+  and \ttt{IAOShell} (shell-wise IAO analysis). The default algorithm is \ttt{Mulliken}.
+\end{description}
+
+\subsection{Task: SCF}
 This task solves the Roothaan--Hall equation (Eq.~\ref{eq:roothaan-hall}) for one single system.
 \begin{equation}\label{eq:roothaan-hall}
- \textbf{F}\textbf{C} =  \textbf{S}\textbf{C}\varepsilon
+\textbf{F}\textbf{C} =  \textbf{S}\textbf{C}\varepsilon
 \end{equation}
 Here $\textbf{F}$ is the Fock matrix which is the matrix representation of the Fock operator $\hat{F}$:
 \begin{equation}\label{eq:fockop}
- \hat{F} = \hat{T}_{\text{e}} + \hat{V}_{\text{ne}} + \hat{J} + \hat{V}_{\text{xc}}~,
+\hat{F} = \hat{T}_{\text{e}} + \hat{V}_{\text{ne}} + \hat{J} + \hat{V}_{\text{xc}}~,
 \end{equation}
-$\textbf{S}$ is the atom orbital (AO) overlap matrix, with the elements: 
+$\textbf{S}$ is the atom orbital (AO) overlap matrix, with the elements:
 \begin{equation}
- S_{ij} = \langle \chi_i(r) | \chi_j(r) \rangle= \int \chi_i(r) \chi^*_j(r) ~\text{d}r,
+S_{ij} = \langle \chi_i(r) | \chi_j(r) \rangle= \int \chi_i(r) \chi^*_j(r) ~\text{d}r,
 \end{equation}
 $\textbf{C}$ is the coefficient matrix containing the the linear combination of atomic orbitals (LCAO) of
 each molecular orbital (MO):
 \begin{equation}
- \phi_i(r) = \sum_j C_{ij} \cdot \chi_j(r)~,
+\phi_i(r) = \sum_j C_{ij} \cdot \chi_j(r)~,
 \end{equation}
 and $\varepsilon$ is a diagonal matrix containing the orbital energies.
 $\textbf{F}$ can be the (Hartree--)Fock matrix ($\hat{V}_{\text{xc}} = \hat{K}$) and also the Kohn--Sham Fock matrix ($V_{\text{xc}}[\rho(r),\nabla\rho(r),...]$), depending on the method chosen
-in the \texttt{system} block of the given active system.
+in the \ttt{system} block of the given active system.
 The iterative SCF procedure consists of three main steps:
 \begin{itemize}
- \item Construction of $\textbf{F}$ from the electron density ($\textbf{P}$,$\rho(r)$)
- \item Generation of new orbitals by solving of Eq.~\ref{eq:roothaan-hall} for $\textbf{C}$ 
- \item The calculation of the electron density ($\textbf{P}$,$\rho(r)$) from the orbitals, using a given occupation.
+	\item Construction of $\textbf{F}$ from the electron density ($\textbf{P}$,$\rho(r)$)
+	\item Generation of new orbitals by solving of Eq.~\ref{eq:roothaan-hall} for $\textbf{C}$
+	\item The calculation of the electron density ($\textbf{D}$,$\rho(r)$) from the orbitals, using a given occupation.
 \end{itemize}
-Convergence of of the SCF procedure is accelerated using DIIS\cite{pula1982} and damping by default.
-In addition to the default settings it is also possible to switch the DIIS\cite{pula1982} for the ADIIS\cite{hu2010}, 
+Convergence of the SCF procedure is accelerated using DIIS\cite{pula1982} and damping by default.
+In addition to the default settings it is also possible to switch the DIIS\cite{pula1982} for the ADIIS\cite{hu2010},
 and it is possible to modify the way the damping is applied, and also its strength.
 In the case of SCF calculations that do not converge easily it usually helps to simply increase the amount of damping that is
 applied.
-The ultimately best strategy may however vary with the given system. 
-For all options pertaining the convergence please see the \texttt{scf} block options of the systems, Section~\ref{sec:system:scf}.
+The ultimately best strategy may however vary with the given system.
+For all options pertaining the convergence please see the \ttt{scf} block options of the systems, Section~\ref{sec:system:scf}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task SCF
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{SCFTask} and \ttt{SCF}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used in the SCF calculation.
+	\item[\texttt{sub-blocks}]\hfill \\
+	The local correlation (\ttt{lc}) settings can be added in a sub-block. A common setting (with its default value) in this sub-block is \ttt{pnoSettings=TIGHT}.	
+	\item[\texttt{restart}]\hfill \\
+	Will try to restart the SCF from loaded orbitals. By default this setting is \ttt{false}.
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By the fault \ttt{RI} is chosen. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{local} to use local MP2.
+	\item[\texttt{maxResidual}]\hfill \\
+	Convergence threshold for the local MP2 calculation. The default value is \ttt{1.0e-5}.
+	\item[\texttt{maxCycles}]\hfill \\
+	Maximum number of iterations before cancelling the amplitude optimization in local MP2. The default number of cycles is \ttt{100}.
+	\item[\texttt{fractionalDegeneracy}]\hfill \\
+	Allows fractional occupations for degenerate orbitals in order to achieve spherical symmetry in an atom-SCF. By default \ttt{false}.
+	\item[\texttt{skipSCF}]\hfill \\
+	Skip the SCF procedure and perform an energy evaluation only. By default \ttt{false}.
+\end{description}
 
-\clearpage
-\subsubsection{Top-Down Embedding Task}
-The Top-Down Embedding Task (also named the Projection-Based Embedding Task in prior versions), is on of the two major embedding Tasks
-in \textsc{Serenity}.
-It only works with two subsystems, one being the active system (containing all atoms to be in the active region), 
-the second one being the environment system (containing all other atoms).
-The 'top-down' labeling references the fact that at first a supersystem calculation is carried out.
-Subsequently the two actual subsystems are identified by distribution of the orbital space into an active and an environment part.
-The active system is then relaxed using the specified active system method, while the environment system is kept frozen.\\
-The initial supersystem calculation is carried out using the settings of the environment system, expecting these settings
-to result in a setup that is computationally cheaper, in general.
-Note that also the basis set requested in the environment system is used for all atoms of the supersystem in this calculation.
-This ensures the evenly tempered distribution of the electron density across the entire supersystem, which is beneficial for
-a reasonable distribution of orbitals into active and environment regions.
-The distribution of orbitals into active and environment region usually happens after a localization procedure, all of the settings
-for both orbital localization and distribution into subsystems are given below.
-Furthermore it is possible to truncate the basis of the active system in several different ways, which are also given below.
-This feature allows for the embedded active system calculation to actually be faster than a supersystem calculation with the same
-settings.
-\taskoptions{
-TDEmbeddingTask, ProjectionBasedEmbTask, PBE
-}{
-Will use the first active system as the active part of the supersystem.
-}{
-Will use the first environment system as the environment part of the supersystem.
-The initial supersystem calculation will be carried out emplying the options 
-of this system, including the application of the given basis label to all atoms, 
-even those of the active system.
-}{
-Embedding Settings {\scriptsize [Defaults \texttt{naddXCFunc}=\texttt{BP86}, \texttt{embeddingMode}=\texttt{LEVELSHIFT}]}.
-}{
-\nkeyword{locType              }{ \textit{LOCALIZATION} [IBO] }{ For other valid options see localization options in Section~\ref{sec:localization}. } {}
-\nkeyword{orbitalThreshold     }{ \textit{double} [0.6] }{Threshold for orbital populations on the active region to be considered active.} {}
-\nkeyword{useEnvSys     }{ \textit{bool} [FALSE] }{If \texttt{TRUE}, the existing electronic structure of the environment will be used instead of overwritten.} {}
-\nkeyword{load              }{ \textit{str} [ ] }{ The path to load HDF5 files for the supersystem from. } {If this and a name for the supersystem is given, the given system is used for the calculation. Atoms of the supersystem have to be the union of active and environment atoms. No sorting required.}
-\nkeyword{name              }{ \textit{str} [ ] }{ The name of the supersystem calculation. } {If this and a load path is given, the given supersystem is used for the calculation.}
-\ekeyword{truncAlgorithm       }{ \textit{TRUNCATION ALGORITHMS} [NONE] }{The truncation algorithm for the active system basis.} {}
-\ekeyword{truncationFactor     }{ \textit{double} [0.0] }{The truncation factor used in the "primitive" truncation schemes.} {Needs \texttt{truncAlgorithm}=\texttt{PRIMITIVENETPOP} }
-\ekeyword{netThreshold         }{ \textit{double} [1.0e-4] }{The Mulliken net population threshold for the Mulliken net population truncation.} {Needs \texttt{truncAlgorithm}=\texttt{NETPOPULATION}}
-\ekeyword{nonOrthogonalCrit    }{ \textit{NON ORTHOGONAL CRITERION} [NONE] }{The criterion to select non-orthogonal orbitals .} {
-  Needs \texttt{distantNonOrthogonal}=\texttt{true}\\NONE, DISTANTATOM}
-\ekeyword{noSupRec    }{ \textit{bool} [FALSE] }{Boolean to switch off/on double reconstruction.} {
-  Needs \texttt{embeddingMode}=\texttt{RECONSTRUCTION}}
-} 
-    
+\subsection{Task: System-Splitting}
+The System-Splitting Task splits the occupied orbital set of a supersystem into subsets which are associated with fragments of the supersystem. The number of fragments is not limited, however, the union of all subsystem atoms have to give the supersystem atoms. Atoms are not allowed to be duplicated in the subsystems. The partitioning is based on the orbital localization. Basis-set changes are allowed. If the basis set of a sub- and the supersystem do not match, the density matrix of the subsystem is constructed by projecting the density matrix corresponding to the selected orbitals into the subsystem basis. Charge, spin and geometry of
+the subsystems may be changed.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task split
+  act super
+  env A
+  env B
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{SPLITTINGTASK} and \ttt{SPLIT}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used as the supersystem which is split.
+	\item[\texttt{environmentSystems}]\hfill \\
+	A list of the environment systems the supersystem is split into.
+	\item[\texttt{systemPartitioning}]\hfill \\
+	The algorithm for the system partitioning. The default is \ttt{BESTMATCH} and other possibilities are \ttt{ENFORCECHARGES}, \ttt{POPULATION}, \ttt{SPADE} and  \ttt{SPADE\_ENFORCE\_CHARGES}.
+	\item[\texttt{orbitalThreshold}]\hfill \\
+	The population threshold for the \ttt{POPULATION} partitioning with a default of \ttt{0.4}.
+\end{description}
+
+\subsection{Task: System-Addition}
+The System-Addition Task constructs a supersystem from subsystems. The supersystem can be constructed only from the atoms of the subsystems or from atoms and occupied orbitals. Basis-set changes are allowed. Charge, spin and geometry of the supersystem may be changed.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task add
+  act super
+  env A
+  env B
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{ADDITIONTASK} and \ttt{ADD}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used as the supersystem.
+	\item[\texttt{environmentSystems}]\hfill \\
+	A list of the environment systems used as the subsystems added together.
+	\item[\texttt{checkSuperGeom}]\hfill \\
+	Perform a cross-check to ensure that the supersystem geometry is not changed. By default \ttt{false}.
+	\item[\texttt{checkSuperCharge}]\hfill \\
+	Perform a cross-check to ensure that supersystem charge and spin are not changed. By default \ttt{false}.
+	\item[\texttt{addOccupiedOrbitals}]\hfill \\
+	Construct the supersystem occupied orbitals from the union of the subsystem orbitals. The orbital set may not be orthonormal! By default \ttt{false}.
+\end{description}
+
+\subsection{Task: Top-Down Embedding}
+The Top-Down Embedding Task (also named the Projection-Based Embedding Task in prior versions),
+is on of the two major embedding Tasks in \textsc{Serenity}. It only works with two subsystems, one being the active system (containing all atoms to be in the active region), the second one being the environment system (containing all other atoms). The 'top-down' labeling references the fact that at first a supersystem calculation is carried out. Subsequently, the two actual subsystems are identified by distribution of the orbital space into an active and an environment part. The active system is then relaxed using the specified active system method, while the environment system is kept frozen.\\ The initial supersystem calculation is carried out using the settings of the environment system, expecting these settings to result in a setup that is computationally cheaper, in general. Note that the basis set requested in the environment system is used for all atoms of the supersystem in this calculation. This ensures the evenly tempered distribution of the electron density across the entire supersystem, which is beneficial for a reasonable distribution of orbitals into active and environment regions. This distribution usually happens after a localization procedure. All of the settings for both, orbital localization and distribution into subsystems are given below. Furthermore, it is possible to truncate the basis of the active system in several different ways, which are also given below. This feature allows for the embedded active system calculation to be faster than a supersystem calculation with the same settings. \\Note that the Top-Down Embedding Task is identical to calling the following input, with exception for
+potential-reconstruction techniques:
+\begin{lstlisting}
++system
+name supersystem
+...
+-system
+
++system
+name active
+...
+-system
+
++system
+name environment
+...
+-system
+
++task ADD
+act supersystem
+env active
+env environment
+addOccupiedOrbitals false
+#May be set to true to produce an initial guess for the 
+#supersystem from subsystem densities.
+-task
+
++task SCF
+system supersystem
+-task
+
++task LOC
+system supersystem
+locType <locType>
+-task
+
++task SPLIT
+act supersystem
+env active
+env environment
+systemPartitioning <systemPartitioning>
+orbitalThreshold <orbitalThreshold>
+-task
+
++task BASISSETTASK
+#May be skipped if no basis-set truncation is desired. Or a basis-set truncation
+#for the environment could be done in addition.
+system active
+truncAlgorithm <truncAlgorithm>
+netThreshold <netThreshold>
+truncationFactor <truncationFactor>
+-task
+
++task FDE
+#A FATTask could be used here, too.
+act active
+env environment
++EMB
+...
+-EMB
+-task
+\end{lstlisting}
+Thus, the Top-Down Embedding Task task can be restarted after or during any of the tasks above as described for the respective task. Note that in the input above, the settings of the supersystem are used for the supersystem
+SCF.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
++task TDEmbeddingTask
+  act Active
+  env Env
+  +emb
+    naddXcFunc PW91
+    embeddingmode NADDFUNC
+  -emb
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{TDEmbeddingTask}, \ttt{PBE} and \ttt{ProjectionBasedEmbTask}
+	\item[\texttt{activeSystems}]\hfill \\
+	Will use this system as the active part of the supersystem.
+	\item[\texttt{environmentSystems}]\hfill \\
+	Will use the first environment system as the environment part of the supersystem.
+	The initial supersystem calculation will be carried out implying the options
+	of this system, including the application of the given basis label to all atoms,
+	even those of the active system.
+	\item[\texttt{sub-blocks}]\hfill \\
+	Possible sub-blocks are the embedding (\ttt{emb} with \ttt{naddXCFunc=BP86} and \ttt{embeddingMode=LEVELSHIFT}), the local correlation (\ttt{lc} with \ttt{pnoSettings=TIGHT}) and the PCM (\ttt{pcm}) settings.
+	\item[\texttt{locType}]\hfill \\
+	The orbital localization method. The default is \ttt{IBO}. For other valid options see localization options in Section~\ref{task:localization}.
+	\item[\texttt{orbitalThreshold}]\hfill \\
+	Threshold for orbital populations on the active region to be considered active. By defalt \ttt{0.4}.
+	\item[\texttt{systemPartitioning}]\hfill \\
+	The algorithm used for the system partitioning. The default algorithm is \ttt{POPULATION\_THRESHOLD}.
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By the default \ttt{RI} is chosen. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{local} to use local MP2.
+	\item[\texttt{splitValenceAndCore}]\hfill \\
+	Localize valence and core orbitals independently. By default \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item[\texttt{truncAlgorithm}]\hfill \\
+	The truncation algorithm for the active system basis. By default no truncation is performed (\ttt{NONE}). For further information see Section~\ref{task:truncation}.
+	\item[\texttt{truncationFactor}]\hfill \\
+	The truncation factor used in the "primitive" truncation schemes. Needs \ttt{truncAlgorithm=PRIMITIVENETPOP} and has a default value of \ttt{0.0}. For further information see Section~\ref{task:truncation}.
+	\item[\texttt{netThreshold}]\hfill \\
+	The Mulliken net population threshold for the Mulliken net population truncation. Needs \ttt{truncAlgorithm=NETPOPULATION} and has a default value of \ttt{1.0e-4}.  For further information see Section~\ref{task:truncation}.
+	\item[\texttt{noSupRec}]\hfill \\
+	Boolean (default \ttt{false}) to switch off/on double reconstruction. Needs \ttt{embeddingMode=RECONSTRUCTION}.
+	\item[\texttt{useFermiLevel}]\hfill \\
+	Boolean (default \ttt{true}) to switch off/on using the supersystem-fermi level for the fermi-shifted Huzinaga equation. Needs \ttt{embeddingMode=FERMI}.	
+  \item[\texttt{load}]\hfill \\
+  The path to load HDF5 files for the supersystem from. If this path and a name for the supersystem is given, that system is used for the calculation. Atoms of the supersystem have to be the union of active and environment atoms. No sorting required.  
+  \item[\texttt{name}]\hfill \\
+  The name of the supersystem calculation. If this and a load path is given, the given supersystem is used for the calculation.
+  \item[\texttt{maxResidual}]\hfill \\
+  Convergence threshold for the local MP2 calculation. By default \ttt{1.0e-5}.
+  \item[\texttt{maxCycles}]\hfill \\
+  Maximum number of iterations before cancelling the amplitude optimization in local MP2. The default number of cycles is \ttt{100}.   
+  \item[\texttt{addOrbitals}]\hfill \\
+  Add the orbitals of the subsystems up to form the supersystem and skip the supersystem SCF. By default \ttt{false}.
+\end{description}
 
 % ==========
 %   Python
 % ==========
 
 \clearpage
-\section{Python Input}
+\chapter{Python Input}
 Serenity features a Python wrapper.
 The wrapper is written with \textsc{pybind11}\cite{pybind11} and should allow for an easy access of \serenity s functionality from Python.
-The wrapper is named serenipy and comes in the form of a shared library named libserenipy.so .  
-  
+The wrapper is named serenipy and comes in the form of a shared library named libserenipy.so .
+
 This library can directly be imported into Python with ether of the following lines:
 \begin{lstlisting}[language=Python]
-import serenipy  
+import serenipy
 from serenipy import *
 \end{lstlisting}
-While this manual contains a rough outline of the functionality of the Python wrapper the doc-strings can be accessed via the 
-\texttt{help()} function of Python. For example : 
+While this manual contains a rough outline of the functionality of the Python wrapper the doc-strings can be accessed via the
+\texttt{help()} function of Python. For example :
 \begin{lstlisting}[language=Python]
 import serenipy
 help(serenipy)
 \end{lstlisting}
 This will display the automated documentation including both the links to C++ generated by \textsc{pybind11} and the additionally written doc-strings.
-\subsection{Wrapped Systems and Settings}
-A system inside the wrapper is generated for a set of \texttt{Settings}, 
+\section{Wrapped Systems and Settings}
+A system inside the wrapper is generated for a set of \ttt{Settings},
 the settings are essentially the same as described in Section~\ref{sec:system}.
 Each block is a member of the settings and each keyword is a member of the block.
 A small example of altering the settings can look like this:
@@ -1104,31 +2240,31 @@ settings.name = 'Hans'
 settings.dft.functional = spy.PBE0
 \end{lstlisting}
 
-\subsection{Wrapped Tasks}
-Most of the tasks in that exist in Serenity should be wrapped and also exist as classes inside the Python wrapper. 
+\section{Wrapped Tasks}
+Most of the tasks in that exist in Serenity should be wrapped and also exist as classes inside the Python wrapper.
 They can be build by constructing a task object with a given set of systems.
 The amount of systems (active and environment) accepted can be seen in Section~\ref{sec:tasks}.
 Afterwords the tasks settings can be accessed via the task object, exactly like the normal settings.
-There is one special thing to note, while the tasks in general have the same names as in the C++ code, or the 
+There is one special thing to note, while the tasks in general have the same names as in the C++ code, or the
 normal input, the specification of a restricted or unrestricted task has to be given via the object name.
-Restricted tasks are called \texttt{<usual-task-name>\_R} and unrestricted ones \texttt{<usual-task-name>\_U}.
+Restricted tasks are called \ttt{<usual-task-name>\_R} and unrestricted ones \ttt{<usual-task-name>\_U}.
 This is due to the fact that restricted and unrestricted tasks are actually different classes, because they are templates.
 Here a minimal example for a SCF calculation with all default settings:
 \begin{lstlisting}[language=Python]
-from serenipy import *  
- 
-settings = Settings()  
+from serenipy import *
+
+settings = Settings()
 settings.geometry = "test.xyz"
-system = System(settings)  
-task = ScfTask_R(system)  
-task.run()  
+system = System(settings)
+task = ScfTask_R(system)
+task.run()
 \end{lstlisting}
-\subsection{Other Wrapper Features}
+\section{Other Wrapper Features}
 In addition to the tasks, systems and settings other important classes of \serenity are exposed to Python.
 For example it is possible to get the results of a gradient calculation and also specific energies.
 \begin{lstlisting}[language=Python]
-from serenipy import *  
-import numpy as np  
+from serenipy import *
+import numpy as np
 ...
 gradients = system.getGeometry().getGradients()
 print(gradients)
@@ -1148,12 +2284,12 @@ libint = Libint()
 S_AO = libint.compute(OVERLAP, system.getBasis())
 print(S_AO)
 \end{lstlisting}
-If you want to use additional features via python please use the \texttt{help()} function to explore the package
+If you want to use additional features via python please use the \ttt{help()} function to explore the package
 and or write an e-mail to one of the developers.
 
-\newpage 
-\section{Bugs, Feedback and Feature Requests}
-Bug reports and feature requests for the \serenity code can and should be communicated \textit{via} the issue tracker included in the 
+\newpage
+\chapter{Bugs, Feedback and Feature Requests}
+Bug reports and feature requests for the \serenity code can and should be communicated \textit{via} the issue tracker included in the
 repository. Please open issues for features requests and bugs, only after checking if the same issue or feature has already been requested/reported.
 Both features requests and bugs can be labeled as such within the issue tracking system.\\
 \\
@@ -1163,18 +2299,27 @@ are archived. \\
 Feature requests will be open for discussion and if they are popular or small enough they likely be added to the code.
 For this reason please keep features requests simple or add tasks to them so it is simple to see and discuss the missing pieces and spot
 synergies with other projects.
-(Of cause it is also possible to ask if you can contribute a specific feature to the code yourself.)\\
+(Of cause it is also possible to provide a pull/merge request and contribute a specific feature to the code yourself.)\\
 \\
 In the case of general feedback and questions or specific comments about the manual's text feel free to contact the developers or authors directly.
 
-
+% ========================
+%   Theoretical Background
+% ========================
+\clearpage
+\chapter{Theoretical Background}
+\input{dlpnoMethods/pnoConstruction}
+\input{dlpnoMethods/dlpno_ccsd_equations}
+\input{orbitalAlignment/orbitalAlignment_equations}
+\input{sphericalHarmonicsRotation/eulerAngles}
+\input{delleySurface/delleySurface}
 
 % ========================
 %   Citation and License
 % ========================
 
 \clearpage
-\section{Cite As}
+\chapter{Cite As}
 The main reference for Serenity is published as:\\
 \\
 J. P. Unsleber, T. Dresselhaus, K. Klahr, D. Schnieders, M. B{\"o}ckers, D. Barton and J. Neugebauer, ''Serenity: A Subsystem Quantum Chemistry Program``,
@@ -1183,41 +2328,34 @@ J. P. Unsleber, T. Dresselhaus, K. Klahr, D. Schnieders, M. B{\"o}ckers, D. Bart
 The BibTeX code would thus be:
 \begin{lstlisting}
 @article{serenity_pub,
- title = {Serenity: A Subsystem Quantum Chemistry Program},
- author = {Jan P. Unsleber and Thomas Dresselhaus and Kevin Klahr
-             and David Schnieders and Michael B{\"o}ckers and 
-             Dennis Barton and Johannes Neugebauer},
- journal = {J. Comput. Chem.},
- volume = {39},
- pages = {788--798},
- year = {2018}
+  title = {Serenity: A Subsystem Quantum Chemistry Program},
+  author = {Jan P. Unsleber and Thomas Dresselhaus and Kevin
+            Klahr and David Schnieders and Michael B{"o}ckers
+            and Dennis Barton and Johannes Neugebauer},
+  journal = {J. Comput. Chem.},
+  volume = {39},
+  pages = {788--798},
+  year = {2018}
 }
 \end{lstlisting}
-In order to allow others to reproduce your data please also
-reference the Verison of \serenity used like this:\\
+In order to allow others to reproduce your data and to give credit to all recent developers,
+please also reference the version of Serenity used by citing the correct code reference
+generated on Zenodo. The following DOI will always link to the newest version of the code:\\
 \\
-Serenity Version: 1.0.0, \url{{https:\\\\thclab.uni-muenster.de\ serenity\ serenity}} (\textbf{2018}),\\
+\url{https://doi.org/10.5281/zenodo.4017420}\\
 \\
-or as BibTeX code:
-\begin{lstlisting}
- @misc{serenity_version,
-  title = {Serenity},
-  notes = {Serenity Version: 1.0.0, 
-               \url{{https:\\thclab.uni-muenster.de\serenity\serenity}}},
-  year  = {2018}
- }
-\end{lstlisting}
+For specific versions, please use the appropriate DOI.\\ 
 
-\section{License and Warranty}
+\chapter{License and Warranty}
 This manual is part of \serenity. The full license file can be found in the appendix (Appendix~\ref{sec:lgpl})\\
 
-\serenity is free software: you can redistribute it and/or modify it under 
-the terms of the LGNU Lesser General Public License as published by the Free 
+\serenity is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any later version.
-\serenity is distributed in the hope that it will be useful, but 
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+\serenity is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-You should have received a copy of the LGNU Lesser General Public License along with 
+You should have received a copy of the GNU Lesser General Public License along with
 \serenity. If not, see http://www.gnu.org/licenses/.
 
 
@@ -1229,27 +2367,27 @@ You should have received a copy of the LGNU Lesser General Public License along 
 % ==============
 \clearpage
 \appendix
-\section{Example Inputs}
-\subsection{Standard SCF}
+\chapter{Example Inputs}
+\section{Standard SCF}
 The first example is a minimal input for a restricted HF single point calculation.
 \begin{lstlisting}
 +system
   name watera
   geometry watera.xyz
-  methond hf
+  method hf
 -system
 
 +task scf
   act watera
 -task
 \end{lstlisting}
-For systems with a spin not equal to zero the calculation will automatically be run in the \texttt{unrestricted} mode
+For systems with a spin not equal to zero the calculation will automatically be run in the \ttt{unrestricted} mode
 as in the U-KS-DFT example below.
 \begin{lstlisting}
 +system
   name watera
   geometry watera.xyz
-  methond dft
+  method dft
   spin 1
   charge -1
   +dft
@@ -1264,13 +2402,13 @@ as in the U-KS-DFT example below.
   act watera
 -task
 \end{lstlisting}
-For systems with a spin equal to zero the unrestricted mode can be forced, using the appropriate keyword, 
+For systems with a spin equal to zero the unrestricted mode can be forced, using the appropriate keyword,
 as in the final example of this section:
 \begin{lstlisting}
 +system
   name watera
   geometry watera.xyz
-  methond dft
+  method dft
   scfmode unrestricted
   +dft
     functional pbe0
@@ -1284,9 +2422,62 @@ as in the final example of this section:
   act watera
 -task
 \end{lstlisting}
+A continuum solvation model can be enabled by changing the flag 'use' in the PCM-block to true:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  scfmode restricted
+  +dft
+    functional pbe0
+  -dft
+  +basis
+    label def2-TZVP
+  -basis
+  +pcm
+    use true
+    solverType iefpcm
+    solvent water
+    cavity delley
+  -pcm
+-system
 
-\newpage
-\subsection{Geometry Optimization}
++task scf
+  act watera
+-task
+\end{lstlisting}
+
+\section{Coupled Cluster Calculation}
+This example shows how to perform a (frozen core) DLPNO-CCSD calculation:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method hf
+-system
+
++task scf
+  act watera
+-task
+
++task loc
+  act watera
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act watera
+  level DLPNO-CCSD
+  +LC
+    useFrozenCore true
+    pnoSettings TIGHT
+  -LC
+-task
+\end{lstlisting}
+
+\section{Geometry Optimization}
 This example shows how to optimize a structure using DFT:
 \begin{lstlisting}
 +system
@@ -1301,27 +2492,28 @@ This example shows how to optimize a structure using DFT:
 
 +task opt
   act watera
-  act waterb
   dispersion d3bjabc
   maxCycles 100
   tightOpt true
 -task
 \end{lstlisting}
-in case of a sDFT optimization extra sDFT options (\texttt{naddXCFunc},\texttt{naddKinFunc}) and the names of the other system(s) (\texttt{waterb}) have to be added.
+in case of a sDFT optimization extra sDFT options (\ttt{naddXCFunc},\ttt{naddKinFunc}) and the names of the other system(s) (\ttt{waterb}) have to be added.
 \begin{lstlisting}
 +task opt
   act watera
   act waterb
   dispersion d3bjabc
-  naddXCFunc PBE
-  naddKinFunc LLP91
+  +EMB
+    naddXCFunc PBE
+    naddKinFunc LLP91K
+  -EMB
   maxCycles 100
   tightOpt true
 -task
 \end{lstlisting}
-\clearpage
-\subsection{Hessian Calculation and Thermochemistry}
-This example shows how to calculate a (sermi-numerical) Hessian and the subsequent generation of thermochemical data using DFT:
+
+\section{Hessian Calculation}
+This example shows how to calculate a (sermi-numerical) Hessian using DFT:
 \begin{lstlisting}
 +system
   name watera
@@ -1338,32 +2530,22 @@ This example shows how to calculate a (sermi-numerical) Hessian and the subseque
   dispersion d3bjabc
 -task
 
-+task thermo
-  act watera
-  Temperature 323
-  RRHO true
--task
 \end{lstlisting}
-in case of a sDFT run extra sDFT options (\texttt{naddXCFunc}, \texttt{naddKinFunc}) and the names of the other system(s) (\texttt{waterb}) have to be added.
+in case of a sDFT run extra sDFT options (\ttt{naddXCFunc}, \ttt{naddKinFunc}) and the names of the other system(s) (\ttt{waterb}) have to be added.
 \begin{lstlisting}
 +task hess
   act watera
   act waterb
   dispersion d3bjabc
-  naddXCFunc PBE
-  naddKinFunc LLP91
--task
-
-+task thermo
-  act watera
-  act waterb
-  Temperature 323
-  RRHO true
+  +EMB
+    naddXCFunc PBE
+    naddKinFunc LLP91K
+  -EMB
 -task
 \end{lstlisting}
 
-\clearpage
-\subsection{Frozen Density Embedding (FDE)}
+
+\section{Frozen Density Embedding (FDE)}
 A minimal input of a DFT calculation embedded in the frozen density of another system.
 The environment system will be calculated in an isolated manner implicitly.
 The basis is kept to be the default. Note that it is in principle also possible to have
@@ -1372,7 +2554,7 @@ both system run using Hartree--Fock and only the interaction \textit{via} FDE.
 +system
   name watera
   geometry watera.xyz
-  methond dft
+  method dft
   +dft
     functional pw91
   -dft
@@ -1381,7 +2563,7 @@ both system run using Hartree--Fock and only the interaction \textit{via} FDE.
 +system
   name waterb
   geometry waterb.xyz
-  methond dft
+  method dft
   +dft
     functional pw91
   -dft
@@ -1396,17 +2578,15 @@ both system run using Hartree--Fock and only the interaction \textit{via} FDE.
   -EMB
 -task
 \end{lstlisting}
-\clearpage
-\subsection{Freeze-and-Thaw (FaT/sDFT)}
-A minimal input for a \textit{freeze-and-thaw} (FaT/sDFT) calculation.
-In addition to the two given systems which will be iterated over until
-convergence, additional \texttt{environment} systems can be added, which will never 
-be relaxed. More \texttt{active} systems are also possible, of cause.
+A continuum solvation model enclosing all subsystems can be used by setting 'use' to true
+in the task specific PCM-block. Note that any PCM-settings set for any subsystem are ignored
+in the embedding step of all FDE-type calculations. However, they will affect the isolated
+SCF calculations for the subsystems.
 \begin{lstlisting}
 +system
   name watera
   geometry watera.xyz
-  methond dft
+  method dft
   +dft
     functional pw91
   -dft
@@ -1415,7 +2595,47 @@ be relaxed. More \texttt{active} systems are also possible, of cause.
 +system
   name waterb
   geometry waterb.xyz
-  methond dft
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++task fde
+  act watera
+  env waterb
+  +EMB
+    naddxcfunc pw91
+    naddkinfunc pw91k
+  -EMB
+  +pcm
+    use true
+    solverType cpcm
+    solvent water
+    cavity delley
+  -pcm
+-task
+\end{lstlisting}
+
+\section{Freeze-and-Thaw (FaT/sDFT)}
+A minimal input for a \textit{freeze-and-thaw} (FaT/sDFT) calculation.
+In addition to the two given systems which will be iterated over until
+convergence, additional \ttt{environment} systems can be added, which will never
+be relaxed. More \ttt{active} systems are also possible, of cause.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++system
+  name waterb
+  geometry waterb.xyz
+  method dft
   +dft
     functional pw91
   -dft
@@ -1431,11 +2651,12 @@ be relaxed. More \texttt{active} systems are also possible, of cause.
   -EMB
 -task
 \end{lstlisting}
+A continuum solvation model enclosing all subsystems can be used in the same way as for
+FDE.
 
-\clearpage
-\subsection{MP2-in-DFT Embedding via Projection}
+\section{MP2-in-DFT Embedding via Projection}
 The following example will combine the two given fragments/subsystems into one bigger supersystem, and optimize its orbitals using
-the settings of the environment system (KS-DFT). Afterward the orbitals will be localized and the active system will be picked, 
+the settings of the environment system (KS-DFT). Afterward the orbitals will be localized and the active system will be picked,
 then the active system will be optimized (using HF), while embedded within the environment orbitals \textit{via} projection based embedding.
 Finally, the altered active system energy will be corrected using RI-MP2. Note that this example does not include a basis set truncation within
 the projection-based embedding part.
@@ -1449,7 +2670,7 @@ the projection-based embedding part.
 +system
   name waterb
   geometry waterb.xyz
-  methond dft
+  method dft
   +dft
     functional PBE
   -dft
@@ -1468,15 +2689,125 @@ the projection-based embedding part.
 -task
 
 \end{lstlisting}
-\clearpage
-\subsection{Potential Reconstruction (OEP)}
-The following example input will run a freeze-and-thaw calculation employing accurate non-additive kinetic potentials generated using 
-potential reconstruction techniques (\texttt{embeddingmode reconstruction}). It will choose what we call to Bottom-Up approach (\cite{good2010}) (as it is the Freeze and Thaw Task).
+A continuum solvation model enclosing both subsystems can be used in the same way as for
+FDE.
+
+\section{Direct Orbital Selection-based DLPNO-CCSD(T$_0$)-in-DFT Embedding via the Huzinaga Equation}
+This example performs Direct Orbital Selection (DOS)-based DLPNO-CCSD(T$_0$)-in-DFT calculations for two points
+(reactant and transiton state) along a reaction coordinate. First the active orbital space for the two systems
+is selected using the ActiveSpaceSelectionTask. Then the embedded calculations are performed in which the subsystem
+orbitals are constrained to stay orthogonal using the shifted Huzinaga equation. Finally, the local coupled cluster
+calculations are done for the active systems embedded into their respective environments.
+\begin{lstlisting}
++system
+  name Reactant
+  geometry r.xyz
+  method dft
+-system
+
++system
+  name Reactant_active
+  geometry r.xyz
+  method HF
+-system
+
++system
+  name Reactant_environment
+  geometry r.xyz
+  method dft
+-system
+
++system
+  name TransitionState
+  geometry ts.xyz
+  method dft
+-system
+
++system
+  name TransitionState_active
+  geometry ts.xyz
+  method HF
+-system
+
++system
+  name TransitionState_environment
+  geometry ts.xyz
+  method dft
+-system
+
++task ACTIVESPACETASK
+  super Reactant
+  super TransitionState
+  act Reactant_active
+  act TransitionState_active
+  env Reactant_environment
+  env TransitionState_environment
+  checkDegeneracies true
+  usePiBias true
+  alignPiOrbitals true
+-task
+
++task FDE
+  act Reactant_active
+  env Reactant_environment
+  +EMB
+    embeddingMode FERMI
+  -EMB
+-task
+
++task FDE
+  act TransitionState_active
+  env TransitionState_environment
+  +EMB
+    embeddingMode FERMI
+  -EMB
+-task
+
++task loc
+  act Reactant_active
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act Reactant_active
+  env Reactant_environment
+  level DLPNO-CCSD(T0)
+  +EMB
+    embeddingMode FERMI
+  -EMB
+  +LC
+    pnoSettings TIGHT
+  -LC
+-task
+
++task loc
+  act TransitionState_active
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act TransitionState_active
+  env TransitionState_environment
+  level DLPNO-CCSD(T0)
+  +EMB
+    embeddingMode FERMI
+  -EMB
+  +LC
+    pnoSettings TIGHT
+  -LC
+-task
+\end{lstlisting}
+
+\section{Potential Reconstruction (OEP)}
+The following example input will run a freeze-and-thaw calculation employing accurate non-additive kinetic potentials generated using
+potential reconstruction techniques (\ttt{embeddingmode reconstruction}). It will choose what we call to Bottom-Up approach (\cite{good2010}) (as it is the Freeze and Thaw Task).
 However, the Top-Down approach (\cite{fux2010}) is also available (by choosing the TDEmbedding Task). A supersystem basis is used throughout
-the freeze-and-thaw calculation (makeSuperSystemBasis true) in order to generate accurate total densities $\rho^\mathrm{tot}(\vec{r})$. During
-the Wu--Yang potential reconstruction (\cite{wu2003}), the potential will be expressed in the def2-QZVP (\cite{weig2005}) basis. A pseudo inversion of the Hessian 
-will be performed, neglecting eigenvalues lower than $|\text{max. eigenvalue}|\cdot 10^{-5}$ ( \texttt{singValThreshold 1e-5}). Furthermore, in order to generate 
-physically meaningful potentials, a constraint as proposed in Ref. (\cite{heat2007}) is employed ( \texttt{smoothFactor 1e-3}). 
+the freeze-and-thaw calculation (extendBasis true, basisExtThresh -1) in order to generate accurate total densities $\rho^\mathrm{tot}(\vec{r})$. During
+the Wu--Yang potential reconstruction (\cite{wu2003}), the potential will be expressed in the def2-QZVP (\cite{weig2005}) basis. A pseudo inversion of the Hessian
+will be performed, neglecting eigenvalues lower than $|\text{max. eigenvalue}|\cdot 10^{-5}$ ( \ttt{singValThreshold 1e-5}). Furthermore, in order to generate
+physically meaningful potentials, a constraint as proposed in Ref. (\cite{heat2007}) is employed ( \ttt{smoothFactor 1e-3}).
 \begin{lstlisting}
 +system
  name ammonia1
@@ -1506,81 +2837,81 @@ physically meaningful potentials, a constraint as proposed in Ref. (\cite{heat20
     singValThreshold 1e-5
     smoothFactor 1e-3
   -EMB
-  makeSuperSystemBasis true
+  extendBasis true
+  basisExtThresh -1
 -task
 \end{lstlisting}
 
-\clearpage
-\subsection{TDDFT}
+\section{TDDFT}
 See below a minimal example of an TDDFT LRSCF calculation:
 \begin{lstlisting}
 +system
-name water
-geometry water.xyz
-method dft
-+dft
-functional pbe0
--dft
-+basis
-label def2-SVP
--basis
+ name water
+ geometry water.xyz
+ method dft
+ +dft
+  functional pbe0
+ -dft
+ +basis
+  label def2-SVP
+ -basis
 -system
 
 +task scf
-act water
+ act water
 -task
 
 +task lrscf
-act water
-nEigen 5
+ act water
+ nEigen 5
 -task
 \end{lstlisting}
 and a TDDFT calculation with frozen environment (FDEu) and orbital relaxation w.r.t the environment:
 \begin{lstlisting}
 +system
-name watera
-geometry water_monA.xyz
-method dft
-+dft
-functional PW91
--dft
-+basis
-label def2-SVP
--basis
+ name watera
+ geometry water_monA.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
 -system
 
 +system
-name waterb
-geometry water_monB.xyz
-method dft
-+dft
-functional PW91
--dft
-+basis
-label def2-SVP
--basis
+ name waterb
+ geometry water_monB.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
 -system
 
 +task fde
-act watera
-env waterb
-naddxcfunc pw91
-naddkinfunc pw91k
+ act watera
+ env waterb
+ naddxcfunc pw91
+ naddkinfunc pw91k
 -task
 
 +task lrscf
-act watera
-env waterb
-nEigen 5
-func pbe0
-naddXCfunc pw91
-naddKinfunc pw91k
+ act watera
+ env waterb
+ nEigen 5
+ func pbe0
+ naddXCfunc pw91
+ naddKinfunc pw91k
 -task
 \end{lstlisting}
 
-\subsection{Restarting and Properties}
+\section{Restarting and Properties}
 Below you can find a small input that reads the results of a previous sDFT run, and evaluates the total energy once more.
-After that it calculates multipole moments for the subsystems, and Mulliken populations of one of the systems. 
+After that it calculates multipole moments for the subsystems, and Mulliken populations of one of the systems.
 Note that the input will not run a single SCF cycle if all of the data from the sDFT run is present.
 \begin{lstlisting}
 +system
@@ -1616,8 +2947,9 @@ Note that the input will not run a single SCF cycle if all of the data from the 
   mulliken true
 -task
 \end{lstlisting}
+
 \clearpage
-\section{Short History of Serenity Until the First Release}  
+\chapter{Short History of Serenity Until the First Release}
 
 The work on \serenity started originally as a hobby project
 by Thomas Dresselhaus (TD). The first
@@ -1638,13 +2970,13 @@ first \serenity-related projects were integrated into PhD projects
 in the Neugebauer group.\\
 \\
 With Kevin Klahr (KK, 02/2015), David Schnieders (DS, 11/2015), and Michael
-Boeckers (MB, 02/2016), three more PhD students joined the SereniTEAM and 
+Boeckers (MB, 02/2016), three more PhD students joined the SereniTEAM and
 the program developed into a multipurpose embedding code.
 The program, which received its official release name in March 2015, and
 which was moved to a Git repository on a self-hosted GitLab server in
 November 2015, reached a status that allowed to use it as a coding
-platform for Bachelor and Master thesis work in early 2016. As of 11/2017,
-10 BSc theses and 6 MSc research projects/theses have employed it as
+platform for Bachelor and Master thesis work in early 2016. By 11/2017,
+10 BSc theses and 6 MSc research projects/theses had employed it as
 a code basis.\\
 \\
 In the course of 2016, JU effectively evolved into TD's successor as the
@@ -1656,7 +2988,7 @@ testers in 2017. The release of version 1.0.0 took place in December 2017.
 
 
 \clearpage
-\section{GNU LESSER GENERAL PUBLIC LICENSE}\label{sec:lgpl}
+\chapter{GNU Lesser General Public License}\label{sec:lgpl}
 \begin{center}
 Version 3, 29 June 2007\\
 \end{center}
@@ -1788,7 +3120,7 @@ the following:
        a copy of the Library already present on the user's computer
        system, and (b) will operate properly with a modified version
        of the Library that is interface-compatible with the Linked
-       Version. 
+       Version.
        \end{enumerate}
 
    \item Provide Installation Information, but only if you would otherwise

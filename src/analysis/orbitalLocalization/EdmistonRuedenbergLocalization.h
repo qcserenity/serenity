@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,19 +23,18 @@
 
 /* Include Serenity Internal Headers */
 #include "analysis/orbitalLocalization/Localization.h"
-#include "settings/Options.h"
 /* Include Std and External Headers */
 #include <memory>
-
 
 namespace Serenity {
 
 class SystemController;
-template<Options::SCF_MODES SCFMode>class OrbitalController;
+template<Options::SCF_MODES SCFMode>
+class OrbitalController;
 
 template<Options::SCF_MODES SCFMode>
 class EdmistonRuedenbergLocalization : public Localization<SCFMode> {
-public:
+ public:
   /**
    * @brief Constructor
    * @param The system to of which the orbitals are to be localized.
@@ -44,7 +43,7 @@ public:
   /**
    * @brief Destructor
    */
-  virtual ~EdmistonRuedenbergLocalization()=default;
+  virtual ~EdmistonRuedenbergLocalization() = default;
 
   /**
    * @brief Performs Jacobi rotations to localize the molecular orbitals as described in
@@ -52,12 +51,12 @@ public:
    * @param orbitals The orbitals to be localized (They are changed in place!)
    * @param maxSweeps The maximum number of iterations, where one iteration performs a
    *        Jacobi rotation on every orbital.
+   * @param orbitalRange  The range of orbitals to be rotated in.
    */
-  virtual void localizeOrbitals(OrbitalController<SCFMode>& orbitals,
-      unsigned int maxSweeps) override final;
+  virtual void localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
+                                SpinPolarizedData<SCFMode, std::vector<unsigned int>> orbitalRange) override final;
 
-
-private:
+ private:
   std::shared_ptr<SystemController> _systemController;
 };
 

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,12 +21,12 @@
 #define ORBITALCONTROLLER_H_
 /* Include Serenity Internal Headers */
 #include "basis/BasisController.h"
+#include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "io/HDF5.h"
 #include "notification/NotifyingClass.h"
 #include "settings/Options.h"
-#include "data/SpinPolarizedData.h"
 /* Include Std and External Headers */
 #include <iostream>
 #include <memory>
@@ -38,18 +38,16 @@ class OneElectronIntegralController;
  * @class OrbitalController OrbitalController.h
  * @brief holds a completely defined set of orbitals in analytical form.
  */
-template<Options::SCF_MODES T>class OrbitalController : public NotifyingClass<OrbitalController<T> >,
-                                                        public ObjectSensitiveClass<Basis> {
-public:
+template<Options::SCF_MODES T>
+class OrbitalController : public NotifyingClass<OrbitalController<T>>, public ObjectSensitiveClass<Basis> {
+ public:
   /**
    * @param coefficientMatrix with data defined for the basis
    * @param basis             for which the orbitals in coefficientMatrix are defined.
    * @param eigenvalues       the orbital energies
    */
-  OrbitalController(
-      std::unique_ptr<CoefficientMatrix<T> > coefficients,
-      std::shared_ptr<BasisController> basisController,
-      std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd > > eigenvalues);
+  OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
+                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues);
   /**
    * @brief provides an empty set of orbitals waiting to be filled
    * @param basis for which the orbitals in coefficientMatrix are defined.
@@ -65,9 +63,7 @@ public:
    * @param filePath The HDF5 file containing the data
    * @param basisController The basisController of the running system.
    */
-  OrbitalController(std::string filePath,
-      std::shared_ptr<BasisController> basisController,
-      std::string id);
+  OrbitalController(std::string filePath, std::shared_ptr<BasisController> basisController, std::string id);
   ///@brief Move constructor
   OrbitalController(OrbitalController<T>&&) = default;
   virtual ~OrbitalController();
@@ -85,7 +81,7 @@ public:
    *                     (This can be a dummy string is diskmode is set to be off.)
    * @param id           The system id. (This can be a dummy string is diskmode is set to be off.)
    */
-  void setDiskMode(bool diskmode,std::string fBaseName, std::string id);
+  void setDiskMode(bool diskmode, std::string fBaseName, std::string id);
 
   /// @returns the coefficients determining the orbitals in connection with the basis.
   CoefficientMatrix<T> getCoefficients();
@@ -96,15 +92,15 @@ public:
    * @param updatedEigenvalues The new orbital energies.
    */
   void updateOrbitals(const CoefficientMatrix<T>& updatedCoefficients,
-                      const SpinPolarizedData<T, Eigen::VectorXd >& updatedEigenvalues);
+                      const SpinPolarizedData<T, Eigen::VectorXd>& updatedEigenvalues);
 
   /// @returns the orbital energies.
-  SpinPolarizedData<T, Eigen::VectorXd > getEigenvalues();
+  SpinPolarizedData<T, Eigen::VectorXd> getEigenvalues();
   /**
    * @returns the number of orbitals (occupied AND virtual) in this OrbitalController
    */
   unsigned int getNOrbitals() const;
-  
+
   /**
    * @brief Erases and recreates the owned molecular orbital coefficients and orbital energies.
    *
@@ -115,8 +111,7 @@ public:
    *                        (The overlap is needed to transform the Fock matrix into an orthogonal
    *                         basis.)
    */
-  void updateOrbitals(const FockMatrix<T>& fockMatrix,
-                      std::shared_ptr<OneElectronIntegralController> oneIntController);
+  void updateOrbitals(const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController);
   /**
    * @brief Erases and recreates the owned molecular orbital coefficients and orbital energies.
    *        Adds a levelshift:
@@ -155,20 +150,19 @@ public:
    *                        (The overlap is needed to transform the Fock matrix into an orthogonal
    *                         basis.)
    */
-  void updateOrbitals(const std::pair<Eigen::VectorXd,SpinPolarizedData<T, Eigen::VectorXd > > levelshift,
-                      const FockMatrix<T>& fockMatrix,
-                      std::shared_ptr<OneElectronIntegralController> oneIntController);
+  void updateOrbitals(const std::pair<Eigen::VectorXd, SpinPolarizedData<T, Eigen::VectorXd>> levelshift,
+                      const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController);
 
   ///@brief Notification
-  void notify(){
-    _X.resize(0,0);
+  void notify() {
+    _X.resize(0, 0);
     _firstIteration = true;
   }
 
   /**
    * @brief Triggers the notification.
    */
-  void externalNotifyObjects(){
+  void externalNotifyObjects() {
     this->notifyObjects();
   }
   /**
@@ -200,7 +194,7 @@ public:
    */
   void setCanOrthTh(const double& threshold) {
     _canOrthTh = threshold;
-    _X.resize(0,0);
+    _X.resize(0, 0);
   }
 
   /**
@@ -227,7 +221,7 @@ public:
    * @brief Check if orbitals are already calculated.
    * @return Returns true iff orbitals are available.
    */
-  bool orbitalsAvailable(){
+  bool orbitalsAvailable() {
     return !_firstIteration;
   }
 
@@ -236,17 +230,27 @@ public:
    * @param oneIntController The OneElectronIntegralController of the system.
    * @return The transformation matrix.
    */
-  std::shared_ptr<Eigen::MatrixXd> getTransformMatrix(
-      std::shared_ptr<OneElectronIntegralController> oneIntController){
-    if ((!_X.cols()) > 0)calculateTransformationX(oneIntController);
+  std::shared_ptr<Eigen::MatrixXd> getTransformMatrix(std::shared_ptr<OneElectronIntegralController> oneIntController) {
+    if (!(_X.cols() > 0))
+      calculateTransformationX(oneIntController);
     assert(_X.cols() > 0);
     return std::make_shared<Eigen::MatrixXd>(_X);
   }
+  /**
+   * @brief Getter for the inverse transformation matrix to the canonical
+   *        basis.
+   */
+  std::shared_ptr<Eigen::MatrixXd> getTransformMatrixInverse(std::shared_ptr<OneElectronIntegralController> oneIntController) {
+    if (!(_Xinv.cols() > 0))
+      calculateTransformationX(oneIntController);
+    assert(_X.cols() > 0);
+    return std::make_shared<Eigen::MatrixXd>(_Xinv);
+  }
 
-private:
-  std::unique_ptr<CoefficientMatrix<T> > _coefficients;
+ private:
+  std::unique_ptr<CoefficientMatrix<T>> _coefficients;
   const std::shared_ptr<BasisController> _basisController;
-  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd > > _eigenvalues;
+  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> _eigenvalues;
   double _canOrthTh;
   std::shared_ptr<OneElectronIntegralController> _oneIntController;
   bool _firstIteration = true;
@@ -256,7 +260,7 @@ private:
   unsigned int _nZero;
   bool _keepInMemory = true;
   bool _fIsInOthoBasis = false;
-  std::unique_ptr<MatrixInBasis<T> > _customS = nullptr;
+  std::unique_ptr<MatrixInBasis<T>> _customS = nullptr;
   std::string _fBaseName;
   std::string _id;
   void calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController);

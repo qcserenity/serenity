@@ -1,19 +1,19 @@
 /**
  * @file Derivatives_test.cpp
- * 
+ *
  * @date August 28, 2015
  * @author Thomas Dresselhaus
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,23 +23,22 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-
 namespace Serenity {
 
 class DerivativesTest : public ::testing::Test {
-protected:
-  DerivativesTest() :
-      tGradDouble{-1.0, 2.4, 0.1},
+ protected:
+  DerivativesTest()
+    : tGradDouble{-1.0, 2.4, 0.1},
       tHessDouble{1.2, 3.4, -4.0, 0.2, 0.5, 0.7},
-      tGradIntVec{ {1,2}, {-1,-1}, {5,7} },
-      tHessIntVec{ {3,1}, {-1,2}, {-3,-5}, {-7,1}, {5,2}, {-7,0} } {
+      tGradIntVec{{1, 2}, {-1, -1}, {5, 7}},
+      tHessIntVec{{3, 1}, {-1, 2}, {-3, -5}, {-7, 1}, {5, 2}, {-7, 0}} {
   }
   virtual ~DerivativesTest() = default;
   // The objects under test
   Gradient<double> tGradDouble;
   Hessian<double> tHessDouble;
-  Gradient<std::vector<int> > tGradIntVec;
-  Hessian<std::vector<int> > tHessIntVec;
+  Gradient<std::vector<int>> tGradIntVec;
+  Hessian<std::vector<int>> tHessIntVec;
 };
 /**
  * @test
@@ -79,11 +78,13 @@ TEST_F(DerivativesTest, Access) {
  * @brief Tests Derivatives.h: Loop over elements with range-based for-loops
  */
 TEST_F(DerivativesTest, RangeBasedForLoops) {
-  for (auto& component : tGradDouble) component *= 2.0;
+  for (auto& component : tGradDouble)
+    component *= 2.0;
   EXPECT_EQ(tGradDouble.x, -2.0);
   EXPECT_EQ(tGradDouble.y, 4.8);
   EXPECT_EQ(tGradDouble.z, 0.2);
-  for (auto& component : tHessDouble) component *= 2.0;
+  for (auto& component : tHessDouble)
+    component *= 2.0;
   EXPECT_EQ(tHessDouble.xx, 2.4);
   EXPECT_EQ(tHessDouble.xy, 6.8);
   EXPECT_EQ(tHessDouble.xz, -8.0);
@@ -122,8 +123,8 @@ TEST_F(DerivativesTest, RangeBasedForLoops) {
  * @brief Tests Derivatives.h: Copy and move construct
  */
 TEST_F(DerivativesTest, CopyAndMoveConstruct) {
-  Gradient<std::vector<int> > gradCopy(tGradIntVec);
-  Hessian<std::vector<int> > hessCopy(tHessIntVec);
+  Gradient<std::vector<int>> gradCopy(tGradIntVec);
+  Hessian<std::vector<int>> hessCopy(tHessIntVec);
   EXPECT_EQ(gradCopy.x[0], 1);
   EXPECT_EQ(gradCopy.x[1], 2);
   EXPECT_EQ(gradCopy.y[0], -1);
@@ -143,25 +144,25 @@ TEST_F(DerivativesTest, CopyAndMoveConstruct) {
   EXPECT_EQ(hessCopy.zz[0], -7);
   EXPECT_EQ(hessCopy.zz[1], 0);
   // Move
-  Gradient<std::unique_ptr<double> > gradPtr;
+  Gradient<std::unique_ptr<double>> gradPtr;
   gradPtr.x.reset(new double(5));
   gradPtr.y.reset(new double(4));
   gradPtr.z.reset(new double(1));
-  Gradient<std::unique_ptr<double> > gradMove(std::move(gradPtr));
+  Gradient<std::unique_ptr<double>> gradMove(std::move(gradPtr));
   EXPECT_EQ(*gradMove.x, 5);
   EXPECT_EQ(*gradMove.y, 4);
   EXPECT_EQ(*gradMove.z, 1);
   EXPECT_EQ(gradPtr.x, nullptr);
   EXPECT_EQ(gradPtr.y, nullptr);
   EXPECT_EQ(gradPtr.z, nullptr);
-  Hessian<std::unique_ptr<double> > hessPtr;
+  Hessian<std::unique_ptr<double>> hessPtr;
   hessPtr.xx.reset(new double(1));
   hessPtr.xy.reset(new double(-2.3));
   hessPtr.xz.reset(new double(1.3));
   hessPtr.yy.reset(new double(1.4));
   hessPtr.yz.reset(new double(1.5));
   hessPtr.zz.reset(new double(1.6));
-  Hessian<std::unique_ptr<double> > hessMove(std::move(hessPtr));
+  Hessian<std::unique_ptr<double>> hessMove(std::move(hessPtr));
   EXPECT_EQ(*hessMove.xx, 1);
   EXPECT_EQ(*hessMove.xy, -2.3);
   EXPECT_EQ(*hessMove.xz, 1.3);

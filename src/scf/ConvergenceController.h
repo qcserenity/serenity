@@ -6,34 +6,36 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef CONVERGENCECONTROLLER_H
-#define	CONVERGENCECONTROLLER_H
+#define CONVERGENCECONTROLLER_H
 /* Include Serenity Internal Headers */
+#include "data/OrbitalController.h"
+#include "data/SpinPolarizedData.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/Options.h"
 #include "settings/Settings.h"
-#include "data/SpinPolarizedData.h"
-#include "data/OrbitalController.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES T>class Damper;
-template<Options::SCF_MODES T>class DensityMatrixController;
+template<Options::SCF_MODES SCFMode>
+class Damper;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
 class DIIS;
 class ADIIS;
 class EnergyComponentController;
@@ -45,11 +47,11 @@ class OneElectronIntegralController;
  *
  * On the one hand convergence is accelerated/ensured by this class and on the other hand it checks
  * whether convergence has been reached. F\*P\*S - S\*P\*F is used as the DIIS error vector.
- * 
+ *
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ConvergenceController {
-public:
+ public:
   /**
    * @param fockMatrix          The Fock matrix (potential matrix) used in convergence acceleration
    *                            and error measurement
@@ -61,37 +63,32 @@ public:
    * @param electronicEnergy    Needed for convergence check.
    * @param deltaEConvThreshold Convergence threshold for the (absolute) energy difference.
    */
-  ConvergenceController(
-      const Settings& settings,
-      std::shared_ptr< DensityMatrixController<T> > densityMatrix,
-      std::shared_ptr<OrbitalController<T> > orbitalController,
-      std::shared_ptr<OneElectronIntegralController> oneIntController,
-      std::shared_ptr<EnergyComponentController> energyComponentController);
+  ConvergenceController(const Settings& settings, std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrix,
+                        std::shared_ptr<OrbitalController<SCFMode>> orbitalController,
+                        std::shared_ptr<OneElectronIntegralController> oneIntController,
+                        std::shared_ptr<EnergyComponentController> energyComponentController);
   virtual ~ConvergenceController() = default;
   /**
    * @brief Getter for levelshift information.
-   * @return Returns all the information needed for the levelshift in the orbital updater (energy and number of occupied orbitals).
+   * @return Returns all the information needed for the levelshift in the orbital updater (energy and number of occupied
+   * orbitals).
    */
-  std::pair<Eigen::VectorXd,SpinPolarizedData<T, Eigen::VectorXd > > getLevelshift();
+  std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> getLevelshift();
   /**
    * Optimizes the fock matrix to produce way better orbitals in the next SCF cycle.
    * @param F The Fock matrix to be updated.
    */
-  void accelerateConvergence(FockMatrix<T>& F);
-
-  void setOrthoS(Eigen::MatrixXd& orthoS) {
-    _orthoS.reset(new Eigen::MatrixXd (orthoS));
-  }
+  void accelerateConvergence(FockMatrix<SCFMode>& F, DensityMatrix<SCFMode> D);
   /**
    * Returns true if convergence has been reached.
    */
   bool checkConvergence();
-  void reinitDIIS();
-private:
+
+ private:
   const Settings& _settings;
-  std::shared_ptr< DensityMatrixController<T> > _dmatContr;
-  std::shared_ptr<OrbitalController<T> > _orbitalController;
-  std::shared_ptr<DensityMatrix<T> > _oldP;
+  std::shared_ptr<DensityMatrixController<SCFMode>> _dmatContr;
+  std::shared_ptr<OrbitalController<SCFMode>> _orbitalController;
+  std::shared_ptr<DensityMatrix<SCFMode>> _oldP;
   const std::shared_ptr<OneElectronIntegralController> _oneIntController;
   const std::shared_ptr<EnergyComponentController> _energyComponentController;
   double _oldEnergy;
@@ -99,7 +96,7 @@ private:
   double _diisConvMeasure;
   double _rmsdOfDensity;
   std::unique_ptr<Eigen::MatrixXd> _orthoS;
-  std::shared_ptr<Damper<T> > _damping;
+  std::shared_ptr<Damper<SCFMode>> _damping;
   std::shared_ptr<DIIS> _diis;
   std::shared_ptr<ADIIS> _adiis;
   unsigned int _diisZoneStart;
@@ -112,10 +109,10 @@ private:
    * @param A possibly modified overlap matrix. This is needed for EDA calculations.
    * @return The error vector [F,P].
    */
-  SpinPolarizedData<T, Eigen::MatrixXd > calcFPSminusSPF(FockMatrix<T>& F);
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> calcFPSminusSPF(FockMatrix<SCFMode>& F);
 
   double calcRMSDofDensity();
 };
 
 } /* namespace Serenity */
-#endif	/* CONVERGENCECONTROLLER_H */
+#endif /* CONVERGENCECONTROLLER_H */

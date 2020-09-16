@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -47,13 +47,14 @@ namespace Serenity {
  * 3. Write the produceNew([Identifier... id]) method. Use ONLY the id arguments to produce the
  *    actual object.
  */
-template<class ProductT, class... Identifier>class RememberingFactory {
-public:
-  RememberingFactory()= default;
-  
+template<class ProductT, class... Identifier>
+class RememberingFactory {
+ public:
+  RememberingFactory() = default;
+
   virtual ~RememberingFactory() = default;
 
-protected:
+ protected:
   /**
    * @param id The full specification of the object to be produced.
    * @returns a freshly produced instance
@@ -96,11 +97,14 @@ protected:
        *
        * Edit: TD
        */
-      std::shared_ptr<ProductT> spt(produceNew(id...).release(),
-                                    [](ProductT* p){delete p; cleanUp();});
+      std::shared_ptr<ProductT> spt(produceNew(id...).release(), [](ProductT* p) {
+        delete p;
+        cleanUp();
+      });
       _producedInstances[idTuple] = spt;
       return spt;
-    } else if (_producedInstances[idTuple].expired()) {
+    }
+    else if (_producedInstances[idTuple].expired()) {
       /*
        * Although the code below is perfectly valid, we should never end up here, because an
        * expired entry in the map should be deleted instantly due to the construction above.
@@ -119,16 +123,19 @@ protected:
       /*
        * See above
        */
-      std::shared_ptr<ProductT> spt(produceNew(id...).release(),
-                                    [](ProductT* p){delete p; cleanUp();});
+      std::shared_ptr<ProductT> spt(produceNew(id...).release(), [](ProductT* p) {
+        delete p;
+        cleanUp();
+      });
       _producedInstances[idTuple] = spt;
       return spt;
-    } else {
+    }
+    else {
       return std::shared_ptr<ProductT>(_producedInstances[idTuple]);
     }
   }
 
-private:
+ private:
   /**
    * @brief Erase the entry from the _producedInstances map of which the product has just been destroyed.
    *
@@ -153,7 +160,8 @@ private:
         // If the check is not used (correct behaviour is assumed) we can just as well leave now.
         break;
 #endif
-      } else {
+      }
+      else {
         ++itr;
       }
     }
@@ -162,18 +170,17 @@ private:
 #endif
   }
   /**
-    * A map holding all instances produced by the RememberingFactory. The key is the Identifier
-    * template argument, because (as the name says) the equal products are identified by the
-    * equality of the identifier.
-    */
-  static std::map<std::tuple<Identifier...>, std::weak_ptr<ProductT> > _producedInstances;
+   * A map holding all instances produced by the RememberingFactory. The key is the Identifier
+   * template argument, because (as the name says) the equal products are identified by the
+   * equality of the identifier.
+   */
+  static std::map<std::tuple<Identifier...>, std::weak_ptr<ProductT>> _producedInstances;
   /** Guards the _producedInstances map */
   static std::mutex _lock;
 };
 
 template<class ProductT, class... Identifier>
-std::map<std::tuple<Identifier...>, std::weak_ptr<ProductT> >
-  RememberingFactory<ProductT, Identifier...>::_producedInstances = {};
+std::map<std::tuple<Identifier...>, std::weak_ptr<ProductT>> RememberingFactory<ProductT, Identifier...>::_producedInstances = {};
 
 template<class ProductT, class... Identifier>
 std::mutex RememberingFactory<ProductT, Identifier...>::_lock;

@@ -2,18 +2,18 @@
  * @file CCSD.h
  *
  * @date Mar 31, 2016
- * @author: Jan Unslsber
+ * @author Jan Unslsber
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -36,16 +36,14 @@ class SystemController;
  * @brief A class that calculates the CCSD energy.
  */
 class CCSD {
-public:
+ public:
   /**
    * @brief Constructor.
    * @param systemController    The system of interest.
    */
-  CCSD(std::shared_ptr<SystemController> systemController,
-		  double normThreshold,
-		  unsigned int maxCycles);
+  CCSD(std::shared_ptr<SystemController> systemController, double normThreshold, unsigned int maxCycles);
   /**
-   * @brief Defaut Destructor.
+   * @brief Default Destructor.
    */
   virtual ~CCSD() = default;
 
@@ -53,9 +51,9 @@ public:
    * @brief Converges the CCSD amplitudes and returns the energies.
    * @return A pair containing the MP2 and the CCSD energy corrections (in that order).
    */
-  std::pair<double,double> calculateElectronicEnergyCorrections();
+  std::pair<double, double> calculateElectronicEnergyCorrections();
 
-private:
+ private:
   /**
    * @brief Handles AO->MO transformation and storage.
    * TODO: this could be more efficient also not all of the MO integrals
@@ -64,7 +62,9 @@ private:
   void prepERIS();
 
   /**
-   * @brief Initializes singles and double aplitudes.
+   * @brief Initializes singles and double amplitudes.
+   *        Single amplitudes are set to zero and double amplitudes are initialized
+   *        with the MP2 amplitudes.
    */
   void initializeAmplitudes();
 
@@ -85,25 +85,25 @@ private:
    */
   double calculateCCSDEnergyCorrection();
 
-protected:
-  std::unique_ptr<RegularRankFourTensor<double> > _eris;
+ protected:
+  std::unique_ptr<RegularRankFourTensor<double>> _eris;
   /// @brief Singles Amplitudes
-  std::unique_ptr<Matrix<double> > _t1;
+  std::unique_ptr<Matrix<double>> _t1;
   /// @brief Doubles Amplitudes
-  std::unique_ptr<Matrix<Matrix<double> > > _t2;
+  std::unique_ptr<Matrix<Matrix<double>>> _t2;
 
   std::shared_ptr<SystemController> _systemController;
   bool _converged;
 
-private:
+ private:
   double _MP2EnergyCorrection;
 
-  std::unique_ptr<Matrix<double> > _foo;
-  std::unique_ptr<Matrix<double> > _fov;
-  std::unique_ptr<Matrix<double> > _fvv;
+  std::unique_ptr<Matrix<double>> _foo;
+  std::unique_ptr<Matrix<double>> _fov;
+  std::unique_ptr<Matrix<double>> _fvv;
   double _normThreshold;
   unsigned int _maxCycles;
-  //DIIS _diis(6,);
+  // DIIS _diis(6,);
 };
 
 } /* namespace Serenity */

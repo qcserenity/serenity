@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,34 +23,38 @@
 
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Tools/IterativeSolver.h"
-#include "settings/Options.h"
+#include "settings/LRSCFOptions.h"
 
 namespace Serenity {
-  /**
-   * @class EigenvalueSolver
-   * @brief A class for the iterative solution of the response problem.\n
-   * 
-   * This class includes solution techniques for Hermitian and symplectic eigenvalue\n
-   * problems, as required by (Hybrid-) TDDFT.\n
-   * 
-   * For Hermitian problems, the standard Davidson-Liu algorithm will be used and for\n
-   * symplectic problems a modified OJJ-Algorithm as proposed by Filip Furche in his\n
-   * PhD thesis.\n
-   * (F. Furche, Göttingen 2002. Fak. f. Chemie, Diss. v. 1.2.2002., PhD thesis, 2002.)\n
-   * 
-   * Note that the Hermitian solver utilizes non-orthonormal guess spaces for\n
-   * convergence acceleration. (J. Chem. Theory Comput. 2016 12 (7), 3003-3007)
-   */
-  class EigenvalueSolver : public IterativeSolver {
 
-  public:
+namespace Options {
+enum class RESPONSE_PROBLEM;
+}
+
+/**
+ * @class EigenvalueSolver
+ * @brief A class for the iterative solution of the response eigenvalue problem.\n
+ *
+ * This class includes solution techniques for Hermitian and symplectic eigenvalue\n
+ * problems, as required by (Hybrid-) TDDFT.\n
+ *
+ * For Hermitian problems, the standard Davidson-Liu algorithm will be used and for\n
+ * symplectic problems a modified OJJ-Algorithm as proposed by Filip Furche in his\n
+ * PhD thesis.\n
+ * (F. Furche, Göttingen 2002. Fak. f. Chemie, Diss. v. 1.2.2002., PhD thesis, 2002.)\n
+ *
+ * Note that the Hermitian solver utilizes non-orthonormal guess spaces for\n
+ * convergence acceleration. (J. Chem. Theory Comput. 2016 12 (7), 3003-3007)
+ */
+class EigenvalueSolver : public IterativeSolver {
+ public:
   /**
    * @brief Constructor.
    * @param printResponseMatrix Prints the subspace matrix (only useful in the first iteration).
    * @param nDimension Dimension of the TDDFT problem.
    * @param nEigen Number of the lowest eigenvalues to be obtained.
    * @param diagonal Orbital-energy difference of the TDDFT problem.
-   * @param convergenceCriterion If the norm of a residual vector of a root falls beneath this 
+   * @param convergenceCriterion If the norm of a residual vector of a root falls beneath this
    *        threshold, the root will be considered converged.
    * @param maxIterations If not converged after this number of iterations, abort.
    * @param maxSubspaceDimension Will perform a subspace collapse if the number of guess vectors
@@ -63,32 +67,24 @@ namespace Serenity {
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
    * @param initialGuess The initial guess space might also be passed to the eigenvalue solver.
    */
-  EigenvalueSolver(
-    bool printResponseMatrix,
-    unsigned nDimension,
-    unsigned nEigen,
-    Eigen::VectorXd& diagonal,
-    double convergenceCriterion,
-    unsigned maxIterations,
-    unsigned maxSubspaceDimension,
-    unsigned initialSubspace,
-    Options::RESPONSE_PROBLEM responseType,
-    std::function<std::unique_ptr<std::vector<Eigen::MatrixXd> >(
-      std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-    std::shared_ptr<std::vector<Eigen::MatrixXd> > initialGuess);
+  EigenvalueSolver(bool printResponseMatrix, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal,
+                   double convergenceCriterion, unsigned maxIterations, unsigned maxSubspaceDimension,
+                   unsigned initialSubspace, Options::RESPONSE_PROBLEM responseType,
+                   std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
+                   std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess);
 
   /**
    * @brief Default destructor
    */
   virtual ~EigenvalueSolver() = default;
 
-  private:
+ private:
   /**
    * @brief Initializes the eigenvalue solver by printing some info, getting the needed
    *        matrices right, calculating the seed and the corresponding sigma vectors.
    */
   void initialize() override final;
-  
+
   /**
    * @brief Performs one iteration of the eigenvalue solver.
    */
@@ -99,7 +95,7 @@ namespace Serenity {
    *        and/or normlizes the eigenvectors. Prints the converged eigenvalues in au.
    */
   void postProcessing();
-  
+
   ///@brief Bool to invoke the printing of the subspace matrix.
   bool _printResponseMatrix;
 
@@ -109,7 +105,7 @@ namespace Serenity {
   ///@brief Response type of the TDDFT problem (TDA, TDDFT or RPA).
   Options::RESPONSE_PROBLEM _responseType;
 
-  }; /* class EigenvalueSolver */
+}; /* class EigenvalueSolver */
 } /* namespace Serenity */
 
 #endif /* LRSCF_EIGENVALUESOLVER */

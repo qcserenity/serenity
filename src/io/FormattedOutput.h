@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,7 +24,6 @@
 /* Include Std and External Headers */
 #include <sstream>
 #include <string>
-
 
 namespace Serenity {
 /**
@@ -104,90 +103,90 @@ std::string center(std::string s);
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(std::string lhs, int rhs){
+inline std::string operator+(std::string lhs, int rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << rhs;
-  return lhs+convert.str();
+  return lhs + convert.str();
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(int lhs, std::string rhs){
+inline std::string operator+(int lhs, std::string rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << lhs;
-  return convert.str()+rhs;
+  return convert.str() + rhs;
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(std::string lhs, unsigned int rhs){
+inline std::string operator+(std::string lhs, unsigned int rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << rhs;
-  return lhs+convert.str();
+  return lhs + convert.str();
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(unsigned int lhs, std::string rhs){
+inline std::string operator+(unsigned int lhs, std::string rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << lhs;
-  return convert.str()+rhs;
+  return convert.str() + rhs;
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(std::string lhs, long unsigned int rhs){
+inline std::string operator+(std::string lhs, long unsigned int rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << rhs;
-  return lhs+convert.str();
+  return lhs + convert.str();
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(long unsigned int lhs, std::string rhs){
+inline std::string operator+(long unsigned int lhs, std::string rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << lhs;
-  return convert.str()+rhs;
+  return convert.str() + rhs;
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(std::string lhs, double rhs){
+inline std::string operator+(std::string lhs, double rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << rhs;
-  return lhs+convert.str();
+  return lhs + convert.str();
 }
 
 /**
  * @param lhs, rhs are added
  * @returns a string consisting of lhs and rhs
  */
-inline std::string operator+(double lhs, std::string rhs){
+inline std::string operator+(double lhs, std::string rhs) {
   std::ostringstream convert;
   convert.precision(NUMBER_IN_STRINGSTREAM_PRECISION);
   convert << lhs;
-  return convert.str()+rhs;
+  return convert.str() + rhs;
 }
 
-} /* namespace std */
+} // namespace Serenity
 
 #endif /* FORMATTEDOUTPUT_H_ */

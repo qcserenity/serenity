@@ -19,14 +19,14 @@
 
 ## Synopsis
 Serenity is a quantum chemistry code originally
-developed in the workgroup of Johannes Neugebauer
+developed in the group of Johannes Neugebauer
 at the WWU Münster.       
 Serenity has a strong focus on quantum chemical subsystem/embedding methods.
 
 ## License and Copyright Info
 
 Serenity is free software: you can redistribute it and/or modify
-it under the terms of the LGNU Lesser General Public License as published by
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
@@ -35,13 +35,13 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the LGNU Lesser General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ## Download 
 
-In order to download the source files of the 
-latest Serenity release please visit:  
+In order to download the source files of the latest Serenity release please
+visit:  
 https://github.com/qcserenity/serenity
 
 ## Install
@@ -49,30 +49,29 @@ https://github.com/qcserenity/serenity
 Please read the following instructions carefully.
 
 ### Prerequisites
-The code has been tested and compiled with GCC/G++ (Versions 7.X and 8.X)
-and ICC/ICPC (Versions 17.X) compilation with other compilers and complier versions might still
-be possible though.
+The code has been tested and compiled with GCC/G++ (Versions 7 and newer)
+and ICC/ICPC (Versions 17.X) compilation with other compilers and compiler versions
+could still be possible.
 
-The compilation of the code is supported on Linux systems, and should also be possible on MacOS.
-However, the latter will only be fully supporten in future releases.
+The compilation of the code is supported and tested on Linux systems.
+The compilation on MacOS should also be possible.
 
 The following programs/libraries must be available on your system:
- - CMake (Version >= 3.9)
+ - CMake (Version >= 3.12)
  - Boost (for package managers: including boost-devel)
  - OpenMP
- - Eigen3 
+ - Eigen3
  - HDF5 (Version >= 1.10.1; including header files and cmake files)
  - A recent GMP version, including C++ support (for libint2)
  - The standard GNU toolchain (make, tar, autoconf, libtool)  
- 
-The following libraries may be preinstalled and will otherwise be automatically 
-downloaded and installed locally:
- - xcfun (The Serenity verison is forked to: https://github.com/moritzBens/xcfun.git)  
- - libecpint (The Serenity version is forked to: https://github.com/moritzBens/libecpint.git)  
-The following libraries will be downloaded and installed locally regardless of their earlier
-presence:
+
+The following libraries will be automatically downloaded and installed together
+with serenity:  
+ - libint2 (Version 2.2.0-beta3, pre-configured and hosted at: https://thclab.uni-muenster.de/serenity/libint)
+ - libecpint (The Serenity version is forked to: https://github.com/qcserenity/libecpint)  
+ - libxc (v5.0.0 from https://gitlab.com/libxc/libxc)
+ - xcfun (The Serenity verison is forked to: https://github.com/qcserenity/xcfun)  
  - GTest (Google Test and Google Mock)
- - libint2 (Version 2.2.0-beta3, pre-configured and hosted at: https://thclab.uni-muenster.de/serenity/ext-libint)
 
 The following libraries are optional and needed for additional features:
  - Intel MKL (for SMP parallel Eigen3 eigenvalue solvers)
@@ -116,9 +115,9 @@ option can be used:
 The wrapper is shipped in form of a shared library (serenipy.so).
 In order for Python to find this package the library folder has to be present 
 in the `PYTHONPATH` environment variable and the Serenity library has to be 
-present in a path searchd by the system for shared libraries.
-The latter is done when sourceing the `serenith.sh` script, the former requires 
-to uncomment one line in this file.
+present in a path searched by the system for shared libraries.
+The latter is done when sourcing the `serenity.sh` script, the former requires 
+to un-comment one line in this file.
 Afterwards the interface should importable as follows:
 > python  
 > import serenipy as spy  
@@ -172,23 +171,18 @@ The BibTeX code would thus be:
 > year = {2018}  
 >}  
   
-In order to allow others to reproduce your data please also reference the Verison of Serenity used like this:  
-  
-Serenity Version: 1.2.2, https://github.com/qcserenity/serenity (2019)  
-  
-or as BibTeX code:  
->@misc{serenity_version,  
->  title = {Serenity},  
->  notes = {Serenity Version: 1.2.2, \url{{https://github.com/qcserenity/serenity}}},  
->  year  = {2019}  
->  }  
+In order to allow others to reproduce your data and to give credit to all recent developers,
+please also reference the version of Serenity used by citing the correct code reference
+generated on Zenodo. The following DOI will always link to the newest version of the code:
+
+[10.5281/zenodo.4017420](https://doi.org/10.5281/zenodo.4017420)
+
+For specific versions, please use the appropriate DOI.  
 
 ## Contact
 
 ### Bugs and Feature Requests
-For both bugs and feature requests please use the issue tracker.
-For specific parts of the code feel free to tag the one or more of the 
-developers that contributed to it (as seen in the doxygen header).
+For both bugs and feature requests please use the issue tracker on [GitHub](https://github.com/qcserenity/serenity).
 
 ### Other
 For other question, requests or simply to give some feedback feel free to send an e-mail

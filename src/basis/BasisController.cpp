@@ -1,31 +1,30 @@
 /**
  * @file   BasisController.cpp
  * @author Thomas Dresselhaus <t.dresselhaus at wwu.de>
- * 
+ *
  * @date   30. Juli 2015, 17:19
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
+
 /* Include Class Header*/
 #include "basis/BasisController.h"
-/* Include Serenity Internal Headers */
-#include "parameters/Constants.h"
-#include "integrals/wrappers/Libint.h"
-#include "basis/Shell.h"
-/* Include Std and External Headers */
-#include <cassert>
 
+/* Include Serenity Internal Headers */
+#include "integrals/wrappers/Libint.h"
+
+/* Include Std and External Headers */
 
 namespace Serenity {
 
@@ -86,59 +85,69 @@ void BasisController::produceBasis() {
   postConstruction();
 }
 
-void BasisController::calculateRIPrescreeningFactors(){
-  _RIPrescreeningFactors = std::make_shared<std::vector<ShellPairData> >();
+void BasisController::calculateRIPrescreeningFactors() {
+  _RIPrescreeningFactors = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb,0,2);
+  libint.initialize(libint2::Operator::coulomb, 0, 2);
   Eigen::MatrixXd integrals;
-  const unsigned int nShells =  (*_basis).size();
-      for (unsigned int i=0;i<nShells;++i){
-        const auto& shellI =  *(*_basis)[i];
-          // calculate integrals
-          if (libint.compute(libint2::Operator::coulomb,0,shellI,shellI,integrals)){
-            (*_RIPrescreeningFactors).push_back(ShellPairData(i, i,sqrt(integrals.maxCoeff())));
-          } /* if (prescreen) */
-      } /* i/shellI */
-      // finalize libint
-      libint.finalize(libint2::Operator::coulomb,0,2);
-      // sort the list
-//      std::sort((*_RIPrescreeningFactors).begin(), (*_RIPrescreeningFactors).end());
-//      std::reverse((*_RIPrescreeningFactors).begin(),(*_RIPrescreeningFactors).end());
-
+  const unsigned int nShells = (*_basis).size();
+  for (unsigned int i = 0; i < nShells; ++i) {
+    const auto& shellI = *(*_basis)[i];
+    // calculate integrals
+    if (libint.compute(libint2::Operator::coulomb, 0, shellI, shellI, integrals)) {
+      (*_RIPrescreeningFactors).push_back(ShellPairData(i, i, sqrt(integrals.maxCoeff())));
+    } /* if (prescreen) */
+  }   /* i/shellI */
+  // finalize libint
+  libint.finalize(libint2::Operator::coulomb, 0, 2);
 }
 
-void BasisController::createShellPairData(){
-  _shellPairList = std::make_shared<std::vector<ShellPairData> >();
+void BasisController::createShellPairData() {
+  unsigned nShells = (*_basis).size();
+  _schwartzParams = Eigen::MatrixXd::Zero(nShells, nShells);
+  _shellPairList = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb,0,4);
+  libint.initialize(libint2::Operator::coulomb, 0, 4);
   // loops over shells
   Eigen::MatrixXd integrals;
-  const unsigned int nShells =  (*_basis).size();
-      for (unsigned int i=0;i<nShells;++i){
-        const auto& shellI =  *(*_basis)[i];
-        for (unsigned int j=0;j<=i;++j){
-          const auto& shellJ = *(*_basis)[j];
-          // calculate integrals
-          if (libint.compute(libint2::Operator::coulomb,0,shellI,shellJ,shellI,shellJ,integrals)){
-            (*_shellPairList).push_back(ShellPairData(i, j,sqrt(integrals.maxCoeff())));
-          } /* if (prescreen) */
-        } /* j/shellJ */
-      } /* i/shellI */
+  for (unsigned int i = 0; i < nShells; ++i) {
+    const auto& shellI = *(*_basis)[i];
+    for (unsigned int j = 0; j <= i; ++j) {
+      const auto& shellJ = *(*_basis)[j];
+      // calculate integrals
+      if (libint.compute(libint2::Operator::coulomb, 0, shellI, shellJ, shellI, shellJ, integrals)) {
+        double schwartz = std::sqrt(integrals.maxCoeff());
+        (*_shellPairList).push_back(ShellPairData(i, j, schwartz));
+        _schwartzParams(i, j) = schwartz;
+        _schwartzParams(j, i) = schwartz;
+      } /* if (prescreen) */
+    }   /* j/shellJ */
+  }     /* i/shellI */
   // finalize libint
-  libint.finalize(libint2::Operator::coulomb,0,4);
+  libint.finalize(libint2::Operator::coulomb, 0, 4);
   // sort the list
   std::sort((*_shellPairList).begin(), (*_shellPairList).end());
-  std::reverse((*_shellPairList).begin(),(*_shellPairList).end());
+  std::reverse((*_shellPairList).begin(), (*_shellPairList).end());
+}
 
-  // delete everything that is definitely too small in its contribution
-//  for(unsigned int i=0;i<(*_shellPairList).size();++i){
-//    if (((*_shellPairList)[0].factor*(*_shellPairList)[i].factor)<1E-10){
-//      (*_shellPairList).erase((*_shellPairList).begin()+i,(*_shellPairList).end());
-//      break;
-//    }
-//  }
+const SparseMap& BasisController::getFunctionToShellMap() {
+  if (!_functionToShellMap) {
+    std::vector<Eigen::Triplet<int>> triplets;
+    unsigned int rowCounter = 0;
+    for (unsigned int iShell = 0; iShell < _basis->size(); ++iShell) {
+      const auto& shell = (*_basis)[iShell];
+      const unsigned int nCont = shell->getNContracted();
+      for (unsigned int i = 0; i < nCont; ++i) {
+        triplets.push_back(Eigen::Triplet<int>(rowCounter, iShell));
+        ++rowCounter;
+      } // for i
+    }   // for iShell
+    _functionToShellMap = std::make_shared<SparseMap>(getNBasisFunctions(), _basis->size());
+    _functionToShellMap->setFromTriplets(triplets.begin(), triplets.end());
+  } // if !_functionToShellMap
+  return *_functionToShellMap;
 }
 
 } /* namespace Serenity */

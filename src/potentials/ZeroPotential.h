@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,9 +23,8 @@
 
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
-#include "settings/Options.h"
 #include "potentials/Potential.h"
-
+#include "settings/Options.h"
 
 namespace Serenity {
 /**
@@ -33,16 +32,14 @@ namespace Serenity {
  *
  * @brief A potential dummy, with a potential of zero everywhere
  */
-template <Options::SCF_MODES SCFMode>
-class ZeroPotential : public Potential<SCFMode>{
-public:
+template<Options::SCF_MODES SCFMode>
+class ZeroPotential : public Potential<SCFMode> {
+ public:
   /**
    * @brief Constructor
    * @param basis The basis this potential is defined in.
    */
-  ZeroPotential(std::shared_ptr<BasisController> basis):
-    Potential<SCFMode>(basis){
-  };
+  ZeroPotential(std::shared_ptr<BasisController> basis) : Potential<SCFMode>(basis){};
   /// @brief Default destructor.
   virtual ~ZeroPotential() = default;
   /**
@@ -50,10 +47,10 @@ public:
    *
    * @return Returns a potential that is zero.
    */
-  FockMatrix<SCFMode>& getMatrix() override final{
+  FockMatrix<SCFMode>& getMatrix() override final {
     _potential.reset(new FockMatrix<SCFMode>(this->_basis));
     auto& pot = *_potential;
-    for_spin(pot){
+    for_spin(pot) {
       pot_spin.setZero();
     };
     return *_potential;
@@ -64,13 +61,13 @@ public:
    *
    * @return The geometry gradient contribution resulting from this Potential.
    */
-Eigen::MatrixXd getGeomGradients() override final{
-  auto bascont = std::dynamic_pointer_cast<AtomCenteredBasisController>(this->_basis);
-  auto natoms = bascont->getBasisIndices().size();
-  Eigen::MatrixXd gradientContr(natoms,3);
-  gradientContr.setZero();
-  return gradientContr;
-}
+  Eigen::MatrixXd getGeomGradients() override final {
+    auto bascont = std::dynamic_pointer_cast<AtomCenteredBasisController>(this->_basis);
+    auto natoms = bascont->getBasisIndices().size();
+    Eigen::MatrixXd gradientContr(natoms, 3);
+    gradientContr.setZero();
+    return gradientContr;
+  }
 
   /**
    * @brief Getter for the energy associated with this potential.
@@ -79,13 +76,13 @@ Eigen::MatrixXd getGeomGradients() override final{
    */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-  virtual double getEnergy(const DensityMatrix<SCFMode>& P) override final{
+  virtual double getEnergy(const DensityMatrix<SCFMode>& P) override final {
     return 0.0;
   }
 #pragma GCC diagnostic pop
-private:
+ private:
   ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
 };
 
 } /* namespace Serenity */

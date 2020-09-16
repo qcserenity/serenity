@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 
-
 namespace Serenity {
 /* Forward Declarations */
 class Geometry;
@@ -34,7 +33,7 @@ class AtomCenteredBasisFactory;
 /**
  * @class AtomCenteredBasisController AtomCenteredBasisController.h
  * @brief In most cases atom-centered basis functions are used. This controller manages such a Basis.
- * 
+ *
  * If basis functions are centered on a certain atom, they are typically associated with that atom.
  * This information is e.g. used in a Mulliken population analysis, or when calculating gradients
  * (with respect to the atomic coordinates).
@@ -42,13 +41,13 @@ class AtomCenteredBasisFactory;
 class AtomCenteredBasisController : public BasisController {
   friend class BasisController__TEST_SUPPLY;
 
-  struct BasisLoadingData{
+  struct BasisLoadingData {
     std::string label;
     Eigen::VectorXi shells;
     bool ecp;
   };
 
-public:
+ public:
   /**
    * @param geometry with its atoms the basis functions will be associated
    * @param basisLibrary          Path to the basis set library (folder)
@@ -57,14 +56,9 @@ public:
    * @param makePrimary           This switch will set the basis as the primary one in each atom.
    * @param firstECP              Nuclear charge threshold at which ECPs are used if available.
    */
-  AtomCenteredBasisController(
-          std::shared_ptr<const Geometry> geometry,
-          const std::string basisLibrary,
-          bool makeSphericalBasis,
-          bool makePrimary,
-          const std::string basisLabel = "",
-          int firstECP = 37,
-          std::vector<Eigen::VectorXi> importantShells = {});
+  AtomCenteredBasisController(std::shared_ptr<const Geometry> geometry, const std::string basisLibrary,
+                              bool makeSphericalBasis, bool makePrimary, const std::string basisLabel = "",
+                              int firstECP = 37, std::vector<Eigen::VectorXi> importantShells = {});
   virtual ~AtomCenteredBasisController() = default;
   /**
    *  @returns the vector of index pairs determining which basis functions belong to an atom. Don't
@@ -78,8 +72,9 @@ public:
    *           for (unsigned int mu=indices[atomIndex].first; mu<indices[atomIndex].second; ++mu)
    *  @see Basis
    */
-  inline const std::vector<std::pair<unsigned int, unsigned int> >& getBasisIndices() {
-    if (!_basis) produceBasis();
+  inline const std::vector<std::pair<unsigned int, unsigned int>>& getBasisIndices() {
+    if (!_basis)
+      produceBasis();
     return _basisIndicesOfAtom;
   }
   /**
@@ -88,8 +83,9 @@ public:
    *           indices by 1 instead of 3). In all other respects this is the same as getBasisIndices().
    *  @see Basis
    */
-  inline const std::vector<std::pair<unsigned int, unsigned int> >& getBasisIndicesRed() {
-    if (!_basis) produceBasis();
+  inline const std::vector<std::pair<unsigned int, unsigned int>>& getBasisIndicesRed() {
+    if (!_basis)
+      produceBasis();
     return _basisIndicesRedOfAtom;
   }
   /**
@@ -124,10 +120,10 @@ public:
     return _basisLoadingData;
   }
 
-private:
+ private:
   std::unique_ptr<Basis> produceBasisFunctionVector() override final;
   void postConstruction() override final;
-  
+
   std::shared_ptr<const Geometry> _geometry;
   const std::string _basisLibrary;
   const std::string _basisLabel;
@@ -135,15 +131,16 @@ private:
   bool _makePrimary;
   std::vector<BasisLoadingData> _basisLoadingData;
   int _firstECP;
-  
-  std::vector<std::pair<unsigned int, unsigned int> > _basisIndicesOfAtom;
-  std::vector<std::pair<unsigned int, unsigned int> > _basisIndicesRedOfAtom;
+
+  std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesOfAtom;
+  std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesRedOfAtom;
 
   /*
    * This private constructor is for testing purposes only
    */
-  AtomCenteredBasisController() : BasisController("TestBasis") {}
+  AtomCenteredBasisController() : BasisController("TestBasis") {
+  }
 };
 
 } /* namespace Serenity */
-#endif  /* ATOMCENTEREDBASISCONTROLLER_H */
+#endif /* ATOMCENTEREDBASISCONTROLLER_H */

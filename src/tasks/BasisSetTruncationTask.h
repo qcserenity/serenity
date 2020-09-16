@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,6 +22,7 @@
 #define TASKS_BASISSETTRUNCATIONTASK_H_
 
 /* Include Serenity Internal Headers */
+#include "settings/MiscOptions.h"
 #include "settings/Reflection.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
@@ -34,29 +35,26 @@ using namespace Serenity::Reflection;
 class SystemController;
 class Atom;
 class Geometry;
-template<Options::SCF_MODES T> class ElectronicStructure;
+template<Options::SCF_MODES T>
+class ElectronicStructure;
 
-struct BasisSetTruncationTaskSettings{
-  BasisSetTruncationTaskSettings():
-    truncAlgorithm(Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION),
-    netThreshold(1.0e-4),
-    truncationFactor(0.0)
-  {}
-  REFLECTABLE(
-      (Options::BASIS_SET_TRUNCATION_ALGORITHMS) truncAlgorithm,
-      (double) netThreshold,
-      (double) truncationFactor
-      )
+struct BasisSetTruncationTaskSettings {
+  BasisSetTruncationTaskSettings()
+    : truncAlgorithm(Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION), netThreshold(1.0e-4), truncationFactor(0.0) {
+  }
+  REFLECTABLE((Options::BASIS_SET_TRUNCATION_ALGORITHMS)truncAlgorithm, (double)netThreshold, (double)truncationFactor)
 };
 
 /**
  * @class BasisSetTruncationTask BasisSetTruncationTask.h
  * @brief Performs a truncation of the basis set of the given system. Only basis functions centered on dummy atoms
- *        are truncated. All others are considered to be the core basis of the system.
+ *        are truncated. All others are considered to be the core basis of the system. Note that this task can
+ *        manipulate the geometry of the given system such that no dummy atoms without any basis functions survive.
+ *        This effectively truncates any associated fitting basis.
  */
 template<Options::SCF_MODES SCFMode>
 class BasisSetTruncationTask : public Task {
-public:
+ public:
   /**
    * @brief Constructor.
    * @param system The system controller.
@@ -65,7 +63,7 @@ public:
   /**
    * @brief Default destructor.
    */
-  virtual ~BasisSetTruncationTask()=default;
+  virtual ~BasisSetTruncationTask() = default;
   /**
    * @brief Default run method.
    */
@@ -77,7 +75,8 @@ public:
    * -- truncationFactor          The factor for the primitive net-population truncation.
    */
   BasisSetTruncationTaskSettings settings;
-private:
+
+ private:
   /// @brief The system controller.
   std::shared_ptr<SystemController> _system;
 };

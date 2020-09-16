@@ -6,30 +6,32 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 #ifndef INITIALGUESSCALCULATOR_H_
 #define INITIALGUESSCALCULATOR_H_
 /* Include Serenity Internal Headers */
-#include "settings/Options.h"
 #include "data/SpinPolarizedData.h"
-#include "system/SystemController.h"
+#include "settings/Options.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES T>class OrbitalController;
-template<Options::SCF_MODES T>class ElectronicStructure;
+class SystemController;
+template<Options::SCF_MODES T>
+class OrbitalController;
+template<Options::SCF_MODES T>
+class ElectronicStructure;
 
 /**
  * @class InitialGuessCalculator InitialGuessCalculator.h
@@ -42,12 +44,12 @@ template<Options::SCF_MODES T>class ElectronicStructure;
  * starting point is needed. Classes that implement this interface provide orbitals in
  * some way which are a hopefully good starting point for the SCF procedure.
  */
-template <Options::SCF_MODES T>
+template<Options::SCF_MODES T>
 class InitialGuessCalculator;
 
-template <>
+template<>
 class InitialGuessCalculator<Options::SCF_MODES::RESTRICTED> {
-public:
+ public:
   InitialGuessCalculator() = default;
   virtual ~InitialGuessCalculator() = default;
   /**
@@ -55,13 +57,13 @@ public:
    * @returns A set of starting orbitals suited for a subsequent electronic structure calculation.
    *          The basis set is already specified together with the system.
    */
-  virtual std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED> > calculateInitialGuess(
-      std::shared_ptr<SystemController> systemController) = 0;
+  virtual std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
+  calculateInitialGuess(std::shared_ptr<SystemController> systemController) = 0;
 };
 
-template <>
+template<>
 class InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED> {
-public:
+ public:
   InitialGuessCalculator() = default;
   virtual ~InitialGuessCalculator() = default;
   /**
@@ -69,13 +71,13 @@ public:
    * @returns a set of starting orbitals suited for a subsequent electronic structure calculation.
    *          The basis set is already specified together with the system.
    */
-  virtual std::unique_ptr<ElectronicStructure<Options::SCF_MODES::UNRESTRICTED> > calculateInitialGuess(
-      std::shared_ptr<SystemController> systemController) = 0;
+  virtual std::unique_ptr<ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>>
+  calculateInitialGuess(std::shared_ptr<SystemController> systemController) = 0;
 
-protected:
+ protected:
   /**
    * @brief Introduces an asymetry between the alpha and beta orbitals.
-   * 
+   *
    * In unrestricted calculations one can quickly end up with the same result as in a restricted
    * calculation in case the number of alpha and beta electrons is the same. If the alpha and beta
    * starting orbitals are the same, this is (assuming no symmetry breaking due to numerical
@@ -83,38 +85,35 @@ protected:
    * potential. This scramble routine induces a breaking of the symmetry to try and avoid these
    * problems.
    */
-  void scrambleOrbitals(
-      OrbitalController<Options::SCF_MODES::UNRESTRICTED>& orbitals,
-      SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, unsigned int> nElectrons);
+  void scrambleOrbitals(OrbitalController<Options::SCF_MODES::UNRESTRICTED>& orbitals,
+                        SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, unsigned int> nElectrons);
 };
 
 /**
  * @class UnrestrictedFromRestrictedGuess InitialGuessCalculator.h
  * @brief Wraps a restricted guess to provide unrestricted guess orbitals using scrambling.
  */
-class UnrestrictedFromRestrictedGuess :
-    public InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED> {
-public:
+class UnrestrictedFromRestrictedGuess : public InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED> {
+ public:
   /**
    * @brief Constructor.
    * @param restrictedGuessCalculator The restricted InitialGuessCalculator.
    */
-  UnrestrictedFromRestrictedGuess(
-        std::shared_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED> >
-            restrictedGuessCalculator) :
-      _restrictedGuessCalculator(restrictedGuessCalculator) {
+  UnrestrictedFromRestrictedGuess(std::shared_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED>> restrictedGuessCalculator)
+    : _restrictedGuessCalculator(restrictedGuessCalculator) {
   }
   virtual ~UnrestrictedFromRestrictedGuess() = default;
-  
+
   /**
    * @brief Calculates the unrestricted initial guess from the restricted one using scrambling.
    * @param systemController The system controller.
    * @return The unrestricted initial electronic structure.
    */
-  std::unique_ptr<ElectronicStructure<Options::SCF_MODES::UNRESTRICTED> > calculateInitialGuess(
-      std::shared_ptr<SystemController> systemController) override final;
-private:
-  std::shared_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED> > _restrictedGuessCalculator;
+  std::unique_ptr<ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>>
+  calculateInitialGuess(std::shared_ptr<SystemController> systemController) override final;
+
+ private:
+  std::shared_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED>> _restrictedGuessCalculator;
 };
 
 } /* namespace Serenity */

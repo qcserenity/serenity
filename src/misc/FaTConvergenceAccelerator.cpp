@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -26,92 +26,87 @@
 #include "grid/GridControllerFactory.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "math/diis/DIIS.h"
-#include "misc/Timing.h"
 #include "memory/MemoryManager.h"
-#include "potentials/BUReconstructionPotential.h"
 #include "misc/SystemSplittingTools.h"
+#include "misc/Timing.h"
+#include "potentials/BUReconstructionPotential.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-FaTConvergenceAccelerator<SCFMode>::FaTConvergenceAccelerator(
-    unsigned int maxStore,
-    double conditionNumberThreshold,
-    const FreezeAndThawTaskSettings& settings,
-    std::vector<std::shared_ptr<SystemController> > activeSystems,
-    std::vector<std::shared_ptr<SystemController> > environmentSystems):
-    _activeSystems(activeSystems),
-    _environmentSystems(environmentSystems),
-    _settings(settings){
+FaTConvergenceAccelerator<SCFMode>::FaTConvergenceAccelerator(unsigned int maxStore, const FreezeAndThawTaskSettings& settings,
+                                                              std::vector<std::shared_ptr<SystemController>> activeSystems,
+                                                              std::vector<std::shared_ptr<SystemController>> environmentSystems)
+  : _activeSystems(activeSystems), _environmentSystems(environmentSystems), _settings(settings) {
   // initialize the error vector, diis and density vector
   // calculate cache limit for the vector controller with a buffer of 2 GB
   auto memoManger = MemoryManager::getInstance();
   long long availableMemory =
-      (memoManger->getAvailableSystemMemory()>2e+9)?memoManger->getAvailableSystemMemory()-2e+9 : 0;
-  double cacheLimit = (double) availableMemory/((double)maxStore+3.0);
+      (memoManger->getAvailableSystemMemory() > 2e+9) ? memoManger->getAvailableSystemMemory() - 2e+9 : 0;
+  double cacheLimit = (double)availableMemory / ((double)maxStore + 3.0);
   unsigned int vectorLength = 0;
   for (unsigned int i = 0; i < _activeSystems.size(); ++i) {
     unsigned int nBasisFunctionsI = _activeSystems[i]->getBasisController()->getNBasisFunctions();
-    vectorLength += nBasisFunctionsI*nBasisFunctionsI;
+    vectorLength += nBasisFunctionsI * nBasisFunctionsI;
   }
-  _densityVector = std::make_shared<VectorOnDiskStorageController>(cacheLimit,"Density.h5");
-  _fpsMinusSPF = std::make_shared<VectorOnDiskStorageController>(cacheLimit,"Error.h5");
-  _diis = std::make_shared<DIIS>(maxStore, conditionNumberThreshold, false, true);
+  _densityVector = std::make_shared<VectorOnDiskStorageController>(cacheLimit, "Density.h5");
+  _fpsMinusSPF = std::make_shared<VectorOnDiskStorageController>(cacheLimit, "Error.h5");
+  _diis = std::make_shared<DIIS>(maxStore, true);
 }
 template<Options::SCF_MODES SCFMode>
-void FaTConvergenceAccelerator<SCFMode>::accelerateConvergence(double energy) {
+void FaTConvergenceAccelerator<SCFMode>::accelerateConvergence() {
   takeTime("Freeze and Thaw DIIS");
   _cycle++;
   // map the density matrices to a vector
   for (auto& sys : _activeSystems) {
     unsigned int nBasisFunctions = sys->getBasisController()->getNBasisFunctions();
     DensityMatrix<SCFMode> p = sys->getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
-    unsigned int vectorSizeFactor = (SCFMode == Options::SCF_MODES::RESTRICTED)? 1 : 2;
-    auto newVectorSegment = std::make_shared<Eigen::VectorXd> (vectorSizeFactor*nBasisFunctions*nBasisFunctions);
+    unsigned int vectorSizeFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 1 : 2;
+    auto newVectorSegment = std::make_shared<Eigen::VectorXd>(vectorSizeFactor * nBasisFunctions * nBasisFunctions);
     unsigned int lastSegmentIndex = 0;
     for_spin(p) {
-      newVectorSegment->block(lastSegmentIndex,0,nBasisFunctions*nBasisFunctions,1)
-                      = Eigen::Map<Eigen::VectorXd>(p_spin.data(),nBasisFunctions*nBasisFunctions);
-      lastSegmentIndex += nBasisFunctions*nBasisFunctions;
+      newVectorSegment->block(lastSegmentIndex, 0, nBasisFunctions * nBasisFunctions, 1) =
+          Eigen::Map<Eigen::VectorXd>(p_spin.data(), nBasisFunctions * nBasisFunctions);
+      lastSegmentIndex += nBasisFunctions * nBasisFunctions;
     };
-    _densityVector->storeVectorSegment(newVectorSegment,sys->getSettings().name);
+    _densityVector->storeVectorSegment(newVectorSegment, sys->getSystemName());
   }
   // Calculate RMSD of the density
   double rmsd = calcRMSDofDensity();
 
   // Start DIIS if the RMSD is below a given threshold.
   // Else damp.
-  std::cout << "-------------------------------------"<<std::endl;
+  std::cout << "-------------------------------------" << std::endl;
   std::cout << "Density RMSD (all systems): " << rmsd << std::endl;
-  if (rmsd < _settings.diisStart && rmsd > _settings.diisEnd ) {
+  if (rmsd < _settings.diisStart && rmsd > _settings.diisEnd) {
     // Calculate error measure.
     calcFPSminusSPF();
     std::cout << "+++ performing DIIS step +++" << std::endl;
-    std::cout << "-------------------------------------"<<std::endl;
+    std::cout << "-------------------------------------" << std::endl;
     // perform DIIS step
-    _diis->optimize(energy, *_densityVector, *_fpsMinusSPF);
+    _diis->optimize(*_densityVector, *_fpsMinusSPF);
 
     // Set the optimized density in the system controller
     for (auto& sys : _activeSystems) {
       DensityMatrix<SCFMode> optDensity(sys->getBasisController());
       unsigned int nBasisFunctions = sys->getBasisController()->getNBasisFunctions();
-      auto optVectorSegmentD = _densityVector->getVectorSegment(sys->getSettings().name);
+      auto optVectorSegmentD = _densityVector->getVectorSegment(sys->getSystemName());
       unsigned int lastSegmentIndex = 0;
       for_spin(optDensity) {
         optDensity_spin = Eigen::Map<Eigen::MatrixXd>(
-            optVectorSegmentD->block(lastSegmentIndex,0,nBasisFunctions*nBasisFunctions,1).data(),
-            nBasisFunctions,nBasisFunctions);
-        lastSegmentIndex+=nBasisFunctions*nBasisFunctions;
+            optVectorSegmentD->block(lastSegmentIndex, 0, nBasisFunctions * nBasisFunctions, 1).data(), nBasisFunctions,
+            nBasisFunctions);
+        lastSegmentIndex += nBasisFunctions * nBasisFunctions;
       };
       sys->getElectronicStructure<SCFMode>()->getDensityMatrixController()->setDensityMatrix(optDensity);
 
     } /* for sys */
-  } /* rmsd < _diisStartError */
+  }   /* rmsd < _diisStartError */
   else {
-    std::cout << "-------------------------------------"<<std::endl;
+    std::cout << "-------------------------------------" << std::endl;
   }
-  timeTaken(3,"Freeze and Thaw DIIS");
+  timeTaken(3, "Freeze and Thaw DIIS");
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -128,19 +123,19 @@ void FaTConvergenceAccelerator<SCFMode>::calcFPSminusSPF() {
     auto s = _activeSystems[i]->getOneElectronIntegralController()->getOverlapIntegrals();
     unsigned int nBasisFunctions = _activeSystems[i]->getBasisController()->getNBasisFunctions();
 
-    unsigned int vectorSizeFactor = (SCFMode == Options::SCF_MODES::RESTRICTED)? 1 : 2;
-    auto newVectorSegmentFPS_SPF = std::make_shared<Eigen::VectorXd>(vectorSizeFactor*nBasisFunctions*nBasisFunctions);
-    auto newVectorSegmentF = std::make_shared<Eigen::VectorXd>(vectorSizeFactor*nBasisFunctions*nBasisFunctions);
+    unsigned int vectorSizeFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 1 : 2;
+    auto newVectorSegmentFPS_SPF = std::make_shared<Eigen::VectorXd>(vectorSizeFactor * nBasisFunctions * nBasisFunctions);
+    auto newVectorSegmentF = std::make_shared<Eigen::VectorXd>(vectorSizeFactor * nBasisFunctions * nBasisFunctions);
     unsigned int lastSegmentIndex = 0;
-    for_spin(f,p) {
+    for_spin(f, p) {
       FockMatrix<Options::SCF_MODES::RESTRICTED> fps_spf(_activeSystems[i]->getBasisController());
       fps_spf = f_spin * p_spin * s - s * p_spin * f_spin;
-      newVectorSegmentFPS_SPF->block(lastSegmentIndex,0,s.rows()*s.cols(),1)
-                             = Eigen::Map<Eigen::VectorXd>(fps_spf.data(),s.rows()*s.cols());
+      newVectorSegmentFPS_SPF->block(lastSegmentIndex, 0, s.rows() * s.cols(), 1) =
+          Eigen::Map<Eigen::VectorXd>(fps_spf.data(), s.rows() * s.cols());
       // Save the fock matrix
-      lastSegmentIndex += s.rows()*s.cols();
+      lastSegmentIndex += s.rows() * s.cols();
     };
-    _fpsMinusSPF->storeVectorSegment(newVectorSegmentFPS_SPF,_activeSystems[i]->getSettings().name);
+    _fpsMinusSPF->storeVectorSegment(newVectorSegmentFPS_SPF, _activeSystems[i]->getSystemName());
   }
 }
 template<Options::SCF_MODES SCFMode>
@@ -152,33 +147,32 @@ double FaTConvergenceAccelerator<SCFMode>::calcRMSDofDensity() {
     double sumOfSquares = 0.0;
     // Loop over systems
     for (const auto& sys : _activeSystems) {
-      std::string label = sys->getSettings().name;
-      auto differenceSegment =
-          *_densityVector->getVectorSegment(label)
-          -*_oldDensityVector->getVectorSegment(label);
+      std::string label = sys->getSystemName();
+      auto differenceSegment = *_densityVector->getVectorSegment(label) - *_oldDensityVector->getVectorSegment(label);
       double tmp = differenceSegment.cwiseProduct(differenceSegment).sum();
       sumOfSquares += tmp;
     }
-    rmsd = std::sqrt(sumOfSquares/_densityVector->size());
+    rmsd = std::sqrt(sumOfSquares / _densityVector->size());
     // Set new "old" density vector.
     _oldDensityVector = nullptr;
-    _oldDensityVector.reset(new VectorOnDiskStorageController (*_densityVector,"OldDensity.h5"));
-  } else {
+    _oldDensityVector.reset(new VectorOnDiskStorageController(*_densityVector, "OldDensity.h5"));
+  }
+  else {
     rmsd = std::numeric_limits<double>::infinity();
-    _oldDensityVector = std::make_shared<VectorOnDiskStorageController> (*_densityVector,"OldDensity.h5");
+    _oldDensityVector = std::make_shared<VectorOnDiskStorageController>(*_densityVector, "OldDensity.h5");
   }
   return rmsd;
 }
 
 template<Options::SCF_MODES SCFMode>
-FockMatrix<SCFMode> FaTConvergenceAccelerator<SCFMode>::calcEmbeddedFockMatrix(
-    unsigned int activeSystemIndex) {
+FockMatrix<SCFMode> FaTConvergenceAccelerator<SCFMode>::calcEmbeddedFockMatrix(unsigned int activeSystemIndex) {
   // list of environment systems for this active system.
-  std::vector<std::shared_ptr<SystemController> > envSystems;
+  std::vector<std::shared_ptr<SystemController>> envSystems;
   for (unsigned int i = 0; i < _activeSystems.size(); ++i) {
-    if (i != activeSystemIndex) envSystems.push_back(_activeSystems[i]);
+    if (i != activeSystemIndex)
+      envSystems.push_back(_activeSystems[i]);
   }
-  for (unsigned int i = 0 ; i < _environmentSystems.size(); ++i) {
+  for (unsigned int i = 0; i < _environmentSystems.size(); ++i) {
     envSystems.push_back(_environmentSystems[i]);
   }
   // list of environment density matrices (their controllers)
@@ -187,15 +181,11 @@ FockMatrix<SCFMode> FaTConvergenceAccelerator<SCFMode>::calcEmbeddedFockMatrix(
   auto grid = activeSystem->getGridController();
 
   auto fdePot = FDEPotentialBundleFactory<SCFMode>::produce(
-      activeSystem,
-      activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-      envSystems,
-      envDensities,
-      std::make_shared<EmbeddingSettings>(_settings.embedding),
-      grid);
+      activeSystem, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(), envSystems,
+      envDensities, std::make_shared<EmbeddingSettings>(_settings.embedding), grid);
 
   return fdePot->getFockMatrix(activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
-      std::make_shared<EnergyComponentController>());
+                               std::make_shared<EnergyComponentController>());
 }
 
 template class FaTConvergenceAccelerator<Options::SCF_MODES::RESTRICTED>;

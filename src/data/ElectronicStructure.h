@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,26 +22,21 @@
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
-#include "energies/EnergyComponentController.h"
 #include "data/matrices/FockMatrix.h"
-#include "potentials/NAddFuncPotential.h"
+#include "energies/EnergyComponentController.h"
 #include "integrals/OneIntControllerFactory.h"
+#include "potentials/NAddFuncPotential.h"
 #include "settings/Options.h"
 #include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <memory>
 
-
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES SCFMode>class OrbitalController;
+template<Options::SCF_MODES SCFMode>
+class OrbitalController;
 
-
-enum class ES_STATE {INITIAL=1,
-                     GUESS=2,
-                     CONVERGED=3,
-                     FAILED=4,
-                     OTHER=5};
+enum class ES_STATE { INITIAL = 1, GUESS = 2, CONVERGED = 3, FAILED = 4, OTHER = 5 };
 
 /**
  * @class ElectronicStructure ElectronicStructure.h
@@ -58,34 +53,30 @@ enum class ES_STATE {INITIAL=1,
  * and again the basis is present.
  *
  */
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure {
-public:
-
+ public:
   /* ===============================
    *   Constructors and Destructor
    * =============================== */
 
   ElectronicStructure(std::shared_ptr<OneElectronIntegralController> oneEIntController,
-      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
+                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
 
-  ElectronicStructure( std::shared_ptr<BasisController> basisController,
-      std::shared_ptr<const Geometry> geometry,
-      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
+  ElectronicStructure(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry,
+                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
 
-  ElectronicStructure( std::shared_ptr<OrbitalController<SCFMode> > molecularOrbitals,
-      std::shared_ptr<OneElectronIntegralController> oneEIntController,
-      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
+  ElectronicStructure(std::shared_ptr<OrbitalController<SCFMode>> molecularOrbitals,
+                      std::shared_ptr<OneElectronIntegralController> oneEIntController,
+                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
 
   /**
    * @brief Constructor from HDF5 file.
    * @param fBaseName The basename of the HDF5 files.
    * @param basisController The BasisController of the current System.
    */
-  ElectronicStructure(std::string fBaseName,
-         std::shared_ptr<BasisController> basis,
-         std::shared_ptr<const Geometry> geometry,
-         std::string id);
+  ElectronicStructure(std::string fBaseName, std::shared_ptr<BasisController> basis,
+                      std::shared_ptr<const Geometry> geometry, std::string id);
 
   /// @brief Default destructor.
   virtual ~ElectronicStructure() = default;
@@ -99,23 +90,23 @@ public:
     return std::move(_densityMatrixController->getDensityMatrix());
   }
   /// @returns the densityMatrixController
-  const std::shared_ptr<DensityMatrixController<SCFMode> > getDensityMatrixController() const {
+  const std::shared_ptr<DensityMatrixController<SCFMode>> getDensityMatrixController() const {
     return _densityMatrixController;
   }
   /// @returns the orbitals
-  inline std::shared_ptr< OrbitalController<SCFMode> > getMolecularOrbitals() const {
+  inline std::shared_ptr<OrbitalController<SCFMode>> getMolecularOrbitals() const {
     return _molecularOrbitals;
   }
 
   /// @returns the orbitals
-  inline void setMolecularOrbitals(std::shared_ptr< OrbitalController<SCFMode> > newOrbitals){
-    _molecularOrbitals=newOrbitals;
-    _densityMatrixController->attachOrbitals(_molecularOrbitals,_densityMatrixController->getOccupations());
+  inline void setMolecularOrbitals(std::shared_ptr<OrbitalController<SCFMode>> newOrbitals) {
+    _molecularOrbitals = newOrbitals;
+    _densityMatrixController->attachOrbitals(_molecularOrbitals, _densityMatrixController->getOccupations());
   }
 
-//  inline void setDensityMatrixController(std::shared_ptr<DensityMatrixController<SCFMode> > newDensMatCont) {
-//	  _densityMatrixController = newDensMatCont;
-//  }
+  //  inline void setDensityMatrixController(std::shared_ptr<DensityMatrixController<SCFMode> > newDensMatCont) {
+  //	  _densityMatrixController = newDensMatCont;
+  //  }
 
   /* ===============================
    *             Energies
@@ -138,16 +129,14 @@ public:
     return _energyComponentController;
   }
 
-
-
   /// @returns The non-additive kinetic potential (used for top-down potential reconstruction apporoach)
-  inline std::shared_ptr<NAddFuncPotential<SCFMode>> getNaddKinPotential() const{
+  inline std::shared_ptr<NAddFuncPotential<SCFMode>> getNaddKinPotential() const {
     return _naddKinPotential;
   }
 
   /// @brief Sets the non-additive kinetic potential (used for top-down potential reconstruction apporoach)
-  inline void setNaddKinPotential(std::shared_ptr<NAddFuncPotential<SCFMode>> naddKinPotential){
-    _naddKinPotential=naddKinPotential;
+  inline void setNaddKinPotential(std::shared_ptr<NAddFuncPotential<SCFMode>> naddKinPotential) {
+    _naddKinPotential = naddKinPotential;
   }
 
   /* ==============================
@@ -158,12 +147,12 @@ public:
    * @brief Attaches a set of potentials to the electronic structure.
    * @param potentialBundle The set of potentials this electronic structure was generated with.
    */
-  inline void attachPotentials(std::shared_ptr<PotentialBundle<SCFMode> > potentialBundle){
+  inline void attachPotentials(std::shared_ptr<PotentialBundle<SCFMode>> potentialBundle) {
     this->_potentials = potentialBundle;
   }
   ///@return Returns true if potentials are available.
-  inline bool potentialsAvailable(){
-    return (bool) _potentials;
+  inline bool potentialsAvailable() {
+    return (bool)_potentials;
   }
   /**
    * @brief Getter for the potentials used to generate this electronic structure.
@@ -174,7 +163,7 @@ public:
    *
    * @return Returns the potentials used to generate the FockMatrix.
    */
-  inline std::shared_ptr<PotentialBundle<SCFMode> > getPotentialBundle(){
+  inline std::shared_ptr<PotentialBundle<SCFMode>> getPotentialBundle() {
     assert(_potentials && "No potentials available in the electronic structure.");
     return _potentials;
   }
@@ -225,16 +214,25 @@ public:
    * @param fBaseName The basename of the HDF5 files.
    */
   void toHDF5(std::string fBaseName, std::string id);
+  /**
+   * @brief Getter for the number of occupied orbitals.
+   * @return The number of occupied orbitals.
+   */
+  const SpinPolarizedData<SCFMode, unsigned int>& getNOccupiedOrbitals() {
+    return _nOccupiedOrbitals;
+  }
 
   ES_STATE state;
-private:
+
+ private:
   bool _diskmode;
   std::shared_ptr<OneElectronIntegralController> _oneEIntController;
-  std::shared_ptr<OrbitalController<SCFMode> > _molecularOrbitals;
-  std::shared_ptr<DensityMatrixController<SCFMode> > _densityMatrixController;
+  SpinPolarizedData<SCFMode, unsigned int> _nOccupiedOrbitals;
+  std::shared_ptr<OrbitalController<SCFMode>> _molecularOrbitals;
+  std::shared_ptr<DensityMatrixController<SCFMode>> _densityMatrixController;
   std::shared_ptr<EnergyComponentController> _energyComponentController;
-  std::shared_ptr<PotentialBundle<SCFMode> > _potentials;
-  std::shared_ptr<NAddFuncPotential<SCFMode> > _naddKinPotential;
+  std::shared_ptr<PotentialBundle<SCFMode>> _potentials;
+  std::shared_ptr<NAddFuncPotential<SCFMode>> _naddKinPotential;
   std::string _fBaseName = "";
   std::string _id = "";
 };

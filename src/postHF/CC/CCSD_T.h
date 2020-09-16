@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -24,28 +24,25 @@
 /* Include Serenity Internal Headers */
 #include "postHF/CC/CCSD.h"
 
-
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
-template<class T> class Matrix;
+template<class T>
+class Matrix;
 /**
- * @class CCSD)T CCSD_T.h
- * @brief ACCSD class with and additional function for the triples approximation.
+ * @class CCSD_T CCSD_T.h
+ * @brief A class that can calculate the CCSD energy with an additional function for the triples correction.
  */
 class CCSD_T : public CCSD {
-public:
+ public:
   /**
    * @brief Constructor.
    * @param systemController    The system of interest.
    */
-  CCSD_T(  std::shared_ptr<SystemController> systemController,
-		  double normThreshold,
-		  unsigned int maxCycles):
-    CCSD( systemController, normThreshold, maxCycles){
-  };
+  CCSD_T(std::shared_ptr<SystemController> systemController, double normThreshold, unsigned int maxCycles)
+    : CCSD(systemController, normThreshold, maxCycles){};
   /**
-   * @brief Defaut Destructor.
+   * @brief Default Destructor.
    */
   virtual ~CCSD_T() = default;
 
@@ -55,10 +52,9 @@ public:
    */
   double calculateTripplesCorrection();
 
-private:
-  void p6(Matrix<Matrix<Matrix<double> > >& mat);
-  void r6(Matrix<Matrix<Matrix<double> > >& mat);
-
+ private:
+  void p6(Matrix<Matrix<Matrix<double>>>& mat);
+  void r6(Matrix<Matrix<Matrix<double>>>& mat);
 };
 
 } /* namespace Serenity */

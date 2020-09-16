@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,7 +21,6 @@
 #include "math/IntegerMaths.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
-
 
 namespace Serenity {
 /**
@@ -45,21 +44,20 @@ TEST(IntegerMathTest, Factorial_Positive) {
  * @test
  * @brief Tests double_factorial.
  */
-TEST(IntegerMathTest, DoubleFactorial){
+TEST(IntegerMathTest, DoubleFactorial) {
   EXPECT_EQ((unsigned int)1, double_factorial(1));
   EXPECT_EQ((unsigned int)1, double_factorial(0));
   EXPECT_EQ((unsigned int)2, double_factorial(2));
   EXPECT_EQ((unsigned int)3, double_factorial(3));
   EXPECT_EQ((unsigned int)8, double_factorial(4));
-  EXPECT_EQ((unsigned int)15,double_factorial(5));
-  EXPECT_EQ((unsigned int)945,double_factorial(9));
-
+  EXPECT_EQ((unsigned int)15, double_factorial(5));
+  EXPECT_EQ((unsigned int)945, double_factorial(9));
 }
 /**
  * @test
  * @brief Tests isEven.
  */
-TEST(IntegerMathTest, IsEven){
+TEST(IntegerMathTest, IsEven) {
   EXPECT_FALSE(isEven(1));
   EXPECT_TRUE(isEven(2));
   EXPECT_FALSE(isEven(901));

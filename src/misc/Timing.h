@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -23,7 +23,6 @@
 #include <ctime>
 #include <map>
 #include <string>
-
 
 namespace Serenity {
 
@@ -56,7 +55,7 @@ void printTime(long int time, std::string label);
  * @brief Class to store and accumulate timing over the course of a run.
  */
 class Timings {
-public:
+ public:
   /**
    * @brief Starts a new timer
    * @param label A label which will be used in the output and also for identification of the timer.
@@ -80,9 +79,10 @@ public:
    * @brief Clears all stored timings.
    */
   static void clearTimes();
-private:
-  static std::map<std::string,timespec> _timings;
-  static std::map<std::string,timespec> _tmpTimings;
+
+ private:
+  static std::map<std::string, timespec> _timings;
+  static std::map<std::string, timespec> _tmpTimings;
 };
 
 } /* namespace Serenity */

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -32,22 +32,21 @@ namespace Serenity {
 /**
  * @brief Possible modes for an Optimizer, meaning minimization or maximization
  */
-enum class OptimizationMode {MINIMIZE,MAXIMIZE};
+enum class OptimizationMode { MINIMIZE, MAXIMIZE };
 
 /**
  * @class Optimizer Optimizer.h
  * @brief Base class for all optimization algorithms
  */
 class Optimizer {
-public:
+ public:
   /**
    * @brief Constructor
    * @param mode The mode of the optimization e.g. maximization, default: minimization
    */
-  Optimizer(Eigen::VectorXd& parameters, OptimizationMode mode = OptimizationMode::MINIMIZE):
-    _parameters(parameters),
-	  _mode(mode),
-      _allowModeSwitches(true){}
+  Optimizer(Eigen::VectorXd& parameters, OptimizationMode mode = OptimizationMode::MINIMIZE)
+    : _parameters(parameters), _mode(mode), _allowModeSwitches(true) {
+  }
   /**
    * @brief Default destructor.
    */
@@ -74,7 +73,9 @@ public:
    * opt.optimize(updateFunction);
    * @endcode
    */
-  virtual void optimize(std::function<bool(const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>updateFunction) = 0;
+  virtual void optimize(std::function<bool(const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
+                                           std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
+                            updateFunction) = 0;
 
   /**
    * @brief Sets the mode of the optimization.
@@ -84,14 +85,14 @@ public:
    * or disable it with the _allowModeSwitches boolean. This can be done inside the constructor
    * or (better) inside the optimize routine.
    */
-  void setOptimizationMode(OptimizationMode mode){
-	assert(_allowModeSwitches);
-      _mode = mode;
+  void setOptimizationMode(OptimizationMode mode) {
+    assert(_allowModeSwitches);
+    _mode = mode;
   };
 
   virtual void reinit(){};
 
-protected:
+ protected:
   Eigen::VectorXd& _parameters;
   OptimizationMode _mode;
   bool _allowModeSwitches;

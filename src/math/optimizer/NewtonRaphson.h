@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,11 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "math/optimizer/Optimizer.h"
 
-
 namespace Serenity {
-/* Forward declarations */
-class Lapack;
-template<class T>class Matrix;
 /**
  * @class NewtonRaphson NewtonRaphson
  * @brief Derived Optimizer class for the Newton-Raphson algorithm.
@@ -40,30 +36,28 @@ template<class T>class Matrix;
  *
  */
 class NewtonRaphson : public Optimizer {
-public:
-  NewtonRaphson(Eigen::VectorXd& parameters, double threshold=0.0);
-  virtual ~NewtonRaphson() = default;
+ public:
+  /**
+   * @brief Constructor
+   *
+   * @param parameters The parameters to be optimized.
+   * @param threshold The threshold for the singular value decomposition.
+   */
+  NewtonRaphson(Eigen::VectorXd& parameters, double threshold = 0.0);
 
   /**
    * @brief See documentation of base class Optimizer.
    */
-  void optimize(std::function<bool(
-      const Eigen::VectorXd&,
-      double&,
-      Eigen::VectorXd&,
-      std::shared_ptr<Eigen::MatrixXd> hessian,
-      bool print)>updateFunction) override final;
-
+  void optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
+                    updateFunction) override final;
   /**
-   * @brief Set the threshold for the minimal eigenvalue before a pseudoinversion is performed
-   * @param threshold The threshold for the eigenvalues befor a pseudoinversion is performed
+   * @brief Minimize a simple function f(x).
+   * @param updateFunction The function f(x).
    */
+  void minimize2D(std::function<bool(const Eigen::VectorXd&, double&, double&, double& hessian, bool print)> updateFunction);
 
-  void setThreshold(double threshold){
-    _threshold=threshold;
-  }
-
-private:
+ private:
+  // Threshold for the singular value decomposition
   double _threshold;
 };
 

@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -34,17 +34,18 @@ namespace Serenity {
  * @class HFPotentials HFPotentials.h
  * @brief A class containing all the potentials relevant for a HF-SCF.
  */
-template <Options::SCF_MODES SCFMode>
-class HFPotentials : public PotentialBundle<SCFMode>{
-public:
+template<Options::SCF_MODES SCFMode>
+class HFPotentials : public PotentialBundle<SCFMode> {
+ public:
   /**
    * @brief Constructor
    * @param hcore  The one electron potential.
    * @param g      The two electron potential.
+   * @param pcm    The implicit solvent model.
+   * @param geom   The geometry.
    */
-  HFPotentials(std::shared_ptr<Potential<SCFMode> > hcore,
-               std::shared_ptr<Potential<SCFMode> > g,
-               std::shared_ptr<const Geometry> geom);
+  HFPotentials(std::shared_ptr<Potential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> g,
+               std::shared_ptr<Potential<SCFMode>> pcm, std::shared_ptr<const Geometry> geom);
   /// @brief Default destructor.
   virtual ~HFPotentials() = default;
 
@@ -58,21 +59,20 @@ public:
    *          together in every call)
    */
   FockMatrix<SCFMode> getFockMatrix(const DensityMatrix<SCFMode>& P,
-      std::shared_ptr<EnergyComponentController> energies) override final;
-
+                                    std::shared_ptr<EnergyComponentController> energies) override final;
 
   /**
    * @brief Returns gradients of all underlying potentials
    */
   Eigen::MatrixXd getGradients() override final;
 
-
-
-private:
+ private:
   ///@brief The one electron potential.
-  std::shared_ptr<Potential<SCFMode> > _h;
+  std::shared_ptr<Potential<SCFMode>> _h;
   ///@brief The two electron potential.
-  std::shared_ptr<Potential<SCFMode> > _g;
+  std::shared_ptr<Potential<SCFMode>> _g;
+  ///@brief The implcit solvation model.
+  std::shared_ptr<Potential<SCFMode>> _pcm;
   ///@brief The geometry
   std::shared_ptr<const Geometry> _geom;
 };

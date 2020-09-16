@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,18 +22,20 @@
 #define POTENTIALS_FUNCPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/DensityMatrixController.h"
 #include "data/grid/DensityOnGridController.h"
+#include "data/grid/GridPotential.h"
+#include "data/matrices/DensityMatrixController.h"
 #include "dft/Functional.h"
 #include "grid/GridController.h"
-#include "data/grid/GridPotential.h"
 #include "potentials/Potential.h"
 #include "system/SystemController.h"
 
 namespace Serenity {
 /*forward declarations*/
-template<Options::SCF_MODES SCFMode>class ScalarOperatorToMatrixAdder;
-template<class T>struct Gradient;
+template<Options::SCF_MODES SCFMode>
+class ScalarOperatorToMatrixAdder;
+template<class T>
+struct Gradient;
 class BasisFunctionOnGridController;
 /**
  * @class FuncPotential FuncPotential.h
@@ -43,11 +45,11 @@ class BasisFunctionOnGridController;
  * double hybrid functionals.
  *
  */
-template <Options::SCF_MODES SCFMode>
+template<Options::SCF_MODES SCFMode>
 class FuncPotential : public Potential<SCFMode>,
                       public ObjectSensitiveClass<Grid>,
-                      public ObjectSensitiveClass<DensityMatrix<SCFMode> >{
-public:
+                      public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
+ public:
   /**
    * @brief Constructor.
    * @param system The system needed for its config.
@@ -56,11 +58,8 @@ public:
    * @param grid The for the intermediate calculation on the grid.
    * @param functional The functional to be used.
    */
-  FuncPotential(
-      std::shared_ptr<SystemController> system,
-      std::shared_ptr<DensityMatrixController<SCFMode> > dMat,
-      std::shared_ptr<GridController> grid,
-      Functional functional);
+  FuncPotential(std::shared_ptr<SystemController> system, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
+                std::shared_ptr<GridController> grid, Functional functional);
   ///@brief Default destructor.
   virtual ~FuncPotential() = default;
 
@@ -105,7 +104,7 @@ public:
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final{
+  void notify() override final {
     _potential = nullptr;
   };
 
@@ -113,32 +112,32 @@ public:
    * @brief Getter.
    * @return Returns the functional.
    */
-  Functional getFunctional(){
+  Functional getFunctional() {
     return _functional;
   }
   /**
    * @brief Getter.
    * @return Returns the grid (controller).
    */
-  std::shared_ptr<GridController> getGridController(){
-      return _grid;
+  std::shared_ptr<GridController> getGridController() {
+    return _grid;
   }
 
-private:
+ private:
   ///@brief The system only needed for its config.
-  std::shared_ptr<SystemController> _system;
+  std::weak_ptr<SystemController> _system;
   ///@brief The active density and  basis this potential is defined in.
-  std::shared_ptr<DensityMatrixController<SCFMode> > _dMatController;
+  std::shared_ptr<DensityMatrixController<SCFMode>> _dMatController;
   ///@brief The grid this potential is defined on.
   std::shared_ptr<GridController> _grid;
   ///@brief The functional.
   Functional _functional;
   ///@brief The potential.
-  std::unique_ptr<FockMatrix<SCFMode> >_potential;
+  std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief Conversion too from grid to matrix.
-  std::shared_ptr<ScalarOperatorToMatrixAdder<SCFMode> > _gridToMatrix;
+  std::shared_ptr<ScalarOperatorToMatrixAdder<SCFMode>> _gridToMatrix;
   ///@brief density controller
-  std::shared_ptr<DensityOnGridController<SCFMode> > _densOnGridController;
+  std::shared_ptr<DensityOnGridController<SCFMode>> _densOnGridController;
   ///@brief Basis functions on grid, need to be kept for gradient calculations
   std::shared_ptr<BasisFunctionOnGridController> _basisFunctionOnGridController;
   ///@brief the energy for this functional

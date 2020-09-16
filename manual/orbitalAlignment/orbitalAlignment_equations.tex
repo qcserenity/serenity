@@ -1,0 +1,143 @@
+\section{Orbital Alignment Strategies}
+\label{sec:OrbitalAlignmentStrategies}
+This text documents the orbital alignment strategies available in \textsc{Serenity}. They were
+first published in Ref.~(\cite{Bensberg2020}).
+
+The task at hand is to align a set of orbitals $\{|i_L\rangle \}$ to a set of template orbitals
+$\{|i_K\rangle\}$. We assume that both sets are of the same size and that each orbital in both
+sets correspond to a point in the same partial charge space.
+To put this into a simpler phrasing: Each orbital can be characterized by a set of orbital-wise partial charges for
+which the charge centers (atoms, atom shells ...) are identical for both orbital sets. These partial charges will be
+denoted as $ \{q_{iK}^a\} $ for orbital $|i_K\rangle$ and charge center $a$.
+
+In order to arrive at a scheme that allows us to find a unitary transformation within the orbital set
+$\{|i_L\rangle \}$ such that it becomes aligned to the template orbital set, we construct a penalty
+function $S_{i}^P$ for each orbital as the difference between the partial charges to the power of an even exponent
+$P$.
+\begin{align}
+  S_i^P = \sum_a(q_{iK}^a - q_{iL}^a)^P.
+  \label{eq:similarityMeasure}
+\end{align}
+As partial charges we use shell-wise Intrinsic Atomic Orbital (IAO) charges~\cite{Knizia2013}, which are given by
+\begin{align}
+  q_{iL}^a = \langle i_L|\hat{n}_a|i_L\rangle
+  \label{eq:IAOCharges}
+\end{align}
+where $\hat{n}_a$ is the projector on the functions of a shell $a$ of an orthonormal minimal-basis set for the
+molecule
+\begin{align}
+   \hat{n}_a = \sum_{\rho\in a} |\rho\rangle\langle \rho |.
+\end{align}
+Note that the criterion can be adjusted freely. Partial charges work, but it is possible to
+extend the list of criteria (e.g. by the orbital kinetic energy as discussed below).
+
+Analogous to the IAO charges in Eq.~\ref{eq:IAOCharges}, cross charges can be defined as
+\begin{align}
+  q_{ijL}^a = \langle i_L|\hat{n}_a|j_L\rangle.
+  \label{eq:IAOCrossCharges}
+\end{align}
+
+We can minimize the total penalty function $\sum_i S_i^P$ by iterative two by two rotations for all orbital pairs
+within the set $\{|i_L\rangle \}$ with the constraint that the orbitals stay orthonormal.
+This leads to a Lagrangian $L_\mathrm{rot}$ given for two rotated orbitals $|i^{\prime}_L\rangle$
+and $|j^{\prime}_L\rangle$ as
+\begin{align}
+  \begin{split}
+    L_\mathrm{rot}&=\sum_a^\mathrm{shells}\left[
+      \left(q_{iK}^a-\langle i^{\prime}_L|\hat{n}_a|i_L^{\prime}\rangle \right)^P
+    + \left(q_{jK}^a-\langle j^{\prime}_L|\hat{n}_a|j_L^{\prime}\rangle\right)^P
+    \right]\\
+    |i_L^{\prime}\rangle &= |i_L^{}\rangle \cos(\phi)+|j_L^{}\rangle\sin(\phi)\\
+    |j_L^{\prime}\rangle &= |j_L^{}\rangle \cos(\phi)-|i_L^{}\rangle\sin(\phi).\\
+  \end{split}
+  \label{eq:LagrangianI}
+\end{align}
+Here, $|i_L\rangle$ and $|j_L\rangle$ are the initial, none-rotated orbitals.
+
+Note that the orthonormality constrain is automatically fulfilled in Eq.~\ref{eq:LagrangianI} by
+the definition of the rotated orbitals.
+
+In the following we want to derive the working equations by inserting the definitions for $|i_L^{\prime}\rangle$
+and $|j_L^{\prime}\rangle$ into $L_\mathrm{rot}$:
+\begin{align}
+  \begin{split}
+    L_\mathrm{rot} &= \sum_a^\mathrm{shells}\left[
+        \left(\underbrace{q_{iiK}^a-\cos^2(\phi)q_{iiL}^a-\sin^2(\phi)q_{jjL}^a-2\cos(\phi)\sin(\phi)q_{ijL}^a}
+        _{L_\mathrm{rot}^{ia}}\right)^P\right.\\
+        &~~~~~~~+\left.
+        \left(\underbrace{q_{jjK}^a-\cos^2(\phi)q_{jjL}^a-\sin^2(\phi)q_{iiL}^a+2\cos(\phi)\sin(\phi)q_{ijL}^a}
+        _{L_\mathrm{rot}^{ja}}\right)^P\right]\\
+                   &=\sum_a^\mathrm{shells}\left[
+                   \left(L_\mathrm{rot}^{ia}\right)^P+ \left(L_\mathrm{rot}^{ja}\right)^P
+                   \right]
+  \end{split}
+\end{align}
+With the elements of the sum $L_\mathrm{rot}^{ia}$ and $L_\mathrm{rot}^{ja}$ we can write the derivative of
+$L_\mathrm{rot}$ with respect to the angle $\phi$ as
+\begin{align}
+  \frac{\partial L_\mathrm{rot} }{\partial \phi} &= \sum_a P \left[
+        \left(L_\mathrm{rot}^{ia}\right)^{P-1} \frac{\partial L_\mathrm{rot}^{ia}}{\partial \phi}+
+        \left(L_\mathrm{rot}^{ja}\right)^{P-1} \frac{\partial L_\mathrm{rot}^{ja}}{\partial \phi}
+                                                   \right]
+\end{align}
+with
+\begin{align}
+  \frac{\partial L_\mathrm{rot}^{ia}}{\partial \phi} = 2\cos(\phi)\sin(\phi)(q_{iiL}^a-q_{jjL}^a)
+                                                     +2[\sin^2(\phi)-\cos^2(\phi)]q_{ijL}^a
+\end{align}
+and find
+\begin{align}
+  \begin{split}
+    \frac{\partial L_\mathrm{rot}^{ja}}{\partial \phi} &= -2\cos(\phi)\sin(\phi)(q_{iiL}^a-q_{jjL}^a)
+                                                         -2[\sin^2(\phi)-\cos^2(\phi)]q_{ijL}^a\\
+                                                       &= -\frac{\partial L_\mathrm{rot}^{ia}}{\partial \phi}.
+  \end{split}
+\end{align}
+We can use these definitions to write the second derivative in a compact way as
+\begin{align}
+  \begin{split}
+    \frac{\partial^2 L_\mathrm{rot}}{\partial \phi^2} &= \sum_a P\left[
+         (P-1)\left[\left(L_\mathrm{rot}^{ia} \right)^{P-2}+\left(L_\mathrm{rot}^{ja} \right)^{P-2}\right]
+         \left(\frac{\partial L_\mathrm{rot}^{ia}}{\partial \phi}\right)^2\right.\\
+        &\left.~~~~~~~~+\left[\left(L_\mathrm{rot}^{ia}\right)^{P-1}-\left(L_\mathrm{rot}^{ja}\right)^{P-1}\right]
+         \frac{\partial^2 L_  \mathrm{rot}^{ia}}{\partial \phi^2}
+    \right].
+  \end{split}
+\end{align}
+The second derivative of the sum element can be calculated as
+\begin{align}
+  \begin{split}
+    \frac{\partial^2 L_\mathrm{rot}^{ia}}{\partial \phi^2}
+     &= 2(q_{iiL}^a-q_{jjL}^a)\left[\cos^2(\phi)-\sin^2(\phi)\right]+8\cos(\phi)\sin(\phi)q_{ijL}^a\\
+     &= -\frac{\partial^2 L_\mathrm{rot}^{ja}}{\partial \phi^2}.
+  \end{split}
+\end{align}
+
+The optimal value of $\phi$ is determined by numerical minimization, which allows for a flexible implementation.
+The computational cost of the procedure is negligible and in the same order as for a conventional orbital
+localization using the Intrinsic Bond Orbital (IBO)~\cite{Knizia2013} approach.
+
+\subsection{On the Calculation of the Orbital Kinetic Energies}
+
+One of the major benefits of the IBO approach is that all orbital rotations are performed in the IAO
+minimal-basis set $\{|\rho\rangle\}$. Since this minimal basis set spans the space of the occupied orbitals
+$\{|i_L\rangle\}$ we can write the occupied orbitals as
+\begin{align}
+  |i_L\rangle = \sum_\rho c^{\mathrm{IAO}}_{\rho i,L} |\rho\rangle,
+\end{align}
+where $c^{\mathrm{IAO}}_{\rho i,L}$ are the expansion coefficients of the occupied orbitals in the IAO
+minimal-basis set. We can calculate the orbital kinetic energy $t_{ii}$ as
+\begin{align}
+  t_{ii}=\langle i | \hat{t}| i \rangle =
+   \sum_{\rho \sigma} c^\mathrm{IAO}_{\rho i,L} c^\mathrm{IAO}_{\sigma i,L} \langle \rho |\hat{t}|\sigma\rangle.
+\end{align}
+If we precalculate the integrals $\langle \rho |\hat{t}|\sigma\rangle$ we can perform the evaluation of the
+kinetic energy contribution to the Lagrangian in the IAO basis as well. Furthermore, this reduces the computational
+cost of the kinetic energy evaluation (in the alignment procedure) massively, since the IAO minimal-basis set will
+usually be smaller than the actual atomic-basis set.
+
+\subsection{Developers Note}
+Exponents of $P=4$ and $P=2$ work well for the penalty function $S_{i}^P$ (eq. \ref{eq:similarityMeasure}). If the exponent becomes to large (e.g. $P=16$), the numerical
+minimization of the Lagrangian breaks down and the resulting orbitals resemble the initial canonical
+orbitals. I was unable to tell the difference looking at cube files between IBO localized and aligned
+orbitals for a water molecule for an exponent of $P=4$ which is equal to the exponent used in the IBO approach.

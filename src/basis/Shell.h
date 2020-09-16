@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -32,9 +32,9 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <../../../ext/libint/include/libint2.hpp>
+#include <libint2/shell.h>
 #pragma GCC diagnostic pop
-
+#include <Eigen/Dense>
 #include <vector>
 
 namespace Serenity {
@@ -55,10 +55,8 @@ namespace Serenity {
  * For details of what a basis function is consider the book 'Modern Quantum Chemistry' by Szabo
  * and Ostlund.
  */
-class Shell : public libint2::Shell,
-              public NotifyingClass<Shell>{
-public:
-
+class Shell : public libint2::Shell, public NotifyingClass<Shell> {
+ public:
   /**
    * @brief Constructor.
    *
@@ -70,12 +68,8 @@ public:
    * @param spherical        Boolean, true if the shell is given in spherical functions.
    * @param coords           The reference coordinates of the shell.
    */
-  Shell(std::vector<double> exponents,
-        std::vector<double> contractions,
-        unsigned int angularMomentum,
-        bool spherical,
-        std::array<double,3> coords,
-        std::string element = "");
+  Shell(libint2::svector<double> exponents, libint2::svector<double> contractions, unsigned int angularMomentum,
+        bool spherical, std::array<double, 3> coords, std::string element = "");
 
   /**
    * @brief Copy constructor.
@@ -145,15 +139,15 @@ public:
     this->notifyObjects();
   }
   /// @param add_to_x The component to be added to the x coordinate.
-  inline void addToX(double add_to_x){
+  inline void addToX(double add_to_x) {
     setX(this->O[0] + add_to_x);
   }
   /// @param add_to_y The component to be added to the y coordinate.
-  inline void addToY(double add_to_y){
+  inline void addToY(double add_to_y) {
     setY(this->O[1] + add_to_y);
   }
   /// @param add_to_z The component to be added to the z coordinate.
-  inline void addToZ(double add_to_z){
+  inline void addToZ(double add_to_z) {
     setZ(this->O[2] + add_to_z);
   }
 
@@ -168,20 +162,20 @@ public:
    *         the same way as in the libint2:shells.
    *         The normalization factors are given for each basis function e.g. px, py ... .
    */
-  const Eigen::VectorXd& getNormFactors() const{
+  const Eigen::VectorXd& getNormFactors() const {
     return *_normFactors;
   }
 
   /**
    * @return Returns the contractions of the basis functions.
    */
-  const std::vector<double> getContractions() const{
+  const libint2::svector<double> getContractions() const {
     return _contractions;
   }
   /**
    * @return Returns the exponents of the basis functions.
    */
-  const std::vector<double> getExponents() const{
+  const libint2::svector<double> getExponents() const {
     return _exponents;
   }
   /**
@@ -190,23 +184,21 @@ public:
    *          angular momentum,
    *          exponents,
    *          contractions,
-   *          norm factors,
    *          spherical/cartesian
    * @param other The other shell.
    * @return True if considered to be equal, else false.
    */
   bool operator==(const Shell& other) const;
 
-private:
+ private:
   ///@brief Normalization factors for the basis functions.
   std::unique_ptr<Eigen::VectorXd> _normFactors;
   ///@brief Contractions of the primitive Gaussians.
-  std::vector<double> _contractions;
+  libint2::svector<double> _contractions;
   ///@brief Exponents of the primitive Gaussians.
-  std::vector<double> _exponents;
+  libint2::svector<double> _exponents;
   ///@brief Element identifier as a string.
   std::string _element;
-
 };
 
 } /* namespace Serenity */

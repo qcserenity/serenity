@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -22,16 +22,9 @@
 #define TASKS_EDATASK_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/CoefficientMatrix.h"
-#include "potentials/bundles/EDAPotentials.h"
-#include "data/ElectronicStructure.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "settings/Reflection.h"
-#include "data/SpinPolarizedData.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
-#include <Eigen/Dense>
-#include <Eigen/SVD>
 #include <memory>
 #include <vector>
 
@@ -39,13 +32,13 @@ namespace Serenity {
 /* Forward declaration */
 class SystemController;
 using namespace Serenity::Reflection;
+namespace Options {
+enum class SCF_MODES;
+}
 
 struct EDATaskSettings {
-  EDATaskSettings():
-    dummy(false){}
-  REFLECTABLE(
-    (bool) dummy
-  )
+  EDATaskSettings() : dummy(false){};
+  REFLECTABLE((bool)dummy)
 };
 
 /**
@@ -55,13 +48,13 @@ struct EDATaskSettings {
  *   Ref: Kitaura-Morokuma : K. Kitaura and K. Morokuma, Int. J. Quantum Chem. 10, 325 (1976)
  */
 template<Options::SCF_MODES SCFMode>
-class EDATask: public Task{
-public:
+class EDATask : public Task {
+ public:
   /**
    * @brief The constructor.
    * @param systems A list of the systems to be used. (Only the first tow are used.)
    */
-  EDATask(std::vector<std::shared_ptr<SystemController> >  systems);
+  EDATask(std::vector<std::shared_ptr<SystemController>> systems);
 
   /**
    * @brief the "run" routine which calls the calculator.
@@ -76,15 +69,14 @@ public:
   /**
    * @brief default destructor
    */
-  virtual ~EDATask()=default;
+  virtual ~EDATask() = default;
 
-private:
+ private:
   /* the systems */
   /// @brief First system.
   std::shared_ptr<SystemController> _systemA;
   /// @brief Second system.
   std::shared_ptr<SystemController> _systemB;
-
 };
 } /* namespace Serenity */
 

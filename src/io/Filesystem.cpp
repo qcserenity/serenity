@@ -6,46 +6,53 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-
+/* Include Std and External Headers */
+#include <errno.h>
+#include <sys/stat.h>
 #include <iostream>
 #include <string>
-#include <sys/stat.h>
-#include <errno.h>
 #if defined(_WIN32)
 #include <direct.h>
 #endif
 
 namespace Serenity {
 
-bool directoryExists(const std::string& path)
-{
+bool directoryExists(const std::string& path) {
 #if defined(_WIN32)
   struct _stat info;
-  if (_stat(path.c_str(), &info) != 0){
+  if (_stat(path.c_str(), &info) != 0) {
     return false;
   }
   return (info.st_mode & _S_IFDIR) != 0;
 #else
   struct stat info;
-  if (stat(path.c_str(), &info) != 0){
+  if (stat(path.c_str(), &info) != 0) {
     return false;
   }
   return (info.st_mode & S_IFDIR) != 0;
 #endif
 }
 
-bool makePath(const std::string& path){
+bool makePath(const std::string& inpt) {
+  std::string path = inpt;
+#if defined(_WIN32)
+  if (path[path.size() - 1] == '\\')
+    path = path.substr(0, path.size() - 1);
+#else
+  if (path[path.size() - 1] == '/')
+    path = path.substr(0, path.size() - 1);
+#endif
 #if defined(_WIN32)
   int ret = _mkdir(path.c_str());
 #else
@@ -55,21 +62,21 @@ bool makePath(const std::string& path){
   if (ret == 0)
     return true;
 
-  switch (errno){
+  switch (errno) {
     case ENOENT:
       // parent didn't exist, try to create it
       {
-      size_t pos = path.find_last_of('/');
-      if (pos == std::string::npos)
+        size_t pos = path.find_last_of('/');
+        if (pos == std::string::npos)
 #if defined(_WIN32)
-        pos = path.find_last_of('\\');
-      if (pos == std::string::npos)
+          pos = path.find_last_of('\\');
+        if (pos == std::string::npos)
 #endif
-        return false;
-      if (!makePath( path.substr(0, pos) ))
-        return false;
+          return false;
+        if (!makePath(path.substr(0, pos)))
+          return false;
       }
-    // now, try to create again
+      // now, try to create again
 #if defined(_WIN32)
       return 0 == _mkdir(path.c_str());
 #else

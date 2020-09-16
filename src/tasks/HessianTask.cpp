@@ -6,14 +6,14 @@
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
- *  it under the terms of the LGNU Lesser General Public License as
+ *  it under the terms of the GNU Lesser General Public License as
  *  published by the Free Software Foundation, either version 3 of
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.\n\n
- *  You should have received a copy of the LGNU Lesser General
+ *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
@@ -21,129 +21,117 @@
 /* Include Class Header*/
 #include "tasks/HessianTask.h"
 /* Include Serenity Internal Headers */
-#include "geometry/Atom.h"
 #include "data/ElectronicStructure.h"
-#include "io/FormattedOutput.h"
-#include "tasks/FreezeAndThawTask.h"
+#include "data/OrbitalController.h"
+#include "geometry/Atom.h"
 #include "geometry/gradients/HessianCalculator.h"
-#include "io/IOOptions.h"
-#include "scf/initialGuess/InitialGuessCalculator.h"
 #include "geometry/gradients/NumericalGeomGradCalc.h"
 #include "geometry/gradients/NumericalHessianCalc.h"
-#include "data/OrbitalController.h"
-#include "system/SystemController.h"
+#include "io/FormattedOutput.h"
+#include "io/IOOptions.h"
 #include "misc/Timing.h"
-
+#include "scf/initialGuess/InitialGuessCalculator.h"
+#include "system/SystemController.h"
+#include "tasks/FreezeAndThawTask.h"
 
 namespace Serenity {
 using namespace std;
 
-
-
-HessianTask::HessianTask(
-		  std::vector<std::shared_ptr<SystemController> > activeSystems,
-	      std::vector<std::shared_ptr<SystemController> > passiveSystems) :
-  		_activeSystems(activeSystems),
-			_passiveSystems(passiveSystems){
-assert(_activeSystems[0]);
+HessianTask::HessianTask(std::vector<std::shared_ptr<SystemController>> activeSystems,
+                         std::vector<std::shared_ptr<SystemController>> passiveSystems)
+  : _activeSystems(activeSystems), _passiveSystems(passiveSystems) {
+  assert(_activeSystems[0]);
 }
-
 
 HessianTask::~HessianTask() {
 }
 
 void HessianTask::run() {
+  /// TODO edit to work with unrestricted
+  const Options::SCF_MODES T(Options::SCF_MODES::RESTRICTED);
+  /*
+   * Initial SCF
+   */
+  /// TODO add restart option here
 
-	  ///TODO edit to work with unrestricted
-	  const Options::SCF_MODES T(Options::SCF_MODES::RESTRICTED);
-	  /*
-	   * Initial SCF
-	   */
-	  ///TODO add restart option here
+  /*
+   * Calc gradients silently
+   * TODO This should be handled differently. It's never a good idea to just set global variables
+   * somewhere.
+   */
+  takeTime("Hessian Calculation");
+  bool info(iOOptions.printSCFCycleInfo);
+  bool results(iOOptions.printSCFResults);
+  bool check(iOOptions.gridAccuracyCheck = false);
+  int timings(iOOptions.timingsPrintLevel);
+  iOOptions.printSCFCycleInfo = false;
+  iOOptions.printSCFResults = false;
+  iOOptions.timingsPrintLevel = 0;
+  iOOptions.gridAccuracyCheck = false;
 
-	  /*
-	   * Calc gradients silently
-	   * TODO This should be handled differently. It's never a good idea to just set global variables
-	   * somewhere.
-	   */
-	  takeTime("Hessian Calculation");
-	  bool info(iOOptions.printSCFCycleInfo);
-	  bool results(iOOptions.printSCFResults);
-	  bool check (iOOptions.gridAccuracyCheck =false);
-	  int timings(iOOptions.timingsPrintLevel);
-	  iOOptions.printSCFCycleInfo =false;
-	  iOOptions.printSCFResults =false;
-	  iOOptions.timingsPrintLevel = 0;
-	  iOOptions.gridAccuracyCheck =false;
+  if (_passiveSystems.size() == 0 && _activeSystems.size() == 1) {
+    /*
+     * Choose gradient calculator
+     */
+    unique_ptr<HessianCalculator> hessCalc;
+    switch (settings.hessType) {
+      case Options::HESSIAN_TYPES::NUMERICAL:
+        if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
+          hessCalc = unique_ptr<HessianCalculator>(
+              new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
+          printSubSectionTitle("Numerical Hessian Calculation");
+        }
+        else {
+          hessCalc =
+              unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+          printSubSectionTitle("Seminumerical Hessian Calculation");
+        }
 
-	  if (_passiveSystems.size()==0 && _activeSystems.size()==1){
-		  /*
-		   * Choose gradient calculator
-		   */
-		   unique_ptr<HessianCalculator> hessCalc;
-		   switch (settings.hessType) {
-		     case Options::HESSIAN_TYPES::NUMERICAL:
-		     if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL){
-		       hessCalc = unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(settings.numGradStepSize,
-		    		   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	settings.numHessStepSize,
-        		   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	settings.printToFile));
-		       printSubSectionTitle("Numerical Hessian Calculation");
-		     } else {
-		    hessCalc = unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0,settings.numHessStepSize,
-					 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	                                       settings.printToFile));
-		       printSubSectionTitle("Seminumerical Hessian Calculation");
-		     }
+        break;
+      case (Options::HESSIAN_TYPES::ANALYTICAL):
+        std::cout << "Analytical Hessian NYI!" << std::endl;
+        assert(false);
+        break;
+    }
 
-		       break;
-		     case (Options::HESSIAN_TYPES::ANALYTICAL):
-				    std::cout << "Analytical Hessian NYI!" << std::endl;
-		        assert(false);
-		        break;
-		     }
+    _activeSystems[0]->getElectronicStructure<T>();
+    hessCalc->calcHessian(_activeSystems[0]);
+  }
+  else {
+    /*
+     * Choose gradient calculator
+     */
+    unique_ptr<HessianCalculator> hessCalc;
+    switch (settings.hessType) {
+      case Options::HESSIAN_TYPES::NUMERICAL:
+        if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
+          hessCalc = unique_ptr<HessianCalculator>(
+              new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
 
-		  _activeSystems[0]->getElectronicStructure<T>();
-		  hessCalc->calcHessian(_activeSystems[0]);
-	  } else {
-		  /*
-		   * Choose gradient calculator
-		   */
-		   unique_ptr<HessianCalculator> hessCalc;
-		   switch (settings.hessType) {
-		     case Options::HESSIAN_TYPES::NUMERICAL:
-		     if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL){
-		       hessCalc = unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(settings.numGradStepSize,
-		    		   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	   	settings.numHessStepSize,
-																							                                  settings.printToFile));
+          throw SerenityError(
+              (string) "Fully numerical FaT Hessian not available! Please try a seminumerical calculation!");
+        }
+        else {
+          hessCalc =
+              unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+          printSubSectionTitle("Seminumerical Hessian Calculation");
+        }
 
-		       throw SerenityError((string)"Fully numerical FaT Hessian not available! Please try a seminumerical calculation!");
+        break;
+      case (Options::HESSIAN_TYPES::ANALYTICAL):
+        throw SerenityError((string) "Analytical Hessian NYI!");
+        break;
+    }
+    hessCalc->calcFaTHessian(_activeSystems, _passiveSystems, settings.embedding.naddKinFunc,
+                             settings.embedding.naddXCFunc, settings.FaTmaxCycles, settings.FaTenergyConvThresh,
+                             settings.FaTgridCutOff, settings.dispersion);
+  }
 
-		     } else {
-		    hessCalc = unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0,settings.numHessStepSize,
-					 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 settings.printToFile));
-		       printSubSectionTitle("Seminumerical Hessian Calculation");
-		     }
-
-		       break;
-		     case (Options::HESSIAN_TYPES::ANALYTICAL):
-				throw SerenityError((string)"Analytical Hessian NYI!");
-		       break;
-		     }
-	      hessCalc->calcFaTHessian(_activeSystems,_passiveSystems,
-	    		  settings.naddKinFunc,
-				  settings.naddXCFunc,
-          settings.FaTmaxCycles,
-          settings.FaTenergyConvThresh,
-				  settings.FaTgridCutOff,
-			    settings.dispersion);
-	  }
-
-	  iOOptions.printSCFCycleInfo =info;
-	  iOOptions.printSCFResults =results;
-	  iOOptions.timingsPrintLevel = timings;
-	  iOOptions.gridAccuracyCheck = check;
-	  timeTaken(3, "Hessian Calculation");
+  iOOptions.printSCFCycleInfo = info;
+  iOOptions.printSCFResults = results;
+  iOOptions.timingsPrintLevel = timings;
+  iOOptions.gridAccuracyCheck = check;
+  timeTaken(3, "Hessian Calculation");
 }
 
-}/* namespace Serenity */
-
-
+} /* namespace Serenity */
