@@ -112,9 +112,10 @@ void Geometry::calcCoreCoreRepulsion() const {
     if (_atoms[i]->isDummy())
       continue;
     for (unsigned int j = 0; j < i; ++j) {
-      if (!_atoms[j]->isDummy())
+      if (!_atoms[j]->isDummy()) {
         _coreCoreRepulsion +=
             _atoms[i]->getEffectiveCharge() * _atoms[j]->getEffectiveCharge() / distance(*_atoms[i], *_atoms[j]);
+      }
     }
   }
   _coreCoreRepulsionUpToDate = true;
@@ -563,6 +564,7 @@ void Geometry::addAsDummy(const Geometry& add, bool toFront) {
   else {
     _atoms.insert(_atoms.end(), dummyAtoms.begin(), dummyAtoms.end());
   }
+  this->notifyObjects();
 }
 
 } /* namespace Serenity */

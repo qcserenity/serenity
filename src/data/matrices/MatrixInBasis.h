@@ -22,7 +22,6 @@
 #include "basis/BasisController.h"
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/SPMatrix.h"
-#include "io/HDF5.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -89,12 +88,7 @@ class MatrixInBasis<Options::SCF_MODES::RESTRICTED> : public SPMatrix<Options::S
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
    */
-  void toHDF5(std::string fBaseName, std::string matrixName) {
-    std::string name = fBaseName + ".mat.h5";
-    HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
-    HDF5::save(file, matrixName.c_str(), *this);
-    HDF5::save_scalar_attribute(file, "basisSetName", _basisController->getBasisString());
-  }
+  void toHDF5(std::string fBaseName, std::string matrixName);
   /**
    * @returns The controller for the basis in which this matrix is defined.
    */
@@ -311,13 +305,7 @@ class MatrixInBasis<Options::SCF_MODES::UNRESTRICTED> : public SPMatrix<Options:
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
    */
-  void toHDF5(std::string fBaseName, std::string matrixName) {
-    std::string name = fBaseName + ".mat.h5";
-    HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
-    HDF5::save(file, matrixName.c_str(), this->alpha);
-    HDF5::save(file, matrixName.c_str(), this->beta);
-    HDF5::save_scalar_attribute(file, "basisSetName", _basisController->getBasisString());
-  }
+  void toHDF5(std::string fBaseName, std::string matrixName);
   /**
    * @returns The controller for the basis in which this matrix is defined.
    */

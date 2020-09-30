@@ -150,4 +150,10 @@ const SparseMap& BasisController::getFunctionToShellMap() {
   return *_functionToShellMap;
 }
 
+void BasisController::notify() {
+  this->notifyObjects();
+  this->_shellPairList = nullptr;
+  this->_RIPrescreeningFactors = nullptr;
+}
+
 } /* namespace Serenity */

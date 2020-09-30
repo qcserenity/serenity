@@ -199,7 +199,7 @@ void SystemSplittingTask<SCFMode>::run() {
     if (settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::ENFORCE_CHARGES) {
       for (unsigned int iSub = 0; iSub < nSubsystems; ++iSub) {
         const auto subsystem = _subsystems[iSub];
-        const auto nOccSub = subsystem->getNOccupiedOrbitals<SCFMode>();
+        const auto nOccSub = subsystem->template getNOccupiedOrbitals<SCFMode>();
         for_spin(nOccSub, assignment, subsystemWisePopulations) {
           for (unsigned int i = 0; i < nOccSub_spin; ++i) {
             unsigned int maxOrb;
@@ -215,7 +215,7 @@ void SystemSplittingTask<SCFMode>::run() {
     SPADEAlgorithm<SCFMode> spade(_supersystem, _subsystems[0]);
     assignment = spade.run();
     if (settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::SPADE_ENFORCE_CHARGES) {
-      auto nOccAct = _subsystems[0]->getNOccupiedOrbitals<SCFMode>();
+      auto nOccAct = _subsystems[0]->template getNOccupiedOrbitals<SCFMode>();
       for_spin(assignment, nOccAct) {
         assignment_spin = Eigen::VectorXi::Constant(assignment_spin.size(), 1);
         assignment_spin.head(nOccAct_spin).setZero();
@@ -265,12 +265,12 @@ void SystemSplittingTask<SCFMode>::run() {
     }
 
     subsystem->setSCFMode(SCFMode);
-    subsystem->setElectronicStructure<SCFMode>(subsystemES);
+    subsystem->template setElectronicStructure<SCFMode>(subsystemES);
     subsystem->getGeometry()->printToFile(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
     subsystemES->toHDF5(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
     // Check charges and spin of the system, since it may have changed during the partitioning.
     if (settings.systemPartitioning != Options::SYSTEM_SPLITTING_ALGORITHM::ENFORCE_CHARGES) {
-      auto oldNElSub = subsystem->getNElectrons<SCFMode>();
+      auto oldNElSub = subsystem->template getNElectrons<SCFMode>();
       auto newNElSub = SystemSplittingTools<SCFMode>::getNElectrons(orbitalSelection).first;
       unsigned int nTotOld = 0;
       unsigned int nTotNew = 0;

@@ -266,7 +266,7 @@ Eigen::MatrixXd NAddFuncPotential<SCFMode>::getGeomGradients() {
   const unsigned int nBasisFunctions = basisController->getNBasisFunctions();
 
   // Create mapping
-  auto orbitalSet = system->getActiveOrbitalController<SCFMode>();
+  auto orbitalSet = system->template getActiveOrbitalController<SCFMode>();
   std::vector<unsigned int> mapping(nBasisFunctions);
   std::vector<bool> hasElementBeenSet(nBasisFunctions, false);
   const auto& basisIndices = basisController->getBasisIndices();
@@ -295,7 +295,7 @@ Eigen::MatrixXd NAddFuncPotential<SCFMode>::getGeomGradients() {
   const auto& weights = _basisFunctionOnGridController->getGridController()->getWeights();
 
   // Get density Matrix
-  auto densityMatrix(system->getElectronicStructure<SCFMode>()->getDensityMatrix());
+  auto densityMatrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix());
 
   Eigen::MatrixXd gradientContr = Eigen::MatrixXd::Zero(nAtoms, 3);
 #pragma omp parallel

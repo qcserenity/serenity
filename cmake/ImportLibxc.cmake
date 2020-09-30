@@ -22,7 +22,7 @@ function(import_libxc)
   add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/ext-libxc-src ${CMAKE_CURRENT_BINARY_DIR}/ext-libxc-build)
   set(BUILD_TESTING ${_BUILD_TESTING})
   set(BUILD_SHARED_LIBS ${_BUILD_SHARED_LIBS})
-  install(TARGETS xc EXPORT ${PROJECT_NAME}Targets DESTINATION lib)
+  install(TARGETS xc EXPORT serenityTargets DESTINATION lib)
   target_include_directories(xc
     PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/ext-libxc-build>

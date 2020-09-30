@@ -29,7 +29,15 @@
 #include <memory>
 #include <string>
 
+namespace H5 {
+class H5File;
+} // namespace H5
+
 namespace Serenity {
+namespace HDF5 {
+using H5File = H5::H5File;
+} // namespace HDF5
+
 class GridController;
 template<Options::SCF_MODES T>
 class DensityMatrixController;

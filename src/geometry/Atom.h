@@ -36,7 +36,7 @@
 
 /* External forward declaration */
 namespace libecpint {
-class ECP;
+struct ECP;
 }
 namespace Serenity {
 /* Forward declarations */

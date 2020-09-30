@@ -37,7 +37,7 @@ namespace Serenity {
 
 /* Forward declarations */
 class SystemController;
-class EmbeddingSettings;
+struct EmbeddingSettings;
 
 /**
  * @class HuzinagaFDEProjectionPotential HuzinagaFDEProjectionPotential.h

@@ -171,7 +171,7 @@ std::vector<unsigned int> CoulombPotential<SCFMode>::createBasisToAtomIndexMappi
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
   auto actSystem = _actSystem.lock();
-  const auto& orbitalSet = actSystem->getActiveOrbitalController<SCFMode>();
+  const auto& orbitalSet = actSystem->template getActiveOrbitalController<SCFMode>();
   auto atoms = actSystem->getAtoms();
   unsigned int nAtoms = atoms.size();
   Matrix<double> eriContr(nAtoms, 3);
@@ -194,7 +194,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
   auto auxBasisIndicesRed = auxBasisController->getBasisIndicesRed();
   auto auxMapping = createBasisToAtomIndexMapping(auxBasisIndicesRed, nAuxBasFuncRed);
 
-  DensityMatrix<RESTRICTED> densityMatrix(actSystem->getElectronicStructure<SCFMode>()->getDensityMatrix().total());
+  DensityMatrix<RESTRICTED> densityMatrix(actSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().total());
 
   // Get the existing RI_J Controller from Config (there should be one from the first SCF)
 
@@ -342,7 +342,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
 #else
   eriContr = eriContrPriv[0];
 #endif
-  return eriContr;
+  return std::move(eriContr);
 }
 
 template class CoulombPotential<Options::SCF_MODES::RESTRICTED>;

@@ -94,7 +94,7 @@ class EigenvalueSolver : public IterativeSolver {
    * @brief Obtains the left eigenvectors if the symmetric TDDFT problem was solved
    *        and/or normlizes the eigenvectors. Prints the converged eigenvalues in au.
    */
-  void postProcessing();
+  void postProcessing() override;
 
   ///@brief Bool to invoke the printing of the subspace matrix.
   bool _printResponseMatrix;

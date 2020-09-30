@@ -273,7 +273,7 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
       }
     }
   }
-  return activeSystemGradientContr;
+  return std::move(activeSystemGradientContr);
 }
 
 template class NEInteractionPotential<Options::SCF_MODES::RESTRICTED>;

@@ -61,7 +61,8 @@ void FaTConvergenceAccelerator<SCFMode>::accelerateConvergence() {
   // map the density matrices to a vector
   for (auto& sys : _activeSystems) {
     unsigned int nBasisFunctions = sys->getBasisController()->getNBasisFunctions();
-    DensityMatrix<SCFMode> p = sys->getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
+    DensityMatrix<SCFMode> p =
+        sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
     unsigned int vectorSizeFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 1 : 2;
     auto newVectorSegment = std::make_shared<Eigen::VectorXd>(vectorSizeFactor * nBasisFunctions * nBasisFunctions);
     unsigned int lastSegmentIndex = 0;
@@ -99,7 +100,7 @@ void FaTConvergenceAccelerator<SCFMode>::accelerateConvergence() {
             nBasisFunctions);
         lastSegmentIndex += nBasisFunctions * nBasisFunctions;
       };
-      sys->getElectronicStructure<SCFMode>()->getDensityMatrixController()->setDensityMatrix(optDensity);
+      sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->setDensityMatrix(optDensity);
 
     } /* for sys */
   }   /* rmsd < _diisStartError */
@@ -119,7 +120,7 @@ void FaTConvergenceAccelerator<SCFMode>::calcFPSminusSPF() {
    */
   for (unsigned int i = 0; i < _activeSystems.size(); ++i) {
     auto f = calcEmbeddedFockMatrix(i);
-    auto p = _activeSystems[i]->getElectronicStructure<SCFMode>()->getDensityMatrix();
+    auto p = _activeSystems[i]->template getElectronicStructure<SCFMode>()->getDensityMatrix();
     auto s = _activeSystems[i]->getOneElectronIntegralController()->getOverlapIntegrals();
     unsigned int nBasisFunctions = _activeSystems[i]->getBasisController()->getNBasisFunctions();
 
@@ -181,10 +182,10 @@ FockMatrix<SCFMode> FaTConvergenceAccelerator<SCFMode>::calcEmbeddedFockMatrix(u
   auto grid = activeSystem->getGridController();
 
   auto fdePot = FDEPotentialBundleFactory<SCFMode>::produce(
-      activeSystem, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(), envSystems,
+      activeSystem, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(), envSystems,
       envDensities, std::make_shared<EmbeddingSettings>(_settings.embedding), grid);
 
-  return fdePot->getFockMatrix(activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
+  return fdePot->getFockMatrix(activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix(),
                                std::make_shared<EnergyComponentController>());
 }
 

@@ -33,6 +33,7 @@
 #include "integrals/looper/CoulombInteractionIntLooper.h" //Loop integrals.
 #include "integrals/looper/TwoElecThreeCenterIntLooper.h" //Loop integrals.
 #include "io/FormattedOutputStream.h"                     //Filtered output streams.
+#include "io/HDF5.h"                                      //HDF5 IO
 #include "misc/Timing.h"                                  //Timings.
 #include "potentials/CoulombPotential.h"                  //Gradient construction. Substract intra-subsystem part.
 #include "settings/Settings.h"                            //Settings.
@@ -358,7 +359,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
   unsigned int nAtomsAct = atomsAct.size();
   Matrix<double> activeSystemGradientContr(atomsAct.size(), 3);
   activeSystemGradientContr.setZero();
-  DensityMatrix<RESTRICTED> densityMatrix(actSystem->getElectronicStructure<SCFMode>()->getDensityMatrix().total());
+  DensityMatrix<RESTRICTED> densityMatrix(actSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().total());
 
   for (unsigned int i = 0; i < _envSystems.size(); ++i) {
     // Creating supersystem Geometry and Basis, necessary still for inverseM
@@ -374,7 +375,6 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
     unsigned int nAtoms = ActiveFrozenAtoms.size();
     Matrix<double> eriContr(nAtoms, 3);
     eriContr.setZero();
-    double test = 0.0;
 
     auto superSystemGeometry = std::make_shared<Geometry>(ActiveFrozenAtoms);
     auto superSystemBasisController = AtomCenteredBasisControllerFactory::produce(
@@ -635,9 +635,9 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 
     TwoElecThreeCenterIntLooper derivLooper2(libint2::Operator::coulomb, 1, basisControllerEnv, auxBasisController, 1E-10);
     auto const add3cDerivs2 = [&eriContrPriv, &Dvec, &densityMatrixEnv, &mappingEnv, &auxMapping, &basisControllerEnv,
-                               &auxBasisController, &nAtomsAct,
-                               &test](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                      Eigen::VectorXd& intValues, const unsigned int threadId) {
+                               &auxBasisController, &nAtomsAct](const unsigned int& i, const unsigned int& j,
+                                                                const unsigned int& K, Eigen::VectorXd& intValues,
+                                                                const unsigned int threadId) {
       double perm = (i == j ? 1.0 : 2.0);
       for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
         for (unsigned int iAtom = 0; iAtom < 3; ++iAtom) {
@@ -662,9 +662,9 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 
     TwoElecThreeCenterIntLooper derivLooper1(libint2::Operator::coulomb, 1, basisController, auxBasisControllerEnv, 1E-10);
     auto const add3cDerivs1 = [&eriContrPriv, &Dvec, &densityMatrix, &mapping, &auxMappingEnv, &basisController,
-                               &auxBasisControllerEnv, &nAtomsAct, &nAuxBasFunc,
-                               &test](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                      Eigen::VectorXd& intValues, const unsigned int threadId) {
+                               &auxBasisControllerEnv, &nAtomsAct,
+                               &nAuxBasFunc](const unsigned int& i, const unsigned int& j, const unsigned int& K,
+                                             Eigen::VectorXd& intValues, const unsigned int threadId) {
       double perm = (i == j ? 1.0 : 2.0);
       for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
         for (unsigned int iAtom = 0; iAtom < 3; ++iAtom) {
@@ -689,9 +689,8 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 
     TwoElecThreeCenterIntLooper derivLooper3(libint2::Operator::coulomb, 1, basisController, auxBasisController, 1E-10);
     auto const add3cDerivs3 = [&eriContrPriv, &Dvec, &densityMatrix, &mapping, &auxMapping, &basisController,
-                               &auxBasisController, &nAtomsAct, &nAuxBasFunc,
-                               &test](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                      Eigen::VectorXd& intValues, const unsigned int threadId) {
+                               &auxBasisController](const unsigned int& i, const unsigned int& j, const unsigned int& K,
+                                                    Eigen::VectorXd& intValues, const unsigned int threadId) {
       double perm = (i == j ? 1.0 : 2.0);
       for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
         for (unsigned int iAtom = 0; iAtom < 3; ++iAtom) {
@@ -732,7 +731,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
   // hence this has to be explicitly calculated and subtracted in the end. This is not incredibly expensive,
   // but unnecessary and, alas, very hard to extract from the above algorithm.
   CoulombPotential<SCFMode> coulPot(
-      actSystem, actSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+      actSystem, actSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
       RI_J_IntegralControllerFactory::getInstance().produce(
           actSystem->getAtomCenteredBasisController(),
           actSystem->getAtomCenteredBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)),

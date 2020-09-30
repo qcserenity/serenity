@@ -19,6 +19,8 @@
  */
 /* Include Class Header*/
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h"
+/* Include Serenity Internal Headers */
+#include "io/HDF5.h"
 /* Include Std and External Headers */
 #include <cassert>
 

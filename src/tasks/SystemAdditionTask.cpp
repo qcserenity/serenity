@@ -120,10 +120,11 @@ void SystemAdditionTask<SCFMode>::run() {
       auto subsystem = _subsystems[iSub];
       CoefficientMatrix<SCFMode>& newCoefficientMatrix = *newCoefficientMatrixPtr;
       SpinPolarizedData<SCFMode, Eigen::VectorXd>& newEigenvalues = *newEigenvaluesPtr;
-      CoefficientMatrix<SCFMode> subsystemCoefficients = subsystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
+      CoefficientMatrix<SCFMode> subsystemCoefficients =
+          subsystem->template getActiveOrbitalController<SCFMode>()->getCoefficients();
       SpinPolarizedData<SCFMode, Eigen::VectorXd> subsystemEigenvalues =
-          subsystem->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-      auto nOccSub = subsystem->getNOccupiedOrbitals<SCFMode>();
+          subsystem->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      auto nOccSub = subsystem->template getNOccupiedOrbitals<SCFMode>();
       Eigen::MatrixXd projection;
       if (subsystem->getAtomCenteredBasisController()->getBasisLabel() ==
           _supersystem->getAtomCenteredBasisController()->getBasisLabel()) {

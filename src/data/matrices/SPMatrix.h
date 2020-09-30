@@ -20,7 +20,6 @@
 #define SPMATRIX_H
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-#include "io/HDF5.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -62,11 +61,7 @@ class SPMatrix<Options::SCF_MODES::RESTRICTED> : public Eigen::MatrixXd {
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
    */
-  void toHDF5(std::string fBaseName, std::string matrixName) {
-    std::string name = fBaseName + ".mat.h5";
-    HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
-    HDF5::save(file, matrixName.c_str(), *this);
-  }
+  void toHDF5(std::string fBaseName, std::string matrixName);
   /**
    * @brief Total data.
    * @return Returns the sum of alpha an beta..
@@ -226,12 +221,7 @@ class SPMatrix<Options::SCF_MODES::UNRESTRICTED> {
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
    */
-  void toHDF5(std::string fBaseName, std::string matrixName) {
-    std::string name = fBaseName + ".mat.h5";
-    HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
-    HDF5::save(file, matrixName.c_str(), this->alpha);
-    HDF5::save(file, matrixName.c_str(), this->beta);
-  }
+  void toHDF5(std::string fBaseName, std::string matrixName);
   /**
    * @brief Total data.
    * @return Returns the sum of alpha an beta..

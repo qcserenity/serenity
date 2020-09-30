@@ -24,6 +24,7 @@
 #include "geometry/Geometry.h"
 #include "geometry/Point.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/HDF5.h"
 #include "settings/LRSCFOptions.h"
 
 namespace Serenity {

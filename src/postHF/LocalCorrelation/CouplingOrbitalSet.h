@@ -24,14 +24,20 @@
 /* Include Serenity Internal Headers */
 #include "data/OrbitalPair.h"                                      //Definition of OrbitalPair.
 #include "data/SingleSubstitution.h"                               //Definition of SingleSubstitution.
-#include "io/HDF5.h"                                               //HDF5 types.
 #include "postHF/LocalCorrelation/DomainOverlapMatrixController.h" //Overlap matrices.
 
 /* Include Std and External Headers */
 #include <Eigen/Dense> //Dense matrices
 #include <memory>      //smrt_ptr
 
+namespace H5 {
+class H5File;
+} // namespace H5
+
 namespace Serenity {
+namespace HDF5 {
+using H5File = H5::H5File;
+} // namespace HDF5
 
 /**
  * @class CouplingOrbitalSet CouplingOrbitalSet.h

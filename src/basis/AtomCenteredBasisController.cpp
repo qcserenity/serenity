@@ -42,21 +42,15 @@ AtomCenteredBasisController::AtomCenteredBasisController(std::shared_ptr<const G
     _makePrimary(makePrimary),
     _firstECP(firstECP) {
   assert(_geometry);
-  unsigned int nAtom = 0;
-  for (auto atom : geometry->getAtoms()) {
-    BasisLoadingData tmp;
-    tmp.label = basisLabel.empty() ? atom->getPrimaryBasisLabel() : _basisLabel;
-    tmp.ecp = false;
-    tmp.shells = importantShells.size() == 0 ? Eigen::VectorXi(0) : importantShells[nAtom];
-    _basisLoadingData.push_back(tmp);
-    nAtom++;
-  }
-  // TODO The lazy creation of a basis got lost due to the implementation of ECPs
+  _geometry->addSensitiveObject(this->ObjectSensitiveClass<Geometry>::_self);
+  resetBasisLoadingData(importantShells);
   produceBasis();
 }
 
 std::unique_ptr<Basis> AtomCenteredBasisController::produceBasisFunctionVector() {
   auto basis = std::unique_ptr<Basis>(new Basis());
+  if (_basisLoadingData.size() == 0)
+    resetBasisLoadingData();
   // Add new basis functions to the atoms
   unsigned int atomCount = 0;
   for (const auto& atom : _geometry->getAtoms()) {
@@ -157,8 +151,27 @@ void AtomCenteredBasisController::fromHDF5(std::string fBaseName, std::string id
   }
   // Delete old basis vector in order to work with the basis read from disk.
   this->_basis = nullptr;
-  this->notify();
+  this->BasisController::notify();
   file.close();
+}
+
+void AtomCenteredBasisController::notify() {
+  this->_basis = nullptr;
+  this->BasisController::notify();
+  resetBasisLoadingData();
+}
+
+void AtomCenteredBasisController::resetBasisLoadingData(const std::vector<Eigen::VectorXi>& importantShells) {
+  _basisLoadingData.clear();
+  unsigned int nAtom = 0;
+  for (auto atom : _geometry->getAtoms()) {
+    BasisLoadingData tmp;
+    tmp.label = _basisLabel.empty() ? atom->getPrimaryBasisLabel() : _basisLabel;
+    tmp.ecp = false;
+    tmp.shells = importantShells.size() == 0 ? Eigen::VectorXi(0) : importantShells[nAtom];
+    _basisLoadingData.push_back(tmp);
+    nAtom++;
+  }
 }
 
 } /* namespace Serenity */

@@ -60,7 +60,7 @@ HoffmannProjectionPotential<SCFMode>::HoffmannProjectionPotential(
         LocalizationTask locTask(pickedSystem);
         locTask.run();
       }
-      const auto& envCoeff = pickedSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
+      const auto& envCoeff = pickedSystem->template getActiveOrbitalController<SCFMode>()->getCoefficients();
       auto orbitalPopulations = MullikenPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(
           envCoeff, pickedSystem->getOneElectronIntegralController()->getOverlapIntegrals(),
           pickedSystem->getAtomCenteredBasisController()->getBasisIndices());

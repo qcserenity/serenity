@@ -39,7 +39,7 @@ namespace Serenity {
 
 using namespace Serenity::Reflection;
 class SystemController;
-class Settings;
+struct Settings;
 
 struct TDEmbeddingTaskSettings {
   TDEmbeddingTaskSettings()

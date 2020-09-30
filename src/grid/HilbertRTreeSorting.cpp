@@ -21,7 +21,9 @@
 /* Include Class Header*/
 #include "grid/HilbertRTreeSorting.h"
 /* Include Std and External Headers */
+#include <array>
 #include <iostream>
+
 namespace Serenity {
 
 HilbertRTreeSorting::HilbertRTreeSorting(Eigen::Matrix3Xd& points, Eigen::VectorXd& weights)

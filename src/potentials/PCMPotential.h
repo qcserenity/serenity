@@ -34,7 +34,7 @@ namespace Serenity {
 /* Forward Declarations */
 class BasisController;
 class Geometry;
-class PCMSettings;
+struct PCMSettings;
 template<Options::SCF_MODES T>
 class ContinuumModel;
 template<Options::SCF_MODES T>

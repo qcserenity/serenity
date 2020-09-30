@@ -953,8 +953,7 @@ void DLPNO_CCSD::switchIntegrals() {
     pair->singles_j->f_ab = pair->f_ab;
     // (ac|bd)
     unsigned int nPNOs = nCanVir;
-    pair->ac_bd = std::move(std::unique_ptr<Matrix<Eigen::MatrixXd>>(
-        new Matrix<Eigen::MatrixXd>(nPNOs, nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs))));
+    pair->ac_bd = std::make_unique<Matrix<Eigen::MatrixXd>>(nPNOs, nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs));
     pair->ia_bc = std::vector<Eigen::MatrixXd>(nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs));
     pair->ja_bc = std::vector<Eigen::MatrixXd>(nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs));
     pair->jc_ab = std::vector<Eigen::MatrixXd>(nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs));

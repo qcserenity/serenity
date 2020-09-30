@@ -30,6 +30,7 @@
 #include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/HDF5.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"

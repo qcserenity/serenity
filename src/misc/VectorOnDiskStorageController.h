@@ -22,15 +22,21 @@
 #ifndef MISC_VECTORONDISKSTORAGECONTROLLER_H_
 #define MISC_VECTORONDISKSTORAGECONTROLLER_H_
 
-/* Include Serenity Internal Headers */
-#include "io/HDF5.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
+#include <map>
 #include <memory>
 #include <stack>
 #include <vector>
 
+namespace H5 {
+class H5File;
+} // namespace H5
+
 namespace Serenity {
+namespace HDF5 {
+using H5File = H5::H5File;
+} // namespace HDF5
 
 /**
  * @class VectorOnDiskStorageController VectorOnDiskStorageController.h

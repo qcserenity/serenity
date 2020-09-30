@@ -110,11 +110,11 @@ SPMatrix<SCFMode>& ABNAddFuncPotential<SCFMode>::getMatrix() {
       auto superDensityOnGrid = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_grid));
 
       auto basisFunctionsOnGridAct = BasisFunctionOnGridControllerFactory::produce(
-          actSettings, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix().getBasisController(), _grid);
+          actSettings, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().getBasisController(), _grid);
       DensityOnGridCalculator<SCFMode> densOnGridCalc(basisFunctionsOnGridAct, actSettings.grid.blockAveThreshold);
       // Calculating and adding density.
       *actDensityOnGrid =
-          densOnGridCalc.calcDensityOnGrid(activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix());
+          densOnGridCalc.calcDensityOnGrid(activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix());
       *superDensityOnGrid = _envDensityOnGrid->getDensityOnGrid();
       *superDensityOnGrid += *actDensityOnGrid;
       // Building controllers.
@@ -129,11 +129,11 @@ SPMatrix<SCFMode>& ABNAddFuncPotential<SCFMode>::getMatrix() {
       auto superDensityGradOnGrid = makeGradientPtr<DensityOnGrid<SCFMode>>(_grid);
 
       auto basisFunctionsOnGridC = BasisFunctionOnGridControllerFactory::produce(
-          actSettings, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix().getBasisController(), _grid);
+          actSettings, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().getBasisController(), _grid);
       DensityOnGridCalculator<SCFMode> densOnGridCalc(basisFunctionsOnGridC, actSettings.grid.blockAveThreshold);
       // Calculating and adding density.
       *actDensityOnGrid = densOnGridCalc.calcDensityAndGradientOnGrid(
-          activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(), *actDensityGradOnGrid);
+          activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix(), *actDensityGradOnGrid);
       *superDensityOnGrid = _envDensityOnGrid->getDensityOnGrid();
       *superDensityOnGrid += *actDensityOnGrid;
       *superDensityGradOnGrid = _envDensityOnGrid->getDensityGradientOnGrid();

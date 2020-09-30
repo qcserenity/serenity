@@ -254,7 +254,7 @@ const std::map<ENERGY_CONTRIBUTIONS, std::string> EnergyComponentPrinter::_energ
     {ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_ELECTROSTATIC_INTERACTIONS,
      "Solv. Total Electrostatic Int. (FDE):                                   "},
     {ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_INTERACTION_ENERGY,
-     "Solv. Total Interatopm Energy (FDE):                                   "},
+     "Solv. Total Interaction Energy (FDE):                                   "},
     {ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_EMBEDDED_KS_DFT_ENERGY,
      "Solv. Total Energy (embedded DFT):                                      "},
     {ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_EMBEDDED_HF_ENERGY,

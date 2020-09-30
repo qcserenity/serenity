@@ -24,6 +24,7 @@
 #include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
 #include "io/FormattedOutput.h"
+#include "io/HDF5.h"
 #include "math/saddlepoint/Bofill.h"
 #include "math/saddlepoint/QST.h"
 #include "system/SystemController.h"
@@ -110,7 +111,7 @@ void TSTask::run() {
     HDF5::dataset_exists(file, "normalModes");
 
     unsigned int nAtoms = _ts->getGeometry()->getNAtoms();
-    unsigned int nModes = 3 * nAtoms - _ts->getGeometry()->isLinear() ? 5 : 6;
+    unsigned int nModes = 3 * nAtoms - (_ts->getGeometry()->isLinear() ? 5 : 6);
     Eigen::MatrixXd normalModes(3 * nAtoms, nModes);
     HDF5::load(file, "normalModes", normalModes);
     file.close();

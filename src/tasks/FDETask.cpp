@@ -67,16 +67,17 @@ void FDETask<SCFMode>::run() {
   std::vector<std::shared_ptr<Atom>> superSystemAtomsCavity;
   superSystemAtomsCavity.insert(superSystemAtomsCavity.end(), _activeSystem->getAtoms().begin(),
                                 _activeSystem->getAtoms().end());
-  if (!_supersystemgrid)
+  if (!_supersystemgrid) {
     superSystemAtomsGrid = superSystemAtomsCavity;
+  }
 
   _activeSystem->setDiskMode(false);
   for (auto sys : _environmentSystems) {
     if (sys->getSettings().scfMode == RESTRICTED) {
-      sys->getElectronicStructure<RESTRICTED>();
+      sys->template getElectronicStructure<RESTRICTED>();
     }
     else {
-      sys->getElectronicStructure<UNRESTRICTED>();
+      sys->template getElectronicStructure<UNRESTRICTED>();
     }
     if (settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::NADD_FUNC)
       sys->setDiskMode(true);
@@ -151,9 +152,9 @@ void FDETask<SCFMode>::run() {
     if (settings.calculateEnvironmentEnergy) {
       auto envsettings = sys->getSettings();
       auto envEnergies = sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
-      auto densityMatrixEnvironment = sys->getElectronicStructure<SCFMode>()->getDensityMatrix();
+      auto densityMatrixEnvironment = sys->template getElectronicStructure<SCFMode>()->getDensityMatrix();
       if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-        auto envPot = sys->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+        auto envPot = sys->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
         envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
       }
       else if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
@@ -161,7 +162,7 @@ void FDETask<SCFMode>::run() {
         auto envDispEnergy = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
             sys->getSettings().dft.dispersion, sys->getGeometry(), sys->getSettings().dft.functional);
         envEnergies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, envDispEnergy);
-        auto envPot = sys->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+        auto envPot = sys->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
         envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
         envEnergies->addOrReplaceComponent(
             std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, 0.0));

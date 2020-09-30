@@ -23,7 +23,6 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrix.h"
-#include "io/HDF5.h"
 #include "notification/NotifyingClass.h"
 
 namespace Serenity {

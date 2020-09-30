@@ -157,12 +157,12 @@ void FreezeAndThawTask<SCFMode>::run() {
       if (nSystem > 0 and settings.gridCutOff < 0.0) {
         for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
           densOnGridControllers[nSystem] = DensityOnGridFactory<SCFMode>::produce(
-              _activeSystems[nSystem]->getElectronicStructure<SCFMode>()->getDensityMatrixController(), supersystemgrid,
-              1, activeSystem->getSettings());
+              _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+              supersystemgrid, 1, activeSystem->getSettings());
         }
         for (unsigned int nSystem = 0; nSystem < _passiveSystems.size(); nSystem++) {
           densOnGridControllers[nSystem + _activeSystems.size()] = DensityOnGridFactory<SCFMode>::produce(
-              _passiveSystems[nSystem]->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+              _passiveSystems[nSystem]->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
               supersystemgrid, 1, activeSystem->getSettings());
         }
       }
@@ -334,8 +334,8 @@ void FreezeAndThawTask<SCFMode>::run() {
 
     for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
       auto calc = DensityOnGridFactory<SCFMode>::produce(
-          _activeSystems[nSystem]->getElectronicStructure<SCFMode>()->getDensityMatrixController(), finalGrid, 1,
-          _activeSystems[nSystem]->getSettings());
+          _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getDensityMatrixController(), finalGrid,
+          1, _activeSystems[nSystem]->getSettings());
       *superSysDens += calc->getDensityOnGrid();
       if (gga) {
         superSysdensGrad->x += calc->getDensityGradientOnGrid().x;
@@ -350,8 +350,8 @@ void FreezeAndThawTask<SCFMode>::run() {
 
     for (unsigned int nSystem = 0; nSystem < _passiveSystems.size(); nSystem++) {
       auto calc = DensityOnGridFactory<SCFMode>::produce(
-          _passiveSystems[nSystem]->getElectronicStructure<SCFMode>()->getDensityMatrixController(), finalGrid, 1,
-          _passiveSystems[nSystem]->getSettings());
+          _passiveSystems[nSystem]->template getElectronicStructure<SCFMode>()->getDensityMatrixController(), finalGrid,
+          1, _passiveSystems[nSystem]->getSettings());
       *superSysDens += calc->getDensityOnGrid();
       if (gga) {
         superSysdensGrad->x += calc->getDensityGradientOnGrid().x;
@@ -370,7 +370,7 @@ void FreezeAndThawTask<SCFMode>::run() {
     naddKinEnergy += flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENT_INVARIANTS, kinefunc, superSysDensOnGrid, 0).energy;
 
     for (auto& sys : _activeSystems) {
-      auto eCont = sys->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+      auto eCont = sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
       eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_XC, naddXcEnergy);
       eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC, naddKinEnergy);
     }
@@ -380,7 +380,7 @@ void FreezeAndThawTask<SCFMode>::run() {
   printSubSectionTitle("Final Freeze-and-Thaw Energies");
   for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
     printBigCaption((std::string) "Active System: " + _activeSystems[nSystem]->getSettings().name);
-    auto eCont = _activeSystems[nSystem]->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+    auto eCont = _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
     eCont->printAllComponents();
     std::cout << std::endl;
     std::cout << std::endl;
@@ -448,11 +448,11 @@ void FreezeAndThawTask<SCFMode>::calculateNonAdditiveDispersionCorrection() {
     Timings::timeTaken("FDE -    Non-Add. Disper.");
   }
   if (settings.calculateSolvationEnergy) {
-    auto eCont = activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+    auto eCont = activeSystem->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_DISP, solvScaledNadDispCorrection);
   }
   for (auto& sys : _activeSystems) {
-    auto eCont = sys->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+    auto eCont = sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_DISP, nadDispCorrection);
   }
 }

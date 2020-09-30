@@ -23,7 +23,7 @@
 
 namespace Serenity {
 
-class PCMSettings;
+struct PCMSettings;
 namespace Options {
 enum class PCM_SOLVENTS;
 }

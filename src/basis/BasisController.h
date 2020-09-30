@@ -201,11 +201,10 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
       produceBasis();
     return _maxAngularMomentum;
   }
-  void notify() {
-    this->notifyObjects();
-    this->_shellPairList = nullptr;
-    this->_RIPrescreeningFactors = nullptr;
-  }
+  /**
+   * @brief Reset shellPairList, prescreening factors and notifies depending objects.
+   */
+  void notify();
   /**
    * @returns true iff all basis function shells are cartesian
    */

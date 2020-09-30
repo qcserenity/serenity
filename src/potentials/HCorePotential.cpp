@@ -60,12 +60,6 @@ double HCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
   for_spin(pot, P) {
     energy += pot_spin.cwiseProduct(P_spin).sum();
   };
-  auto& libint = Libint::getInstance();
-  auto kin = libint.compute1eInts(libint2::Operator::kinetic, this->_basis);
-  double kinE = 0.0;
-  for_spin(P) {
-    kinE += P_spin.cwiseProduct(kin).sum();
-  };
   Timings::timeTaken("Active System -     1e-Int Pot.");
   return energy;
 }
@@ -73,14 +67,14 @@ double HCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
   auto system = _system.lock();
-  const auto& orbitalSet = system->getActiveOrbitalController<SCFMode>();
+  const auto& orbitalSet = system->template getActiveOrbitalController<SCFMode>();
   auto atoms = system->getAtoms();
   unsigned int nAtoms = atoms.size();
   unsigned int maxAtoms = 2;
   Eigen::MatrixXd gradientContr(nAtoms, 3);
   gradientContr.setZero();
 
-  DensityMatrix<SCFMode> matrix(system->getElectronicStructure<SCFMode>()->getDensityMatrix());
+  DensityMatrix<SCFMode> matrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix());
   matrix = calcEnergyWeightedDensityMatrix(system, orbitalSet);
   for_spin(matrix) {
     matrix_spin *= -1.0;
@@ -137,7 +131,7 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
     { gradientContr += gradientContrPriv; }
   } /* END OpenMP parallel */
 
-  DensityMatrix<RESTRICTED> densMatrix(system->getElectronicStructure<SCFMode>()->getDensityMatrix().total());
+  DensityMatrix<RESTRICTED> densMatrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix().total());
 
   libint.initialize(libint2::Operator::nuclear, 1, 2, atoms);
 #pragma omp parallel

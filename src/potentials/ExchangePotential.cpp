@@ -360,7 +360,7 @@ Eigen::MatrixXd ExchangePotential<RESTRICTED>::getGeomGradients() {
 #else
   xGrad -= priv[0] * _exc;
 #endif
-  return xGrad;
+  return std::move(xGrad);
 }
 
 template<>
@@ -425,7 +425,7 @@ Eigen::MatrixXd ExchangePotential<UNRESTRICTED>::getGeomGradients() {
 #else
   xGrad -= priv[0] * _exc;
 #endif
-  return xGrad;
+  return std::move(xGrad);
 }
 
 template class ExchangePotential<Options::SCF_MODES::RESTRICTED>;

@@ -61,51 +61,52 @@ void EDATask<SCFMode>::run() {
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ES);
-    const auto& P(super->getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix());
-    pot->getFockMatrix(P, super->getElectronicStructure<SCFMode>()->getEnergyComponentController());
+    const auto& P(super->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix());
+    pot->getFockMatrix(P, super->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
     eES = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ESX);
-    const auto& P(super->getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix());
-    pot->getFockMatrix(P, super->getElectronicStructure<SCFMode>()->getEnergyComponentController());
+    const auto& P(super->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix());
+    pot->getFockMatrix(P, super->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
     eESX = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ESXCT);
-    Scf<SCFMode>::perform(settings, super->getElectronicStructure<SCFMode>(), pot);
+    Scf<SCFMode>::perform(settings, super->template getElectronicStructure<SCFMode>(), pot);
     eESXCT = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ESXPLX);
-    Scf<SCFMode>::perform(settings, super->getElectronicStructure<SCFMode>(), pot);
+    Scf<SCFMode>::perform(settings, super->template getElectronicStructure<SCFMode>(), pot);
     eESXPLX = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ESPL);
-    Scf<SCFMode>::perform(settings, super->getElectronicStructure<SCFMode>(), pot);
+    Scf<SCFMode>::perform(settings, super->template getElectronicStructure<SCFMode>(), pot);
     eESPL = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     auto pot = std::make_shared<EDAPotentials<SCFMode>>(_systemA, _systemB, super, EDAEnergyContributions::ESXEX);
-    const auto& P = super->getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
-    super->getElectronicStructure<SCFMode>()->getMolecularOrbitals()->updateOrbitals(
-        pot->getFockMatrix(P, super->getElectronicStructure<SCFMode>()->getEnergyComponentController()),
+    const auto& P = super->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
+    super->template getElectronicStructure<SCFMode>()->getMolecularOrbitals()->updateOrbitals(
+        pot->getFockMatrix(P, super->template getElectronicStructure<SCFMode>()->getEnergyComponentController()),
         super->getOneElectronIntegralController());
-    pot->getFockMatrix(P, super->getElectronicStructure<SCFMode>()->getEnergyComponentController());
+    pot->getFockMatrix(P, super->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
     eESXEX = pot->getEDAEnergyContribution();
   }
   {
     auto super = (*_systemA) + (*_systemB);
     ScfTask<SCFMode> scf(super);
     scf.run();
-    e0 = _systemA->getElectronicStructure<SCFMode>()->getEnergy() + _systemB->getElectronicStructure<SCFMode>()->getEnergy();
-    eInt = super->getElectronicStructure<SCFMode>()->getEnergy() - e0;
+    e0 = _systemA->template getElectronicStructure<SCFMode>()->getEnergy() +
+         _systemB->template getElectronicStructure<SCFMode>()->getEnergy();
+    eInt = super->template getElectronicStructure<SCFMode>()->getEnergy() - e0;
   }
   libint.freeEngines(libint2::Operator::coulomb, 0, 2);
   libint.freeEngines(libint2::Operator::coulomb, 0, 3);

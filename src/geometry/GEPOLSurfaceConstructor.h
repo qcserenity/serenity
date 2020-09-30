@@ -31,7 +31,7 @@ class Triangle;
 class Atom;
 class Point;
 class GridController;
-class PCMSettings;
+struct PCMSettings;
 namespace Options {
 enum class PCM_ATOMIC_RADII_TYPES;
 enum class PCM_CAVITY_TYPES;

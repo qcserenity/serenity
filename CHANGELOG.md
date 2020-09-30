@@ -1,7 +1,13 @@
 Changelog
 ===============================
 
+Release 1.3.1 (30.09.2020)
+-------------------------------
+
 ### Technical Features
+ - Allow compilation using Clang on both OSX and Linux
+ - A few smaller technical bugs
+ - Update Libecpint to v1.0.0
 
 Release 1.3.0 (16.09.2020)
 -------------------------------

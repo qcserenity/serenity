@@ -49,7 +49,7 @@ class DynamicDamping : public Damper<SCFMode> {
    * @param newFock     A reference of the Fock matrix to be damped. Is updated and stored as _oldFock.
    * @param newDensity  A copy of the density matrix to be damped. Is also updated, so it can be stored as _oldDensity.
    */
-  void dynamicDamp(FockMatrix<SCFMode>& newFock, DensityMatrix<SCFMode> newDensity);
+  void dynamicDamp(FockMatrix<SCFMode>& newFock, DensityMatrix<SCFMode> newDensity) override;
 
   ///@brief Not used here, just override.
   virtual void damp(FockMatrix<SCFMode>&) override final{};

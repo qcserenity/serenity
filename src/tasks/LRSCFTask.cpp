@@ -121,10 +121,10 @@ void LRSCFTask<SCFMode>::run() {
     if (_lrscf.size() != 1)
       throw SerenityError("LMO-TDDFT only available for supersystem calculations.");
 
-    auto es = _act[0]->getElectronicStructure<SCFMode>();
+    auto es = _act[0]->template getElectronicStructure<SCFMode>();
     auto energyComponentController = es->getEnergyComponentController();
     auto potentials =
-        _act[0]->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(Options::GRID_PURPOSES::DEFAULT);
+        _act[0]->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(Options::GRID_PURPOSES::DEFAULT);
     auto orbitalController = es->getMolecularOrbitals();
     auto coeff = _lrscf[0]->getCoefficients();
     auto eigenvalues = _lrscf[0]->getEigenvalues();

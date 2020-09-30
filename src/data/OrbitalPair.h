@@ -23,16 +23,22 @@
 /* Include Serenity Internal Headers */
 #include "math/Matrix.h" //Four index objects.
 /* Include Std and External Headers */
-#include "io/HDF5.h"        // Writing to file.
 #include <Eigen/Dense>      // Dense matrices.
 #include <Eigen/SparseCore> // Sparse matrices.
 #include <memory>           // smrt_ptr
 #include <string>           // Integral file names.
 #include <vector>           // std::vector
 
+namespace H5 {
+class H5File;
+} // namespace H5
+
 namespace Serenity {
 
 /* Forward Declarations */
+namespace HDF5 {
+using H5File = H5::H5File;
+} // namespace HDF5
 class SingleSubstitution;
 class CouplingOrbitalSet;
 class KLOrbitalSet;

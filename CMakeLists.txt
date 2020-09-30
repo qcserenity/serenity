@@ -17,7 +17,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 
 # Optional flags
-option(NATIVE "Compile with -march=native" ON)
+set(SERENITY_MARCH "native" CACHE STRING "Compile with -march=<FLAG>")
 option(WERROR "Compile with warnings as errors" OFF)
 option(GCC_PROFILE "Compile with profile flags" OFF)
 option(GCC_COVERAGE "Compile with coverage flags" OFF)
@@ -61,9 +61,9 @@ include(src/Files.cmake)
 ## Main Targets ##
 ##################
 
-add_library(${PROJECT_NAME} ${SERENITY_CPPS} ${SERENITY_HEADERS})
-set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
-add_executable(${PROJECT_NAME}_exe ${PROJECT_SOURCE_DIR}/src/serenity.cpp)
+add_library(serenity ${SERENITY_CPPS} ${SERENITY_HEADERS})
+set_property(TARGET serenity PROPERTY POSITION_INDEPENDENT_CODE ON)
+add_executable(serenity_exe ${PROJECT_SOURCE_DIR}/src/serenity.cpp)
 
 ##################
 ## Dependencies ##
@@ -77,7 +77,7 @@ message("#=========================#")
 message("-----Checking Eigen3-----")
 message("-----Checking Intel MKL-----")
 include(AddEigen)
-add_eigen(${PROJECT_NAME} PUBLIC)
+add_eigen(serenity PUBLIC)
 
 # OpenMP
 message("-----Checking OpenMP-----")
@@ -108,31 +108,46 @@ if (NOT DEFINED HDF5_USE_STATIC_LIBRARIES)
   set(HDF5_USE_STATIC_LIBRARIES OFF)
 endif()
 find_package(HDF5 REQUIRED COMPONENTS HL CXX)
+# The following if is a small helper for systems
+#  that have HDF5 installed but do not have the
+#  cmake files installed (this seems common for
+#  many distributions)
 if (HDF5_USE_STATIC_LIBRARIES)
-  # The following if is a small helper for systems
-  #  that have HDF5 installed but do not have the
-  #  cmake files installed (this seems common for
-  #  many distributions)
-  if(NOT (TARGET hdf5::hdf5_cpp-static))
-    add_library(hdf5::hdf5_cpp-static INTERFACE IMPORTED)
-    set_property(TARGET hdf5::hdf5_cpp-static PROPERTY
-      INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES}"
-    )
-  endif()
-  set(HDF5_TARGET hdf5::hdf5_cpp-static)
+  set(HDF5_TARGET hdf5_cpp-static)
 else()
-  # The following if is a small helper for systems
-  #  that have HDF5 installed but do not have the
-  #  cmake files installed (this seems common for
-  #  many distributions)
-  if(NOT (TARGET hdf5::hdf5_cpp-shared))
-    add_library(hdf5::hdf5_cpp-shared INTERFACE IMPORTED)
-    set_property(TARGET hdf5::hdf5_cpp-shared PROPERTY
-      INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES}"
-    )
-  endif()
-  set(HDF5_TARGET hdf5::hdf5_cpp-shared)
+  set(HDF5_TARGET hdf5_cpp-shared)
 endif()
+if(NOT TARGET ${HDF5_TARGET})
+  add_library(${HDF5_TARGET} INTERFACE IMPORTED)
+  set_target_properties(${HDF5_TARGET} PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIRS}"
+  )
+endif()
+
+# Ensure that the include directory set by HDF5 contains hdf5.h
+get_target_property(_hdf5_include_dirs ${HDF5_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+set(_has_hdf5_h FALSE)
+foreach(_hdf5_include_dir ${_hdf5_include_dirs})
+  if(EXISTS ${_hdf5_include_dir}/hdf5.h)
+    set(_has_hdf5_h TRUE)
+    break()
+  endif()
+
+  # Try looking for a hdf5 directory within the include directory
+  if(EXISTS ${_hdf5_include_dir}/hdf5/hdf5.h)
+    set_target_properties(${HDF5_TARGET} PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES ${_hdf5_include_dir}/hdf5
+    )
+    set(_has_hdf5_h TRUE)
+    break()
+  endif()
+endforeach()
+if(NOT _has_hdf5_h)
+  message(FATAL_ERROR "Could not find hdf5.h in HDF's include directorie: ${_hdf5_include_dirs}")
+endif()
+unset(_has_hdf5_h)
+unset(_hdf5_include_dirs)
 
 # Boost
 message("-----Checking Boost-----")
@@ -148,98 +163,95 @@ import_libecpint()
 #################################
 
 # Shared library
-set_target_properties(${PROJECT_NAME}
-  PROPERTIES PUBLIC_HEADER
-    "${SERENITY_HEADERS}"
+target_include_directories(serenity PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/serenity>
+  $<$<BOOL:${MKL_FOUND}>:${MKL_INCLUDE_DIRS}>
 )
-target_include_directories(${PROJECT_NAME}
-  PUBLIC
-    #$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/${PROJECT_NAME}>
-    ${HDF5_INCLUDE_DIRS}
-    $<$<BOOL:${MKL_FOUND}>:${MKL_INCLUDE_DIRS}>
-)
-target_compile_options(${PROJECT_NAME} PRIVATE
-  ${OpenMP_CXX_FLAGS}
-)
-set_target_properties(${PROJECT_NAME} PROPERTIES
+target_compile_options(serenity PRIVATE ${OpenMP_CXX_FLAGS})
+set_target_properties(serenity PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   CXX_STANDARD 14
 )
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(serenity
   PUBLIC
     Boost::boost
     OpenMP::OpenMP_CXX
     $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
     $<$<BOOL:${GCC_PROFILE}>:-pg>
-  PRIVATE
     libint2-static
+  PRIVATE
     xc
     xcfun
     ecpint
     ${HDF5_TARGET}
 )
-target_compile_definitions(${PROJECT_NAME}
-  PUBLIC
-    $<$<BOOL:${SERENITY_PREFER_XCFUN}>:SERENITY_PREFER_XCFUN>
-    $<$<BOOL:${SERENITY_USE_XCFUN}>:SERENITY_USE_XCFUN>
-    $<$<BOOL:${SERENITY_USE_LIBXC}>:SERENITY_USE_LIBXC>
-    $<$<CONFIG:Debug>:EIGEN_INITIALIZE_MATRICES_BY_NAN>
-    $<$<BOOL:${MKL_FOUND}>:EIGEN_USE_MKL_ALL>
+target_compile_definitions(serenity PUBLIC
+  $<$<BOOL:${SERENITY_PREFER_XCFUN}>:SERENITY_PREFER_XCFUN>
+  $<$<BOOL:${SERENITY_USE_XCFUN}>:SERENITY_USE_XCFUN>
+  $<$<BOOL:${SERENITY_USE_LIBXC}>:SERENITY_USE_LIBXC>
+  $<$<CONFIG:Debug>:EIGEN_INITIALIZE_MATRICES_BY_NAN>
+  $<$<BOOL:${MKL_FOUND}>:EIGEN_USE_MKL_ALL>
 )
-target_compile_options(${PROJECT_NAME}
-  PUBLIC
-    -Wall
-    -Wextra
-    -Wno-comment
-    $<$<BOOL:${NATIVE}>:-march=native>
-    $<$<BOOL:${WERROR}>:-Werror>
-    $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
-    $<$<BOOL:${GCC_PROFILE}>:-pg>
-    $<$<AND:$<BOOL:${MKL_FOUND}>,$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","Intel">>:-DMKL_LP64>
+target_compile_options(serenity PUBLIC
+  -Wall
+  -Wextra
+  -Wno-comment
+  $<$<BOOL:${WERROR}>:-Werror>
+  $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
+  $<$<BOOL:${GCC_PROFILE}>:-pg>
+  $<$<AND:$<BOOL:${MKL_FOUND}>,$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","Intel">>:-DMKL_LP64>
 )
+if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
+  target_compile_options(serenity PUBLIC -march=${SERENITY_MARCH})
+endif()
+
 
 # Executable
-set_target_properties(${PROJECT_NAME}_exe PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}_exe
+set_target_properties(serenity_exe PROPERTIES OUTPUT_NAME serenity)
+target_link_libraries(serenity_exe
   PUBLIC
     $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
     $<$<BOOL:${GCC_PROFILE}>:-pg>
   PRIVATE
-    ${PROJECT_NAME}
-    libint2-static
+    serenity
 )
-set_target_properties(${PROJECT_NAME}_exe PROPERTIES 
+set_target_properties(serenity_exe PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   CXX_STANDARD 14
 )
-target_compile_options(${PROJECT_NAME}_exe
+target_compile_options(serenity_exe
   PUBLIC
     -Wall
     -Wextra
     -Wno-comment
-    $<$<BOOL:${NATIVE}>:-march=native>
     $<$<BOOL:${WERROR}>:-Werror>
     $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
     $<$<BOOL:${GCC_PROFILE}>:-pg>
 )
+if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
+  target_compile_options(serenity_exe PUBLIC -march=${SERENITY_MARCH})
+endif()
 
 #############
 ## Install ##
 #############
 
 # Targets
-install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_exe
-        EXPORT ${PROJECT_NAME}Targets
+install(TARGETS serenity serenity_exe
+        EXPORT serenityTargets
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
-        PUBLIC_HEADER DESTINATION include/${PROJECT_NAME}
+)
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/
+  DESTINATION include/serenity
+  FILES_MATCHING PATTERN "*.h"
 )
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data/basis
         ${CMAKE_CURRENT_SOURCE_DIR}/data/initialGuess
-        DESTINATION share/${PROJECT_NAME}/data
+        DESTINATION share/serenity/data
 )
 
 
@@ -260,35 +272,36 @@ if(SERENITY_ENABLE_TESTS)
   import_gtest()
   message("-----Adding Test Executable-----")
   # Test exe
-  add_executable(${PROJECT_NAME}_tests ${SERENITY_TEST_FILES})
-  target_link_libraries(${PROJECT_NAME}_tests
+  add_executable(serenity_tests ${SERENITY_TEST_FILES})
+  target_link_libraries(serenity_tests
     PUBLIC
       $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
       $<$<BOOL:${GCC_PROFILE}>:-pg>
     PRIVATE
       GTest::Main
       GMock::GMock
-      ${PROJECT_NAME}
-      libint2-static
+      serenity
       xcfun
       ecpint
       ${HDF5_TARGET}
   )
-  set_target_properties(${PROJECT_NAME}_tests PROPERTIES
+  set_target_properties(serenity_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     CXX_STANDARD 14
   )
-  target_compile_options(${PROJECT_NAME}_tests
+  target_compile_options(serenity_tests
     PUBLIC
       -Wall
       -Wextra
       -Wno-comment
-      $<$<BOOL:${NATIVE}>:-march=native>
       $<$<BOOL:${WERROR}>:-Werror>
       $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
       $<$<BOOL:${GCC_PROFILE}>:-pg>
   )
-  add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME}_tests)
+  if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
+    target_compile_options(serenity_tests PUBLIC -march=${SERENITY_MARCH})
+  endif()
+  add_test(NAME serenity COMMAND serenity_tests)
 endif()
 
 
@@ -320,23 +333,24 @@ if (SERENITY_PYTHON_BINDINGS)
       $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
       $<$<BOOL:${GCC_PROFILE}>:-pg>
     PRIVATE
-      ${PROJECT_NAME}
-      libint2-static
+      serenity
   )
   set_target_properties(serenipy PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   )
   target_compile_options(serenipy
     PUBLIC
-      $<$<BOOL:${NATIVE}>:-march=native>
       $<$<BOOL:${WERROR}>:-Werror>
       $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
       $<$<BOOL:${GCC_PROFILE}>:-pg>
   )
+  if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
+    target_compile_options(serenipy PUBLIC -march=${SERENITY_MARCH})
+  endif()
 
   # Install
   install(TARGETS serenipy
-    EXPORT ${PROJECT_NAME}Targets
+    EXPORT serenityTargets
     LIBRARY DESTINATION lib
     )
 endif(SERENITY_PYTHON_BINDINGS)
@@ -372,9 +386,9 @@ if(SERENITY_USAGE_FROM_SOURCE)
     file(COPY ${PROJECT_SOURCE_DIR}/dev/templates/serenity.sh DESTINATION ${PROJECT_SOURCE_DIR})
   endif()
   # Create links to bin, lib and include
-  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  add_custom_command(TARGET serenity POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/lib" "${CMAKE_CURRENT_SOURCE_DIR}/lib")
-  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  add_custom_command(TARGET serenity POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/bin" "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 endif(SERENITY_USAGE_FROM_SOURCE)
 
@@ -386,7 +400,7 @@ endif(SERENITY_USAGE_FROM_SOURCE)
 include(CMakePackageConfigHelpers)
 # Config Version file
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY AnyNewerVersion
 )
@@ -394,27 +408,26 @@ write_basic_package_version_file(
 # Config file
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
-  INSTALL_DESTINATION "lib/cmake/${PROJECT_NAME}"
+  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
+  INSTALL_DESTINATION "lib/cmake/serenity"
 )
 
 # Install serenity-config.cmake and serenity-config-version.cmake
 install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
-  DESTINATION lib/cmake/${PROJECT_NAME}
+  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
+  DESTINATION lib/cmake/serenity
 )
 
 # Add all targets to the build-tree export set
 export(
   TARGETS
-    ecpint
     xc
     xcfun
     libint2-static
-    ${PROJECT_NAME}
-    ${PROJECT_NAME}_exe
-  FILE "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-targets.cmake"
+    serenity
+    serenity_exe
+  FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
 )
 
 # Export the package for use from the build-tree
@@ -422,8 +435,7 @@ export(
 export(PACKAGE Serenity)
 
 # Install the export set for use with the install-tree
-install(EXPORT ${PROJECT_NAME}Targets
-  FILE ${PROJECT_NAME}-targets.cmake
-  DESTINATION lib/cmake/${PROJECT_NAME}
+install(EXPORT serenityTargets
+  FILE serenity-targets.cmake
+  DESTINATION lib/cmake/serenity
 )
-

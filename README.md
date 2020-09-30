@@ -49,12 +49,16 @@ https://github.com/qcserenity/serenity
 Please read the following instructions carefully.
 
 ### Prerequisites
-The code has been tested and compiled with GCC/G++ (Versions 7 and newer)
-and ICC/ICPC (Versions 17.X) compilation with other compilers and compiler versions
-could still be possible.
-
-The compilation of the code is supported and tested on Linux systems.
-The compilation on MacOS should also be possible.
+The code has been tested and compiled on Linux with GCC/G++
+(Versions 7 and newer) and Clang (Versions 8 and newer)
+compilation with other compilers such as ICC should be
+possible on Linux.  
+  
+Furthermore, the code has been tested and
+compiled on MacOS using Clang, compilation with GCC on MacOS
+should most likely also be possible.  
+  
+Compilation on and for Windows is not supported at the moment.
 
 The following programs/libraries must be available on your system:
  - CMake (Version >= 3.12)

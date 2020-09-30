@@ -24,7 +24,6 @@
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/FockMatrix.h"
-#include "io/HDF5.h"
 #include "notification/NotifyingClass.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */

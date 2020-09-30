@@ -27,7 +27,7 @@
 
 namespace Serenity {
 
-class PCMSettings;
+struct PCMSettings;
 class Atom;
 class Geometry;
 

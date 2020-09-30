@@ -38,7 +38,7 @@ class AtomCenteredBasisFactory;
  * This information is e.g. used in a Mulliken population analysis, or when calculating gradients
  * (with respect to the atomic coordinates).
  */
-class AtomCenteredBasisController : public BasisController {
+class AtomCenteredBasisController : public BasisController, public ObjectSensitiveClass<Geometry> {
   friend class BasisController__TEST_SUPPLY;
 
   struct BasisLoadingData {
@@ -120,6 +120,8 @@ class AtomCenteredBasisController : public BasisController {
     return _basisLoadingData;
   }
 
+  void notify() override;
+
  private:
   std::unique_ptr<Basis> produceBasisFunctionVector() override final;
   void postConstruction() override final;
@@ -134,6 +136,8 @@ class AtomCenteredBasisController : public BasisController {
 
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesOfAtom;
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesRedOfAtom;
+
+  void resetBasisLoadingData(const std::vector<Eigen::VectorXi>& importantShells = {});
 
   /*
    * This private constructor is for testing purposes only

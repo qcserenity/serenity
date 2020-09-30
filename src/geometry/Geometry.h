@@ -28,9 +28,6 @@
 #include <vector>
 
 /* Forward declarations */
-namespace HDF5 {
-class Filepath;
-}
 namespace Serenity {
 template<typename>
 class Matrix;
@@ -41,7 +38,7 @@ class Matrix;
  * @brief Holds a set of atoms.
  *
  */
-class Geometry : public ObjectSensitiveClass<Atom> {
+class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geometry> {
   friend class GradientCalculator;
 
  public:
@@ -82,21 +79,23 @@ class Geometry : public ObjectSensitiveClass<Atom> {
    * @returns The energy due to the Coulomb repulsion of the atoms from each other
    */
   inline double getCoreCoreRepulsion() const {
-    if (!_coreCoreRepulsionUpToDate)
+    if (!_coreCoreRepulsionUpToDate) {
       calcCoreCoreRepulsion();
+    }
     return _coreCoreRepulsion;
   }
   /**
    * @returns The center of mass
    */
   inline Point getCenterOfMass() const {
-    if (!_centerOfMassUpToDate)
+    if (!_centerOfMassUpToDate) {
       calcCenterOfMass();
+    }
     return _centerOfMass;
   }
 
   /**
-   * @brief A schortcut to acess atoms directly.
+   * @brief A shortcut to acess atoms directly.
    *
    * @param   i
    * @returns the ith atom of the Geometry.
@@ -274,18 +273,24 @@ class Geometry : public ObjectSensitiveClass<Atom> {
     for (auto atom : rhs.getAtoms()) {
       this->_atoms.push_back(atom);
       atom->addSensitiveObject(this->_self);
-      if (atom->getX() < this->_minX)
+      if (atom->getX() < this->_minX) {
         this->_minX = atom->getX();
-      if (atom->getY() < this->_minY)
+      }
+      if (atom->getY() < this->_minY) {
         this->_minY = atom->getY();
-      if (atom->getZ() < this->_minZ)
+      }
+      if (atom->getZ() < this->_minZ) {
         this->_minZ = atom->getZ();
-      if (atom->getX() > this->_maxX)
+      }
+      if (atom->getX() > this->_maxX) {
         this->_maxX = atom->getX();
-      if (atom->getY() > this->_maxY)
+      }
+      if (atom->getY() > this->_maxY) {
         this->_maxY = atom->getY();
-      if (atom->getZ() > this->_maxZ)
+      }
+      if (atom->getZ() > this->_maxZ) {
         this->_maxZ = atom->getZ();
+      }
     }
     return *this;
   }

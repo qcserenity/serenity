@@ -63,9 +63,10 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
         LocalizationTask locTask(_systemController);
         locTask.settings.splitValenceAndCore = true;
         locTask.run();
-        if (SCFMode != RESTRICTED)
+        if (SCFMode != RESTRICTED) {
           throw SerenityError("Local MP2 is not available for unrestricted systems, please use RI-MP2. Please set "
                               "<mp2Type> to <RI> in the task settings.");
+        }
         auto localCorrelationController =
             std::make_shared<LocalCorrelationController>(_systemController, this->settings.lcSettings);
         LocalMP2 localMP2(localCorrelationController);

@@ -110,7 +110,7 @@ class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
    * @brief Constructs PNOs and transforms amplitudes and exchange integrals to the PNO basis.
    * @param pair The pair.
    */
-  virtual void postProcessing(std::shared_ptr<OrbitalPair> pair);
+  virtual void postProcessing(std::shared_ptr<OrbitalPair> pair) override;
   /**
    * @brief Transforms the PAO basis of the given pairs to their significant (quasi-canonical) PNO basis.
    * @param orbitalPairs  The orbital pairs.

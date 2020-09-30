@@ -37,7 +37,7 @@ AtomCenteredGridController::AtomCenteredGridController(const shared_ptr<const Ge
 }
 
 std::unique_ptr<AtomCenteredGrid> AtomCenteredGridController::getAtomGrid() {
-  return std::move(_gridFactory->produce(_geometry));
+  return _gridFactory->produce(_geometry);
 }
 
 void AtomCenteredGridController::produceGrid() {

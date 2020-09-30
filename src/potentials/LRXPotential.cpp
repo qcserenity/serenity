@@ -367,7 +367,7 @@ Eigen::MatrixXd LRXPotential<RESTRICTED>::getGeomGradients() {
 #else
   lrxGrad -= priv[0] * _exc;
 #endif
-  return lrxGrad;
+  return std::move(lrxGrad);
 }
 
 template<>
@@ -432,7 +432,7 @@ Eigen::MatrixXd LRXPotential<UNRESTRICTED>::getGeomGradients() {
 #else
   lrxGrad -= priv[0] * _exc;
 #endif
-  return lrxGrad;
+  return std::move(lrxGrad);
 }
 
 template class LRXPotential<Options::SCF_MODES::RESTRICTED>;

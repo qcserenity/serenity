@@ -2,7 +2,7 @@
  * @file HDF5.h
  *
  * @date Jun 8, 2016
- * @author Jan Unslber
+ * @author Jan Unsleber
  *
  *
  * A header to bundle all the HDF5 support and generate a single Namespace for it.

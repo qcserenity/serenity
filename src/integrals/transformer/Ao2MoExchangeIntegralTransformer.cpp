@@ -543,8 +543,7 @@ void Ao2MoExchangeIntegralTransformer::calculate_acbd_integrals(
   const unsigned int nLocalAux = llt_metric.cols();
   const Eigen::MatrixXd& toPNO = pair->toPAODomain;
   const unsigned int nPNOs = toPNO.cols();
-  pair->ac_bd = std::move(std::unique_ptr<Matrix<Eigen::MatrixXd>>(
-      new Matrix<Eigen::MatrixXd>(nPNOs, nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs))));
+  pair->ac_bd = std::make_unique<Matrix<Eigen::MatrixXd>>(nPNOs, nPNOs, Eigen::MatrixXd::Zero(nPNOs, nPNOs));
 
   const std::vector<Eigen::MatrixXd> m_acks = get_abK(auxBasisController, nLocalAux, pairDomainToK, pair->domainProjection,
                                                       pair->domainProjection, k_PAOToFullPAOMaps, toPNO, toPNO, abK);

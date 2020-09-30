@@ -21,7 +21,7 @@ function(import_xcfun)
   add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/ext-xcfun-src ${CMAKE_CURRENT_BINARY_DIR}/ext-xcfun-build)
   set(ENABLE_TESTALL ${_ENABLE_TESTALL})
   set(BUILD_SHARED_LIBS ${_BUILD_SHARED_LIBS})
-  install(TARGETS xcfun EXPORT ${PROJECT_NAME}Targets DESTINATION lib)
+  install(TARGETS xcfun EXPORT serenityTargets DESTINATION lib)
 
   # Final check if all went well
   if(NOT TARGET xcfun)

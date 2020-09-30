@@ -71,8 +71,9 @@ class IndentStreamBuf : public std::stringbuf {
    * @brief Put out buffer if the print level is high enough.
    */
   void putOutput() {
-    if (GLOBAL_PRINT_LEVEL >= PrintLevel)
+    if (GLOBAL_PRINT_LEVEL >= PrintLevel) {
       _output << _indent << str();
+    }
     str("");
     _output.flush();
   }

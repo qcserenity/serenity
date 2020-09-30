@@ -463,7 +463,7 @@ Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
   hfGrad += cPriv[0];
   hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return hfGrad;
+  return std::move(hfGrad);
 }
 
 template<>
@@ -551,7 +551,7 @@ Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
   hfGrad += cPriv[0];
   hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return hfGrad;
+  return std::move(hfGrad);
 }
 
 template<Options::SCF_MODES SCFMode>

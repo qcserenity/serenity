@@ -93,7 +93,7 @@ void GeometryOptimizationTask<SCFMode>::run() {
      */
     unsigned int cycle = 1;
     Eigen::VectorXd oldParams = coords;
-    double oldEnergy = _activeSystems[0]->getElectronicStructure<SCFMode>()->getEnergy();
+    double oldEnergy = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy();
     /*
      * Lambda Function for the Optimizer
      */
@@ -108,7 +108,7 @@ void GeometryOptimizationTask<SCFMode>::run() {
       // Calculate Energy for new Coordinate Set
       auto scf = ScfTask<SCFMode>(_activeSystems[0]);
       scf.run();
-      value = _activeSystems[0]->getElectronicStructure<SCFMode>()->getEnergy();
+      value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy();
 
       // Calc/Print Gradients
 
@@ -213,8 +213,8 @@ void GeometryOptimizationTask<SCFMode>::run() {
     auto oldParams = tmpCoords;
     assert(_activeSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT &&
            "Check logic in this task for its compatible with HF.");
-    double oldEnergy =
-        _activeSystems[0]->getElectronicStructure<SCFMode>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
+    double oldEnergy = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+        ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
     unsigned int optCycle = 1;
 
     auto const updateFunction = [&](const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
@@ -245,7 +245,8 @@ void GeometryOptimizationTask<SCFMode>::run() {
       /* Variables for optimization. */
       assert(_activeSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT &&
              "Check logic in this task for its compatibility with HF.");
-      value = _activeSystems[0]->getElectronicStructure<SCFMode>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
+      value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+          ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
 
       gradients =
           Eigen::Map<const Eigen::VectorXd>(SupersystemGeometry.getGradients().data(), SupersystemGeometry.getNAtoms() * 3);

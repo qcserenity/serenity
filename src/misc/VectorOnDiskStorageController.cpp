@@ -21,7 +21,9 @@
 
 /* Include Class Header*/
 #include "misc/VectorOnDiskStorageController.h"
+/* Include Serenity Internal Headers */
 #include "io/Filesystem.h"
+#include "io/HDF5.h"
 
 namespace Serenity {
 

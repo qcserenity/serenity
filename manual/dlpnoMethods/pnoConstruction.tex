@@ -5,7 +5,7 @@ orbitals in the following section. We will always assume restricted Hartree-Fock
 This section is based on the following references~\cite{Pulay1983,Neese2009b,Riplinger2013a}.
 
 \subsection{Redundant Projected-Atomic Orbital Construction}
-In every local correlation method some sort of local representation of the virtual orbitals in necessary.
+In every local correlation method, some sort of local representation of the virtual orbitals is necessary.
 Since \textsc{Serenity} mainly implements Domain-based Local Pair Natural Orbital (DLPNO)-based correlation
 methods, the virtual space is constructed from projected atomic orbitals (PAOs).
 These PAOs $\{|\tilde{\mu}\rangle\}$ are given by
@@ -39,7 +39,7 @@ a given pair $ij$. This energy is given by~\cite{Pulay1983}
   \epsilon_{ij}^\mathrm{MP2} = \frac{1}{1+\delta_{ij}}\sum_{ab}{(ia|jb)}(4t^{ij}_{ab}-2t^{ij}_{ba}),
   \label{eq:MP2PairEnergy}
 \end{align}
-where the two electron exchange integral $(ia|jb)$ is given in $(11|22)$ notation, referring to the integration
+where the two-electron-exchange integral $(ia|jb)$ is given in $(11|22)$ notation, referring to the integration
 variables. The $t^{ij}_{ab}$ are the MP2 amplitudes. The virtual functions are denoted by $a$ and $b$.
 The only restriction for the choice in virtual functions is that they are orthogonal to the occupied orbital set.
 It is obvious from Eq.~(\ref{eq:MP2PairEnergy}) that terms in the sum can only contribute, if $i$ and $a$ as well as $j$
@@ -53,15 +53,15 @@ Within the truncated, redundant PAO sets, the PAOs are orthogonalized by constru
 in the PAO domain and diagonalizing it. The resulting eigenvectors of the PAO--PAO overlap matrix are
 truncated by eigenvalue in order to remove (nearly) linear dependent vectors.
 
-Then the Fock matrix is transformed into the basis of these non-redundant PAOs and diagonalized. The resulting functions
+Then, the Fock matrix is transformed into the basis of these non-redundant PAOs and diagonalized. The resulting functions
 are now called quasi-canonical PAOs (QC-PAOs). This quasi-canonicalization is extremely convenient for local
-second order M{\o}ller--Plesset perturbation theory (MP2), since the iterative amplitude optimization proofed
-to converge exceptionally well. Furthermore, the QC-PAOs are needed to calculate semi-canonical MP2 (SC-MP2)
-amplitudes which will become important in the next step.
+second order M{\o}ller--Plesset perturbation theory (MP2), since the iterative amplitude optimization
+converge exceptionally well. Furthermore, the QC-PAOs are needed to calculate semi-canonical MP2 (SC-MP2)
+amplitudes, which will become important in the next step.
 
 \subsection{Pseudo Natural Orbital Construction}
 
-The QC-PAO sets which are necessary to get reasonable accurate results are often very large. Thus, the size of the
+The QC-PAO sets which are necessary to get reasonable, accurate results are often very large. Thus, the size of the
 virtual orbital space is reduced further by constructing pseudo natural orbitals. For orbital pairs, we can easily
 motivate this by reconsidering Eq.~(\ref{eq:MP2PairEnergy}), which we already used in order to reduce the size of
 the initial redundant PAO sets. The idea is to find a reasonable approximation to the MP2 amplitudes $\pmb{t}_{ij}$
@@ -74,7 +74,7 @@ As an approximation to the MP2 amplitudes SC-MP2 amplitudes are used. The latter
 \end{align}
 where $\epsilon_{\tilde{\mu}}$ and $\epsilon_{\tilde{\nu}}$ are the eigenvalues of the QC-PAOs and $F_{ii}$ and $F_{jj}$
 are diagonal Fock matrix elements.
-From these amplitudes natural orbitals are constructed by diagonalizing the pair density matrix $\pmb{D}^{ij}$ given
+From these amplitudes, natural orbitals are constructed by diagonalizing the pair density matrix $\pmb{D}^{ij}$ given
 by
 \begin{align}
   \mathbf{D}^{ij} &= \tilde{\mathbf{t}}^{ij}\mathbf{t}^{ij\dagger} + \tilde{\mathbf{t}}^{ij\dagger}\mathbf{t}^{ij},

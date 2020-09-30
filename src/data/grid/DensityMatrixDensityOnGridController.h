@@ -111,19 +111,19 @@ class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<Density
    *        Note that the grid may become extremely sparsely occupied during
    *        embedding calculations.
    */
-  virtual Eigen::SparseVector<int> getNonNegligibleBlocks() {
+  virtual Eigen::SparseVector<int> getNonNegligibleBlocks() override {
     return _densOnGridCalculator->getNonNegligibleBlocks();
   }
   /**
    * @brief Getter for the number of blocks.
    */
-  virtual unsigned int getNBlocks() {
+  virtual unsigned int getNBlocks() override {
     return _densOnGridCalculator->getBasisFunctionOnGridController()->getNBlocks();
   }
   /**
    * @brief Getter for the maximum block size.
    */
-  virtual unsigned int getMaxBlockSize() {
+  virtual unsigned int getMaxBlockSize() override {
     return _densOnGridCalculator->getBasisFunctionOnGridController()->getMaxBlockSize();
   }
 

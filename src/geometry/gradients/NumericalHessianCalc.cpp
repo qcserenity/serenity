@@ -26,6 +26,7 @@
 #include "geometry/AtomType.h"
 #include "geometry/Geometry.h"
 #include "geometry/gradients/NumericalGeomGradCalc.h"
+#include "io/HDF5.h"
 #include "math/Matrix.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "parameters/Constants.h"
@@ -216,7 +217,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
   }
 
   frequencyCalculation(hessian, geometry, {settings});
-  return hessian;
+  return std::move(hessian);
 }
 
 template<Options::SCF_MODES T>
@@ -405,7 +406,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
   }
 
   frequencyCalculation(hessian, systemGeometry, settings);
-  return hessian;
+  return std::move(hessian);
 }
 
 template<Options::SCF_MODES T>

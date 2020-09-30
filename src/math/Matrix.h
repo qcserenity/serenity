@@ -68,7 +68,7 @@ class Matrix {
    */
   inline const T& operator()(unsigned int i, unsigned int j) const {
     assert(i < this->_nRows && j < this->_nColumns);
-    return this->_data[i * this->_nColumns + j];
+    return this->_data[j * this->_nRows + i];
   }
   /**
    * @brief Straightforward and safe access to the matrix. Slow!
@@ -81,7 +81,7 @@ class Matrix {
    */
   inline T& operator()(unsigned int i, unsigned int j) {
     assert(i < this->_nRows && j < this->_nColumns);
-    return this->_data[i * this->_nColumns + j];
+    return this->_data[j * this->_nRows + i];
   }
   /**
    * @brief Prints the matrix to stdout.
@@ -123,9 +123,9 @@ class Matrix {
    */
   std::vector<T> row(unsigned int iRow) const {
     assert(iRow < _nRows);
-    std::vector<T> returnRow(_nColumns, 0.0);
+    std::vector<T> returnRow(_nColumns);
     for (unsigned int i = 0; i < _nColumns; ++i) {
-      returnRow[i] = _data[i * _nColumns + iRow];
+      returnRow[i] = _data[i * _nRows + iRow];
     }
     return returnRow;
   }
@@ -137,9 +137,9 @@ class Matrix {
    */
   std::vector<T> col(unsigned int iCol) const {
     assert(iCol < _nColumns);
-    std::vector<T> returnCol(_nRows, 0.0);
+    std::vector<T> returnCol(_nRows);
     for (unsigned int i = 0; i < _nRows; i++) {
-      returnCol[i] = _data[iCol * _nColumns + i];
+      returnCol[i] = _data[iCol * _nRows + i];
     }
     return returnCol;
   }

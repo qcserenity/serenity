@@ -49,7 +49,7 @@ ActiveSpaceSelectionTask<SCFMode>::ActiveSpaceSelectionTask(std::vector<std::sha
   // Check atom ordering
   auto firstGeom = _supersystems[0]->getGeometry();
   auto firstAtomList = firstGeom->getAtoms();
-  const auto& firstOccupations = _supersystems[0]->getNOccupiedOrbitals<SCFMode>();
+  const auto& firstOccupations = _supersystems[0]->template getNOccupiedOrbitals<SCFMode>();
   for (unsigned int sys = 1; sys < _supersystems.size(); ++sys) {
     auto atomList = _supersystems[sys]->getGeometry()->getAtoms();
     if (atomList.size() != firstAtomList.size())
@@ -59,7 +59,7 @@ ActiveSpaceSelectionTask<SCFMode>::ActiveSpaceSelectionTask(std::vector<std::sha
         throw SerenityError("The atoms have to be ordered in the same way for all structures!");
     }
     // Check the number of electrons in the subsystems
-    const auto& occupations = _supersystems[sys]->getNOccupiedOrbitals<SCFMode>();
+    const auto& occupations = _supersystems[sys]->template getNOccupiedOrbitals<SCFMode>();
     for_spin(firstOccupations, occupations) {
       if (firstOccupations_spin != occupations_spin)
         throw SerenityError("Inconsistent number of electrons along the reaction coordinate!");
@@ -67,7 +67,7 @@ ActiveSpaceSelectionTask<SCFMode>::ActiveSpaceSelectionTask(std::vector<std::sha
   }
   // Initialize the orbital map
   for (auto& sys : _supersystems) {
-    auto nOcc = sys->getNOccupiedOrbitals<SCFMode>();
+    auto nOcc = sys->template getNOccupiedOrbitals<SCFMode>();
     SpinPolarizedData<SCFMode, Eigen::VectorXi> hasPartner;
     for_spin(nOcc, hasPartner) {
       hasPartner_spin = Eigen::VectorXi::Constant(nOcc_spin, 1);
@@ -76,7 +76,7 @@ ActiveSpaceSelectionTask<SCFMode>::ActiveSpaceSelectionTask(std::vector<std::sha
     std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXi>> mapVector;
     for (unsigned int j = 0; j < _supersystems.size(); ++j) {
       SpinPolarizedData<SCFMode, Eigen::MatrixXi> newMap;
-      auto nOccJ = _supersystems[j]->getNOccupiedOrbitals<SCFMode>();
+      auto nOccJ = _supersystems[j]->template getNOccupiedOrbitals<SCFMode>();
       for_spin(newMap, nOccJ, nOcc) {
         newMap_spin = Eigen::MatrixXi::Constant(nOcc_spin, nOccJ_spin, 0);
       };
@@ -272,7 +272,7 @@ void ActiveSpaceSelectionTask<SCFMode>::prepareOrbitals() {
       scfTask.run();
     }
     else {
-      if (!sys->hasElectronicStructure<SCFMode>())
+      if (!sys->template hasElectronicStructure<SCFMode>())
         throw SerenityError((std::string) "No electronic structure available. However load=true was set! System " +
                             sys->getSystemName());
     } // else if !settings.load
@@ -302,7 +302,7 @@ void ActiveSpaceSelectionTask<SCFMode>::buildOrbitalPopulations() {
     SPMatrix<SCFMode> orbitalPopulations;
     if (settings.populationAlgorithm == Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN) {
       orbitalPopulations = MullikenPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(
-          sys->getActiveOrbitalController<SCFMode>()->getCoefficients(),
+          sys->template getActiveOrbitalController<SCFMode>()->getCoefficients(),
           sys->getOneElectronIntegralController()->getOverlapIntegrals(),
           sys->getAtomCenteredBasisController()->getBasisIndices());
     }
@@ -317,7 +317,7 @@ void ActiveSpaceSelectionTask<SCFMode>::buildOrbitalPopulations() {
       throw SerenityError("The algorithm used for evaluating orbital-wise populations is not supported.");
     }
     SPMatrix<SCFMode> occPopulations;
-    const auto nOcc = sys->getNOccupiedOrbitals<SCFMode>();
+    const auto nOcc = sys->template getNOccupiedOrbitals<SCFMode>();
     for_spin(occPopulations, orbitalPopulations, nOcc) {
       occPopulations_spin = orbitalPopulations_spin.block(0, 0, orbitalPopulations_spin.rows(), nOcc_spin);
     };
@@ -563,9 +563,9 @@ void ActiveSpaceSelectionTask<SCFMode>::calculateKineticEnergy() {
   for (unsigned int i = 0; i < _supersystems.size(); ++i) {
     const auto& system = _supersystems[i];
     // Calculate the kinetic energies of the occupied orbitals
-    const auto& coeff = system->getActiveOrbitalController<SCFMode>()->getCoefficients();
+    const auto& coeff = system->template getActiveOrbitalController<SCFMode>()->getCoefficients();
     auto kinIntegrals = libint->compute1eInts(libint2::Operator::kinetic, system->getBasisController());
-    auto nOcc = system->getNOccupiedOrbitals<SCFMode>();
+    auto nOcc = system->template getNOccupiedOrbitals<SCFMode>();
     SpinPolarizedData<SCFMode, Eigen::VectorXd> kineticEnergies;
     for_spin(nOcc, coeff, kineticEnergies) {
       kineticEnergies_spin.resize(nOcc_spin);

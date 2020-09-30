@@ -14,11 +14,11 @@ function(import_libecpint)
     QUIET
   )
   set(LIBECPINT_BUILD_TESTS OFF CACHE BOOL "Disable tests")
+  set(LIBECPINT_BUILD_DOCS OFF CACHE BOOL "Disable docs")
   set(_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
   set(BUILD_SHARED_LIBS OFF)
   add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/ext-ecpint-src ${CMAKE_CURRENT_BINARY_DIR}/ext-ecpint-build)
   set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
-  install(TARGETS ecpint EXPORT ${PROJECT_NAME}Targets DESTINATION lib)
 
 
   # Final check if all went well

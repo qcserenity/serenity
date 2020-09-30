@@ -42,12 +42,9 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
   unsigned int nPairs = _closeOrbitalPairs.size();
   unsigned int nSingles = _singles.size();
   bool calculateSingles = nSingles > 0;
-  _s_ij_kl = std::move(std::unique_ptr<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(
-      new Matrix<std::shared_ptr<Eigen::MatrixXd>>(nPairs, nPairs, nullptr)));
-  _s_ij_k = std::move(std::unique_ptr<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(
-      new Matrix<std::shared_ptr<Eigen::MatrixXd>>(nPairs, nSingles, nullptr)));
-  _s_k_l = std::move(std::unique_ptr<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(
-      new Matrix<std::shared_ptr<Eigen::MatrixXd>>(nSingles, nSingles, nullptr)));
+  _s_ij_kl = std::make_unique<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(nPairs, nPairs, nullptr);
+  _s_ij_k = std::make_unique<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(nPairs, nSingles, nullptr);
+  _s_k_l = std::make_unique<Matrix<std::shared_ptr<Eigen::MatrixXd>>>(nSingles, nSingles, nullptr);
   _singlesIndices = Eigen::VectorXi::Constant(nOcc, -1);
   for (unsigned int iSingle = 0; iSingle < _singles.size(); ++iSingle) {
     const auto& single = _singles[iSingle];

@@ -82,7 +82,7 @@ void GradientTask<SCFMode>::run() {
       _activeSystems[0]->getGeometry()->printGradients();
     }
     else {
-      auto es = _activeSystems[0]->getElectronicStructure<SCFMode>();
+      auto es = _activeSystems[0]->template getElectronicStructure<SCFMode>();
       if (!es->potentialsAvailable()) {
         ScfTask<SCFMode> scf(_activeSystems[0]);
         scf.run();
@@ -176,7 +176,7 @@ void GradientTask<SCFMode>::run() {
         task.run();
 
         takeTime("Gradient Step");
-        auto es = activeSystem->getElectronicStructure<SCFMode>();
+        auto es = activeSystem->template getElectronicStructure<SCFMode>();
         auto potBundle = es->getPotentialBundle();
         auto potentialGradients = potBundle->getGradients();
         Matrix<double> ccRepDerivative(activeSystem->getGeometry()->getAtoms().size(), 3);

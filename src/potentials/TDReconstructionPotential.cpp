@@ -316,11 +316,11 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
 
     std::shared_ptr<PotentialBundle<SCFMode>> potentials;
     if (superSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-      potentials = activeSystem->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+      potentials = activeSystem->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
     }
     else if (superSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-      potentials =
-          activeSystem->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(Options::GRID_PURPOSES::DEFAULT);
+      potentials = activeSystem->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(
+          Options::GRID_PURPOSES::DEFAULT);
     }
     else {
       std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
@@ -334,33 +334,36 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
     std::shared_ptr<PotentialBundle<SCFMode>> esiPot;
     if (superSystem->getSettings().dft.densityFitting != Options::DENS_FITS::RI) {
       esiPot = std::shared_ptr<PotentialBundle<SCFMode>>(new ESIPotentials<SCFMode>(
-          activeSystem, {envSystems}, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-          activeSystem->getGeometry(), {envSystemZero->getElectronicStructure<SCFMode>()->getDensityMatrixController()},
+          activeSystem, {envSystems}, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+          activeSystem->getGeometry(),
+          {envSystemZero->template getElectronicStructure<SCFMode>()->getDensityMatrixController()},
           {envSystemZero->getGeometry()}));
     }
     else {
       std::vector<std::shared_ptr<BasisController>> envAuxBasis;
 
       esiPot = std::shared_ptr<PotentialBundle<SCFMode>>(new ESIPotentials<SCFMode>(
-          activeSystem, {envSystems}, activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-          activeSystem->getGeometry(), {envSystemZero->getElectronicStructure<SCFMode>()->getDensityMatrixController()},
+          activeSystem, {envSystems}, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+          activeSystem->getGeometry(),
+          {envSystemZero->template getElectronicStructure<SCFMode>()->getDensityMatrixController()},
           {envSystemZero->getGeometry()}, activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB),
           {envSystemZero->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)}));
     }
     // ECP TODO: Check consistency!
     std::shared_ptr<Potential<SCFMode>> ecpInt(new ECPInteractionPotential<SCFMode>(
         activeSystem, activeSystem->getGeometry()->getAtoms(), envSystemZero->getGeometry()->getAtoms(),
-        {envSystemZero->getElectronicStructure<SCFMode>()->getDensityMatrixController()}, activeSystem->getBasisController()));
+        {envSystemZero->template getElectronicStructure<SCFMode>()->getDensityMatrixController()},
+        activeSystem->getBasisController()));
 
     bool usesPCM = activeSystem->getSettings().pcm.use;
     std::vector<std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>>> envElecPots = {};
     if (usesPCM)
-      envElecPots = {
-          envSystemZero->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)};
+      envElecPots = {envSystemZero->template getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(
+          MOLECULAR_SURFACE_TYPES::FDE)};
     std::shared_ptr<Potential<SCFMode>> pcm(new PCMPotential<SCFMode>(
         activeSystem->getSettings().pcm, activeSystem->getBasisController(), activeSystem->getGeometry(),
         (usesPCM) ? activeSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::FDE) : nullptr,
-        (usesPCM) ? activeSystem->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)
+        (usesPCM) ? activeSystem->template getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)
                   : nullptr,
         envElecPots));
     auto naddXCPot = std::shared_ptr<NAddFuncPotential<SCFMode>>(new NAddFuncPotential<SCFMode>(
@@ -441,14 +444,14 @@ double TDReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
 
   if (_supXEnergy != 0.0) {
     double xEnergy = _supXEnergy;
-    xEnergy -= activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController()->getEnergyComponent(
+    xEnergy -= activeSystem->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->getEnergyComponent(
         ENERGY_CONTRIBUTIONS::KS_DFT_EXACT_EXCHANGE);
     for (auto weak : this->_envSystems) {
       auto sys = weak.lock();
       xEnergy -= sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->getEnergyComponent(
           ENERGY_CONTRIBUTIONS::KS_DFT_EXACT_EXCHANGE);
     }
-    activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController()->addOrReplaceComponent(
+    activeSystem->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->addOrReplaceComponent(
         ENERGY_CONTRIBUTIONS::FDE_NAD_EXACT_EXCHANGE, xEnergy);
   }
 

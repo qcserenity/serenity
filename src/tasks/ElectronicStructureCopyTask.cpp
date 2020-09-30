@@ -330,9 +330,10 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
     // Construct the new electronic structure of the target system and write it to disk.
     auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
         std::move(rotatedCoefficientsPtr), targetBasisController, std::move(eigenvaluesPtr));
-    auto targetElectronicStructure = std::make_shared<ElectronicStructure<SCFMode>>(
-        newOrbitalController, targetSystem->getOneElectronIntegralController(), targetSystem->getNOccupiedOrbitals<SCFMode>());
-    targetSystem->setElectronicStructure<SCFMode>(targetElectronicStructure);
+    auto targetElectronicStructure =
+        std::make_shared<ElectronicStructure<SCFMode>>(newOrbitalController, targetSystem->getOneElectronIntegralController(),
+                                                       targetSystem->template getNOccupiedOrbitals<SCFMode>());
+    targetSystem->template setElectronicStructure<SCFMode>(targetElectronicStructure);
     targetElectronicStructure->toHDF5(targetSystem->getHDF5BaseName(), targetSystem->getSettings().identifier);
     OutputControl::nOut << " done" << std::endl;
   } // for targetSystem

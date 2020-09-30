@@ -204,7 +204,7 @@ SPMatrix<SCFMode> HuzinagaFDEProjectionPotential<SCFMode>::buildOuterDiagonalFoc
   SPMatrix<SCFMode> f_AB(Eigen::MatrixXd::Zero(nBasisAct, nBasisEnv));
   if (_activeFockMatrix) {
     SPMatrix<SCFMode> f_AA =
-        _activeFockMatrix->getFockMatrix(activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
+        _activeFockMatrix->getFockMatrix(activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix(),
                                          std::make_shared<EnergyComponentController>());
     if (_naddKinPot)
       f_AA += _naddKinPot->getMatrix();
@@ -227,13 +227,13 @@ SPMatrix<SCFMode> HuzinagaFDEProjectionPotential<SCFMode>::buildOuterDiagonalFoc
 template<Options::SCF_MODES SCFMode>
 void HuzinagaFDEProjectionPotential<SCFMode>::writeInterSubsystemOccOverlap() {
   auto activeSystem = _activeSystem.lock();
-  auto nOccAct = activeSystem->getNOccupiedOrbitals<SCFMode>();
-  const auto& coeffAct = activeSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  auto nOccAct = activeSystem->template getNOccupiedOrbitals<SCFMode>();
+  const auto& coeffAct = activeSystem->template getActiveOrbitalController<SCFMode>()->getCoefficients();
   for (unsigned int iEnv = 0; iEnv < _environmentSystems.size(); ++iEnv) {
     if (_s_ABs[iEnv]) {
       auto environmentSystem = _environmentSystems[iEnv].lock();
-      const auto& coeffEnv = environmentSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
-      auto nOccEnv = environmentSystem->getNOccupiedOrbitals<SCFMode>();
+      const auto& coeffEnv = environmentSystem->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+      auto nOccEnv = environmentSystem->template getNOccupiedOrbitals<SCFMode>();
       assert(_s_ABs[iEnv]);
       const auto& s_AB = *_s_ABs[iEnv];
       // Calculate the average overlap between the occupied orbitals of the subsystems.

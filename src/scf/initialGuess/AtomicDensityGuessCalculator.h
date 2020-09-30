@@ -29,7 +29,7 @@
 namespace Serenity {
 /* Forward declarations */
 class Atom;
-class Settings;
+struct Settings;
 
 enum class GUESSMODES { OCCUPATIONS = 0, SCF = 1, SCF_INPLACE = 2 };
 
@@ -70,7 +70,7 @@ class AtomicDensityGuessCalculator : public DensityInitialGuessCalculator {
    */
   std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>
   calculateInitialDensity(std::shared_ptr<SystemController> systemController) override final {
-    return std::move(calculateInitialDensity(systemController, false));
+    return calculateInitialDensity(systemController, false);
   };
 
  private:
