@@ -50,7 +50,7 @@ std::shared_ptr<Line> Plane::calculateIntersection(const Plane& other, const Eig
       const Eigen::Vector3d xAxis = {1, 0, 0};
       direction = _n.cross(xAxis);
       dirNorm = direction.norm();
-      if (dirNorm < 1e-9) {
+      if (dirNorm < 1e-7) {
         const Eigen::Vector3d yAxis = {0, 1, 0};
         direction = _n.cross(yAxis);
         direction /= direction.norm();

@@ -60,14 +60,17 @@ class ResponseSolver : public IterativeSolver {
    * @param magnetics The magnetic dipole integrals.
    * @param sigmaCalculator A lambda to conveniently form response matrix -- guess vector products.\n
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
-   * @param initialGuess The initial guess space might also be passed to the eigenvalue solver.
+   * @param initialGuess The initial guess space might also be passed to the response solver.
+   * @param writeToDisk A lambda function to store temporary iteration data to disk.
    */
-  ResponseSolver(unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion,
-                 unsigned maxIterations, unsigned maxSubspaceDimension, std::vector<double>& frequencies,
-                 double damping, Options::GAUGE gauge, const Eigen::MatrixXd& lengths,
-                 const Eigen::MatrixXd& velocities, const Eigen::MatrixXd& magnetics,
-                 std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-                 std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess);
+  ResponseSolver(
+      unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion, unsigned maxIterations,
+      unsigned maxSubspaceDimension, std::vector<double>& frequencies, double damping, Options::GAUGE gauge,
+      const Eigen::MatrixXd& lengths, const Eigen::MatrixXd& velocities, const Eigen::MatrixXd& magnetics,
+      std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
+      std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess = nullptr,
+      std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk = [](std::vector<Eigen::MatrixXd>&,
+                                                                                            Eigen::VectorXd&) {});
 
   /**
    * @brief Default destructor

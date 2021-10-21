@@ -21,6 +21,7 @@
 /* Include Class Header*/
 #include "potentials/NEInteractionPotential.h"
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"
 #include "geometry/Atom.h"
 #include "integrals/wrappers/Libint.h"
 #include "misc/Timing.h"
@@ -58,7 +59,7 @@ FockMatrix<SCFMode>& NEInteractionPotential<SCFMode>::getMatrix() {
     for (auto subsystemGeometry : _geometries) {
       totalEnvGeometry += *subsystemGeometry;
     }
-    auto nucInts = libint.compute1eInts(libint2::Operator::nuclear, this->_basis, totalEnvGeometry.getAtoms());
+    auto nucInts = libint.compute1eInts(LIBINT_OPERATOR::nuclear, this->_basis, totalEnvGeometry.getAtoms());
 
     for_spin(pot) {
       pot_spin += nucInts;
@@ -82,28 +83,6 @@ double NEInteractionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& 
   return energy;
 };
 
-template<Options::SCF_MODES T>
-std::vector<unsigned int> NEInteractionPotential<T>::createBasisToAtomIndexMapping(
-    const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed, unsigned int nBasisFunctionsRed) {
-  std::vector<unsigned int> mapping(nBasisFunctionsRed);
-  // Vector to check whether ALL basis function shells are assigned to an atom index
-  std::vector<bool> hasElementBeenSet(nBasisFunctionsRed, false);
-  for (unsigned int iAtom = 0; iAtom < basisIndicesRed.size(); ++iAtom) {
-    const unsigned int firstIndex = basisIndicesRed[iAtom].first;
-    const unsigned int endIndex = basisIndicesRed[iAtom].second;
-    for (unsigned int iShell = firstIndex; iShell < endIndex; ++iShell) {
-      mapping[iShell] = iAtom;
-      hasElementBeenSet[iShell] = true;
-    }
-  }
-  // Check
-  for (bool x : hasElementBeenSet) {
-    if (not x)
-      throw SerenityError("NEInteractionPotential: Missed gradient element in gradient evaluation.");
-  }
-  return mapping;
-}
-
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
   /*
@@ -111,7 +90,7 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
    */
   auto actSystem = _actSystem.lock();
   auto atomsAct = actSystem->getAtoms();
-  Matrix<double> activeSystemGradientContr(atomsAct.size(), 3);
+  Eigen::MatrixXd activeSystemGradientContr(atomsAct.size(), 3);
   activeSystemGradientContr.setZero();
 
   for (unsigned int env = 0; env < _envSystems.size(); ++env) {
@@ -125,7 +104,7 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
       ActiveFrozenAtoms.push_back(atomsEnv[i]);
     }
     unsigned int nAtoms = ActiveFrozenAtoms.size();
-    Matrix<double> gradientContr(nAtoms, 3);
+    Eigen::MatrixXd gradientContr(nAtoms, 3);
     gradientContr.setZero();
     /*
      * Both density matrices are needed for the prefactors. Cross-system density matrix elements evaluate to 0,
@@ -141,12 +120,8 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
      */
     auto atomCenteredBasisController = actSystem->getAtomCenteredBasisController();
     auto atomCenteredBasisControllerEnv = envSystem->getAtomCenteredBasisController();
-    unsigned int nBasisFunctionsRed = atomCenteredBasisController->getReducedNBasisFunctions();
-    unsigned int nBasisFunctionsRedEnv = atomCenteredBasisControllerEnv->getReducedNBasisFunctions();
-    auto basisIndicesRed = actSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
-    auto basisIndicesRedEnv = envSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
-    auto mapping = createBasisToAtomIndexMapping(basisIndicesRed, nBasisFunctionsRed);
-    auto mappingEnv = createBasisToAtomIndexMapping(basisIndicesRedEnv, nBasisFunctionsRedEnv);
+    auto mapping = actSystem->getAtomCenteredBasisController()->getAtomIndicesOfBasisShells();
+    auto mappingEnv = envSystem->getAtomCenteredBasisController()->getAtomIndicesOfBasisShells();
 
     auto& basis = atomCenteredBasisController->getBasis();
     auto& basisEnv = atomCenteredBasisControllerEnv->getBasis();
@@ -160,13 +135,13 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
      * First loop calculates all Nuc-El terms involving the active systems basis functions
      */
     Libint& libint = Libint::getInstance();
-    libint.initialize(libint2::Operator::nuclear, 1, 2, atomsEnv);
+    libint.initialize(LIBINT_OPERATOR::nuclear, 1, 2, atomsEnv);
 
 #pragma omp parallel
     {
       //  std::vector<double> intDerivs;
       Eigen::MatrixXd intDerivs;
-      Matrix<double> gradientContrPriv(nAtoms, 3);
+      Eigen::MatrixXd gradientContrPriv(nAtoms, 3);
       gradientContrPriv.setZero();
       bool significant;
 #pragma omp for schedule(static, 1)
@@ -181,7 +156,7 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
           /*
            * Libint needs an extra list of all environment system atoms for Nuc-El terms
            */
-          significant = libint.compute(libint2::Operator::nuclear, 1, *basis[i], *basis[j], intDerivs);
+          significant = libint.compute(LIBINT_OPERATOR::nuclear, 1, *basis[i], *basis[j], intDerivs);
 
           if (significant) {
             double perm = (i == j ? 1.0 : 2.0);
@@ -212,16 +187,16 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
 #pragma omp critical
       { gradientContr += gradientContrPriv; }
     } /* END OpenMP parallel */
-    libint.finalize(libint2::Operator::nuclear, 1, 2);
+    libint.finalize(LIBINT_OPERATOR::nuclear, 1, 2);
     /*
      * Second loop calculates all Nuc-El terms involving the environment systems basis functions
      */
-    libint.initialize(libint2::Operator::nuclear, 1, 2, atomsAct);
+    libint.initialize(LIBINT_OPERATOR::nuclear, 1, 2, atomsAct);
 #pragma omp parallel
     {
       //  std::vector<double> intDerivs;
       Eigen::MatrixXd intDerivs;
-      Matrix<double> gradientContrPriv(nAtoms, 3);
+      Eigen::MatrixXd gradientContrPriv(nAtoms, 3);
       gradientContrPriv.setZero();
       bool significant;
 #pragma omp for schedule(static, 1)
@@ -232,7 +207,7 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
           unsigned int offJ = envSystem->getBasisController()->extendedIndex(j);
           const unsigned int nJ = basisEnv[j]->getNContracted();
 
-          significant = libint.compute(libint2::Operator::nuclear, 1, *basisEnv[i], *basisEnv[j], intDerivs);
+          significant = libint.compute(LIBINT_OPERATOR::nuclear, 1, *basisEnv[i], *basisEnv[j], intDerivs);
 
           if (significant) {
             double perm = (i == j ? 1.0 : 2.0);
@@ -266,14 +241,14 @@ Eigen::MatrixXd NEInteractionPotential<SCFMode>::getGeomGradients() {
 #pragma omp critical
       { gradientContr += gradientContrPriv; }
     } /* END OpenMP parallel */
-    libint.finalize(libint2::Operator::nuclear, 1, 2);
+    libint.finalize(LIBINT_OPERATOR::nuclear, 1, 2);
     for (unsigned int i = 0; i < atomsAct.size(); ++i) {
       for (unsigned int j = 0; j < 3; ++j) {
         activeSystemGradientContr(i, j) += gradientContr(i, j);
       }
     }
   }
-  return std::move(activeSystemGradientContr);
+  return activeSystemGradientContr;
 }
 
 template class NEInteractionPotential<Options::SCF_MODES::RESTRICTED>;

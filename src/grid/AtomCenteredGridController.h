@@ -37,7 +37,7 @@ class AtomCenteredGrid;
  * consequence any call may lead to the construction of a new integration grid (if the held grid
  * is not up to date any more because an atom was moved).
  */
-class AtomCenteredGridController : public GridController, ObjectSensitiveClass<Atom> {
+class AtomCenteredGridController : public GridController, ObjectSensitiveClass<Geometry> {
  public:
   /**
    * @brief Creates a grid with the given tools which it will then manage.

@@ -19,6 +19,7 @@
  */
 
 /* Include Serenity Internal Headers */
+#include "basis/BasisController.h"
 #include "geometry/Geometry.h"
 #include "integrals/wrappers/Libint.h"
 /* Include Std and External Headers */
@@ -32,30 +33,30 @@ std::shared_ptr<Libint> libintConstr() {
   return Libint::getSharedPtr();
 }
 
-Eigen::MatrixXd comp2c1b1(std::shared_ptr<Libint> libint, libint2::Operator op, std::shared_ptr<BasisController> basis,
+Eigen::MatrixXd comp2c1b1(std::shared_ptr<Libint> libint, LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                           std::shared_ptr<Geometry> geo) {
   return libint->compute1eInts(op, basis, geo->getAtoms());
 }
 
-Eigen::MatrixXd comp2c1b2(std::shared_ptr<Libint> libint, libint2::Operator op, std::shared_ptr<BasisController> basis) {
+Eigen::MatrixXd comp2c1b2(std::shared_ptr<Libint> libint, LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis) {
   return libint->compute1eInts(op, basis);
 }
 
-Eigen::MatrixXd comp2c2b1(std::shared_ptr<Libint> libint, libint2::Operator op, std::shared_ptr<BasisController> basis1,
+Eigen::MatrixXd comp2c2b1(std::shared_ptr<Libint> libint, LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis1,
                           std::shared_ptr<BasisController> basis2, std::shared_ptr<Geometry> geo) {
   return libint->compute1eInts(op, basis1, basis2, geo->getAtoms());
 }
-Eigen::MatrixXd comp2c2b2(std::shared_ptr<Libint> libint, libint2::Operator op, std::shared_ptr<BasisController> basis1,
+Eigen::MatrixXd comp2c2b2(std::shared_ptr<Libint> libint, LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis1,
                           std::shared_ptr<BasisController> basis2) {
   return libint->compute1eInts(op, basis1, basis2);
 }
 
 void export_Libint(py::module& spy) {
-  py::enum_<libint2::Operator>(spy, "INT_OPERATORS")
-      .value("COULOMB", libint2::Operator::coulomb)
-      .value("NUCLEAR", libint2::Operator::nuclear)
-      .value("KINETIC", libint2::Operator::kinetic)
-      .value("OVERLAP", libint2::Operator::overlap)
+  py::enum_<LIBINT_OPERATOR>(spy, "INT_OPERATORS")
+      .value("COULOMB", LIBINT_OPERATOR::coulomb)
+      .value("NUCLEAR", LIBINT_OPERATOR::nuclear)
+      .value("KINETIC", LIBINT_OPERATOR::kinetic)
+      .value("OVERLAP", LIBINT_OPERATOR::overlap)
       .export_values();
 
   py::class_<Libint, std::shared_ptr<Libint>>(spy, "Libint", "Libint wrapped for basic integral evaluation")

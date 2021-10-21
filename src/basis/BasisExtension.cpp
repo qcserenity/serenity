@@ -22,6 +22,7 @@
 #include "basis/BasisExtension.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/Basis.h"
 #include "basis/BasisController.h"
 #include "data/matrices/MatrixInBasis.h"
 #include "geometry/Geometry.h"
@@ -147,7 +148,7 @@ BasisExtension::getListOfImportantShells(std::shared_ptr<SystemController> envir
   auto envBasisController = environmentSystem->getBasisController();
   auto& libint = Libint::getInstance();
   Eigen::MatrixXd s_AB =
-      libint.compute1eInts(libint2::Operator::overlap, envBasisController, activeSystem->getBasisController());
+      libint.compute1eInts(LIBINT_OPERATOR::overlap, envBasisController, activeSystem->getBasisController());
   // vector of important environment shells
   std::vector<Eigen::VectorXi> importantShells; // =
                                                 // Eigen::VectorXi::Zero(envBasisController->getReducedNBasisFunctions())
@@ -197,10 +198,10 @@ inline void BasisExtension::buildBasisFromGeometry(std::shared_ptr<SystemControl
                                                                  false, activeSystem->getSettings().basis.auxJLabel);
   *activeSystem->getGeometry() += Geometry(activeAtoms);
   activeSystem->getGeometry()->deleteIdenticalAtoms();
-  activeSystem->getGeometry()->printToFile(activeSystem->getHDF5BaseName(), activeSystem->getSettings().identifier);
+  activeSystem->getGeometry()->printToFile(activeSystem->getHDF5BaseName(), activeSystem->getSystemIdentifier());
   activeSystem->setBasisController(newBas);
   // Write the basis to disk. Enables restarts with the same basis.
-  newBas->toHDF5(activeSystem->getHDF5BaseName(), activeSystem->getSettings().identifier);
+  newBas->toHDF5(activeSystem->getHDF5BaseName(), activeSystem->getSystemIdentifier());
   activeSystem->setBasisController(newAuxBas, Options::BASIS_PURPOSES::AUX_COULOMB);
 }
 

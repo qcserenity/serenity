@@ -694,7 +694,7 @@ void CCSD::prepERIS() {
   }
   auto& eris = *_eris;
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, 1E-10);
 
   auto const storeERIS = [&eris](const unsigned int& a, const unsigned int& b, const unsigned int& i,
                                  const unsigned int& j, const Eigen::VectorXd& integral, const unsigned int threadId) {
@@ -709,12 +709,11 @@ void CCSD::prepERIS() {
     eris(j, i, a, b) = integral(0);
   };
 
-  looper.loop(storeERIS);
-
-  Ao2MoTransformer ao2mo(basisController);
-
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients =
       _systemController->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients();
+  looper.loop(storeERIS, coefficients.lpNorm<Eigen::Infinity>());
+
+  Ao2MoTransformer ao2mo(basisController);
 
   ao2mo.transformTwoElectronIntegrals(eris, eris, coefficients, nBasisFunc);
 }

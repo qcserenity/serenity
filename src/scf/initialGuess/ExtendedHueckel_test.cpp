@@ -21,7 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "scf/initialGuess/ExtendedHueckel.h"
 #include "data/ElectronicStructure.h"
-#include "settings/Settings.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

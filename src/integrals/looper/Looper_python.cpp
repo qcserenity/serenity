@@ -76,7 +76,7 @@ void export_Looper(py::module& spy) {
    Due to problems with the GIL this class does not run in parallel,
    instead it automiatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
-      .def(py::init<libint2::Operator, const unsigned int, std::shared_ptr<BasisController>, double, double>(),
+      .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, double, double>(),
            R"(The constructor.
    Args:
      op      (INT_OPERATORS): The operator used in the integrals.
@@ -111,7 +111,7 @@ void export_Looper(py::module& spy) {
    Due to problems with the GIL this class does not run in parallel,
    instead it automiatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
-      .def(py::init<libint2::Operator, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
+      .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
            R"(The constructor.
    Args:
      op      (INT_OPERATORS): The operator used in the integrals.
@@ -148,7 +148,7 @@ void export_Looper(py::module& spy) {
    Due to problems with the GIL this class does not run in parallel,
    instead it automiatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
-      .def(py::init<libint2::Operator, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
+      .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
            R"(The constructor.
    Args:
      op      (INT_OPERATORS): The operator used in the integrals.
@@ -185,7 +185,7 @@ void export_Looper(py::module& spy) {
    Due to problems with the GIL this class does not run in parallel,
    instead it automiatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
-      .def(py::init<libint2::Operator, const unsigned int, std::shared_ptr<BasisController>,
+      .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>,
                     std::shared_ptr<BasisController>, double, std::pair<unsigned int, unsigned int>>(),
            R"(The constructor.
    Args:

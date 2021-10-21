@@ -31,7 +31,7 @@ namespace Serenity {
 /**
  * @brief Class to add densities which are not defined on the same grid.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityAdder {
  public:
   DensityAdder() = default;
@@ -49,7 +49,7 @@ class DensityAdder {
    *                               function  only if the densities you want to add are not defined
    *                               on the same grid.
    */
-  static void add(DensityOnGrid<T>& densityToBeAddedTo, const DensityMatrix<T>& densityMatrix,
+  static void add(DensityOnGrid<SCFMode>& densityToBeAddedTo, const DensityMatrix<SCFMode>& densityMatrix,
                   std::shared_ptr<BasisController> basisController, const double blockAverageThreshold);
 };
 

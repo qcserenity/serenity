@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/ResponseSolver.h"
-
 /* Include Serenity Internal Headers */
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "parameters/Constants.h"
@@ -33,11 +32,14 @@ ResponseSolver::ResponseSolver(
     unsigned maxSubspaceDimension, std::vector<double>& frequencies, double damping, Options::GAUGE gauge,
     const Eigen::MatrixXd& lengths, const Eigen::MatrixXd& velocities, const Eigen::MatrixXd& magnetics,
     std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-    std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess)
+    std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess,
+    std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk)
   : IterativeSolver(damping == 0.0 ? 2 : 4, nDimension, 0 * nEigen + 3 * frequencies.size(), diagonal,
-                    convergenceCriterion, maxIterations, maxSubspaceDimension, sigmaCalculator, initialGuess),
+                    convergenceCriterion, maxIterations, maxSubspaceDimension, sigmaCalculator, writeToDisk, initialGuess),
     _frequencies(frequencies),
     _damping(damping),
+    _damped(_damping == 0.0 ? false : true),
+    _nFreqs(_frequencies.size()),
     _gauge(gauge),
     _lengths(lengths),
     _velocities(velocities),
@@ -47,12 +49,9 @@ ResponseSolver::ResponseSolver(
 
 void ResponseSolver::initialize() {
   printHeader("Response Solver");
-  if (_damped)
-    printf("%26s %16s %6.4f\n", "Damping Parameter (eV)", ":", _damping * HARTREE_TO_EV);
-
-  // Set class member variables
-  _damped = _damping == 0.0 ? false : true;
-  _nFreqs = _frequencies.size();
+  if (_damped) {
+    printf("%26s %16s %6.4f\n", "Damping parameter (eV)", ":", _damping * HARTREE_TO_EV);
+  }
 
   // Set dimensions
   _ppmq.resize(_nSets);
@@ -85,7 +84,7 @@ void ResponseSolver::initialize() {
    * so the the outer minus (from below) comes from here. Elements in P and Q are defined such that:
    *
    *                         Q_ia = <i|V|a>,
-   *                         R_ia = P_ia^* = <a|V|i>
+   *                         R_ia = <a|V|i> = Q_ia^*
    *
    * and V describes the perturbation. We want to obtain the polarizability as the reaction
    * of the electric dipole to an electric-dipole perturbation. In response theory, we can
@@ -120,6 +119,7 @@ void ResponseSolver::initialize() {
   //       due to the seeding procedure
   Orthogonalization::modifiedGramSchmidtLinDep(_guessVectors, 1e-4);
 
+  _itStart = std::chrono::steady_clock::now();
   // Calculate initial sigma vectors
   _sigmaVectors = (*_sigmaCalculator(_guessVectors));
 } /* this->initialize() */
@@ -127,6 +127,7 @@ void ResponseSolver::initialize() {
 void ResponseSolver::iterate() {
   // Setup reduced system of linear equations problem
   _subDim = _guessVectors[0].cols();
+  _metric = Eigen::MatrixXd::Zero(_nSets * _subDim, _nSets * _subDim);
   _subspaceMatrix = Eigen::MatrixXd::Zero(_nSets * _subDim, _nSets * _subDim);
   _subspaceEigenvectors.resize(_nSets * _subDim, _nEigen);
   Eigen::MatrixXd rhs(_nSets * _subDim, 3);
@@ -136,12 +137,15 @@ void ResponseSolver::iterate() {
     _expansionVectors[iSet].resize(_subDim, 3 * _nFreqs);
     _subspaceMatrix.block(iSet * _subDim, iSet * _subDim, _subDim, _subDim) =
         _guessVectors[iSet].transpose() * _sigmaVectors[iSet];
+    _metric.block(iSet * _subDim, iSet * _subDim, _subDim, _subDim) = _guessVectors[iSet].transpose() * _guessVectors[iSet];
     rhs.block(iSet * _subDim, 0, _subDim, 3) = _guessVectors[iSet].transpose() * _ppmq[iSet];
     if (_damped) {
       _subspaceMatrix.block(iSet * _subDim, (3 - iSet) * _subDim, _subDim, _subDim) =
           (iSet < 2 ? 1. : -1.) * _damping * _guessVectors[iSet].transpose() * _guessVectors[3 - iSet];
     }
   }
+  Eigen::MatrixXd cond = _metric.diagonal().cwiseSqrt().cwiseInverse().asDiagonal();
+  rhs = (cond * rhs).eval();
 
   Timings::takeTime("LRSCF -  RSolver: LES Solving");
 
@@ -155,8 +159,9 @@ void ResponseSolver::iterate() {
 
 #pragma omp for schedule(dynamic)
     for (unsigned iFreq = 0; iFreq < _nFreqs; ++iFreq) {
-      if (_freqConverged(iFreq))
+      if (_freqConverged(iFreq)) {
         continue;
+      }
       for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
         unsigned iSetc = iSet / 2 * 2 + (iSet + 1) % 2;
         lhs.block(iSet * _subDim, iSetc * _subDim, _subDim, _subDim) =
@@ -164,7 +169,7 @@ void ResponseSolver::iterate() {
       } /* Loop over sets */
 
       // Solve subspace linear system of equations
-      _subspaceEigenvectors.middleCols(3 * iFreq, 3) = lhs.householderQr().solve(rhs);
+      _subspaceEigenvectors.middleCols(3 * iFreq, 3) = cond * (cond * lhs * cond).householderQr().solve(rhs);
 
       // Ritz vectors
       for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
@@ -210,14 +215,24 @@ void ResponseSolver::iterate() {
       _freqConverged(iFreq) = 1;
   }
 
+  _itEnd = std::chrono::steady_clock::now();
+  double duration = std::chrono::duration_cast<std::chrono::duration<double>>(_itEnd - _itStart).count();
+
+  unsigned iMax;
+  _residualNorms.maxCoeff(&iMax);
   // Print Iteration Data
-  if (_nIter == 1)
-    printTableHead("\n   It.    Dimension    Converged    Max. Norm");
-  printf("%5i %11i %12i %14.2e\n", _nIter, (int)_subDim, _nConverged, _residualNorms.maxCoeff());
+  if (_nIter == 1) {
+    printTableHead("\n   it.    dimension    time (min)    converged     max. norm");
+  }
+  printf("%5i %10i %14.3f %11i %13.2e  (%2i)\n", _nIter, (int)_subDim, duration / 60.0, _nConverged,
+         _residualNorms.maxCoeff(), iMax + 1);
+
+  _itStart = std::chrono::steady_clock::now();
 
   // Skip the rest of this iteration if all solution vectors converged
-  if (_nConverged == _nEigen)
+  if (_nConverged == _nEigen || _nIter == _maxIterations) {
     return;
+  }
 
   // Correction vectors
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {

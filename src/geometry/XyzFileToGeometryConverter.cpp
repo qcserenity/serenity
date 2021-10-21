@@ -29,14 +29,13 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
-XyzFileToGeometryConverter::XyzFileToGeometryConverter(string filePath) : GeometryFileReader(filePath) {
+XyzFileToGeometryConverter::XyzFileToGeometryConverter(std::string filePath) : GeometryFileReader(filePath) {
 }
 
-unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsigned int index) {
-  vector<shared_ptr<Atom>> atoms;
-  string line;
+std::unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsigned int index) {
+  std::vector<std::shared_ptr<Atom>> atoms;
+  std::string line;
   unsigned int numberOfAtoms;
   unsigned int currentIndex = 0;
 
@@ -49,7 +48,7 @@ unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsi
       // No more molecule there. Thus index is higher than avaliable.
       return nullptr;
     }
-    istringstream iss(line);
+    std::istringstream iss(line);
     numberOfAtoms = 0;
     iss >> numberOfAtoms;
     // Further check
@@ -61,7 +60,7 @@ unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsi
       getline(_file, line);
     }
     else {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
     if (currentIndex++ == index) {
       // We arrived at the requested molecule.
@@ -74,7 +73,7 @@ unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsi
           getline(_file, line);
         }
         else {
-          throw SerenityError((string) "Error while reading xyz file " + _filePath);
+          throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
         }
       }
     }
@@ -85,13 +84,13 @@ unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsi
       getline(_file, line);
     }
     else {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
-    istringstream iss(line);
-    string element;
+    std::istringstream iss(line);
+    std::string element;
     iss >> element;
     if (element == "") {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
     double x, y, z;
     if (iss.good()) {
@@ -99,25 +98,25 @@ unique_ptr<Geometry> XyzFileToGeometryConverter::readGeometryFromLoadedFile(unsi
       x *= ANGSTROM_TO_BOHR;
     }
     else {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
     if (iss.good()) {
       iss >> y;
       y *= ANGSTROM_TO_BOHR;
     }
     else {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
     if (iss.good()) {
       iss >> z;
       z *= ANGSTROM_TO_BOHR;
     }
     else {
-      throw SerenityError((string) "Error while reading xyz file " + _filePath);
+      throw SerenityError((std::string) "Error while reading xyz file " + _filePath);
     }
-    atoms.push_back(make_shared<Atom>(AtomTypeFactory::getAtomType(element), x, y, z));
+    atoms.push_back(std::make_shared<Atom>(AtomTypeFactory::getAtomType(element), x, y, z));
   }
-  return unique_ptr<Geometry>(new Geometry(atoms));
+  return std::unique_ptr<Geometry>(new Geometry(atoms));
 }
 
 } /* namespace Serenity */

@@ -29,8 +29,8 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 FDEPotentials<SCFMode>::FDEPotentials(std::shared_ptr<PotentialBundle<SCFMode>> activeSystemPot,
                                       std::shared_ptr<PotentialBundle<SCFMode>> esiPot,
-                                      std::shared_ptr<NAddFuncPotential<SCFMode>> naddXC,
-                                      std::shared_ptr<Potential<SCFMode>> naddKin,
+                                      std::vector<std::shared_ptr<NAddFuncPotential<SCFMode>>> naddXC,
+                                      std::vector<std::shared_ptr<Potential<SCFMode>>> naddKin,
                                       std::shared_ptr<Potential<SCFMode>> ecp, std::shared_ptr<Potential<SCFMode>> pcm)
   : _activeSystemPot(activeSystemPot), _esiPot(esiPot), _naddXC(naddXC), _naddKin(naddKin), _ecp(ecp), _pcm(pcm) {
   assert(_activeSystemPot);
@@ -44,20 +44,28 @@ FDEPotentials<SCFMode>::FDEPotentials(std::shared_ptr<PotentialBundle<SCFMode>> 
 template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode> FDEPotentials<SCFMode>::getFockMatrix(const DensityMatrix<SCFMode>& P,
                                                           std::shared_ptr<EnergyComponentController> energies) {
-  // nadd kin
-  auto F(_naddKin->getMatrix());
+  // Energies:
+  double eKin = 0.0;
+  double eXC = 0.0;
+  // esi
+  auto F = _esiPot->getFockMatrix(P, energies);
   // nadd XC
-  F += _naddXC->getMatrix();
+  for (auto naddxc : _naddXC) {
+    F += naddxc->getMatrix();
+    eXC += naddxc->getEnergy(P);
+  }
+  // nadd kin
+  for (auto naddkin : _naddKin) {
+    F += naddkin->getMatrix();
+    eKin += naddkin->getEnergy(P);
+  }
   // active system
   F += _activeSystemPot->getFockMatrix(P, energies);
-  // esi
-  F += _esiPot->getFockMatrix(P, energies);
   // ecp
   F += _ecp->getMatrix();
   // pcm
   F += _pcm->getMatrix();
-  double eKin = _naddKin->getEnergy(P);
-  double eXC = _naddXC->getEnergy(P);
+
   double eECP = _ecp->getEnergy(P);
   double ePCM = _pcm->getEnergy(P);
   energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_XC, eXC);
@@ -72,8 +80,14 @@ template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd FDEPotentials<SCFMode>::getGradients() {
   auto gradients = _activeSystemPot->getGradients();
   gradients += _esiPot->getGradients();
-  gradients += _naddXC->getGeomGradients();
-  gradients += _naddKin->getGeomGradients();
+  // nadd kin
+  for (auto naddkin : _naddKin) {
+    gradients += naddkin->getGeomGradients();
+  }
+  // nadd XC
+  for (auto naddxc : _naddXC) {
+    gradients += naddxc->getGeomGradients();
+  }
   gradients += _ecp->getGeomGradients();
   gradients += _pcm->getGeomGradients();
   return gradients;

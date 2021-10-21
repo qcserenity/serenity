@@ -55,18 +55,18 @@ class GridController : public NotifyingClass<Grid> {
    *
    * @returns all grid points for the underlying system
    */
-  const Eigen::Matrix3Xd& getGridPoints();
+  virtual const Eigen::Matrix3Xd& getGridPoints();
   /**
    * @brief   gathers all the weights of the grid points from all atoms of the underlying system
    *
    * @returns the weights of all grid points of the underlying system
    */
-  const Eigen::VectorXd& getWeights();
+  virtual const Eigen::VectorXd& getWeights();
   /**
    * @returns the number of grid points of the underlying grid
    *          (if not yet present a grid is created upon call).
    */
-  unsigned int getNGridPoints();
+  virtual unsigned int getNGridPoints();
 
  protected:
   /**

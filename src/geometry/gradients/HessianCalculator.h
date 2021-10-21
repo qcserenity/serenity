@@ -22,13 +22,15 @@
 
 /* Include Serenity Internal Headers */
 #include "geometry/Geometry.h"
-#include "settings/Settings.h"
+#include "settings/DFTOptions.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
+class Settings;
+struct EmbeddingSettings;
 /**
  * @class
  * @brief Interface for all hessian calculators.
@@ -63,10 +65,8 @@ class HessianCalculator {
    */
   virtual Eigen::MatrixXd calcFaTHessian(std::vector<std::shared_ptr<SystemController>> activeSystems,
                                          std::vector<std::shared_ptr<SystemController>> passiveSystems,
-                                         CompositeFunctionals::KINFUNCTIONALS FaTnaddKinFunc,
-                                         CompositeFunctionals::XCFUNCTIONALS FaTnaddXCFunc, int FatmaxCycles,
-                                         double FaTenergyConvThresh, double FaTgridCutOff,
-                                         Options::DFT_DISPERSION_CORRECTIONS dispersion) = 0;
+                                         EmbeddingSettings embedding, int FatmaxCycles, double FaTenergyConvThresh,
+                                         double FaTgridCutOff) = 0;
   /**
    * @brief Calculates the frequencies and normal modes, dumps them to a file in the systems' directories.
    *

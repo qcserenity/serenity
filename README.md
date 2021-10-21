@@ -52,7 +52,8 @@ Please read the following instructions carefully.
 The code has been tested and compiled on Linux with GCC/G++
 (Versions 7 and newer) and Clang (Versions 8 and newer)
 compilation with other compilers such as ICC should be
-possible on Linux.  
+possible on Linux. Old GCC/G++ compilers (4.8.5 or older)
+are known to be insufficient.
   
 Furthermore, the code has been tested and
 compiled on MacOS using Clang, compilation with GCC on MacOS

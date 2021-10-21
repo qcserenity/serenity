@@ -47,11 +47,14 @@ class AtomType {
    * @param braggSlaterRadius is needed for grid setups
    * @param vanDerWaalsRadius The van der Waals radius.
    * @param uffRadius The UFF radius.
+   * @param nCoreElectrons The number of non-valence electrons.
    * @param occupations Isolated atom occupations.
+   * @param chemicalHardness Chemical hardness.
    * @param isDummy Flag for dummy atom types.
    */
   AtomType(std::string name, int nuclearCharge, double mass, double braggSlaterRadius, double vanDerWaalsRadius, double uffRadius,
-           const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations, const bool isDummy = false);
+           unsigned int nCoreElectrons, const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations,
+           double chemicalHardness, const bool isDummy = false);
   virtual ~AtomType() = default;
   /// @returns the atom's mass, i.e. the mass of the selected isotope (no average), in u (g/mol)
   inline double getMass() const {
@@ -77,6 +80,11 @@ class AtomType {
   double getVanDerWaalsRadius() const;
   /// @returns this atom type's UFF radius
   double getUFFRadius() const;
+  /// @returns The number of core electrons.
+  unsigned int getNCoreElectrons() const;
+  /// @returns The chemical hardness of this atom type.
+  double getChemicalHardness() const;
+
   /**
    * @brief Dummy check.
    * @return Returns true if the atom type is a dummy atom.
@@ -93,6 +101,7 @@ class AtomType {
   inline const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& getOccupations() const {
     return _occupations;
   }
+
   /** @returns in which period the element of the atom type is found */
   inline unsigned int getPeriod() const {
     return _occupations.size();
@@ -130,7 +139,9 @@ class AtomType {
   const double _braggSlaterRadius;
   const double _vanDerWaalsRadius;
   const double _uffRadius;
+  const unsigned int _nCoreElectrons;
   const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> _occupations;
+  const double _chemicalHardness;
   const bool _isDummy;
 };
 

@@ -36,7 +36,8 @@ class HCorePotentialTest : public ::testing::Test {
  protected:
   HCorePotentialTest()
     : systemController(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP)),
-      systemControllerBP86(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86)) {
+      systemControllerBP86(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86)),
+      i2(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE)) {
   }
 
   virtual ~HCorePotentialTest() = default;
@@ -48,6 +49,7 @@ class HCorePotentialTest : public ::testing::Test {
   /// systems
   std::shared_ptr<SystemController> systemController;
   std::shared_ptr<SystemController> systemControllerBP86;
+  std::shared_ptr<SystemController> i2;
 };
 
 /**
@@ -213,6 +215,43 @@ TEST_F(HCorePotentialTest, H2_grad_uBP86) {
   EXPECT_NEAR(derivative(1, 1), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 2), 0.96350268865774491, 1e-5);
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+}
+
+/**
+ * @test HCorePotentialTest
+ * @brief Tests the HCore gradient part of I2 including ECPs.
+ */
+TEST_F(HCorePotentialTest, I2_ECPs) {
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(i2);
+
+  Eigen::MatrixXd derivative = hCorePot.getGeomGradients();
+  derivative -= CoreCoreRepulsionDerivative::calculateDerivative(systemControllerBP86->getGeometry()->getAtoms());
+
+  EXPECT_NEAR(derivative(0, 0), -9.222522228482052, 1e-5);
+  EXPECT_NEAR(derivative(0, 1), -22.076897506958474, 1e-5);
+  EXPECT_NEAR(derivative(0, 2), -0.510204212847298, 1e-5);
+  EXPECT_NEAR(derivative(1, 0), +9.222522228482052, 1e-5);
+  EXPECT_NEAR(derivative(1, 1), +22.076897506958474, 1e-5);
+  EXPECT_NEAR(derivative(1, 2), +0.510204212847298, 1e-5);
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE);
+}
+
+/**
+ * @test HCorePotentialTest
+ * @brief Tests the HCore gradient part of I2 including ECPs.
+ */
+TEST_F(HCorePotentialTest, WCCR1010_ECPs) {
+  // Please always load. This system is rather large!
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(sys);
+
+  double energy = hCorePot.getEnergy(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix());
+
+  EXPECT_NEAR(energy, -10893.5666665412, 2e-5); // Compared to turbomole result.
+                                                // The accuracy is limited by accuracy of the
+  // orbital coefficients on disk.
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } // namespace Serenity

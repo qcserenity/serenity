@@ -48,7 +48,7 @@ void EdmistonRuedenbergLocalization<SCFMode>::localizeOrbitals(OrbitalController
   auto basisController = _systemController->getBasisController();
   auto nBasisFunc = basisController->getNBasisFunctions();
   RegularRankFourTensor<double> eris(nBasisFunc, 0.0);
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, basisController->getPrescreeningThreshold());
   Ao2MoTransformer aoToMo(basisController);
 
   // Calculate and store 4 center integrals - Memory demanding!
@@ -106,7 +106,7 @@ void EdmistonRuedenbergLocalization<SCFMode>::localizeOrbitals(OrbitalController
       JacobiRotation::rotate(coefficients_spin.col(rowOfMax), coefficients_spin.col(colOfMax), maxAngle);
 
       // Rotate other pairs of orbitals which were untouched so far
-      vector<bool> wasRotated(nOccOrbs_spin, false);
+      std::vector<bool> wasRotated(nOccOrbs_spin, false);
       wasRotated[rowOfMax] = true;
       wasRotated[colOfMax] = true;
       for (unsigned int i = 0; i < nOccOrbs_spin; ++i) {

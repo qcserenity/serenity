@@ -31,51 +31,51 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
-void BasisFunctionProvider::provideAtomWithBasisFunction(Atom& atom, const string libraryPath, const string basisType,
-                                                         const bool isSpherical, const bool isPrimary, const int firstECP) {
-  string basisPath = libraryPath + basisType;
+void BasisFunctionProvider::provideAtomWithBasisFunction(Atom& atom, const std::string libraryPath,
+                                                         const std::string basisType, const bool isSpherical,
+                                                         const bool isPrimary, const int firstECP) {
+  std::string basisPath = libraryPath + basisType;
 
-  ifstream basisFile(&basisPath[0]);
+  std::ifstream basisFile(&basisPath[0]);
 
   if (!basisFile.good()) {
-    throw SerenityError((string) "Error while parsing basis file " + basisPath +
+    throw SerenityError((std::string) "Error while parsing basis file " + basisPath +
                         "\n Make sure the directory exists, change the path in the input, or set $SERENITY_RESOURCES.");
   }
   /*
    * The actual content of the loaded basis
    */
-  string loadedBasisFile;
-  basisFile.seekg(0, ios::end);
+  std::string loadedBasisFile;
+  basisFile.seekg(0, std::ios::end);
   loadedBasisFile.reserve(basisFile.tellg());
-  basisFile.seekg(0, ios::beg);
-  loadedBasisFile.assign(istreambuf_iterator<char>(basisFile), istreambuf_iterator<char>());
+  basisFile.seekg(0, std::ios::beg);
+  loadedBasisFile.assign(std::istreambuf_iterator<char>(basisFile), std::istreambuf_iterator<char>());
   basisFile.close();
   /*
    * Basis file loaded into string. Getting Element from atom
    * and determining the search string.
    */
-  string element = atom.getAtomType()->getElementSymbol();
+  std::string element = atom.getAtomType()->getElementSymbol();
   if (element.length() == 1)
     element = "\n" + element;
   transform(element.begin(), element.end(), element.begin(), ::tolower);
-  const string searchString = element + "   " + basisType;
+  const std::string searchString = element + "   " + basisType;
 
-  const string errorMessage = (string) "Error while parsing basis set file " + basisPath + " for element " + element +
-                              ". (Basis type: " + basisType + ")\n";
+  const std::string errorMessage = (std::string) "Error while parsing basis set file " + basisPath + " for element " +
+                                   element + ". (Basis type: " + basisType + ")\n";
 
   /* Searching for entry. */
-  string::size_type startPosition = loadedBasisFile.find(searchString);
+  std::string::size_type startPosition = loadedBasisFile.find(searchString);
   if (startPosition == loadedBasisFile.npos) {
     throw SerenityError(errorMessage + "The used basis (file) is not defined for this element.");
   }
-  string::size_type endPosition = loadedBasisFile.find("*", startPosition + searchString.length() + 3);
+  std::string::size_type endPosition = loadedBasisFile.find("*", startPosition + searchString.length() + 3);
 
   /* Extract the basis data for this element */
-  stringstream workStream(loadedBasisFile.substr(startPosition + searchString.length() + 3, endPosition - startPosition));
+  std::stringstream workStream(loadedBasisFile.substr(startPosition + searchString.length() + 3, endPosition - startPosition));
 
-  std::vector<shared_ptr<Shell>> basisFunctions;
+  std::vector<std::shared_ptr<Shell>> basisFunctions;
   int nPrimitives;
   char type;
   /* loop over basis functions for this atom */
@@ -112,45 +112,45 @@ void BasisFunctionProvider::provideAtomWithBasisFunction(Atom& atom, const strin
   /*
    * Search for effective core potentials
    */
-  const string::size_type ecpStart = loadedBasisFile.find("$ecp");
+  const std::string::size_type ecpStart = loadedBasisFile.find("$ecp");
   if (ecpStart == loadedBasisFile.npos || !isPrimary) {
     // No ECPs found in the file -> return now
     atom.addBasis(make_pair(basisType, basisFunctions), isPrimary);
     return;
   }
   // Search for ECP for this element
-  const string searchStringECP = element + "  "; // The basis name may be different for the ECP
-  const string::size_type startPositionECP = loadedBasisFile.find(searchStringECP, ecpStart);
+  const std::string searchStringECP = element + "  "; // The basis name may be different for the ECP
+  const std::string::size_type startPositionECP = loadedBasisFile.find(searchStringECP, ecpStart);
   if (startPositionECP == loadedBasisFile.npos) {
     // No ECPs found in the file for this element -> return now
     atom.addBasis(make_pair(basisType, basisFunctions), isPrimary);
     return;
   }
   // Create empty ECP object to be filled below
-  auto ecp = make_shared<libecpint::ECP>();
+  auto ecp = std::make_shared<libecpint::ECP>();
   unsigned int nCoreElectrons = 0;
   if (atom.getNuclearCharge() >= firstECP and isPrimary and !atom.isDummy()) {
     // The basis set contains an ECP for this element. It must be used as the primary basis.
-    const string::size_type nCorePosition = loadedBasisFile.find("ncore", startPositionECP);
-    const string::size_type endPositionECP = loadedBasisFile.find("*", nCorePosition);
+    const std::string::size_type nCorePosition = loadedBasisFile.find("ncore", startPositionECP);
+    const std::string::size_type endPositionECP = loadedBasisFile.find("*", nCorePosition);
     /* Extract the basis data for this element */
-    stringstream workStreamECP(loadedBasisFile.substr(nCorePosition + 8, endPositionECP - (nCorePosition + 8)));
+    std::stringstream workStreamECP(loadedBasisFile.substr(nCorePosition + 8, endPositionECP - (nCorePosition + 8)));
     if (!(workStreamECP >> nCoreElectrons))
       throw SerenityError(errorMessage + "Reading in ECP failed, ncore could not be parsed.");
-    string unneededContent;
+    std::string unneededContent;
     workStreamECP >> unneededContent;
     workStreamECP >> unneededContent;
     unsigned int lmax;
     workStreamECP >> lmax;
     ecp->setPos(atom.getX(), atom.getY(), atom.getZ());
     unsigned int angularMomentumECP = 999999;
-    string testString;
+    std::string testString;
     // The angular momenta are given in a specific order: l_max, 0, 1,... l_max-1
     bool firstAngularMomentum = true;
     unsigned int angularMomentumCounter = 0;
     while (workStreamECP >> testString) {
       // Test whether a primitive follows
-      stringstream maybeDouble(testString);
+      std::stringstream maybeDouble(testString);
       double c;
       if (maybeDouble >> c) {
         if (angularMomentumECP == 999999)

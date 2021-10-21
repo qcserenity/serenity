@@ -21,21 +21,49 @@
 /* Include Class Header*/
 #include "potentials/CoulombPotential.h"
 /* Include Serenity Internal Headers */
-#include "basis/AtomCenteredBasisController.h"
-#include "data/ElectronicStructure.h"
-#include "data/OrbitalController.h"
-#include "integrals/RI_J_IntegralControllerFactory.h"
-#include "io/FormattedOutputStream.h" //Filtered output streams.
-#include "misc/Timing.h"
+#include "basis/AtomCenteredBasisController.h"        //Gradients.
+#include "data/ElectronicStructure.h"                 //Density matrix.
+#include "data/OrbitalController.h"                   //Gradients.
+#include "integrals/RI_J_IntegralControllerFactory.h" //Construct RIJ integral controller.
+#include "integrals/wrappers/Libint.h"                //getSharedPtr()
+#include "io/FormattedOutputStream.h"                 //Filtered output streams.
+#include "misc/Timing.h"                              //Timings.
+#include "system/SystemController.h"                  //gradients.
 
 namespace Serenity {
+
+template<Options::SCF_MODES SCFMode>
+CoulombPotential<SCFMode>::CoulombPotential(std::shared_ptr<SystemController> actSystem,
+                                            std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
+                                            std::shared_ptr<RI_J_IntegralController> ri_j_IntController,
+                                            const double prescreeningThreshold, double prescreeningIncrementStart,
+                                            double prescreeningIncrementEnd, unsigned int incrementSteps)
+  : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
+    _actSystem(actSystem),
+    _dMatController(dMat),
+    _ri_j_IntController(ri_j_IntController),
+    _fullpotential(nullptr),
+    _outOfDate(true),
+    _incrementHelper(std::make_shared<IncrementalFockMatrix<SCFMode>>(
+        dMat, (prescreeningThreshold != 0) ? prescreeningThreshold : this->_basis->getPrescreeningThreshold(),
+        prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps, "RI-J Coulomb")) {
+  this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
+  this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  _fullpotential = std::make_shared<FockMatrix<SCFMode>>(FockMatrix<SCFMode>(this->_basis));
+  auto& temp = *_fullpotential;
+  for_spin(temp) {
+    temp_spin.setZero();
+  };
+  _screening = prescreeningIncrementStart;
+};
 
 template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& CoulombPotential<SCFMode>::getMatrix() {
   Timings::takeTime("Active System -    Coulomb Pot.");
   if (_outOfDate) {
     DensityMatrix<SCFMode> densityMatrix(this->_basis);
-    this->updateDensityAndThreshold(densityMatrix, _screening, *_fullpotential);
+    std::vector<std::shared_ptr<FockMatrix<SCFMode>>> matrices = {_fullpotential};
+    _incrementHelper->updateDensityAndThreshold(densityMatrix, _screening, matrices);
     this->addToMatrix(*_fullpotential, densityMatrix);
     _outOfDate = false;
   }
@@ -59,113 +87,68 @@ double CoulombPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
 
 template<Options::SCF_MODES SCFMode>
 void CoulombPotential<SCFMode>::addToMatrix(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP) {
-  Eigen::MatrixXd totalDensity = deltaP.total();
-  const unsigned int nAuxFunctions = _ri_j_IntController->getAuxBasisController()->getNBasisFunctions();
-  /*
-   * Calculation of the rightmost double sum in the referenced equation ([1].(4)) which is over
-   * (Q|kappa,lamda)*D_{kappa,lamda}.
-   * Calculate sum_{mu,nu} (P|mu,nu)*Density(mu,nu) for each auxiliary basis function P
-   */
-
-  // Maximum absolute value in densityMatrix
-  const double maxDens = totalDensity.lpNorm<Eigen::Infinity>();
-  /*
-   * Detailed prescreening function
-   */
-  auto prescreen = [&](const unsigned, const unsigned, const unsigned, const unsigned, const double schwartz) {
-    /*
-     * Shell quadruple is significant.
-     */
-    if (std::abs(maxDens * schwartz) < _screening)
-      return true;
-    /*
-     * Shell quadruple is insignificant.
-     */
-    return false;
-  };
-
-#ifdef _OPENMP
-  Eigen::MatrixXd sumMat(nAuxFunctions, omp_get_max_threads());
-#else
-  Eigen::MatrixXd sumMat(nAuxFunctions, 1);
-#endif
-  sumMat.setZero();
+  unsigned nThreads = omp_get_max_threads();
+  std::vector<MatrixInBasis<RESTRICTED>> fock_threads(nThreads, MatrixInBasis<RESTRICTED>(this->_basis));
+  MatrixInBasis<RESTRICTED> totalDensity = deltaP.total();
   auto densptr = totalDensity.data();
+
+  unsigned nx = _ri_j_IntController->getAuxBasisController()->getNBasisFunctions();
+  unsigned nb = totalDensity.rows();
+
+  auto maxDens = totalDensity.shellWiseAbsMax();
+  auto maxDensPtr = maxDens.data();
+  unsigned ns = maxDens.rows();
+
+  Eigen::MatrixXd sumMat = Eigen::MatrixXd::Zero(nx, nThreads);
   auto sumptr = sumMat.data();
-  const unsigned nBFs = totalDensity.cols();
-  auto distribute1 = [&densptr, &sumptr, &nAuxFunctions, &nBFs](const unsigned i, const unsigned j, const unsigned K,
-                                                                const double integral, const unsigned threadId) {
-    sumptr[K + nAuxFunctions * threadId] += (i == j ? 1.0 : 2.0) * integral * densptr[i * nBFs + j];
+
+  // Distribute function for first contraction.
+  auto distribute1 = [&](unsigned i, unsigned j, unsigned K, double integral, unsigned threadId) {
+    double perm = (i == j ? 1.0 : 2.0);
+    sumptr[nx * threadId + K] += perm * integral * densptr[i * nb + j];
   };
-  _ri_j_IntController->loopOver3CInts(distribute1, prescreen);
+
+  // Prescreening function for first contraction.
+  auto prescreen1 = [&](const unsigned i, const unsigned j, unsigned int, const double schwarz) {
+    unsigned long ij = i * ns + j;
+    return (maxDensPtr[ij] * schwarz < _screening);
+  };
+
+  // Perform first contraction.
+  _ri_j_IntController->loopOver3CInts(distribute1, prescreen1);
+
+  // Solve linear system.
   Eigen::VectorXd sumPMuNu_DMuNu = sumMat.rowwise().sum();
   sumMat.resize(1, 1);
-  /*
-   *  Done calculating sumPMuNu_DMuNu
-   */
-
-  /*
-   * Calculate product of sumPMuNu_DMuNu and inverse of 2c2e matrix M via Cholesky decomposition.
-   * The latter avoids the explicit calculation of the inverse.
-   */
   Eigen::VectorXd coefficients = _ri_j_IntController->getLLTMetric().solve(sumPMuNu_DMuNu).eval();
 
-  /*
-   * The actual calculation of the resulting matrix elements, which is now basically a scalar
-   * product of two vectors for each {mu, nu}.
-   * potential(mu,nu) = sum_P coefficients(P)*(P|mu,nu)
-   */
-#ifdef _OPENMP
-  std::vector<MatrixInBasis<RESTRICTED>> potential(omp_get_max_threads(), MatrixInBasis<RESTRICTED>(this->_basis));
-#else
-  std::vector<MatrixInBasis<RESTRICTED>> potential(1, MatrixInBasis<RESTRICTED>(this->_basis));
-#endif
-  takeTime("Coulomb 4");
+  // Distribute function for second contraction.
   auto coeff = coefficients.data();
-  auto distribute2 = [&coeff, &potential, &nBFs](const unsigned i, const unsigned j, const unsigned K,
-                                                 const double integral, const unsigned threadId) {
-    (void)threadId; // no warning
-    if (i == j) {
-      potential[threadId].data()[i * nBFs + j] += integral * coeff[K];
-    }
-    else {
-      potential[threadId].data()[i * nBFs + j] += integral * coeff[K];
-      potential[threadId].data()[j * nBFs + i] += integral * coeff[K];
-    }
+  auto coeffMax = _ri_j_IntController->getAuxBasisController()->shellWiseAbsMax(coefficients);
+  auto distribute2 = [&](unsigned i, unsigned j, unsigned K, double integral, unsigned threadId) {
+    // Only perform half the needed contractions and symmetrize afterwards.
+    fock_threads[threadId].data()[i * nb + j] += integral * coeff[K];
   };
-  _ri_j_IntController->loopOver3CInts(distribute2, prescreen);
-  timeTaken(3, "Coulomb 4");
-  for_spin(F) {
-#ifdef _OPENMP
-    for (unsigned int i = 0; i < (unsigned int)omp_get_max_threads(); i++) {
-      F_spin += potential[i];
-    }
-#else
-    F_spin += potential[0];
-#endif
-  };
-}
 
-template<Options::SCF_MODES SCFMode>
-std::vector<unsigned int> CoulombPotential<SCFMode>::createBasisToAtomIndexMapping(
-    const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed, unsigned int nBasisFunctionsRed) {
-  std::vector<unsigned int> mapping(nBasisFunctionsRed);
-  // Vector to check whether ALL basis function shells are assigned to an atom index
-  std::vector<bool> hasElementBeenSet(nBasisFunctionsRed, false);
-  for (unsigned int iAtom = 0; iAtom < basisIndicesRed.size(); ++iAtom) {
-    const unsigned int firstIndex = basisIndicesRed[iAtom].first;
-    const unsigned int endIndex = basisIndicesRed[iAtom].second;
-    for (unsigned int iShell = firstIndex; iShell < endIndex; ++iShell) {
-      mapping[iShell] = iAtom;
-      hasElementBeenSet[iShell] = true;
-    }
+  // Prescreening function for second contraction.
+  auto prescreen2 = [&](const unsigned, const unsigned, const unsigned K, const double schwarz) {
+    return (coeffMax(K) * schwarz < _screening);
+  };
+
+  // Perform second contraction.
+  _ri_j_IntController->loopOver3CInts(distribute2, prescreen2);
+
+  // Add to Fock matrix.
+  Eigen::Ref<Eigen::MatrixXd> Fc = fock_threads[0];
+  for (unsigned i = 1; i < nThreads; i++) {
+    Fc += fock_threads[i];
   }
-  // Check
-  for (bool x : hasElementBeenSet) {
-    if (not x)
-      throw SerenityError("CoulombPotential: Missed basis function in mapping procedure.");
-  }
-  return mapping;
+  Eigen::MatrixXd Fc_sym = Fc + Fc.transpose();
+  // The diagonal was fine, so it needs to be halved.
+  Fc_sym.diagonal() *= 0.5;
+  for_spin(F) {
+    F_spin += Fc_sym;
+  };
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -184,15 +167,13 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
   auto basisController = actSystem->getAtomCenteredBasisController();
   auto auxBasisController = actSystem->getAtomCenteredBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
 
-  unsigned int nBasisFunctionsRed = orbitalSet->getBasisController()->getReducedNBasisFunctions();
   auto basisIndicesRed = actSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
-  auto mapping = createBasisToAtomIndexMapping(basisIndicesRed, nBasisFunctionsRed);
+  auto mapping = actSystem->getAtomCenteredBasisController()->getAtomIndicesOfBasisShells();
 
   auto& auxBasis = auxBasisController->getBasis();
   auto nAuxBasFunc = auxBasisController->getNBasisFunctions();
-  auto nAuxBasFuncRed = auxBasisController->getReducedNBasisFunctions();
   auto auxBasisIndicesRed = auxBasisController->getBasisIndicesRed();
-  auto auxMapping = createBasisToAtomIndexMapping(auxBasisIndicesRed, nAuxBasFuncRed);
+  auto auxMapping = auxBasisController->getAtomIndicesOfBasisShells();
 
   DensityMatrix<RESTRICTED> densityMatrix(actSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().total());
 
@@ -218,7 +199,8 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
   std::vector<Eigen::VectorXd> CvecPriv(1, Eigen::VectorXd::Zero(nAuxBasFunc));
 #endif
 
-  TwoElecThreeCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, auxBasisController, 1E-10);
+  TwoElecThreeCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, auxBasisController,
+                                     _incrementHelper->getPrescreeningThreshold());
 
   Eigen::VectorXd Cvec(nAuxBasFunc);
   Cvec.setZero();
@@ -255,7 +237,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
    *
    */
   Libint& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb, 1, 2);
+  libint.initialize(LIBINT_OPERATOR::coulomb, 1, 2);
 #ifdef _OPENMP
   std::vector<Eigen::MatrixXd> eriContrPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
 #else
@@ -277,7 +259,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
       const unsigned int nAuxK = auxBasis[auxK]->getNContracted();
       unsigned int offauxK = auxBasisController->extendedIndex(auxK);
 
-      if (libint.compute(libint2::Operator::coulomb, 1, *auxBasis[auxJ], *auxBasis[auxK], intDerivs)) {
+      if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasis[auxJ], *auxBasis[auxK], intDerivs)) {
         double perm = (auxJ == auxK ? 1.0 : 2.0);
 
         Eigen::MatrixXd prefac = 0.5 * perm * Dvec.segment(offauxJ, nAuxJ) * Dvec.segment(offauxK, nAuxK).transpose();
@@ -301,7 +283,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
       }
     }
   }
-  libint.finalize(libint2::Operator::coulomb, 1, 2);
+  libint.finalize(LIBINT_OPERATOR::coulomb, 1, 2);
   /*
    *
    * The following looper calculates the complete 1st and 2nd part of eq ([2].[6])
@@ -309,7 +291,8 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
    *
    */
 
-  TwoElecThreeCenterIntLooper derivLooper(libint2::Operator::coulomb, 1, basisController, auxBasisController, 1E-10);
+  TwoElecThreeCenterIntLooper derivLooper(LIBINT_OPERATOR::coulomb, 1, basisController, auxBasisController,
+                                          _incrementHelper->getPrescreeningThreshold());
 
   auto const add3cDerivs = [&eriContrPriv, &Dvec, &densityMatrix, &mapping, &auxMapping, &basisController,
                             &auxBasisController](const unsigned int& i, const unsigned int& j, const unsigned int& K,
@@ -342,7 +325,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
 #else
   eriContr = eriContrPriv[0];
 #endif
-  return std::move(eriContr);
+  return eriContr;
 }
 
 template class CoulombPotential<Options::SCF_MODES::RESTRICTED>;

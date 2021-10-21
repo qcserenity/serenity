@@ -72,6 +72,7 @@ SpinPolarizedData<SCFMode, Eigen::VectorXi> SPADEAlgorithm<SCFMode>::run() {
     assignment_spin = Eigen::VectorXi::Constant(nOcc_spin, 1);
     assignment_spin.head(lastActiveOrbital) = Eigen::VectorXi::Zero(lastActiveOrbital);
   };
+  // TODO: Allow the splitting of core and non-core orbitals.
   orbitalController->updateOrbitals(coefficients, _supersystem->getActiveOrbitalController<SCFMode>()->getEigenvalues());
   return assignment;
 }

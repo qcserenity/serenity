@@ -20,9 +20,12 @@
 /* Include Class Header*/
 #include "postHF/MPn/DipoleApproximationToPairEnergies.h" //DipoleApproximationToPairEnergies
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"               //Loop shells.
 #include "basis/BasisController.h"     //BasisController
 #include "data/OrbitalPair.h"          //OrbitalPair definition.
 #include "data/PAOController.h"        //PAOController
+#include "integrals/wrappers/Libint.h" //Dipole integrals
+#include "io/FormattedOutputStream.h"  //Filtered output streams.
 #include "misc/SystemSplittingTools.h" //diagonalizationInNonRedundantPAOBasis
 #include "misc/Timing.h"               //Timings
 /* Include Std and External Headers */
@@ -42,7 +45,7 @@ DipoleApproximationToPairEnergies::DipoleApproximationToPairEnergies(
     _fockMatrix(fockMatrix),
     _paoToOccupiedOrbitalMap(paoToOccupiedOrbitalMap),
     _paoOrthogonalizationThreshold(paoOrthogonalizationThreshold) {
-  _transformation_ii.resize(occCoefficients->cols(), nullptr);
+  _pao_r_i.resize(occCoefficients->cols(), nullptr);
   _eigenvalues_ii.resize(occCoefficients->cols(), nullptr);
 }
 
@@ -50,18 +53,19 @@ std::vector<Eigen::MatrixXd> DipoleApproximationToPairEnergies::calculateDipoleI
   unsigned int nBasisFunctions = _basisController->getNBasisFunctions();
   std::vector<Eigen::MatrixXd> results(3, Eigen::MatrixXd::Zero(nBasisFunctions, nBasisFunctions));
   auto& basis = _basisController->getBasis();
-  _libint.initialize(libint2::Operator::emultipole1, 0, 2);
+  auto& libint = Libint::getInstance();
+  libint.initialize(LIBINT_OPERATOR::emultipole1, 0, 2);
   // Loop over shells i and i <= j.
   for (unsigned int iShell = 0; iShell < basis.size(); iShell++) {
     auto nContShellI = basis[iShell]->getNContracted();
     for (unsigned int jShell = 0; jShell <= iShell; jShell++) {
       auto nContShellJ = basis[jShell]->getNContracted();
       Eigen::MatrixXd multiPoleInts;
-      if (_libint.compute(libint2::Operator::emultipole1, 0, *basis[jShell], *basis[iShell], multiPoleInts)) {
+      if (libint.compute(LIBINT_OPERATOR::emultipole1, 0, *basis[jShell], *basis[iShell], multiPoleInts)) {
         /*
          * set vector size: libint will return a matrix containing
          * <j|i>,<j|x|i>,<j|y|i>,<j|z|i>
-         * Order in raw buffer: (j_1|i_1),(j_1|i_2)...,(j_2|i_1) ... for each collumn.
+         * Order in raw buffer: (j_1|i_1),(j_1|i_2)...,(j_2|i_1) ... for each column.
          */
         unsigned int iExtended = _basisController->extendedIndex(iShell);
         unsigned int jExtended = _basisController->extendedIndex(jShell);
@@ -76,64 +80,32 @@ std::vector<Eigen::MatrixXd> DipoleApproximationToPairEnergies::calculateDipoleI
       }   // if compute
     }     // for jShell
   }       // for iShell
-  _libint.finalize(libint2::Operator::emultipole1, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::emultipole1, 0, 2);
+  // Transform right side to the occupied orbital basis.
+  const auto& occOrbCoeff = *_occCoefficients;
+  for (auto& ints : results) {
+    ints = ints * occOrbCoeff;
+  }
+  // Construct the (i|r|i) integral matrix.
+  _iri.resize(3, occOrbCoeff.cols());
+  _iri.row(0) = (occOrbCoeff.array() * results[0].array()).colwise().sum();
+  _iri.row(1) = (occOrbCoeff.array() * results[1].array()).colwise().sum();
+  _iri.row(2) = (occOrbCoeff.array() * results[2].array()).colwise().sum();
   return results;
 }
 
 inline void DipoleApproximationToPairEnergies::calculateTransformationAndEigenvalues(unsigned int i) {
   const Eigen::MatrixXd R_ii = _paoController->getPAOsFromDomain(_paoToOccupiedOrbitalMap->col(i));
-  _transformation_ii[i] = std::make_shared<Eigen::MatrixXd>();
+  Eigen::MatrixXd transformation;
   _eigenvalues_ii[i] = std::make_shared<Eigen::VectorXd>();
   SystemSplittingTools<RESTRICTED>::diagonalizationInNonRedundantPAOBasis(
-      R_ii, *_overlapMatrix, *_fockMatrix, _paoOrthogonalizationThreshold, *_eigenvalues_ii[i], *_transformation_ii[i]);
-}
-
-inline void DipoleApproximationToPairEnergies::prepareEvaluation(Eigen::MatrixXd& muPAO_r_i, Eigen::MatrixXd& muPAO_r_j,
-                                                                 Eigen::Vector3d& r_ij, Eigen::MatrixXd& denominator,
-                                                                 const Eigen::MatrixXd& f_MO,
-                                                                 const std::shared_ptr<OrbitalPair> pair) {
-  assert(_dipoleInts.size() > 0);
-
-  // 2. Build Fock matrix in non-redundant PAO basis for i and j.
-  const unsigned int i = pair->i;
-  const unsigned int j = pair->j;
-  const Eigen::MatrixXd R_ii = _paoController->getPAOsFromDomain(_paoToOccupiedOrbitalMap->col(i));
-  const Eigen::MatrixXd R_jj = _paoController->getPAOsFromDomain(_paoToOccupiedOrbitalMap->col(j));
-  assert(_transformation_ii[i] && _eigenvalues_ii[i]);
-  assert(_transformation_ii[j] && _eigenvalues_ii[j]);
-  const Eigen::MatrixXd& transformation_ii = *_transformation_ii[i];
-  const Eigen::MatrixXd& transformation_jj = *_transformation_ii[j];
-  const Eigen::VectorXd& eigenvalues_ii = *_eigenvalues_ii[i];
-  const Eigen::VectorXd& eigenvalues_jj = *_eigenvalues_ii[j];
-  /*
-   *   3. Calculate all:
-   *        (i|r|mu_pao),
-   *        (j|r|mu_pao)
-   *      and the two integrals (i|r|i) and (j|r|j)
-   */
-  const Eigen::MatrixXd toPao_ii = R_ii * transformation_ii;
-  const Eigen::MatrixXd toPao_jj = R_jj * transformation_jj;
-  muPAO_r_i.resize(toPao_ii.cols(), 3);
-  muPAO_r_j.resize(toPao_jj.cols(), 3);
-  for (unsigned int dim = 0; dim < 3; ++dim) {
-    // Transform the right function first. This is needed in both integrals with i/j
-    const Eigen::VectorXd preCalc_i = _dipoleInts[dim] * _occCoefficients->col(i);
-    const Eigen::VectorXd preCalc_j = _dipoleInts[dim] * _occCoefficients->col(j);
-    //(i|r|mu_pao), (j|r|mu_pao)
-    // N-non-Red. PAO(i/j) x 1
-    muPAO_r_i.col(dim) = toPao_ii.transpose() * preCalc_i;
-    muPAO_r_j.col(dim) = toPao_jj.transpose() * preCalc_j;
-    //(i|r|i) and (j|r|j)
-    double i_r_i = _occCoefficients->col(i).transpose() * preCalc_i;
-    double j_r_j = _occCoefficients->col(j).transpose() * preCalc_j;
-    // 4. Calculate R_ij = (i|r|i) - (j|r|j)
-    r_ij(dim) = i_r_i - j_r_j;
-  } // for dim
-  // Prepare the denominator
-  denominator = Eigen::MatrixXd::Zero(eigenvalues_ii.size(), eigenvalues_jj.size());
-  denominator.colwise() += eigenvalues_ii.eval();
-  denominator.rowwise() += eigenvalues_jj.transpose().eval();
-  denominator.array() -= f_MO(i, i) + f_MO(j, j);
+      R_ii, *_overlapMatrix, *_fockMatrix, _paoOrthogonalizationThreshold, *_eigenvalues_ii[i], transformation);
+  transformation = R_ii * transformation;
+  // Calculate integrals (pao_ii|r|i)
+  _pao_r_i[i] = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd(transformation.cols(), 3));
+  _pao_r_i[i]->col(0).noalias() = transformation.transpose() * _dipoleInts[0].col(i);
+  _pao_r_i[i]->col(1).noalias() = transformation.transpose() * _dipoleInts[1].col(i);
+  _pao_r_i[i]->col(2).noalias() = transformation.transpose() * _dipoleInts[2].col(i);
 }
 
 inline void DipoleApproximationToPairEnergies::preCalculateTransformations(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs) {
@@ -146,16 +118,15 @@ inline void DipoleApproximationToPairEnergies::preCalculateTransformations(std::
     if (std::find(orbitalIndices.begin(), orbitalIndices.end(), pair->j) == orbitalIndices.end())
       orbitalIndices.push_back(pair->j);
   }
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic)
   for (unsigned int iOrb = 0; iOrb < orbitalIndices.size(); ++iOrb) {
     unsigned int i = orbitalIndices[iOrb];
-    if (!_transformation_ii[i] || !_eigenvalues_ii[i])
+    if (!_pao_r_i[i] || !_eigenvalues_ii[i])
       calculateTransformationAndEigenvalues(i);
   }
 }
 
-void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
-                                                                     double cutOff) {
+void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs) {
   takeTime("Dipole Approximation");
   /*
    * 1. Calculate all (mu|r|nu) integrals in AO basis.
@@ -168,7 +139,7 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
    *   4. Calculate R_ij = (i|r|i) - (j|r|j)
    *   5. Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
    */
-  // 1. Calculate all (mu|r|nu) integrals in AO basis if not already done.
+  // Calculate all (mu|r|nu) integrals in AO basis if not already done.
   if (_dipoleInts.size() < 1)
     _dipoleInts = calculateDipoleIntegrals();
   preCalculateTransformations(orbitalPairs);
@@ -178,30 +149,29 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
   unsigned int pairIndex = 0;
   unsigned int nThreads = omp_get_max_threads();
   Eigen::setNbThreads(1);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic)
   for (unsigned int iPair = 0; iPair < orbitalPairs.size(); ++iPair) {
     auto& pair = orbitalPairs[iPair];
-    // Filled below in prepareEvaluation(...).
-    Eigen::MatrixXd muPAO_r_i;
-    Eigen::MatrixXd muPAO_r_j;
-    Eigen::Vector3d r_ij;
-    Eigen::MatrixXd denominator;
+    unsigned int i = pair->i;
+    unsigned int j = pair->j;
+    // Extract precalculated values.
+    const Eigen::MatrixXd& muPAO_r_i = *_pao_r_i[i];
+    const Eigen::MatrixXd& muPAO_r_j = *_pao_r_i[j];
+    const Eigen::Vector3d r_ij = _iri.col(i) - _iri.col(j);
+    Eigen::MatrixXd denominator = Eigen::MatrixXd::Zero(_eigenvalues_ii[i]->size(), _eigenvalues_ii[j]->size());
+    denominator.colwise() += *_eigenvalues_ii[i];
+    denominator.rowwise() += _eigenvalues_ii[j]->transpose().eval();
+    denominator.array() -= f_MO(i, i) + f_MO(j, j);
     /*
      * Step 2 to 4.
      */
-    prepareEvaluation(muPAO_r_i, muPAO_r_j, r_ij, denominator, f_MO, pair);
-    double r_ijNorm = r_ij.norm();
-    if (r_ijNorm < cutOff) {
-      r_ij.array() = r_ij.array() / r_ijNorm * cutOff;
-      std::cout << "Close distant pair! Renorm! " << pair->i << " " << pair->j << std::endl;
-    }
     /*
-     * 5. Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
+     * Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
      */
     // First term: (i|r|mu_PAO)(j|r|nu_PAO)
     // n_ix3 * 3xn_j = n_ixn_j
     Eigen::MatrixXd epsilon_mu_nu_i_j = muPAO_r_i * muPAO_r_j.transpose();
-    Eigen::Vector3d unit_r_ij = r_ij.array() / r_ij.norm();
+    const Eigen::Vector3d unit_r_ij = r_ij.array() / r_ij.norm();
     // Second term: -3((i|r|mu_PAO)r_ij)((j|r|nu_PAO)r_ij
     //                        (  n_ix3 * 3x1     *     (n_jx3 * 3x1)^T            )= n_ixn_j
     epsilon_mu_nu_i_j -= 3 * ((muPAO_r_i * unit_r_ij) * (muPAO_r_j * unit_r_ij).transpose());
@@ -209,7 +179,7 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
     epsilon_mu_nu_i_j.array() *= epsilon_mu_nu_i_j.array() / denominator.array();
     // Pair energy is given as the sum of all matrix elements multiplied with -4/r_ij^6
     double pairEnergy = epsilon_mu_nu_i_j.sum();
-    double r_ijSquared = r_ij.squaredNorm();
+    const double r_ijSquared = r_ij.squaredNorm();
     pairEnergy *= -4.0 / (r_ijSquared * r_ijSquared * r_ijSquared);
     pair->dipolePairEnergy = pairEnergy;
     ++pairIndex;
@@ -217,8 +187,7 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
   Eigen::setNbThreads(nThreads);
   timeTaken(2, "Dipole Approximation");
 }
-void DipoleApproximationToPairEnergies::calculateDipoleApproximationCollinear(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
-                                                                              double cutOff) {
+void DipoleApproximationToPairEnergies::calculateDipoleApproximationCollinear(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs) {
   takeTime("Collinear Dipole Approximation");
   if (_dipoleInts.size() < 1)
     _dipoleInts = calculateDipoleIntegrals();
@@ -232,21 +201,18 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximationCollinear(st
 #pragma omp parallel for schedule(static)
   for (unsigned int iPair = 0; iPair < orbitalPairs.size(); ++iPair) {
     auto& pair = orbitalPairs[iPair];
-    // Are filled below in prepareEvaluation(...).
-    Eigen::MatrixXd muPAO_r_i;
-    Eigen::MatrixXd muPAO_r_j;
-    Eigen::Vector3d r_ij;
-    Eigen::MatrixXd denominator;
+    unsigned int i = pair->i;
+    unsigned int j = pair->j;
+    // Extract precalculated values.
+    Eigen::MatrixXd muPAO_r_i = *_pao_r_i[i];
+    Eigen::MatrixXd muPAO_r_j = *_pao_r_i[j];
+    const Eigen::Vector3d r_ij = _iri.col(i) - _iri.col(j);
+    Eigen::MatrixXd denominator = Eigen::MatrixXd::Zero(_eigenvalues_ii[i]->size(), _eigenvalues_ii[j]->size());
+    denominator.colwise() += *_eigenvalues_ii[i];
+    denominator.rowwise() += _eigenvalues_ii[j]->transpose().eval();
+    denominator.array() -= f_MO(i, i) + f_MO(j, j);
     /*
-     * Step 2 to 4.
-     */
-    prepareEvaluation(muPAO_r_i, muPAO_r_j, r_ij, denominator, f_MO, pair);
-    double r_ijNorm = r_ij.norm();
-    if (r_ijNorm < cutOff) {
-      r_ij.array() = r_ij.array() / r_ijNorm * cutOff;
-    }
-    /*
-     * 5. Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
+     * Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
      * Assume collinear orientation of the dipoles --> take the norm of all
      * (l|r|k) integral sets.
      *

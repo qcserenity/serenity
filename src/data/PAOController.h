@@ -75,6 +75,7 @@ class PAOController {
     // constructed twice (and the copy is not deleted) and probably
     // crash the program.
     constructPAOs();
+    getS_PAO();
   };
   virtual ~PAOController() = default;
 
@@ -86,7 +87,7 @@ class PAOController {
   inline Eigen::MatrixXd getPAOsFromDomain(const Eigen::SparseVector<int>& domain) {
     if (!_paoCoefficients)
       constructPAOs();
-    const Eigen::MatrixXd paoCoefficients = *_paoCoefficients;
+    const Eigen::MatrixXd& paoCoefficients = *_paoCoefficients;
     const Eigen::SparseMatrix<double> projection = constructProjectionMatrixFromSparse(domain);
     return (Eigen::MatrixXd)(paoCoefficients * projection).eval();
   }
@@ -108,6 +109,11 @@ class PAOController {
       constructPAOs();
     return _paoCoefficients->cols();
   }
+  /**
+   * @brief Getter for the PAO--PAO overlap matrix.
+   * @return The PAO--PAO overlap matrix.
+   */
+  const MatrixInBasis<RESTRICTED>& getS_PAO();
 
  private:
   /// Construct all PAOs.
@@ -118,6 +124,8 @@ class PAOController {
   std::shared_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>> _activeDensity;
   /// The overlap matrix of the acitve system.
   std::shared_ptr<MatrixInBasis<Options::SCF_MODES::RESTRICTED>> _s;
+  /// The PAO--PAO overlap matrix.
+  std::unique_ptr<MatrixInBasis<Options::SCF_MODES::RESTRICTED>> _s_pao;
   /// The PAO normalization threshold.
   double _paoNormalizationThreshold;
   /// The density matrices of the environment systems.

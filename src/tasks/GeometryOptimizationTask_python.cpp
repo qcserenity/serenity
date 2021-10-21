@@ -40,7 +40,6 @@ void export_GeometryOptimizationTask(py::module& spy) {
       .def_readwrite("stepThresh", &GeometryOptimizationTaskSettings::stepThresh)
       .def_readwrite("maxStepThresh", &GeometryOptimizationTaskSettings::maxStepThresh)
       .def_readwrite("numGradStepSize", &GeometryOptimizationTaskSettings::numGradStepSize)
-      .def_readwrite("printLevel", &GeometryOptimizationTaskSettings::printLevel)
       .def_readwrite("FaTmaxCycles", &GeometryOptimizationTaskSettings::FaTmaxCycles)
       .def_readwrite("FaTenergyConvThresh", &GeometryOptimizationTaskSettings::FaTConvThresh)
       .def_readwrite("FaTgridCutOff", &GeometryOptimizationTaskSettings::FaTgridCutOff);

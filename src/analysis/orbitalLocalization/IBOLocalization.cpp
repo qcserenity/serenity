@@ -86,6 +86,7 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
        * Rotation from IAOs to IBOs
        */
       bool converged = false;
+
       unsigned int cycle = 0;
       while (!converged) {
         ++cycle;
@@ -131,11 +132,16 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
              *   y/x. Thus, it is better to check for numerical zeros, since
              *   atan(inf) = pi/2 and atan(-inf) = -pi/2.
              *   Otherwise the results may depend on the zero being +0 or -0.
+             *
+             *   We will do the following:
+             *   If Aij = 0       --> angle = atan(0) = 0
+             *   if |Bij| < 1e-14 --> Bij = |Bij| in order to fix the sing.
+             *     and thus |angle| = pi/8
              */
             double angle = 0.0;
-            if (std::abs(Bij) > 1e-14) {
-              if (std::abs(Aij) < 1e-14)
-                Aij = std::abs(Aij);
+            if (std::abs(Aij) > 1e-14) {
+              if (std::abs(Bij) < 1e-14)
+                Bij = std::abs(Bij);
               angle = 0.25 * atan2(Bij, -Aij);
             }
             // rotate orbital pair

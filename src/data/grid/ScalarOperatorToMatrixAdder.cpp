@@ -30,10 +30,9 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
-ScalarOperatorToMatrixAdder<SCFMode>::ScalarOperatorToMatrixAdder(shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+ScalarOperatorToMatrixAdder<SCFMode>::ScalarOperatorToMatrixAdder(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
                                                                   const double blockAveThreshold)
   : _basisFunctionOnGridControllerA(basisFunctionOnGridController),
     _basisFunctionOnGridControllerB(basisFunctionOnGridController),

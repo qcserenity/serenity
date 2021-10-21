@@ -60,13 +60,14 @@ class QuasiCanonicalPAODomainConstructor {
    * @param levelShiftParameter The shift of the occupied environment orbitals in the fock matrix.
    * @param ssScaling Same spin scaling factor.
    * @param osScaling Opposite spin scaling factor.
+   * @param clear Clear integrals after pair energy calculation.
    */
   QuasiCanonicalPAODomainConstructor(const CoefficientMatrix<Options::SCF_MODES::RESTRICTED>& coefficients,
-                                     std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> overlapMatrix,
                                      std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
                                      std::shared_ptr<PAOController> paoController, double paoOrthogonalizationThreshold,
                                      std::vector<std::shared_ptr<SystemController>> environmentSystems,
-                                     double levelShiftParameter, double ssScaling = 1.0, double osScaling = 1.0);
+                                     double levelShiftParameter, double ssScaling = 1.0, double osScaling = 1.0,
+                                     bool clear = false);
 
   /**
    * @brief Transform the PAO basis of the given pair.
@@ -81,6 +82,8 @@ class QuasiCanonicalPAODomainConstructor {
    */
   virtual void postProcessing(std::shared_ptr<OrbitalPair> pair) {
     initializeAmplitudes(pair);
+    if (_clear)
+      clearIntegrals(pair);
   }
   /**
    * @brief Default destructor.
@@ -98,18 +101,19 @@ class QuasiCanonicalPAODomainConstructor {
    * @param pair
    */
   void initializeAmplitudes(std::shared_ptr<OrbitalPair> pair);
+  /**
+   * @brief Clear the K_ij integrals of the given pair.
+   * @param pair
+   */
+  void clearIntegrals(std::shared_ptr<OrbitalPair> pair);
   ///@brief The internal block of the Fock matrix.
   Eigen::MatrixXd _f_MO;
   ///@brief Fock matrix with the right function transformed to the internal basis.
-  Eigen::MatrixXd _f_AO_MO;
+  Eigen::MatrixXd _f_PAO_MO;
   ///@brief The Fock matrix in AO basis.
-  Eigen::MatrixXd _f;
+  Eigen::MatrixXd _f_pao;
   ///@brief The PAO-Controller.
   std::shared_ptr<PAOController> _paoController;
-  /**
-   * @brief The overlap matrix in AO basis.
-   */
-  std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> _S;
 
  private:
   /**
@@ -124,6 +128,8 @@ class QuasiCanonicalPAODomainConstructor {
   double _ssScaling;
   // opposite-spin scaling parameter.
   double _osScaling;
+  // Clear QC-PAO Kij integrals.
+  bool _clear;
 };
 
 } /* namespace Serenity */

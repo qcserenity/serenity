@@ -39,8 +39,6 @@ class Matrix;
  *
  */
 class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geometry> {
-  friend class GradientCalculator;
-
  public:
   /**
    * @brief Constructor.
@@ -63,8 +61,6 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   virtual ~Geometry() = default;
   /**
    * @returns the atoms forming this Geometry
-   * TODO see SDGeomOptimizer.cpp, maybe we should const-overload this function and in the const
-   * case return a vector<shared_ptr<const Atom> >.
    */
   inline const std::vector<std::shared_ptr<Atom>>& getAtoms() const {
     return _atoms;
@@ -78,21 +74,16 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   /**
    * @returns The energy due to the Coulomb repulsion of the atoms from each other
    */
-  inline double getCoreCoreRepulsion() const {
-    if (!_coreCoreRepulsionUpToDate) {
-      calcCoreCoreRepulsion();
-    }
-    return _coreCoreRepulsion;
-  }
+  double getCoreCoreRepulsion() const;
   /**
    * @returns The center of mass
    */
-  inline Point getCenterOfMass() const {
-    if (!_centerOfMassUpToDate) {
-      calcCenterOfMass();
-    }
-    return _centerOfMass;
-  }
+  Point getCenterOfMass() const;
+  /**
+   * @brief Calculate and return the sum of all effective charges.
+   * @return The total effective charge.
+   */
+  int getTotalEffectiveCharge();
 
   /**
    * @brief A shortcut to acess atoms directly.
@@ -145,24 +136,12 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   /**
    * @return A list of all atoms symbols.
    */
-  std::vector<std::string> getAtomSymbols() const {
-    std::vector<std::string> symbols;
-    for (auto& atom : this->_atoms) {
-      symbols.push_back(atom->getAtomType()->getElementSymbol());
-    }
-    return symbols;
-  }
-
+  std::vector<std::string> getAtomSymbols() const;
   /**
    * @brief Deletes an atom from the geometry.
    * @param i The number of the atom to be deleted within the array
    */
-  void deleteAtom(unsigned int i) {
-    std::vector<std::shared_ptr<Atom>>::iterator it = _atoms.begin();
-    std::advance(it, i);
-    _atoms.erase(it);
-    notify();
-  };
+  void deleteAtom(unsigned int i);
 
   /**
    * @brief Prints the current geometry to the screen.
@@ -222,16 +201,6 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
    * @param newGradients The new geometry gradient, dimensions: (nAtoms,3)
    */
   void setGradients(const Eigen::MatrixXd& newGradients) const;
-  /**
-   * @brief Check if there are gradients that are up-to-date
-   */
-  bool checkGradients() {
-    bool check = true;
-    for (unsigned int i = 0; i != this->getNAtoms(); ++i) {
-      check *= this->_atoms[i]->gradientsUpToDate();
-    }
-    return check;
-  }
 
   /**
    * @brief Deletes coinciding atoms. Deletion of dummy atoms prioritized.
@@ -269,30 +238,19 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   /**
    * @param rhs is added to this instance.
    */
-  Geometry& operator+=(const Geometry& rhs) {
-    for (auto atom : rhs.getAtoms()) {
-      this->_atoms.push_back(atom);
-      atom->addSensitiveObject(this->_self);
-      if (atom->getX() < this->_minX) {
-        this->_minX = atom->getX();
-      }
-      if (atom->getY() < this->_minY) {
-        this->_minY = atom->getY();
-      }
-      if (atom->getZ() < this->_minZ) {
-        this->_minZ = atom->getZ();
-      }
-      if (atom->getX() > this->_maxX) {
-        this->_maxX = atom->getX();
-      }
-      if (atom->getY() > this->_maxY) {
-        this->_maxY = atom->getY();
-      }
-      if (atom->getZ() > this->_maxZ) {
-        this->_maxZ = atom->getZ();
-      }
-    }
-    return *this;
+  Geometry& operator+=(const Geometry& rhs);
+
+  /**
+   * @brief checks if two geometries are equal.
+   * @return True if geometries are equal.
+   */
+  bool operator==(const Geometry& rhs);
+  /**
+   * @brief checks if two geometries are not equal.
+   * @return True if geometries are not equal.
+   */
+  bool operator!=(const Geometry& rhs) {
+    return (!(*this == rhs));
   }
 
   /**
@@ -303,21 +261,31 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   void addAsDummy(const Geometry& add, bool toFront = false);
 
   /**
+   * @brief Add the geometry dummy atoms.
+   * @param add The other geometry.
+   * @param toFront Add at the front of the atom list.
+   */
+  void addDummy(const Geometry& add, bool toFront = false);
+
+  /**
    * @brief Checks for atoms with ECPs.
    * @return The result of the check.
    */
-  bool hasAtomsWithECPs() const {
-    bool atomsWithECPs = false;
-    for (auto& atom : _atoms) {
-      if (atom->usesECP())
-        atomsWithECPs = true;
-    }
-    return atomsWithECPs;
-  }
+  bool hasAtomsWithECPs() const;
   /**
    * @brief Delete all ghost atoms.
    */
   void deleteGhostAtoms();
+  /**
+   * @brief Enforce an update of the core--core repulsion.
+   */
+  void updateCoreCoreRepulsion();
+  /**
+   * @brief Getter for the number of non-valence electrons associated to this geometry.
+   *        This already omit the electrons contained in ECPs.
+   * @return The number of non-valence/core electroncs.
+   */
+  unsigned int getNumberOfCoreElectrons();
 
  private:
   /**

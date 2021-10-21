@@ -68,8 +68,10 @@ class FDEPotentials : public PotentialBundle<SCFMode> {
    *                         solvent model
    */
   FDEPotentials(std::shared_ptr<PotentialBundle<SCFMode>> activeSystemPot, std::shared_ptr<PotentialBundle<SCFMode>> esiPot,
-                std::shared_ptr<NAddFuncPotential<SCFMode>> naddXC, std::shared_ptr<Potential<SCFMode>> naddKin,
-                std::shared_ptr<Potential<SCFMode>> ecp, std::shared_ptr<Potential<SCFMode>> pcm);
+                std::vector<std::shared_ptr<NAddFuncPotential<SCFMode>>> naddXC,
+                std::vector<std::shared_ptr<Potential<SCFMode>>> naddKin, std::shared_ptr<Potential<SCFMode>> ecp,
+                std::shared_ptr<Potential<SCFMode>> pcm);
+
   /// @brief Default destructor.
   virtual ~FDEPotentials() = default;
 
@@ -101,9 +103,9 @@ class FDEPotentials : public PotentialBundle<SCFMode> {
   ///@brief The clasical interaction terms
   std::shared_ptr<PotentialBundle<SCFMode>> _esiPot;
   ///@brief The non additive exchange correlation interaction.
-  std::shared_ptr<NAddFuncPotential<SCFMode>> _naddXC;
+  std::vector<std::shared_ptr<NAddFuncPotential<SCFMode>>> _naddXC;
   ///@brief The non additive kinetic interaction.
-  std::shared_ptr<Potential<SCFMode>> _naddKin;
+  std::vector<std::shared_ptr<Potential<SCFMode>>> _naddKin;
   ///@brief The contributions of the effective core potentials located in the environment.
   std::shared_ptr<Potential<SCFMode>> _ecp;
   ///@brief The contributions of the implicit solvation model.

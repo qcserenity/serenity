@@ -22,6 +22,7 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "energies/EnergyComponentController.h"
+#include "integrals/OneElectronIntegralController.h"
 /* Include Std and External Headers */
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>

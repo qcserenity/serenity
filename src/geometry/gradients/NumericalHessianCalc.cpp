@@ -24,20 +24,22 @@
 #include "data/OrbitalController.h"
 #include "geometry/Atom.h"
 #include "geometry/AtomType.h"
-#include "geometry/Geometry.h"
 #include "geometry/gradients/NumericalGeomGradCalc.h"
+#include "integrals/wrappers/Libint.h"
 #include "io/HDF5.h"
 #include "math/Matrix.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "parameters/Constants.h"
+#include "settings/EmbeddingSettings.h"
+#include "settings/Settings.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/ScfTask.h"
+/* Include Std and External Headers */
 #include <unistd.h>
 #include <iomanip>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
 NumericalHessianCalc<T>::NumericalHessianCalc(double stepsizeGrad, double stepsizeHess, bool printToFile)
@@ -57,12 +59,12 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
   }
 
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 4);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 4);
 
   auto geometry = systemController->getGeometry();
 
@@ -185,7 +187,6 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     }
     geometry->getAtoms()[i]->addToZ(delta);
   }
-
   // reset electronic structure.
   {
     GradientTask<T> task({systemController});
@@ -194,13 +195,12 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     task.settings.print = false;
     task.run();
   }
-
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 4);
 
   auto& settings = systemController->getSettings();
 
@@ -215,7 +215,6 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     }
     std::cout << "\n";
   }
-
   frequencyCalculation(hessian, geometry, {settings});
   return std::move(hessian);
 }
@@ -223,10 +222,8 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
 template<Options::SCF_MODES T>
 Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_ptr<SystemController>> activeSystems,
                                                         std::vector<std::shared_ptr<SystemController>> passiveSystems,
-                                                        CompositeFunctionals::KINFUNCTIONALS FaTnaddKinFunc,
-                                                        CompositeFunctionals::XCFUNCTIONALS FaTnaddXCFunc,
-                                                        int FatmaxCycles, double FaTenergyConvThresh, double FaTgridCutOff,
-                                                        Options::DFT_DISPERSION_CORRECTIONS dispersion) {
+                                                        EmbeddingSettings embedding, int FatmaxCycles,
+                                                        double FaTenergyConvThresh, double FaTgridCutOff) {
   double delta = _deltaHess;
   unsigned int nAtoms;
   std::shared_ptr<Geometry> systemGeometry;
@@ -247,12 +244,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -268,12 +263,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -296,12 +289,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -317,12 +308,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -345,12 +334,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -366,12 +353,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
     // Active system cycles
     {
       GradientTask<T> task(activeSystems, passiveSystems);
-      task.settings.embedding.naddKinFunc = FaTnaddKinFunc;
-      task.settings.embedding.naddXCFunc = FaTnaddXCFunc;
+      task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
       task.settings.FDEgridCutOff = FaTgridCutOff;
-      task.settings.dispersion = dispersion;
       task.settings.print = false;
       task.run();
     }
@@ -535,7 +520,7 @@ void NumericalHessianCalc<T>::frequencyCalculation(Eigen::MatrixXd hessian, std:
 
   // Print modes
   std::cout << "\nFrequencies and mass-weighted normal coordinates:" << std::endl;
-  cout << fixed << std::setprecision(5);
+  std::cout << std::fixed << std::setprecision(5);
   for (unsigned int freq = 0; freq < frequencies.size(); freq++) {
     std::cout << "\n\nRoot #: " << freq + 1 << std::endl;
     std::cout << "Eigval: " << frequencies(freq) << "\n\n";
@@ -548,7 +533,7 @@ void NumericalHessianCalc<T>::frequencyCalculation(Eigen::MatrixXd hessian, std:
                 << "   " << normalModes(3 * normCoord + 2, freq) << std::endl;
     }
   }
-  cout << scientific << std::setprecision(12);
+  std::cout << std::scientific << std::setprecision(12);
   std::vector<const char*> systemNames;
 
   // write Eigenvectors/eigenvalues to HDF5
@@ -578,7 +563,7 @@ void NumericalHessianCalc<T>::frequencyCalculation(Eigen::MatrixXd hessian, std:
   // write molden input
 
   if (_printToFile) {
-    ofstream output;
+    std::ofstream output;
     auto moldenFilePath = settings[0].path + "molden.input";
     output.open(moldenFilePath);
     output << "[Molden Format]\n";

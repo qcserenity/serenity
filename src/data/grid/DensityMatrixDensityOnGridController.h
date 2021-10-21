@@ -1,8 +1,8 @@
 /**
  * @file   DensityMatrixDensityOnGridController.h
- * @author Thomas Dresselhaus <t.dresselhaus at wwu.de>
+ * @author Thomas Dresselhaus
  *
- * @date   30. Dezember 2014, 16:05
+ * @date   Dec 30, 2014
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -24,13 +24,12 @@
 #include "data/matrices/DensityMatrix.h"
 #include "notification/ObjectSensitiveClass.h"
 /* Include Std and External Headers */
-#include <Eigen/SparseCore>
 
 namespace Serenity {
 /* Forward Declarations */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityOnGridCalculator;
 /**
  * @class DensityMatrixDensityOnGridController DensityMatrixDensityOnGridController.h
@@ -38,9 +37,9 @@ class DensityOnGridCalculator;
  *
  * Wraps a DensityOnGridCalculator, makes sure densities are up-to-date, avoids recalculation.
  */
-template<Options::SCF_MODES T>
-class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<DensityMatrix<T>>,
-                                             public DensityOnGridController<T> {
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
+                                             public DensityOnGridController<SCFMode> {
  public:
   /**
    * @brief Constructor
@@ -48,8 +47,8 @@ class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<Density
    * derivative is determined by this object.
    * @param densityMatrix The density to be represented on a grid is given here in matrix form.
    */
-  DensityMatrixDensityOnGridController(std::shared_ptr<DensityOnGridCalculator<T>> densOnGridCalculator,
-                                       const std::shared_ptr<DensityMatrixController<T>> densityMatrixController);
+  DensityMatrixDensityOnGridController(std::shared_ptr<DensityOnGridCalculator<SCFMode>> densOnGridCalculator,
+                                       const std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrixController);
   /**
    * @brief Constructor
    * @param densOnGridCalculator see above
@@ -57,8 +56,8 @@ class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<Density
    * @param highestDerivative limits the actually calculated derivative. Must not be larger than
    *                          allowed by the densOnGridCalculator.
    */
-  DensityMatrixDensityOnGridController(std::shared_ptr<DensityOnGridCalculator<T>> densOnGridCalculator,
-                                       const std::shared_ptr<DensityMatrixController<T>> densityMatrixController,
+  DensityMatrixDensityOnGridController(std::shared_ptr<DensityOnGridCalculator<SCFMode>> densOnGridCalculator,
+                                       const std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrixController,
                                        const unsigned int highestDerivative);
 
   virtual ~DensityMatrixDensityOnGridController() = default;
@@ -67,34 +66,34 @@ class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<Density
    * @brief Getter for the density on a grid. Uses lazy evaluation.
    * @return The density on a grid.
    */
-  virtual const DensityOnGrid<T>& getDensityOnGrid() override final;
+  virtual const DensityOnGrid<SCFMode>& getDensityOnGrid() override final;
 
   /**
    * @brief Getter for the density gradient on a grid. Uses lazy evaluation.
    * @return The density gradient on a grid.
    */
-  virtual const Gradient<DensityOnGrid<T>>& getDensityGradientOnGrid() override final;
+  virtual const Gradient<DensityOnGrid<SCFMode>>& getDensityGradientOnGrid() override final;
 
   /**
    * @brief Getter for the density Hessian on a grid. Uses lazy evaluation.
    * @return The density Hessian on a grid.
    */
-  virtual const Hessian<DensityOnGrid<T>>& getDensityHessianOnGrid() override final;
+  virtual const Hessian<DensityOnGrid<SCFMode>>& getDensityHessianOnGrid() override final;
 
   /**
    * @brief Sets a custom density on a grid.
    */
-  void setDensityOnGrid(std::unique_ptr<DensityOnGrid<T>> densityOnGrid);
+  void setDensityOnGrid(std::unique_ptr<DensityOnGrid<SCFMode>> densityOnGrid);
 
   /**
    * @brief Sets a custom density gradient on a grid.
    */
-  void setDensityGradientOnGrid(std::unique_ptr<Gradient<DensityOnGrid<T>>> densityGradientOnGrid);
+  void setDensityGradientOnGrid(std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>> densityGradientOnGrid);
 
   /**
    * @brief Sets a custom density Hessian on a grid.
    */
-  void setDensityHessianOnGrid(std::unique_ptr<Hessian<DensityOnGrid<T>>> densityHessianOnGrid);
+  void setDensityHessianOnGrid(std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>> densityHessianOnGrid);
 
   /**
    * @brief Is triggered by the notification system to delete outdated data and induce a recalculation.
@@ -130,8 +129,8 @@ class DensityMatrixDensityOnGridController : public ObjectSensitiveClass<Density
  private:
   void calculateData();
 
-  const std::shared_ptr<DensityOnGridCalculator<T>> _densOnGridCalculator;
-  std::shared_ptr<DensityMatrixController<T>> _densityMatrixController;
+  const std::shared_ptr<DensityOnGridCalculator<SCFMode>> _densOnGridCalculator;
+  std::shared_ptr<DensityMatrixController<SCFMode>> _densityMatrixController;
 };
 
 } /* namespace Serenity */

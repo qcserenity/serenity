@@ -22,8 +22,11 @@
 #include "tasks/GradientTask.h"
 #include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
+#include "integrals/wrappers/Libint.h"
+#include "math/Matrix.h"
 #include "settings/Options.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -43,12 +46,12 @@ class GradientTaskTest : public ::testing::Test {
 
   static void SetUpTestCase() {
     auto& libint = Libint::getInstance();
-    libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 4);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 4);
   }
 
   virtual void TearDown() {
@@ -58,12 +61,12 @@ class GradientTaskTest : public ::testing::Test {
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
-    libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 4);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 4);
   }
 };
 
@@ -73,11 +76,13 @@ class GradientTaskTest : public ::testing::Test {
  */
 TEST_F(GradientTaskTest, D3_Grad_BP86) {
   auto _activeSystem = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  Settings settings = _activeSystem->getSettings();
+  settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJ;
+  _activeSystem = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   /*
    * Initialize data objects and gather data
    */
   GradientTask<Options::SCF_MODES::RESTRICTED> task({_activeSystem});
-  task.settings.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJ;
   task.settings.print = false;
   task.run();
 
@@ -106,7 +111,7 @@ TEST_F(GradientTaskTest, D3_Grad_FDE_BP86) {
    * Initialize data objects and gather data
    */
   GradientTask<Options::SCF_MODES::RESTRICTED> task({_activeSystem}, {_environmentSystem});
-  task.settings.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJ;
+  task.settings.embedding.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJ;
   task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   task.settings.FDEgridCutOff = -1.0;
@@ -290,6 +295,58 @@ TEST_F(GradientTaskTest, F2GradientsNum) {
 
 /**
  * @test GradientTaskTest
+ * @brief Tests the total gradient of F2 in a 6-31Gs basis + PCM numerical vs analytical.
+ */
+
+TEST_F(GradientTaskTest, F2CPCMGradients) {
+  Settings settings;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.pcm.use = true;
+  settings.pcm.solverType = Options::PCM_SOLVER_TYPES::CPCM;
+  settings.scf.diisThreshold = 1e-7;
+  settings.scf.energyThreshold = 1e-8;
+  settings.scf.rmsdThreshold = 1e-8;
+
+  // F2
+  auto systemControllerF2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs, settings);
+  auto es = systemControllerF2->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+
+  std::shared_ptr<PotentialBundle<Options::SCF_MODES::RESTRICTED>> potentials;
+  potentials =
+      systemControllerF2->getPotentials<Options::SCF_MODES::RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+  es->attachPotentials(potentials);
+
+  GradientTask<Options::SCF_MODES::RESTRICTED> numTask({systemControllerF2});
+  numTask.settings.transInvar = false;
+  numTask.settings.gradType = Options::GRADIENT_TYPES::NUMERICAL;
+  numTask.settings.print = false;
+  numTask.settings.numGradStepSize = 0.01;
+  numTask.run();
+
+  Eigen::MatrixXd numGrads = systemControllerF2->getGeometry()->getGradients();
+
+  GradientTask<Options::SCF_MODES::RESTRICTED> analyTask({systemControllerF2});
+  analyTask.settings.transInvar = false;
+  analyTask.settings.gradType = Options::GRADIENT_TYPES::ANALYTICAL;
+  analyTask.run();
+
+  Eigen::MatrixXd analyGrads = systemControllerF2->getGeometry()->getGradients();
+  // Note that analytical and numerical CPCM gradients deviate somewhat, since the
+  // change in tessarea area is not respected in the analytical gradients.
+  EXPECT_NEAR(analyGrads(0, 0), numGrads(0, 0), 5e-5);
+  EXPECT_NEAR(analyGrads(0, 1), numGrads(0, 1), 5e-5);
+  EXPECT_NEAR(analyGrads(0, 2), numGrads(0, 2), 5e-5);
+  EXPECT_NEAR(analyGrads(1, 0), numGrads(1, 0), 5e-5);
+  EXPECT_NEAR(analyGrads(1, 1), numGrads(1, 1), 5e-5);
+  EXPECT_NEAR(analyGrads(1, 2), numGrads(1, 2), 5e-5);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemControllerF2);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test GradientTaskTest
  * @brief Tests the FDE gradients with BP86.
  */
 TEST_F(GradientTaskTest, FDEGradientsLDA) {
@@ -443,4 +500,77 @@ TEST_F(GradientTaskTest, FDEGradientsLDA_UNRES) {
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
 }
+
+TEST_F(GradientTaskTest, FDEGradientsVsNumerical) {
+  auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Def2_TZVP_DFT);
+  auto b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_Def2_TZVP_DFT);
+
+  GradientTask<Options::SCF_MODES::RESTRICTED> analytical({a, b}, {});
+  analytical.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
+  analytical.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  analytical.settings.FDEgridCutOff = -1.0;
+  analytical.settings.print = false;
+  analytical.settings.gradType = Options::GRADIENT_TYPES::ANALYTICAL;
+  analytical.run();
+
+  Matrix<double> aGradAnalytical = a->getGeometry()->getGradients();
+  Matrix<double> bGradAnalytical = b->getGeometry()->getGradients();
+
+  GradientTask<Options::SCF_MODES::RESTRICTED> numerical({a, b}, {});
+  numerical.settings = analytical.settings;
+  numerical.settings.gradType = Options::GRADIENT_TYPES::NUMERICAL;
+  numerical.settings.numGradStepSize = 0.001;
+  numerical.run();
+
+  Matrix<double> aGradNumerical = a->getGeometry()->getGradients();
+  Matrix<double> bGradNumerical = b->getGeometry()->getGradients();
+
+  double aDiff = (aGradNumerical - aGradAnalytical).array().abs().maxCoeff();
+  double bDiff = (bGradNumerical - bGradAnalytical).array().abs().maxCoeff();
+  // The gradient should be in the order of magnitude of 1e-2 to 1e-3. We should at least get the first few digits right.
+  EXPECT_NEAR(aDiff, 0.0, 5e-5);
+  EXPECT_NEAR(bDiff, 0.0, 5e-5);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+}
+
+TEST_F(GradientTaskTest, ElectricField) {
+  auto _activeSystem =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, true);
+  Settings settings = _activeSystem->getSettings();
+  settings.efield.use = true;
+  settings.efield.analytical = true;
+  settings.efield.pos2 = {1, 1, 1};
+  settings.efield.fieldStrength = 1e-3;
+  _activeSystem =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
+
+  /*
+   * Initialize data objects and gather data
+   */
+  GradientTask<Options::SCF_MODES::RESTRICTED> task({_activeSystem});
+  // task.settings.print = false;
+  task.run();
+
+  auto actGradient = _activeSystem->getGeometry()->getGradients();
+
+  // TURBOMOLE 7.5.1 Oct 2021.
+  Eigen::MatrixXd reference = actGradient;
+  reference.row(0) << 0.15059558720612e-02, -.65188084013720e-01, 0.52813351777630e-02;
+  reference.row(1) << -.31067293123075e-01, 0.43324559589465e-02, -.19340843317178e-02;
+  reference.row(2) << 0.24041258523979e-01, 0.61156419853363e-01, -.34626500435051e-02;
+  reference.row(3) << 0.16194159680843e-01, 0.14551320831473e-02, -.71917926741680e-01;
+  reference.row(4) << 0.10662968508014e-01, 0.17457747113100e-01, 0.15091892929620e-01;
+  reference.row(5) << -.21337049462470e-01, -.19213670994811e-01, 0.56941433009442e-01;
+
+  double maxDiff = (reference - actGradient).cwiseAbs().maxCoeff();
+  double accuracy = 1e-7;
+
+  EXPECT_LE(maxDiff, accuracy);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(_activeSystem);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } // namespace Serenity

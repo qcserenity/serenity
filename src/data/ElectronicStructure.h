@@ -24,10 +24,7 @@
 #include "data/matrices/DensityMatrixController.h"
 #include "data/matrices/FockMatrix.h"
 #include "energies/EnergyComponentController.h"
-#include "integrals/OneIntControllerFactory.h"
-#include "potentials/NAddFuncPotential.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <memory>
 
@@ -35,6 +32,12 @@ namespace Serenity {
 /* Forward declarations */
 template<Options::SCF_MODES SCFMode>
 class OrbitalController;
+template<Options::SCF_MODES SCFMode>
+class NAddFuncPotential;
+class OneElectronIntegralController;
+template<Options::SCF_MODES SCFMode>
+class PotentialBundle;
+class Geometry;
 
 enum class ES_STATE { INITIAL = 1, GUESS = 2, CONVERGED = 3, FAILED = 4, OTHER = 5 };
 
@@ -167,6 +170,17 @@ class ElectronicStructure {
     assert(_potentials && "No potentials available in the electronic structure.");
     return _potentials;
   }
+  ///@brief whether a fock matrix exists
+  bool checkFock() {
+    bool exists = false;
+    if (_fockMatrix != nullptr)
+      exists = true;
+    return exists;
+  }
+  ///@brief sets a Fock matrix
+  void setFockMatrix(FockMatrix<SCFMode>& fock);
+  ///@brief reads the Fock matrix from disk if it exists
+  void fockFromHDF5(std::string fBaseName, std::string id);
   /**
    * @brief Getter for the Fock matrix.
    *
@@ -233,6 +247,7 @@ class ElectronicStructure {
   std::shared_ptr<EnergyComponentController> _energyComponentController;
   std::shared_ptr<PotentialBundle<SCFMode>> _potentials;
   std::shared_ptr<NAddFuncPotential<SCFMode>> _naddKinPotential;
+  std::shared_ptr<FockMatrix<SCFMode>> _fockMatrix;
   std::string _fBaseName = "";
   std::string _id = "";
 };

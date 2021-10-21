@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "data/grid/DensityAdder.h"
 #include "data/ElectronicStructure.h"
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
@@ -26,6 +27,7 @@
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

@@ -20,64 +20,136 @@
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/LRSCFAnalysis.h"
 
+/* Include Serenity Internal Headers */
+#include "parameters/Constants.h"
+#include "postHF/LRSCF/LRSCFController.h"
+#include "settings/LRSCFOptions.h"
+
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 void LRSCFAnalysis<SCFMode>::printDominantContributions(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
                                                         const std::vector<Eigen::MatrixXd>& eigenvectors,
-                                                        const Eigen::VectorXd& eigenvalues, const double th) {
-  Eigen::MatrixXd x, y;
-  x = eigenvectors[0];
-  if (eigenvectors.size() == 2) {
-    y = eigenvectors[1];
+                                                        const Eigen::VectorXd& eigenvalues, const double contribThresh) {
+  bool isNotXWF = lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA ||
+                  lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT;
+
+  Eigen::MatrixXd contributions;
+  if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
+    contributions = eigenvectors[0].cwiseProduct(eigenvectors[0]);
+  }
+  else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+    contributions = eigenvectors[0].cwiseProduct(eigenvectors[0]) - eigenvectors[1].cwiseProduct(eigenvectors[1]);
   }
   else {
-    // For TDA, y is zero and not calculated.
-    y = Eigen::MatrixXd::Zero(eigenvectors[0].rows(), eigenvectors[0].cols());
+    contributions = eigenvectors[0].cwiseProduct(eigenvectors[1]);
   }
 
-  Eigen::MatrixXd c = 100 * (x.array().square() - y.array().square());
+  // This is a simple helper struct to identify orbital transitions.
+  struct Excitation {
+    // The subsystem.
+    unsigned I;
+    // The occupied orbital.
+    unsigned i;
+    // The virtual orbital.
+    unsigned a;
+    // The spin.
+    char spin;
+  };
 
-  printf("---------------------------------------------------------------------------------------\n");
-  printf("                               Dominant contributions                                  \n");
-  printf("---------------------------------------------------------------------------------------\n");
-  printf(" %5s %27s %24s %5s %9s %11s\n", "state", "energy", "sys", "i", "a", "|c|^2*100");
-  printf(" %15s %10s %10s %12s\n", "(a.u.)", "(eV)", "(nm)", "(cm^-1)");
-  printf("---------------------------------------------------------------------------------------\n");
-  for (unsigned int iState = 0; iState < eigenvalues.rows(); ++iState) {
-    printf(" %5i %10.6f %10.4f %10.2f %12.2f ", iState + 1, eigenvalues(iState), eigenvalues(iState) * HARTREE_TO_EV,
-           HARTREE_TO_NM / eigenvalues(iState), eigenvalues(iState) * HARTREE_TO_OOCM);
-    unsigned int iCount = 0;
-    bool first = true;
-    for (unsigned int I = 0; I < lrscf.size(); ++I) {
-      auto nOcc = lrscf[I]->getNOccupied();
-      auto nVirt = lrscf[I]->getNVirtual();
-      unsigned int iSpin = 0;
-      for_spin(nOcc, nVirt) {
-        std::string spin = (iSpin == 0) ? "a" : "b";
-        for (unsigned int j = 0, jb = iCount; j < nOcc_spin; ++j) {
-          for (unsigned int b = nOcc_spin; b < nOcc_spin + nVirt_spin; ++b, ++jb) {
-            if (c(jb, iState) > th) {
-              if (first) {
-                printf("%5i %5i %2s %5i %2s %7.2f \n", I + 1, j + 1, spin.c_str(), b + 1, spin.c_str(), c(jb, iState));
-                first = false;
-              }
-              else {
-                printf("%58i %5i %2s %5i %2s %7.2f \n", I + 1, j + 1, spin.c_str(), b + 1, spin.c_str(), c(jb, iState));
-              }
+  std::function<Excitation(unsigned)> getIndices = [&](unsigned ia) {
+    Excitation exc;
+
+    unsigned iCount = 0;
+    for (unsigned I = 0; I < lrscf.size(); ++I) {
+      auto no = lrscf[I]->getNOccupied();
+      auto nv = lrscf[I]->getNVirtual();
+
+      bool isAlpha = true;
+      for_spin(no, nv) {
+        for (unsigned i = 0; i < no_spin; ++i) {
+          for (unsigned a = no_spin; a < no_spin + nv_spin; ++a, ++iCount) {
+            if (iCount == ia) {
+              exc.I = I;
+              exc.i = i;
+              exc.a = a;
+              exc.spin = isAlpha ? 'a' : 'b';
             }
-            iCount += 1;
           }
         }
-        iSpin += 1;
+        isAlpha = false;
       };
-      // Break after first cycle in uncoupled case
-      if (lrscf.size() == 1)
-        break;
     }
-    if (first)
-      printf("\n");
+    return exc;
+  };
+
+  printf("---------------------------------------------------------------------------------------\n");
+  if (SCFMode == Options::SCF_MODES::RESTRICTED) {
+    if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
+      printf("                                    TDA Summary                                      \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+      printf("                                   TDDFT Summary                                     \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CC2) {
+      printf("                                    CC2 Summary                                      \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISDINF) {
+      printf("                                 CIS(Dinf) Summary                                   \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::ADC2) {
+      printf("                                   ADC(2) Summary                                    \n\n");
+    }
   }
+  else {
+    if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
+      printf("                                  uTDA Summary                                       \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+      printf("                                 uTDDFT Summary                                      \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CC2) {
+      printf("                                  uCC2 Summary                                       \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISDINF) {
+      printf("                               uCIS(Dinf) Summary                                    \n\n");
+    }
+    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::ADC2) {
+      printf("                                 uADC(2) Summary                                     \n\n");
+    }
+  }
+  printf("                               Dominant Contributions                                  \n");
+  printf("---------------------------------------------------------------------------------------\n");
+  printf(" %5s %27s %24s %5s %9s %11s\n", "state", "energy", "sys", "i", "a", "|c|^2*100");
+  printf(" %15s %10s %10s %12s\n", "(a.u.)", "(eV)", "(nm)", "%singles");
+  printf("---------------------------------------------------------------------------------------\n");
+  for (unsigned iEigen = 0; iEigen < eigenvalues.size(); ++iEigen) {
+    if (isNotXWF && contributions.col(iEigen).sum() < 0.95) {
+      printf("     Normalization of the following eigenvector is probably faulty. Be careful.\n");
+    }
+    // sort orbital transition by their squared coefficients
+    std::vector<std::pair<double, unsigned>> coeffs(0);
+    for (unsigned ia = 0; ia < contributions.rows(); ++ia) {
+      coeffs.push_back(std::make_pair(contributions(ia, iEigen), ia));
+    }
+    std::stable_sort(coeffs.begin(), coeffs.end());
+    std::reverse(coeffs.begin(), coeffs.end());
+
+    printf(" %4i %11.6f %10.5f %10.2f %10.2f ", iEigen + 1, eigenvalues(iEigen), eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), contributions.col(iEigen).sum() * 100);
+    double sum = 0.0;
+    unsigned index = 0;
+    do {
+      unsigned ia = coeffs[index].second;
+      auto exc = getIndices(ia);
+      double contribution = coeffs[index].first;
+      const char* str = (index == 0) ? " %6i %5i %2c %5i %2c %8.2f \n" : "%58i %5i %2c %5i %2c %8.2f \n";
+      printf(str, exc.I + 1, exc.i + 1, exc.spin, exc.a + 1, exc.spin, 100 * contribution);
+      sum += contribution / contributions.col(iEigen).sum();
+      ++index;
+    } while (sum < contribThresh && index < coeffs.size());
+  }
+  printf("---------------------------------------------------------------------------------------\n");
 }
 
 template class LRSCFAnalysis<Options::SCF_MODES::RESTRICTED>;

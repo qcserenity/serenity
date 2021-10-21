@@ -26,10 +26,9 @@
 #include "misc/Timing.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
-DensityOnGridCalculator<T>::DensityOnGridCalculator(shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+DensityOnGridCalculator<T>::DensityOnGridCalculator(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
                                                     const double blockAverageThreshold)
   : _basisFunctionOnGridController(basisFunctionOnGridController), _blockAverageThreshold(blockAverageThreshold) {
   assert(_basisFunctionOnGridController);

@@ -22,8 +22,18 @@
 #define INTEGRALS_LOOPER_EXCHANGEINTERACTIONINTLOOPER_H_
 
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"
 #include "basis/BasisController.h"
 #include "integrals/wrappers/Libint.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <libint2/engine.h>
+#pragma GCC diagnostic pop
 
 namespace Serenity {
 /**
@@ -40,7 +50,7 @@ class ExchangeInteractionIntLooper {
    * @param basisTwo The basis of the second interacting system.
    * @param mu Parameter for range sepraration. To be used with erf_coulomb operator.
    */
-  ExchangeInteractionIntLooper(libint2::Operator op, const unsigned deriv, std::shared_ptr<BasisController> basisOne,
+  ExchangeInteractionIntLooper(LIBINT_OPERATOR op, const unsigned deriv, std::shared_ptr<BasisController> basisOne,
                                std::shared_ptr<BasisController> basisTwo, double prescreeningThreshold, double mu = 0.0)
     : _op(op), _deriv(deriv), _basisOne(basisOne), _basisTwo(basisTwo), _prescreeningThreshold(prescreeningThreshold), _mu(mu) {
   }
@@ -97,18 +107,19 @@ class ExchangeInteractionIntLooper {
    * @param loopEvalFunction The function to use each integral, see above for extended description.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loop(Func loopEvalFunction) {
-    loop(loopEvalFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
-                              unsigned int, unsigned int, double) { return false; });
+  __attribute__((always_inline)) inline void loop(Func loopEvalFunction, double maxD = 1) {
+    loop(
+        loopEvalFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; }, maxD);
   }
 
   template<class Func, class PrescreenFunc>
-  __attribute__((always_inline)) inline void loop(Func loopEvalFunction, PrescreenFunc prescreenFunc) {
+  __attribute__((always_inline)) inline void loop(Func loopEvalFunction, PrescreenFunc prescreenFunc, double maxD = 1) {
     // intialize libint
 
     auto& libint = Libint::getInstance();
     libint.keepEngines(_op, _deriv, 4);
-    libint.initialize(_op, _deriv, 4, std::vector<std::shared_ptr<Atom>>(0), _mu);
+    libint.initialize(_op, _deriv, 4, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
+                      maxD, std::max(_basisOne->getMaxNumberOfPrimitives(), _basisTwo->getMaxNumberOfPrimitives()));
 
     const auto& basis1 = _basisOne->getBasis();
     const auto& basis2 = _basisTwo->getBasis();
@@ -154,10 +165,6 @@ class ExchangeInteractionIntLooper {
       const unsigned int a = p.bf2;
       const auto& basI = *basis1[i];
       const auto& basA = *basis2[a];
-      const unsigned int nI = basis1[i]->getNContracted();
-      const unsigned int nA = basis2[a]->getNContracted();
-      const unsigned int firstI = _basisOne->extendedIndex(i);
-      const unsigned int firstA = _basisTwo->extendedIndex(a);
 
       for (int qIndex = 0; qIndex < (int)mixedShellPairs->size(); ++qIndex) {
         auto& q = (*mixedShellPairs)[qIndex];
@@ -170,17 +177,11 @@ class ExchangeInteractionIntLooper {
         const unsigned int b = q.bf2;
         const auto& basJ = *basis1[j];
         const auto& basB = *basis2[b];
-        const unsigned int firstJ = _basisOne->extendedIndex(j);
-        const unsigned int firstB = _basisTwo->extendedIndex(b);
-        const unsigned int nJ = basis1[j]->getNContracted();
-        const unsigned int nB = basis2[b]->getNContracted();
         /*
          * Optional advanced prescreening
          */
-        if (prescreenFunc(firstI, firstA, firstJ, firstB, nI, nA, nJ, nB, p.factor * q.factor))
+        if (prescreenFunc(i, a, j, b, p.factor * q.factor))
           continue;
-        //          if (firstJ>firstI || firstB>firstA) continue;
-
         // calculate integrals
         if (libint.compute(_op, _deriv, basI, basA, basJ, basB, ints[threadId])) {
           // unpack and run
@@ -219,9 +220,9 @@ class ExchangeInteractionIntLooper {
    * It cannot handle normalization, either.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute) {
-    loopNoDerivative(distribute, [](unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
-                                    unsigned int, unsigned int, double) { return false; });
+  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, double maxD = 1) {
+    loopNoDerivative(
+        distribute, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; }, maxD);
   }
   /**
    * @brief Loops over all four-center two-electron Coulomb integrals and calls a function for each.
@@ -236,12 +237,13 @@ class ExchangeInteractionIntLooper {
    * It cannot handle normalization, either.
    */
   template<class Func, class PrescreenFunc>
-  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, PrescreenFunc prescreenFunc) {
+  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, PrescreenFunc prescreenFunc, double maxD = 1) {
     // intialize libint
 
     auto& libint = Libint::getInstance();
     libint.keepEngines(_op, 0, 4);
-    libint.initialize(_op, 0, 4, std::vector<std::shared_ptr<Atom>>(0), _mu);
+    libint.initialize(_op, 0, 4, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
+                      maxD, std::max(_basisOne->getMaxNumberOfPrimitives(), _basisTwo->getMaxNumberOfPrimitives()));
     auto& engines = libint.getFourCenterEngines(_op);
 
     const auto& basis1 = _basisOne->getBasis();
@@ -311,9 +313,8 @@ class ExchangeInteractionIntLooper {
         /*
          * Optional advanced prescreening
          */
-        if (prescreenFunc(firstI, firstA, firstJ, firstB, nI, nA, nJ, nB, p.factor * q.factor))
+        if (prescreenFunc(i, a, j, b, p.factor * q.factor))
           continue;
-        //          if (firstJ>firstI || firstB>firstA) continue;
 
         const auto& rawints = engines[threadId]->results();
         engines[threadId]->compute(basI, basA, basJ, basB);
@@ -347,7 +348,7 @@ class ExchangeInteractionIntLooper {
 
  private:
   /// @brief The kernel/operator as libint enum.
-  libint2::Operator _op;
+  LIBINT_OPERATOR _op;
   /// @brief The derivative level.
   const unsigned int _deriv;
   /// @brief The basis.

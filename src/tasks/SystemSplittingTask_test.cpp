@@ -124,6 +124,32 @@ TEST_F(SystemSplittingTaskTest, restricted_enforceCharges) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+TEST_F(SystemSplittingTaskTest, restricted_enforceCharges2) {
+  auto sys1 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  auto sys2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs_DFT);
+  auto supersystem = *sys1 + *sys2;
+  sys1->setCharge(-2);
+  sys2->setCharge(+2);
+  ScfTask<RESTRICTED> scf(supersystem);
+  scf.run();
+
+  LocalizationTask loc(supersystem);
+  loc.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO;
+  loc.run();
+
+  SystemSplittingTask<RESTRICTED> splitTask(supersystem, {sys1, sys2});
+  splitTask.settings.systemPartitioning = Options::SYSTEM_SPLITTING_ALGORITHM::ENFORCE_CHARGES;
+  splitTask.run();
+
+  EXPECT_EQ(-2, sys1->getCharge());
+  EXPECT_EQ(6, sys1->getNOccupiedOrbitals<RESTRICTED>());
+  EXPECT_EQ(+2, sys2->getCharge());
+  EXPECT_EQ(4, sys2->getNOccupiedOrbitals<RESTRICTED>());
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(supersystem);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 TEST_F(SystemSplittingTaskTest, restricted_SPADE) {
   auto sys1 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
   auto sys2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs_DFT);

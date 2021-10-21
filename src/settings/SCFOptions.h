@@ -21,6 +21,7 @@
 #ifndef SETTINGS_SCFOPTIONS_H_
 #define SETTINGS_SCFOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {

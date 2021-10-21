@@ -27,6 +27,7 @@
 namespace Serenity {
 
 class Shell;
+class Basis;
 
 class CustomBasisController : public BasisController {
  public:

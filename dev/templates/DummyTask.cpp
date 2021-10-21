@@ -28,7 +28,6 @@
 #include <Eigen/Eigen>
 
 namespace Serenity {
-using namespace std;
 
 DummyTask::DummyTask( const std::vector<std::shared_ptr<SystemController> > systems) :
     _systemController(systems) {
@@ -44,7 +43,7 @@ void DummyTask::run() {
   //Initialize a symmetric rank four tensor to store the integrals.
   RegularRankFourTensor<double> eriTensor(nBasisFunc, 0.0);
   //Initialize a pre-build looper to calculate the integrals in an efficient way.
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb,0,basisController,1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb,0,basisController,1E-10);
 
   //Lambda-function used by the looper to distribute the calculated integrals.
   auto const storeERIS = [&eriTensor]
@@ -88,7 +87,7 @@ void DummyTask::run() {
   //Print the matrix if it is not to big.
   if (nBasisFunc <= 4){
     printSmallCaption("Two-Electron Four-Center Integral Matrix");
-    cout << eriMatrix << endl << endl;
+    std::cout << eriMatrix << std::endl << std::endl;
   }
 
 }

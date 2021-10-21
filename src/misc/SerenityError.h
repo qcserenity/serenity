@@ -29,8 +29,6 @@
 
 namespace Serenity {
 
-using namespace std;
-
 /**
  * @class SerenityError SerenityError.h
  * @brief A small class to handle Serenity's error output for thrown errors.
@@ -65,29 +63,29 @@ class SerenityError : public std::exception {
     strftime(dateAndTime, sizeof(dateAndTime), "%Y-%m-%d %X", &tstruct);
 
     printSectionTitle("Serenity Crashed");
-    cout << endl;
+    std::cout << std::endl;
     printSmallCaption("Error");
-    cout << "    " << _msg << std::endl;
-    cout << endl;
+    std::cout << "    " << _msg << std::endl;
+    std::cout << std::endl;
     printSmallCaption("Final Timings");
     Timings::printTimes();
-    cout << endl;
+    std::cout << std::endl;
     printSmallCaption("Program Crashed");
-    cout << "    "
-         << "Time:  " << dateAndTime << endl;
+    std::cout << "    "
+              << "Time:  " << dateAndTime << std::endl;
     {
-      string hostName;
+      std::string hostName;
       if (getenv("HOSTNAME") != NULL) {
         hostName = getenv("HOSTNAME");
       }
       else {
         hostName = "HOSTNAME UNKNOWN";
       }
-      cout << "    "
-           << "On:    " << hostName << endl;
+      std::cout << "    "
+                << "On:    " << hostName << std::endl;
     }
     timeTaken(0, "the entire run");
-    cout << endl;
+    std::cout << std::endl;
 
     return _msg.c_str();
   }

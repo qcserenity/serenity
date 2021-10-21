@@ -63,6 +63,7 @@ class PopAnalysisTask : public Task {
    * @brief The settings/keywords for PopAnalysisTask:
    *          -Mulliken : Perform Mulliken population analysis (default)
    *          -Hirschfeld : Perform Hirschfeld population analysis
+   *          -Becke : Perform Becke population analysis
    *          -IAO : Perform IAO population analysis.
    *          -IAOShell : Perform Shell-wise IAO population analysis.
    */

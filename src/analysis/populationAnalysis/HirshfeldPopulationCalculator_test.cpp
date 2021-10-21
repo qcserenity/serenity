@@ -24,13 +24,13 @@
 #include "data/grid/DensityMatrixDensityOnGridController.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 #include <memory>
 
 namespace Serenity {
-using namespace std;
 
 class HirshfeldPopulationCalculatorTest : public ::testing::Test {
  protected:
@@ -134,6 +134,7 @@ TEST_F(HirshfeldPopulationCalculatorTest, populationsUnrestricted) {
   HirshfeldPopulationCalculator<UNRESTRICTED> hirshFeld(systemController, densOnGridController);
 
   auto populations = hirshFeld.getAtomPopulations();
+  const Eigen::VectorXd totalPops = populations.total();
   /*
    * Check results
    *
@@ -144,9 +145,9 @@ TEST_F(HirshfeldPopulationCalculatorTest, populationsUnrestricted) {
    * in the resulting atom populations (in the 4th decimal). If a higher accuracy is needed, the atom scf
    * convergence criteria need to be tightened (take a look at the AtomDensityGuessCalculator for this).
    */
-  EXPECT_NEAR(populations[0], 0.84174920578360513, 1e-2);
-  EXPECT_NEAR(populations[1], 0.84163292034736281, 1e-2);
-  EXPECT_NEAR(populations[2], 8.3166644990895318, 1e-2);
+  EXPECT_NEAR(totalPops[0], 0.84174920578360513, 1e-2);
+  EXPECT_NEAR(totalPops[1], 0.84163292034736281, 1e-2);
+  EXPECT_NEAR(totalPops[2], 8.3166644990895318, 1e-2);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController->getSystemPath() + "H_FREE/", "H_FREE");
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController->getSystemPath() + "O_FREE/", "O_FREE");

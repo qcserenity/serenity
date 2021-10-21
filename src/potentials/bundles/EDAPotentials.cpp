@@ -24,6 +24,8 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "energies/EnergyContributions.h"
+#include "geometry/Geometry.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/HCorePotential.h"
 #include "settings/Settings.h"

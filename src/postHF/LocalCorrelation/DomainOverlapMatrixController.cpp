@@ -24,18 +24,17 @@
 #include "data/PAOController.h"                         //PAOController
 #include "data/SingleSubstitution.h"                    //SingleSubstitution definition.
 #include "misc/SerenityError.h"                         //Error messages.
+#include "misc/Timing.h"                                //Timings.
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //K-Set definition.
 #include "postHF/LocalCorrelation/KLOrbitalSet.h"       //KL-Set definition.
 
 namespace Serenity {
 
-DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTRICTED> s,
-                                                             std::shared_ptr<PAOController> paoController,
+DomainOverlapMatrixController::DomainOverlapMatrixController(std::shared_ptr<PAOController> paoController,
                                                              std::vector<std::shared_ptr<OrbitalPair>> closeOrbitalPairs,
                                                              std::vector<std::shared_ptr<SingleSubstitution>> singles,
                                                              const Eigen::MatrixXi closeOrbitalPairIndices, unsigned int nOcc)
-  : _s(s),
-    _paoController(paoController),
+  : _paoController(paoController),
     _closeOrbitalPairs(closeOrbitalPairs),
     _singles(singles),
     _closeOrbitalPairIndices(closeOrbitalPairIndices) {
@@ -53,29 +52,37 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
   auto& s_ij_kl = *_s_ij_kl;
   auto& s_ij_k = *_s_ij_k;
   auto& s_k_l = *_s_k_l;
+
+  const Eigen::MatrixXd& paoS = _paoController->getS_PAO();
 #ifdef _OPENMP
   Eigen::setNbThreads(1);
 #endif
+  Timings::takeTime(" Local Cor. -       PNO-Overlap");
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int iPair = 0; iPair < _closeOrbitalPairs.size(); ++iPair) {
     std::shared_ptr<OrbitalPair> pair = _closeOrbitalPairs[iPair];
-    const Eigen::MatrixXd p_ij_T_S =
-        ((_paoController->getPAOsFromDomain(pair->paoDomain) * pair->toPAODomain).transpose() * s);
+    // The calculation of this intermediate will strictly speaking break the linear scaling of the code
+    // However, this will only become a problem for huge systems (e.g. DLPNO-MP2 with C200H402)
+    // A possible solution would be to restrict the columns to the extended PAO domain of the pair.
+    const Eigen::MatrixXd p_ij_T_S = ((pair->domainProjection.transpose() * pair->toPAODomain).transpose() * paoS);
     unsigned int ijIndex = _closeOrbitalPairIndices(pair->i, pair->j);
     for (auto& kSet : pair->coupledPairs) {
       const std::shared_ptr<OrbitalPair>& ikPair = kSet->getIKPair();
       const std::shared_ptr<OrbitalPair>& kjPair = kSet->getKJPair();
       unsigned int ikIndex = _closeOrbitalPairIndices(ikPair->i, ikPair->j);
       unsigned int kjIndex = _closeOrbitalPairIndices(kjPair->i, kjPair->j);
-      const Eigen::MatrixXd p_ik = _paoController->getPAOsFromDomain(ikPair->paoDomain) * ikPair->toPAODomain;
-      const Eigen::MatrixXd p_kj = _paoController->getPAOsFromDomain(kjPair->paoDomain) * kjPair->toPAODomain;
-      s_ij_kl(ijIndex, ikIndex) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_ik).eval());
-      s_ij_kl(ijIndex, kjIndex) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_kj).eval());
+      if (!s_ij_kl(ijIndex, ikIndex) || !s_ij_kl(ijIndex, kjIndex)) {
+        const Eigen::MatrixXd s_ij_ik = (p_ij_T_S * ikPair->domainProjection.transpose() * ikPair->toPAODomain).eval();
+        const Eigen::MatrixXd s_ij_kj = (p_ij_T_S * kjPair->domainProjection.transpose() * kjPair->toPAODomain).eval();
+        s_ij_kl(ijIndex, ikIndex) = std::make_shared<Eigen::MatrixXd>(s_ij_ik);
+        s_ij_kl(ijIndex, kjIndex) = std::make_shared<Eigen::MatrixXd>(s_ij_kj);
+        s_ij_kl(ikIndex, ijIndex) = std::make_shared<Eigen::MatrixXd>(s_ij_ik.transpose().eval());
+        s_ij_kl(kjIndex, ijIndex) = std::make_shared<Eigen::MatrixXd>(s_ij_kj.transpose().eval());
+      }
       if (calculateSingles) {
         const std::shared_ptr<SingleSubstitution>& kSingle = kSet->getKSingles();
-        const Eigen::MatrixXd p_k =
-            _paoController->getPAOsFromDomain(kSingle->getDiagonalPair()->paoDomain) * kSingle->toPAODomain;
-        s_ij_k(ijIndex, _singlesIndices[kSet->getK()]) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_k).eval());
+        s_ij_k(ijIndex, _singlesIndices[kSet->getK()]) = std::make_shared<Eigen::MatrixXd>(
+            (p_ij_T_S * kSingle->getDiagonalPair()->domainProjection.transpose() * kSingle->toPAODomain).eval());
       }
     } // for kSet
     for (auto klSet : pair->klPairSets) {
@@ -83,19 +90,19 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
       int klIndex = _closeOrbitalPairIndices(klPair->i, klPair->j);
       assert(klIndex >= 0);
       if (!s_ij_kl(ijIndex, klIndex)) {
-        const Eigen::MatrixXd p_kl = _paoController->getPAOsFromDomain(klPair->paoDomain) * klPair->toPAODomain;
-        s_ij_kl(ijIndex, klIndex) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_kl).eval());
+        s_ij_kl(ijIndex, klIndex) = std::make_shared<Eigen::MatrixXd>(
+            (p_ij_T_S * klPair->domainProjection.transpose() * klPair->toPAODomain).eval());
       }
       if (calculateSingles) {
         if (!s_ij_k(ijIndex, _singlesIndices[klPair->i])) {
-          const Eigen::MatrixXd p_k = _paoController->getPAOsFromDomain(klPair->singles_i->getDiagonalPair()->paoDomain) *
-                                      klPair->singles_i->toPAODomain;
-          s_ij_k(ijIndex, _singlesIndices[klPair->i]) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_k).eval());
+          s_ij_k(ijIndex, _singlesIndices[klPair->i]) = std::make_shared<Eigen::MatrixXd>(
+              (p_ij_T_S * klPair->singles_i->getDiagonalPair()->domainProjection.transpose() * klPair->singles_i->toPAODomain)
+                  .eval());
         }
         if (!s_ij_k(ijIndex, _singlesIndices[klPair->j])) {
-          const Eigen::MatrixXd p_l = _paoController->getPAOsFromDomain(klPair->singles_j->getDiagonalPair()->paoDomain) *
-                                      klPair->singles_j->toPAODomain;
-          s_ij_k(ijIndex, _singlesIndices[klPair->j]) = std::make_shared<Eigen::MatrixXd>((p_ij_T_S * p_l).eval());
+          s_ij_k(ijIndex, _singlesIndices[klPair->j]) = std::make_shared<Eigen::MatrixXd>(
+              (p_ij_T_S * klPair->singles_j->getDiagonalPair()->domainProjection.transpose() * klPair->singles_j->toPAODomain)
+                  .eval());
         }
       }
     } // for klSet
@@ -105,7 +112,7 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
     for (unsigned int iSingleIndex = 0; iSingleIndex < _singles.size(); ++iSingleIndex) {
       const std::shared_ptr<SingleSubstitution>& iSingle = _singles[iSingleIndex];
       const Eigen::MatrixXd p_i_T_S =
-          ((_paoController->getPAOsFromDomain(iSingle->getDiagonalPair()->paoDomain) * iSingle->toPAODomain).transpose() * s);
+          (iSingle->getDiagonalPair()->domainProjection.transpose() * iSingle->toPAODomain).transpose() * paoS;
       s_k_l(_singlesIndices[iSingle->i], _singlesIndices[iSingle->i]) =
           std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Identity(p_i_T_S.rows(), p_i_T_S.rows()));
       for (auto ijPair_ptr : iSingle->orbitalPairs) {
@@ -113,9 +120,7 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
         if (ijPair->i == ijPair->j)
           continue;
         const std::shared_ptr<SingleSubstitution>& jSingle = (ijPair->i == iSingle->i) ? ijPair->singles_j : ijPair->singles_i;
-        const Eigen::MatrixXd p_j =
-            _paoController->getPAOsFromDomain(jSingle->getDiagonalPair()->paoDomain) * jSingle->toPAODomain;
-        const Eigen::MatrixXd s_i_j = p_i_T_S * p_j;
+        const Eigen::MatrixXd s_i_j = p_i_T_S * jSingle->getDiagonalPair()->domainProjection.transpose() * jSingle->toPAODomain;
         s_k_l(_singlesIndices[iSingle->i], _singlesIndices[jSingle->i]) = std::make_shared<Eigen::MatrixXd>(s_i_j);
         s_k_l(_singlesIndices[jSingle->i], _singlesIndices[iSingle->i]) =
             std::make_shared<Eigen::MatrixXd>(s_i_j.transpose());
@@ -125,6 +130,7 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(MatrixInBasis<RESTR
 #ifdef _OPENMP
   Eigen::setNbThreads(0);
 #endif
+  Timings::timeTaken(" Local Cor. -       PNO-Overlap");
 }
 
 double DomainOverlapMatrixController::getOverlapMatrixSize() {

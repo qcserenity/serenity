@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "potentials/HoffmannProjectionPotential.h"
 #include "geometry/Geometry.h"
 #include "grid/GridControllerFactory.h"

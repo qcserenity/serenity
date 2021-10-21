@@ -22,6 +22,8 @@
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyComponentController.h"
 #include "geometry/Geometry.h"
+#include "grid/GridController.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "scf/initialGuess/InitialGuessFactory.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"

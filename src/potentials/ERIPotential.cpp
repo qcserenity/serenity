@@ -23,10 +23,12 @@
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
 #include "data/ElectronicStructure.h"
-#include "data/OrbitalController.h"
 #include "data/matrices/FockMatrix.h"
+#include "integrals/CDIntegralController.h"
 #include "integrals/RI_J_IntegralControllerFactory.h"
 #include "misc/Timing.h"
+#include "potentials/CDExchangePotential.h"
+#include "potentials/CDHFPotential.h"
 #include "potentials/CoulombPotential.h"
 #include "potentials/ExchangePotential.h"
 #include "potentials/HFPotential.h"
@@ -42,7 +44,7 @@ ERIPotential<SCFMode>::ERIPotential(std::shared_ptr<SystemController> systemCont
                                     std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double xRatio,
                                     const double prescreeningThreshold, double prescreeningIncrementStart,
                                     double prescreeningIncrementEnd, unsigned int incrementSteps,
-                                    bool externalSplitting, double lrxRatio, double mu)
+                                    bool externalSplitting, double lrxRatio, double mu, bool clear4CenterCache)
   : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
     _systemController(systemController),
     _xRatio(xRatio),
@@ -65,28 +67,109 @@ ERIPotential<SCFMode>::ERIPotential(std::shared_ptr<SystemController> systemCont
   for_spin(temp2) {
     temp2_spin.setZero();
   };
-  if (systemController->getSettings().dft.densityFitting == Options::DENS_FITS::RI &&
-      systemController->getSettings().method != Options::ELECTRONIC_STRUCTURE_THEORIES::HF && externalSplitting) {
-    _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
-        systemController, dMat,
-        RI_J_IntegralControllerFactory::getInstance().produce(
-            systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
-            systemController->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)),
-        prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
-    // This is for the case that RI should be used with exact exchange
-    if (_xRatio != 0.0)
-      _exchange = std::make_shared<ExchangePotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
-                                                               prescreeningIncrementStart, prescreeningIncrementEnd,
-                                                               incrementSteps);
-  }
-  else {
-    _hf = std::make_shared<HFPotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
-                                                 prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
-  }
-  if (_lrxRatio != 0.0) {
-    _lrexchange = std::make_shared<LRXPotential<SCFMode>>(systemController, _dMatController, _lrxRatio,
-                                                          prescreeningThreshold, prescreeningIncrementStart,
-                                                          prescreeningIncrementEnd, incrementSteps, _mu);
+  switch (systemController->getSettings().basis.densityFitting) {
+    case Options::DENS_FITS::NONE:
+    case Options::DENS_FITS::RI:
+      if (systemController->getSettings().basis.densityFitting == Options::DENS_FITS::RI &&
+          systemController->getSettings().method != Options::ELECTRONIC_STRUCTURE_THEORIES::HF && externalSplitting) {
+        _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+            systemController, dMat,
+            RI_J_IntegralControllerFactory::getInstance().produce(
+                systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                systemController->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)),
+            prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
+        // This is for the case that RI should be used with exact exchange
+        if (_xRatio != 0.0)
+          _exchange = std::make_shared<ExchangePotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
+                                                                   prescreeningIncrementStart, prescreeningIncrementEnd,
+                                                                   incrementSteps, clear4CenterCache);
+      }
+      else {
+        _hf = std::make_shared<HFPotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
+                                                     prescreeningIncrementStart, prescreeningIncrementEnd,
+                                                     incrementSteps, clear4CenterCache);
+      }
+      if (_lrxRatio != 0.0) {
+        _lrexchange = std::make_shared<LRXPotential<SCFMode>>(systemController, _dMatController, _lrxRatio,
+                                                              prescreeningThreshold, prescreeningIncrementStart,
+                                                              prescreeningIncrementEnd, incrementSteps, _mu);
+      }
+      break;
+    case Options::DENS_FITS::CD:
+      _hf = std::make_shared<CDHFPotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
+                                                     prescreeningIncrementStart, prescreeningIncrementEnd);
+      if (_lrxRatio != 0.0) {
+        WarningTracker::printWarning(
+            "No LRExchange implemented for full CD. Using unfitted Potential. Try ACD/ACCD for accelerated LRExchange.", true);
+        _lrexchange = std::make_shared<LRXPotential<SCFMode>>(systemController, _dMatController, _lrxRatio,
+                                                              prescreeningThreshold, prescreeningIncrementStart,
+                                                              prescreeningIncrementEnd, incrementSteps, _mu);
+      }
+      break;
+    case Options::DENS_FITS::ACD:
+      if (_xRatio != 0.0) {
+        if (systemController->getCDIntegralController()->getACDVectors(
+                systemController->getBasisController(),
+                systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_CHOLESKY))) {
+          // Integrals sum_{P} (munu|P)(P|Q)^{-1/2} are stored in memory
+          _hf = std::make_shared<CDHFPotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
+                                                         prescreeningIncrementStart, prescreeningIncrementEnd);
+        }
+        else {
+          _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+              systemController, dMat,
+              RI_J_IntegralControllerFactory::getInstance().produce(
+                  systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                  systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_CHOLESKY)),
+              prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
+          _exchange = std::make_shared<CDExchangePotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold);
+        }
+      }
+      else {
+        _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+            systemController, dMat,
+            RI_J_IntegralControllerFactory::getInstance().produce(
+                systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_CHOLESKY)),
+            prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
+      }
+      if (_lrxRatio != 0.0) {
+        _lrexchange = std::make_shared<CDExchangePotential<SCFMode>>(
+            systemController, dMat, _lrxRatio, prescreeningThreshold, LIBINT_OPERATOR::erf_coulomb, _mu);
+      }
+      break;
+    case Options::DENS_FITS::ACCD:
+      if (_xRatio != 0.0) {
+        if (systemController->getCDIntegralController()->getACDVectors(
+                systemController->getBasisController(),
+                systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY))) {
+          // Integrals sum_{P} (munu|P)(P|Q)^{-1/2} are stored in memory
+          _hf = std::make_shared<CDHFPotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold,
+                                                         prescreeningIncrementStart, prescreeningIncrementEnd);
+        }
+        else {
+          _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+              systemController, dMat,
+              RI_J_IntegralControllerFactory::getInstance().produce(
+                  systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                  systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY)),
+              prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
+          _exchange = std::make_shared<CDExchangePotential<SCFMode>>(systemController, dMat, _xRatio, prescreeningThreshold);
+        }
+      }
+      else {
+        _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+            systemController, dMat,
+            RI_J_IntegralControllerFactory::getInstance().produce(
+                systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
+                systemController->getBasisController(Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY)),
+            prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps);
+      }
+      if (_lrxRatio != 0.0) {
+        _lrexchange = std::make_shared<CDExchangePotential<SCFMode>>(
+            systemController, dMat, _lrxRatio, prescreeningThreshold, LIBINT_OPERATOR::erf_coulomb, _mu);
+      }
+      break;
   }
   _screening = prescreeningIncrementStart;
 };
@@ -106,8 +189,9 @@ FockMatrix<SCFMode>& ERIPotential<SCFMode>::getMatrix() {
     else {
       assert(_coulomb);
       *_fullpotential += _coulomb->getMatrix();
-      if (_exchange)
+      if (_exchange) {
         *_fullpotential += _exchange->getMatrix();
+      }
     }
     if (_lrexchange)
       *_fullpotential += _lrexchange->getMatrix();

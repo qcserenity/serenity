@@ -2,7 +2,7 @@
  * @file   Settings.cpp
  *
  * @date   Mar 4, 2020
- * @author Moritz Bensbegr
+ * @author Moritz Bensberg
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/Settings.h"
 
 namespace Serenity {
@@ -29,7 +30,6 @@ void Settings::printSettings() {
     throw SerenityError((std::string) "Failed to create directory: " + path + "\n" +
                         "The directory does not already exist. A file with the same name may be\n" +
                         "preventing the directory creation.");
-
   std::ofstream ofs;
   ofs.open((*this).path + (*this).name + ".settings", std::ofstream::out | std::ofstream::trunc);
   ofs << "#=======================================================" << std::endl;
@@ -56,6 +56,9 @@ void Settings::printSettings() {
   ofs << "+grid" << std::endl;
   visit_each((*this).grid, visitor);
   ofs << "-grid" << std::endl;
+  ofs << "+efield" << std::endl;
+  visit_each((*this).efield, visitor);
+  ofs << "-efield" << std::endl;
   ofs << "+pcm" << std::endl;
   visit_each((*this).pcm, visitor);
   ofs << "-pcm" << std::endl;
@@ -101,6 +104,15 @@ Settings::Settings(std::ifstream& input) : Settings() {
           throw SerenityError("ERROR: Value missing for keyword '" + name + "'.");
         }
         std::string value = word;
+        // cover possible vector inputs
+        while (iss2 >> word) {
+          value += " " + word;
+        }
+        // get rid of curly braces
+        if (value.front() == '{' && value.back() == '}') {
+          value = value.substr(1, value.size() - 2);
+        }
+
         this->set(blockname, name, value);
       }
       continue;
@@ -175,6 +187,10 @@ void Settings::set(std::string blockname, std::string name, std::string value) {
   else if (!blockname.compare("GRID")) {
     set_visitor visitor(name, value, check);
     visit_each((*this).grid, visitor);
+  }
+  else if (!blockname.compare("EFIELD")) {
+    set_visitor visitor(name, value, check);
+    visit_each((*this).efield, visitor);
   }
   else if (!this->pcm.visitSettings(set_visitor(name, value, check), blockname)) {
     throw SerenityError("ERROR: No block '" + blockname + "' known.");

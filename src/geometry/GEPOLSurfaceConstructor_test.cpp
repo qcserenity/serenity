@@ -40,7 +40,7 @@ TEST(GEPOLSurfaceConstructorTest, co) {
   PCMSettings pcmSettings;
   pcmSettings.use = true;
   pcmSettings.cavity = Options::PCM_CAVITY_TYPES::GEPOL_SES;
-  auto surfaceController = MolecularSurfaceFactory::produce(systemController->getGeometry(), pcmSettings);
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(systemController->getGeometry(), pcmSettings);
 
   auto surface = surfaceController->getGridPoints();
 
@@ -60,16 +60,17 @@ TEST(GEPOLSurfaceConstructorTest, jacobsen) {
   PCMSettings pcmSettings;
   pcmSettings.use = true;
   pcmSettings.cavity = Options::PCM_CAVITY_TYPES::GEPOL_SES;
-  auto surfaceController = MolecularSurfaceFactory::produce(systemController->getGeometry(), pcmSettings);
+  pcmSettings.minDistance = 0.1;
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(systemController->getGeometry(), pcmSettings);
 
   auto surface = surfaceController->getGridPoints();
 
-  unsigned int shoulbBe = 1379;
+  unsigned int shoulbBe = 1404;
 
   unsigned int size = surface.cols();
 
   EXPECT_EQ(shoulbBe, size);
-  EXPECT_NEAR(2485.9158199214994, surfaceController->getWeights().sum(), 1e-6);
+  EXPECT_NEAR(2424.9827283664363, surfaceController->getWeights().sum(), 1e-6);
 
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
 }

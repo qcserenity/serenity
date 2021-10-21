@@ -72,9 +72,12 @@ class CouplingOrbitalSet {
   Eigen::VectorXd ja_ik; //(ja|ik) a in [ij]
   Eigen::VectorXd ia_jk; //(jk|ia) a-->rows
 
+  Eigen::VectorXd ij_akX2_M_ia_jk; // 2(ij|ak) - (ia|jk), a in [k]
+  Eigen::VectorXd ij_akX2_M_ja_ik; // 2(ij|ak) - (ja|ik), a in [k]
+
   std::vector<Eigen::MatrixXd> ka_bc; //(ka|bc) struc: c * a x b || a,b,c in [ij]
   // 2(ab|kc)-(ak|bc) This is currently only used for tests.
-  std::vector<Eigen::MatrixXd> ab_kcX2_M_ak_bc; // a,b in [ij], c in [k] struc: c * a x b
+  std::vector<Eigen::MatrixXd> ab_kcX2_M_ak_bc; // 2(ab|kc) - (ak|bc), a,b in [ij], c in [k] struc: c * a x b
   /* ===================== */
   /**
    * @brief Getter for the k-singles.
@@ -191,14 +194,16 @@ class CouplingOrbitalSet {
    * @brief Write the integrals to disk.
    * @param file The target file.
    * @param groupNames The names of the integrals.
+   * @param id The integral set id.
    */
-  void writeIntegralsToFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames);
+  void writeIntegralsToFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames, std::string id);
   /**
    * @brief Load the integrals from disk.
    * @param file The source file.
    * @param groupNames The HDF5-names within the file.
+   * @param id The integral set id.
    */
-  void loadIntegralsFromFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames);
+  void loadIntegralsFromFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames, std::string id);
   /**
    * @brief Removes all integrals from main memory.
    */
@@ -207,7 +212,7 @@ class CouplingOrbitalSet {
    * @brief Get the memory requirement for holding this object.
    * @return The memeory requirement.
    */
-  double getMemoryRequirement();
+  double getMemoryRequirement(bool sigmaInts);
   /**
    * @brief Setter for the domain overlap matrix controller.
    * @param domainSController
@@ -259,6 +264,8 @@ class CouplingOrbitalSet {
    */
   void load_vectorSet(HDF5::H5File& file, std::vector<Eigen::MatrixXd>& ints, std::string name, unsigned int nRows,
                       unsigned int nCols);
+  ///@brief a flag to load the sigma vector integrals if they were written to disk.
+  bool _loadSinglesSigmaInts = false;
 };
 
 } /* namespace Serenity */

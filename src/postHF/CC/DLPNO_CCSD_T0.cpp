@@ -20,8 +20,11 @@
 /* Include Class Header*/
 #include "postHF/CC/DLPNO_CCSD_T0.h"
 /* Include Serenity Internal Headers */
-#include "analysis/PAOSelection/TNOConstructor.h"                   //TNO construction.
-#include "data/OrbitalTriple.h"                                     //Orbital triple definition.
+#include "analysis/PAOSelection/PNOConstructor.h" //PNO construction for distant orbital pairs.
+#include "analysis/PAOSelection/TNOConstructor.h" //TNO construction.
+#include "basis/Basis.h"                          //Aux basis size.
+#include "data/OrbitalTriple.h"                   //Orbital triple definition.
+#include "data/OrbitalTripleSet.h"
 #include "data/matrices/MatrixInBasis.h"                            //Container for the aux. metric.
 #include "integrals/MO3CenterIntegralController.h"                  //Three center MO integrals.
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h" //Calculation of aux. metric.
@@ -30,34 +33,18 @@
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"     //Definition of the local correlation controller.
 #include "system/SystemController.h"                                //Aux. basis controller.
 /* Include Std and External Headers */
-#include <Eigen/Dense>      //Dummy input for integral getter.
-#include <Eigen/SparseCore> //Dummy input for integral getter.
+#include <Eigen/SparseCore> // Input for integral getter.
 
 namespace Serenity {
 
 double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelationController> localCorrelationController) {
-  std::vector<std::shared_ptr<OrbitalTriple>> triples = localCorrelationController->getOrbitalTriples();
-
+  takeTime("Semi-Canonical Triples Correction");
+  auto orbitalTripleSets = localCorrelationController->getOrbitalTripleSets();
   auto activeSystem = localCorrelationController->getActiveSystemController();
   auto auxBasisController = activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL);
   auto tnoConstructor = localCorrelationController->produceTNOConstructor();
-  auto mo3CenterIntegralController = localCorrelationController->getMO3CenterIntegralController();
-  // Make sure that the integrals are available in order to avoid any parallel construction of
-  // the integral sets, since these functions are not thread save.
-  // TODO use locks in integral calculation.
-  Eigen::SparseVector<int> auxSuperDomain = Eigen::VectorXi::Constant(auxBasisController->getBasis().size(), 1).sparseView();
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
-  // Make sure that the prescreening maps exist in order to prevent multiple threads to build
-  // the same map simultaneously.
-  // TODO use locks in map construction.
-  mo3CenterIntegralController->getSparseMapsController()->getTripletOccToAuxShellMap(true);
-  mo3CenterIntegralController->getSparseMapsController()->getTripletOccToAuxShellMap(false);
-
-  // Pre-calculate the coulomb metric.
-  MatrixInBasis<RESTRICTED> metric(auxBasisController);
-  Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(metric);
+  auto mo3CenterIntegralController = localCorrelationController->getTriplesMO3CenterIntegralController();
+  auto triples = localCorrelationController->getOrbitalTriples();
   OutputControl::nOut << "-----------------------------------------------------" << std::endl;
   OutputControl::mOut << " Semi-Canonical Triples Correction" << std::endl;
   OutputControl::nOut << "  Number of close pairs      "
@@ -72,40 +59,95 @@ double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelation
   OutputControl::nOut << "  MKN weak scaling           "
                       << localCorrelationController->getSettings().crudeWeakTripFactor << std::endl;
   OutputControl::nOut << "-----------------------------------------------------" << std::endl;
+  // Pre-calculate the coulomb metric.
+  MatrixInBasis<RESTRICTED> metric(auxBasisController);
+  Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(metric);
+  // Generate PNO basis for distant orbital pairs
+  auto pnoConstructor = localCorrelationController->producePNOConstructor();
+  auto distantOrbitalPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT_TRIPLES);
+  pnoConstructor->transformToPNOBasis(distantOrbitalPairs);
+  double finalEnergy = 0.0;
+  double averageNTNOs = 0;
+  double averageNAux = 0;
+  for (auto triplesSet : orbitalTripleSets) {
+    // Make sure that the integrals are available in order to avoid any parallel construction of
+    // the integral sets, since these functions are not thread save.
+    // TODO use locks in integral calculation.
+    const Eigen::SparseVector<int> auxSuperDomain = triplesSet->getTotalFittingDomain();
+    const MO3CenterIntegrals& iaK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
+    const MO3CenterIntegrals& abK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
+    const MO3CenterIntegrals& klK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
 
-  takeTime("Semi-Canonical Triples Correction");
-  std::vector<double> energies = {0.0};
+    unsigned int nThreads = 1;
 #ifdef _OPENMP
-  unsigned int nThreads = omp_get_max_threads();
-  for (unsigned int thread = 1; thread < nThreads; ++thread)
-    energies.push_back(0.0);
-  Eigen::setNbThreads(1);
+    nThreads = omp_get_max_threads();
+    Eigen::setNbThreads(1);
 #endif
+
+    std::vector<double> energies(nThreads, 0.0);
+    std::vector<unsigned int> nTNOsTotal(nThreads, 0);
+    std::vector<unsigned int> nAuxTotal(nThreads, 0);
+    bool takeTiming = (nThreads == 1) ? true : false;
 #pragma omp parallel for schedule(dynamic)
-  for (unsigned int iT = 0; iT < triples.size(); ++iT) {
+    for (unsigned int iT = 0; iT < triplesSet->size(); ++iT) {
 #ifdef _OPENMP
-    const unsigned int threadId = omp_get_thread_num();
+      const unsigned int threadId = omp_get_thread_num();
 #else
-    const unsigned int threadId = 0;
+      const unsigned int threadId = 0;
 #endif
-    std::shared_ptr<OrbitalTriple>& triple = triples[iT];
-    /*
-     * The actual calculations happen in these three lines:
-     * 1. The TNO basis is constructed.
-     * 2. The integrals are calculated in this basis.
-     * 3. The triple energy increment is calculated.
-     */
-    tnoConstructor->transformToTNOBasis(triple);
-    triple->calculateIntegrals(auxBasisController, mo3CenterIntegralController, metric);
-    energies[threadId] += triple->getTripleEnergy();
-  } // for iT
-  double finalEnergy = energies[0];
+      std::shared_ptr<OrbitalTriple>& triple = (*triplesSet)[iT];
+      /*
+       * The actual calculations happen in these three lines:
+       * 1. The TNO basis is constructed.
+       * 2. The integrals are calculated in this basis.
+       * 3. The triple energy increment is calculated.
+       */
+      if (takeTiming)
+        Timings::takeTime("TNO construction");
+      tnoConstructor->transformToTNOBasis(triple);
+      if (takeTiming)
+        Timings::timeTaken("TNO construction");
+      if (takeTiming)
+        Timings::takeTime("Triples Integrals");
+      triple->calculateIntegrals(auxBasisController, mo3CenterIntegralController, iaK, abK, klK, metric);
+      nTNOsTotal[threadId] += triple->getNTNOs();
+      nAuxTotal[threadId] += triple->getNLocalAuxiliaryFunctions();
+      if (takeTiming)
+        Timings::timeTaken("Triples Integrals");
+      if (takeTiming)
+        Timings::takeTime("Triples Energy Increment");
+      energies[threadId] += triple->getTripleEnergy();
+      if (takeTiming)
+        Timings::timeTaken("Triples Energy Increment");
+    } // for iT
+    finalEnergy += energies[0];
+    averageNTNOs += nTNOsTotal[0];
+    averageNAux += nAuxTotal[0];
 #ifdef _OPENMP
-  Eigen::setNbThreads(0);
-  for (unsigned int thread = 1; thread < nThreads; ++thread)
-    finalEnergy += energies[thread];
+    Eigen::setNbThreads(0);
+    for (unsigned int thread = 1; thread < nThreads; ++thread) {
+      finalEnergy += energies[thread];
+      averageNTNOs += nTNOsTotal[thread];
+      averageNAux += nAuxTotal[thread];
+    }
 #endif
+  } // for orbitalTripleSet
+  averageNTNOs /= triples.size();
+  averageNAux /= triples.size();
+
+  OutputControl::nOut << "  Average number of TNOs:                   " << averageNTNOs << std::endl;
+  OutputControl::nOut << "  Average number of aux. functions:         " << averageNAux << std::endl;
+  OutputControl::nOut << "-----------------------------------------------------" << std::endl;
   timeTaken(1, "Semi-Canonical Triples Correction");
+
+  // TMP
+  for (const auto triple : triples) {
+    if (std::abs(triple->getTripleEnergy()) > 1e-2) {
+      std::cout << triple->getI() << " " << triple->getJ() << " " << triple->getK() << "  " << triple->getTripleEnergy()
+                << std::endl;
+    }
+  }
+
   return finalEnergy;
 }
 

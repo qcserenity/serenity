@@ -526,6 +526,16 @@ void load_attribute(const H5::H5Object& h5obj, const std::string& name, const Ei
   internal::_load(dataset, mat);
 }
 
+// Caution! Only use this function if you are sure the target and source object have the
+// same type (double based) and dimensions
+//
+// This function is used to drastically reduce overhead for I/O bottlenecked applications
+template<typename Derived>
+void loadDirectly(const H5::DataSet& dataset, Eigen::DenseBase<Derived>& mat) {
+  const H5::DataType* const doubletype = DatatypeSpecialization<double>::get();
+  internal::read_data(dataset, mat.derived().data(), *doubletype);
+}
+
 template<typename Scalar>
 class MyTriplet : public Eigen::Triplet<Scalar> {
  public:

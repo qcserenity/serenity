@@ -22,7 +22,6 @@
 #define POTENTIALS_HUZINAGAFDEPROJECTIONPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "data/grid/ExternalDensityOnGridController.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "grid/GridController.h"
 #include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundle.h"

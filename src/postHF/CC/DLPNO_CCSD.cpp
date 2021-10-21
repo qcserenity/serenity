@@ -21,12 +21,15 @@
 #include "postHF/CC/DLPNO_CCSD.h" //Associated header file.
 /* Include Serenity Internal Headers */
 #include "analysis/PAOSelection/PNOConstructor.h"                   //PNO construction.
-#include "data/OrbitalPair.h"                                       //Definition of an OrbtialPair.
+#include "data/OrbitalPair.h"                                       //Definition of an OrbitalPair.
+#include "data/OrbitalPairSet.h"                                    //OrbitalPairSet definition.
 #include "data/SingleSubstitution.h"                                //Definition of a SingleSubstitution.
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h" //Integral calculation.
 #include "integrals/wrappers/Libint.h"                              //Keep engines for Sigma vector construction.
 #include "io/FormattedOutput.h"                                     //Captions etc.
 #include "io/FormattedOutputStream.h"                               //Filtered output.
+#include "io/HDF5.h"                                                //Read from disk.
+#include "memory/MemoryManager.h"                                   //Memory handling
 #include "misc/WarningTracker.h"                                    //Warnings.
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h"             //Definition of a kSet.
 #include "postHF/LocalCorrelation/DomainOverlapMatrixController.h"  //Overlap matrices between domains.
@@ -38,6 +41,7 @@
 #include "data/ElectronicStructure.h"                    //Test purpose only.
 #include "data/OrbitalController.h"                      //Test purpose only.
 #include "data/PAOController.h"                          //Test purpose only.
+#include "integrals/OneElectronIntegralController.h"     //Test purpose only.
 #include "integrals/looper/TwoElecFourCenterIntLooper.h" //Test purpose only.
 #include "integrals/transformer/Ao2MoTransformer.h"      //Test purpose only.
 /* Include Std and External Headers */
@@ -51,13 +55,16 @@ DLPNO_CCSD::DLPNO_CCSD(std::shared_ptr<LocalCorrelationController> localCorrelat
     _maxResidual(maxResidual),
     _maxCycles(maxCycles),
     _keepMO3CenterIntegrals(keepMO3CenterIntegrals),
-    _keepPairIntegrals(keepPairIntegrals) {
-  _g_ao_ao = std::make_shared<MatrixInBasis<RESTRICTED>>(
-      _localCorrelationController->getActiveSystemController()->getBasisController());
-  _g_ao_ao->setZero();
-  unsigned int nOcc = _localCorrelationController->getActiveSystemController()->getNOccupiedOrbitals<RESTRICTED>();
-  _g_ao_occ = Eigen::MatrixXd::Zero(_g_ao_ao->rows(), nOcc);
-  _g_occ_occ = Eigen::MatrixXd::Zero(nOcc, nOcc);
+    _keepPairIntegrals(keepPairIntegrals),
+    _linearScalingSigmaVector(_localCorrelationController->getSettings().linearScalingSigmaVector) {
+  if (!_linearScalingSigmaVector) {
+    _g_ao_ao = std::make_shared<MatrixInBasis<RESTRICTED>>(
+        _localCorrelationController->getActiveSystemController()->getBasisController());
+    _g_ao_ao->setZero();
+    unsigned int nOcc = _localCorrelationController->getActiveSystemController()->getNOccupiedOrbitals<RESTRICTED>();
+    _g_ao_occ = Eigen::MatrixXd::Zero(_g_ao_ao->rows(), nOcc);
+    _g_occ_occ = Eigen::MatrixXd::Zero(nOcc, nOcc);
+  }
 }
 
 Eigen::VectorXd DLPNO_CCSD::calculateElectronicEnergyCorrections() {
@@ -75,14 +82,13 @@ Eigen::VectorXd DLPNO_CCSD::calculateElectronicEnergyCorrections() {
 void DLPNO_CCSD::deleteIntegralFiles() {
   if (!_localCorrelationController->getSettings().dumpIntegrals &&
       _localCorrelationController->getCloseOrbitalPairSets().size() > 1) {
-    auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
-    for (auto& pair : orbitalPairs)
-      pair->deleteIntegrals();
+    std::remove(_localCorrelationController->getPairIntegralFileName().c_str());
   }
 }
 
 void DLPNO_CCSD::deleteIntegrals() {
   if (!_keepPairIntegrals) {
+    OutputControl::dOut << "Deleting pair integrals" << std::endl;
     auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
     for (auto& pair : orbitalPairs) {
       pair->cleanUp();
@@ -185,7 +191,7 @@ inline Eigen::MatrixXd DLPNO_CCSD::calculate_K_tau(std::shared_ptr<OrbitalPair> 
   Eigen::MatrixXd resultTest = Eigen::MatrixXd::Zero(nPNOs, nPNOs);
   for (unsigned int a = 0; a < nPNOs; ++a) {
     for (unsigned int b = 0; b < nPNOs; ++b) {
-      Eigen::MatrixXd tmp = ac_bd(a, b);
+      Eigen::MatrixXd tmp = (a <= b) ? ac_bd(a, b) : ac_bd(b, a).transpose();
       for (const auto& kSet : pair->coupledPairs) {
         const std::shared_ptr<SingleSubstitution>& kSingle = kSet->getKSingles();
         const Eigen::MatrixXd kd_ac = kSet->ka_bc[a].transpose();
@@ -273,8 +279,19 @@ inline void DLPNO_CCSD::calculate_tildeF_ai(std::shared_ptr<SingleSubstitution> 
 }
 
 inline std::pair<double, double> DLPNO_CCSD::calculate_G_t1_ij(std::shared_ptr<OrbitalPair> pair) {
-  double G_t1_ij = _g_occ_occ(pair->i, pair->j);
-  double G_t1_ji = _g_occ_occ(pair->j, pair->i);
+  double G_t1_ij = 0.0;
+  double G_t1_ji = 0.0;
+  if (!_linearScalingSigmaVector) {
+    G_t1_ij = _g_occ_occ(pair->i, pair->j);
+    G_t1_ji = _g_occ_occ(pair->j, pair->i);
+  }
+  else if (not testRun) {
+    for (const auto& kSet : pair->coupledPairs) {
+      const auto& singles_k = kSet->getKSingles();
+      G_t1_ij += kSet->ij_akX2_M_ia_jk.transpose() * singles_k->t_i;
+      G_t1_ji += kSet->ij_akX2_M_ja_ik.transpose() * singles_k->t_i;
+    } // for coupledSet
+  }
   // The following lines are for extremely strict tests only!
   if (testRun) {
     double tmpGt1_ij = G_t1_ij;
@@ -296,18 +313,30 @@ inline std::pair<double, double> DLPNO_CCSD::calculate_G_t1_ij(std::shared_ptr<O
 }
 
 inline Eigen::VectorXd DLPNO_CCSD::calculate_G_t1_ia(std::shared_ptr<SingleSubstitution> single) {
-  Eigen::MatrixXd p_ii =
-      _localCorrelationController->getPAOController()->getPAOsFromDomain(single->getDiagonalPair()->paoDomain) *
-      single->toPAODomain;
-  if (testRun) {
-    p_ii = _localCorrelationController->getActiveSystemController()
-               ->getActiveOrbitalController<RESTRICTED>()
-               ->getCoefficients()
-               .rightCols(single->t_i.rows())
-               .eval();
+  Eigen::VectorXd G_t1_i;
+  if (!_linearScalingSigmaVector) {
+    Eigen::MatrixXd p_ii = (Eigen::MatrixXd)_localCorrelationController->getPAOController()->getAllPAOs() *
+                           single->getDiagonalPair()->domainProjection.transpose() * single->toPAODomain;
+    if (testRun) {
+      p_ii = _localCorrelationController->getActiveSystemController()
+                 ->getActiveOrbitalController<RESTRICTED>()
+                 ->getCoefficients()
+                 .rightCols(single->t_i.rows())
+                 .eval();
+    }
+    G_t1_i = (p_ii.transpose() * _g_ao_occ.col(single->i)).eval();
+    // The following lines are for extremely strict tests only!
   }
-  Eigen::VectorXd G_t1_i = (p_ii.transpose() * _g_ao_occ.col(single->i)).eval();
-  // The following lines are for extremely strict tests only!
+  else {
+    G_t1_i = Eigen::VectorXd::Zero(single->t_i.size());
+    unsigned int i = single->i;
+    for (const auto& ijPair_ptr : single->orbitalPairs) {
+      const auto ijPair = ijPair_ptr.lock();
+      bool i_is_i = ijPair->i == i;
+      std::shared_ptr<SingleSubstitution> single_j = (i_is_i) ? ijPair->singles_j : ijPair->singles_i;
+      G_t1_i += ((i_is_i) ? ijPair->iaS_jbSX2_M_ij_aSbS : ijPair->iaS_jbSX2_M_ij_aSbS.transpose()) * single_j->t_i;
+    } // for ijPair
+  }
   if (testRun) {
     auto tmpTest = G_t1_i;
     G_t1_i = Eigen::VectorXd::Zero(single->t_i.size());
@@ -325,15 +354,30 @@ inline Eigen::VectorXd DLPNO_CCSD::calculate_G_t1_ia(std::shared_ptr<SingleSubst
 }
 
 inline Eigen::MatrixXd DLPNO_CCSD::calculate_G_t1_ab(std::shared_ptr<OrbitalPair> pair) {
-  Eigen::MatrixXd p_ij = _localCorrelationController->getPAOController()->getPAOsFromDomain(pair->paoDomain) * pair->toPAODomain;
-  if (testRun) {
-    p_ij = _localCorrelationController->getActiveSystemController()
-               ->getActiveOrbitalController<RESTRICTED>()
-               ->getCoefficients()
-               .rightCols(pair->t_ij.rows())
-               .eval();
+  Eigen::MatrixXd G_t1_ab;
+  if (!_linearScalingSigmaVector) {
+    Eigen::MatrixXd p_ij = (Eigen::MatrixXd)_localCorrelationController->getPAOController()->getAllPAOs() *
+                           pair->domainProjection.transpose() * pair->toPAODomain;
+    if (testRun) {
+      p_ij = _localCorrelationController->getActiveSystemController()
+                 ->getActiveOrbitalController<RESTRICTED>()
+                 ->getCoefficients()
+                 .rightCols(pair->t_ij.rows())
+                 .eval();
+    }
+    G_t1_ab = (p_ij.transpose() * *_g_ao_ao * p_ij).eval();
   }
-  Eigen::MatrixXd G_t1_ab = (p_ij.transpose() * *_g_ao_ao * p_ij).eval();
+  else {
+    unsigned int nPNOs = pair->t_ij.cols();
+    G_t1_ab = Eigen::MatrixXd::Zero(nPNOs, nPNOs);
+    for (const auto& coupledSet : pair->coupledPairs) {
+      const Eigen::VectorXd& t_k = coupledSet->getKSingles()->t_i;
+      const std::vector<Eigen::MatrixXd>& ints = coupledSet->ab_kcX2_M_ak_bc;
+      for (unsigned int c = 0; c < t_k.size(); ++c) {
+        G_t1_ab += t_k(c) * ints[c];
+      } // for c
+    }   // for k
+  }
   // The following lines are for extremely strict tests only!
   if (testRun) {
     auto tmpTest = G_t1_ab;
@@ -555,7 +599,7 @@ inline void DLPNO_CCSD::prepareOrbitalPairs() {
       activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
       _localCorrelationController->getApproximateMO3CenterIntegralController(), orbitalPairs, qcPAOConstructor);
   _localCorrelationController->selectDistantOrbitalPairs();
-  _localCorrelationController->getApproximateMO3CenterIntegralController()->flushAllIntegrals();
+  _localCorrelationController->removeApproximateMO3CenterIntegralController();
 
   std::shared_ptr<PNOConstructor> pnoConstructor = _localCorrelationController->producePNOConstructor();
   orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
@@ -565,18 +609,17 @@ inline void DLPNO_CCSD::prepareOrbitalPairs() {
   std::vector<std::shared_ptr<OrbitalPair>> toTransform = orbitalPairs;
   std::vector<std::shared_ptr<OrbitalPair>> distantTriplePairs =
       _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT_TRIPLES);
-  if (_keepMO3CenterIntegrals)
-    toTransform.insert(toTransform.end(), distantTriplePairs.begin(), distantTriplePairs.end());
+  toTransform.insert(toTransform.end(), distantTriplePairs.begin(), distantTriplePairs.end());
   Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
       activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
-      _localCorrelationController->getMO3CenterIntegralController(not _keepMO3CenterIntegrals), toTransform, pnoConstructor);
+      _localCorrelationController->getMO3CenterIntegralController(false), toTransform, pnoConstructor);
   _localCorrelationController->selectDistantOrbitalPairs();
   _localCorrelationController->initializeSingles();
   orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
   auto singles = _localCorrelationController->getSingles();
   _localCorrelationController->buildOrbitalPairCouplingMap();
   _localCorrelationController->buildKLOrbitalPairs();
-  OutputControl::nOut << "  Calculating overlap matrices                    ...";
+  OutputControl::nOut << "  Calculating overlap matrices                           ...";
   OutputControl::nOut.flush();
   auto domainOverlapController = _localCorrelationController->getDomainOverlapMatrixController();
   OutputControl::nOut << " done" << std::endl;
@@ -593,8 +636,11 @@ inline void DLPNO_CCSD::prepareOrbitalPairs() {
   unsigned int sumOfPNOs = 0;
   Eigen::VectorXi pnoSpread = Eigen::VectorXi::Zero(11);
   Eigen::VectorXi pnoTraceRecovery = Eigen::VectorXi::Zero(4);
+  unsigned int maxNPNOs = 0;
   for (const auto& pair : orbitalPairs) {
     unsigned int nPNOs = pair->k_ij.cols();
+    if (nPNOs > maxNPNOs)
+      maxNPNOs = nPNOs;
     int index = (nPNOs - 1) / 5;
     if (index > 10)
       index = 10;
@@ -618,11 +664,13 @@ inline void DLPNO_CCSD::prepareOrbitalPairs() {
   OutputControl::nOut << "  Number of very distant pairs (dipole)   " << nVeryWeakPairs << std::endl;
   OutputControl::nOut << "  Total number of PNOs for strong pairs:  " << sumOfPNOs << std::endl;
   OutputControl::nOut << "  Average number of PNOs per strong pair: " << sumOfPNOs / orbitalPairs.size() << std::endl;
-  OutputControl::nOut << "  Semi-Canonical MP2 energy               " << setw(10) << energies.sum() << " E_h" << std::endl;
-  OutputControl::nOut << "    SC-MP2 (close pairs)                  " << setw(10) << energies[0] << " E_h" << std::endl;
-  OutputControl::nOut << "    SC-MP2 (distant pairs)                " << setw(10) << energies[2] << " E_h" << std::endl;
-  OutputControl::nOut << "    dipole approx. (very distant pairs)   " << setw(10) << energies[3] << " E_h" << std::endl;
-  OutputControl::nOut << "    PNO truncation                        " << setw(10) << energies[4] << " E_h" << std::endl;
+  OutputControl::nOut << "  Maximum number of PNOs                  " << maxNPNOs << std::endl;
+  OutputControl::nOut << "  Semi-Canonical MP2 energy               " << std::setw(10) << energies.sum() << " E_h"
+                      << std::endl;
+  OutputControl::nOut << "    SC-MP2 (close pairs)                  " << std::setw(10) << energies[0] << " E_h" << std::endl;
+  OutputControl::nOut << "    SC-MP2 (distant pairs)                " << std::setw(10) << energies[2] << " E_h" << std::endl;
+  OutputControl::nOut << "    dipole approx. (very distant pairs)   " << std::setw(10) << energies[3] << " E_h" << std::endl;
+  OutputControl::nOut << "    PNO truncation                        " << std::setw(10) << energies[4] << " E_h" << std::endl;
   OutputControl::nOut << "-----------------------------------------------------" << std::endl;
   OutputControl::nOut << std::scientific;
   OutputControl::vOut << "Pairs with 1-5   PNOs " << pnoSpread[0] << std::endl;
@@ -665,27 +713,35 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
   takeTime("Local CCSD Amplitude Optimization");
   Timings::takeTime("Local Cor. -    Amplitude Opt.");
   printSmallCaption("Local CCSD Amplitude Optimization");
-  std::printf("%6s %20s %20s %20s %18s\n", "Cycle", "abs. max Residual", "Corr. Energy", "Delta E_corr", "Time");
+  std::printf("%6s %12s %12s %12s %s\n", "Cycle", "abs. max. Res.", "Corr. Energy", "Delta E_corr", "Time");
   double largestResidual = 10;
   double correlationEnergy = 0.0;
   double deltaE_corr = 1e+9;
   unsigned int cycle = 0;
 
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+  if (!_linearScalingSigmaVector) {
+    OutputControl::nOut << "    Using integral direct sigma vector construction" << std::endl;
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  }
+  else {
+    OutputControl::nOut << "    Using linear scaling sigma vector construction" << std::endl;
+  }
 
   const auto& settings = _localCorrelationController->getSettings();
   OrbitalPairDIISWrapper diis(settings.diisMaxStore);
   double damping = settings.dampingFactor;
   clock_gettime(CLOCK_REALTIME, &_time);
   unsigned int nThreads = 1;
-  std::vector<double> largestResidualVector = {0.0};
+  // Read integrals from file if necessary.
+  std::vector<std::shared_ptr<OrbitalPairSet>> closePairSets = _localCorrelationController->getCloseOrbitalPairSets();
+  std::shared_ptr<HDF5::H5File> file = tryLoadingIntegrals();
 #ifdef _OPENMP
   nThreads = omp_get_max_threads();
 #endif
-  while (largestResidual > _maxResidual or std::fabs(deltaE_corr) > _maxResidual) {
+  while (largestResidual > _maxResidual || std::fabs(deltaE_corr) > _maxResidual) {
     largestResidual = 0.0;
     // Residual calculations
     std::vector<double> largestResidualVector = {0.0};
@@ -694,7 +750,8 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
     Eigen::setNbThreads(1);
 #endif
     // Pair/single dressing
-    updateSigmaVector();
+    if (!_linearScalingSigmaVector)
+      updateSigmaVector();
     dressSingles();
     dressPairs();
 #pragma omp parallel for schedule(dynamic)
@@ -710,12 +767,11 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
       if (maxCoeff > largestResidualVector[threadId])
         largestResidualVector[threadId] = maxCoeff;
     } // for singles
-    std::vector<OrbitalPairSet> closePairSets = _localCorrelationController->getCloseOrbitalPairSets();
     for (int i = closePairSets.size() - 1; i >= 0; --i) {
-      auto orbitalPairSet = closePairSets[i];
-      for (auto pair : orbitalPairSet)
-        if (!pair->ac_bd)
-          pair->loadIntegralsFromFile();
+      OrbitalPairSet& orbitalPairSet = *closePairSets[i];
+      if (!orbitalPairSet.integralsReady()) {
+        orbitalPairSet.fromHDF5(*file);
+      }
 #pragma omp parallel for schedule(dynamic)
       for (unsigned int iPair = 0; iPair < orbitalPairSet.size(); ++iPair) {
 #ifdef _OPENMP
@@ -726,16 +782,14 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
         std::shared_ptr<OrbitalPair> pair = orbitalPairSet[iPair];
         if (pair->type == OrbitalPairTypes::DISTANT || pair->type == OrbitalPairTypes::VERY_DISTANT)
           continue;
-        // Load if necessary.
         pair->residual = calculateDoublesResidual(pair);
         double maxCoeff = pair->residual.array().abs().maxCoeff();
         if (maxCoeff > largestResidualVector[threadId])
           largestResidualVector[threadId] = maxCoeff;
-        // Flush integrals if necessary.
-        if (closePairSets.size() != 1)
-          pair->flushIntegrals();
       } // for pair
-    }   // for orbitalPairSet
+      if (file)
+        orbitalPairSet.removeInteralsFromMemory();
+    } // for orbitalPairSet
     for (const auto& resEntry : largestResidualVector)
       if (resEntry > largestResidual)
         largestResidual = resEntry;
@@ -765,11 +819,10 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
     newEnergy = energies.sum();
     deltaE_corr = energies.sum() - correlationEnergy;
     correlationEnergy = newEnergy;
-    std::printf("%6d %15f %5s %17f %3s %17f %28s\n", cycle, largestResidual, "", newEnergy, "", deltaE_corr,
-                getTimeString().c_str());
+    std::printf("%6d %12f %12f %12f %s\n", cycle, largestResidual, newEnergy, deltaE_corr, getTimeString().c_str());
     std::cout.flush();
     if (cycle > _maxCycles - 1) {
-      throw SerenityError((string) "Canceling amplitude optimization after " + cycle + " cycles. NOT CONVERGED!!!");
+      throw SerenityError((std::string) "Canceling amplitude optimization after " + cycle + " cycles. NOT CONVERGED!!!");
     } // if cycle > _maxCycles-1
     if (largestResidual > 1e+3) {
       throw SerenityError("The local CCSD amplitude optimization encountered a very large residual!\n\
@@ -785,9 +838,13 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
 #ifdef _OPENMP
   Eigen::setNbThreads(nThreads);
 #endif
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+  if (file)
+    file->close();
+  if (!_linearScalingSigmaVector) {
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  }
   timeTaken(1, "Local CCSD Amplitude Optimization");
   Timings::timeTaken("Local Cor. -    Amplitude Opt.");
 }
@@ -838,14 +895,16 @@ void DLPNO_CCSD::runDiagnostics() {
 }
 
 inline void DLPNO_CCSD::calculateCCSDIntegrals() {
-  std::vector<OrbitalPairSet> closePairSets = _localCorrelationController->getCloseOrbitalPairSets();
+  auto closePairSets = _localCorrelationController->getCloseOrbitalPairSets();
   const auto activeSystem = _localCorrelationController->getActiveSystemController();
   Ao2MoExchangeIntegralTransformer::transformAllIntegrals(
       activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
-      _localCorrelationController->getMO3CenterIntegralController(not _keepMO3CenterIntegrals), closePairSets,
-      _localCorrelationController->getSettings().dumpIntegrals || closePairSets.size() > 1);
+      _localCorrelationController->getMO3CenterIntegralController(true), closePairSets,
+      _localCorrelationController->getSettings().dumpIntegrals || closePairSets.size() > 1,
+      _localCorrelationController->getPairIntegralFileName(), _linearScalingSigmaVector,
+      _localCorrelationController->getSettings().lowMemory);
   if (!_keepMO3CenterIntegrals)
-    _localCorrelationController->removeMO3CenterIntegralControlle();
+    _localCorrelationController->removeMO3CenterIntegralController();
 }
 
 Eigen::VectorXd DLPNO_CCSD::calculateEnergyCorrection() {
@@ -905,6 +964,39 @@ void DLPNO_CCSD::updateSigmaVector() {
   _g_occ_occ = _g_ao_occ.transpose() * occCoefficients;
 }
 
+std::shared_ptr<HDF5::H5File> DLPNO_CCSD::tryLoadingIntegrals() {
+  std::vector<std::shared_ptr<OrbitalPairSet>> closePairSets = _localCorrelationController->getCloseOrbitalPairSets();
+  const double totalMemoryAvailable = _localCorrelationController->getSettings().maximumMemoryRatio *
+                                      MemoryManager::getInstance()->getAvailableSystemMemory();
+  double memoryUsed = 0.0;
+  bool allLoaded = true;
+  std::shared_ptr<HDF5::H5File> file = nullptr;
+  for (int i = closePairSets.size() - 1; i >= 0; --i) {
+    auto orbitalPairSet = closePairSets[i];
+    if (!orbitalPairSet->integralsReady()) {
+      if (!file) {
+        std::string fileName = _localCorrelationController->getPairIntegralFileName();
+        HDF5::Filepath name(fileName);
+        file = std::make_shared<HDF5::H5File>(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      } // if !file
+      if (memoryUsed + orbitalPairSet->memoryDemand(_linearScalingSigmaVector) < totalMemoryAvailable) {
+        orbitalPairSet->fromHDF5(*file);
+        memoryUsed += orbitalPairSet->memoryDemand(_linearScalingSigmaVector);
+      }
+      else {
+        OutputControl::dOut << "Unable to hold all integrals in memory! Integrals will be read from disk!" << std::endl;
+        allLoaded = false;
+        break;
+      }
+    } // if !orbitalPairSet->integralsReady()
+  }
+  if (allLoaded && file) {
+    file->close();
+    return nullptr;
+  }
+  return file;
+}
+
 void DLPNO_CCSD::switchIntegrals() {
   auto activeSystem = _localCorrelationController->getActiveSystemController();
   const Eigen::MatrixXd s = activeSystem->getOneElectronIntegralController()->getOverlapIntegrals();
@@ -918,7 +1010,7 @@ void DLPNO_CCSD::switchIntegrals() {
   const Eigen::VectorXd eigenvalues =
       activeSystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getMolecularOrbitals()->getEigenvalues();
   // Calculate fully transformed integrals
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, activeSystem->getBasisController(), 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, activeSystem->getBasisController(), 1E-10);
   RegularRankFourTensor<double> eris(nBasisFunc, 0.0);
   Ao2MoTransformer aoToMo(activeSystem->getBasisController());
   auto const storeERIS = [&eris](const unsigned int& a, const unsigned int& b, const unsigned int& i,

@@ -21,12 +21,17 @@
 #ifndef SOLVATION_SOLVENTS_H_
 #define SOLVATION_SOLVENTS_H_
 
+#include <memory> //smrt_ptr
+#include <vector> //std::vector
+
 namespace Serenity {
 
+class AtomType;
 struct PCMSettings;
 namespace Options {
 enum class PCM_SOLVENTS;
 }
+
 /**
  * @class Solvents Solvents.h
  * @brief Contains tabulated data for different implicit solvents.
@@ -47,6 +52,13 @@ class Solvents {
    */
   static double getProbeRadius(Options::PCM_SOLVENTS solvent);
   /**
+   * @brief Getter for the probe radius of the solvent to be used in the calculation
+   *        of the cavity formation energy.
+   * @param solvent The solvent.
+   * @return The probe radius.
+   */
+  static double getCavityFormationProbeRadius(Options::PCM_SOLVENTS solvent);
+  /**
    * @brief Getter for the static permittivity.
    * @param solvent The solvent type. Has to be != EXPLICIT.
    *
@@ -64,6 +76,36 @@ class Solvents {
    * @param settings
    */
   static void printSolventInfo(const PCMSettings& settings);
+  /**
+   * @brief Returns the number density (number of particles per volume) of the solvent.
+   *        at 25 Celsius.
+   * @param solvent The solvent.
+   * @return The number density.
+   */
+  static double getNumberDensity(Options::PCM_SOLVENTS solvent);
+  /**
+   * @brief Getter for the molar volume of the solvent (volume per mole)
+   *        at 25 Celsius.
+   * @param solvent The solvent.
+   * @return The molar volume.
+   */
+  static double getMolarVolume(Options::PCM_SOLVENTS solvent);
+  /**
+   * @brief Getter for the molecular weight of the solvent.
+   * @param solvent The solvent.
+   * @return The molecular weight.
+   */
+  static double getMolecularWeight(Options::PCM_SOLVENTS solvent);
+  /**
+   * @brief Getter for the density of the solvent at 25 Celsius.
+   * @param solvent The solvent.
+   * @return The density.
+   */
+  static double getDensity(Options::PCM_SOLVENTS solvent);
+
+ private:
+  static double resolveMass(std::vector<std::pair<unsigned int, std::shared_ptr<const AtomType>>> types);
+  static std::vector<std::pair<unsigned int, std::shared_ptr<const AtomType>>> getAtomTypes(Options::PCM_SOLVENTS solvent);
 };
 
 } /* namespace Serenity */

@@ -25,11 +25,10 @@
 #include <cmath>
 
 namespace Serenity {
-using namespace std;
 /*
  * Map for the transformation matrices.
  */
-map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> CartesianToSphericalTransformer::_transformationMatrices = {
+std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> CartesianToSphericalTransformer::_transformationMatrices = {
     {0, nullptr},  {1, nullptr},  {2, nullptr},  {3, nullptr},  {4, nullptr},  {5, nullptr},  {6, nullptr},
     {7, nullptr},  {8, nullptr},  {9, nullptr},  {10, nullptr}, {11, nullptr}, {12, nullptr}, {13, nullptr},
     {14, nullptr}, {15, nullptr}, {16, nullptr}, {17, nullptr}, {18, nullptr}, {19, nullptr}, {20, nullptr}};

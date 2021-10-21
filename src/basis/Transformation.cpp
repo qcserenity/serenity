@@ -34,12 +34,11 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
-unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalController<T>& orbitalsA,
-                                                              shared_ptr<BasisController> basisControllerB,
-                                                              const MatrixInBasis<RESTRICTED>& overlapB) {
+std::unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalController<T>& orbitalsA,
+                                                                   std::shared_ptr<BasisController> basisControllerB,
+                                                                   const MatrixInBasis<RESTRICTED>& overlapB) {
   assert(basisControllerB);
   assert(overlapB.getBasisController() == basisControllerB);
   // coefficientsA of MOs in Basis A
@@ -53,7 +52,7 @@ unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalController<
 
   // Mixed AO-overlap between basis A and basis B
   auto& libint = Libint::getInstance();
-  auto overlapAB = libint.compute1eInts(libint2::Operator::overlap, basisControllerA, basisControllerB);
+  auto overlapAB = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisControllerA, basisControllerB);
 
   // Calculate inverse of AO overlap integrals in basis B. Use SVD,
   // i.e. S_B = U * D * V^T, since overlapB could be ill-conditioned
@@ -92,19 +91,20 @@ unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalController<
     }
   }
   // Construct new orbitalSet
-  auto coefficientsBptr = unique_ptr<CoefficientMatrix<T>>(new CoefficientMatrix<T>(basisControllerB));
+  auto coefficientsBptr = std::unique_ptr<CoefficientMatrix<T>>(new CoefficientMatrix<T>(basisControllerB));
   auto& coefficientsB = *coefficientsBptr;
   coefficientsB.setZero();
   coefficientsB.block(0, 0, nOrbitalsB, nOrbitalsA) = newCoefficientsB;
   // OrbitalController requires eigenvalues. These are set to zero.
-  unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvaluesBptr(new SpinPolarizedData<T, Eigen::VectorXd>(nOrbitalsB));
+  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvaluesBptr(new SpinPolarizedData<T, Eigen::VectorXd>(nOrbitalsB));
+  auto coreOrbitalPtr = std::make_unique<SpinPolarizedData<T, Eigen::VectorXi>>(orbitalsA.getCoreOrbitals());
   // return new OrbitalController
-  return unique_ptr<OrbitalController<T>>(
-      new OrbitalController<T>(move(coefficientsBptr), basisControllerB, move(eigenvaluesBptr)));
+  return std::make_unique<OrbitalController<T>>(std::move(coefficientsBptr), basisControllerB,
+                                                std::move(eigenvaluesBptr), std::move(coreOrbitalPtr));
 }
 
-template unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>
+template std::unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>
 Transformation::transformMOs(OrbitalController<Options::SCF_MODES::RESTRICTED>& orbitalsA,
-                             shared_ptr<BasisController> basisControllerB, const MatrixInBasis<RESTRICTED>& overlapB);
+                             std::shared_ptr<BasisController> basisControllerB, const MatrixInBasis<RESTRICTED>& overlapB);
 
 } /* namespace Serenity */

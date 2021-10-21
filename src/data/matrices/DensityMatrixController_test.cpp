@@ -116,7 +116,7 @@ TEST_F(DensityMatrixControllerTest, Constructor_Orbitals_R) {
   EXPECT_DOUBLE_EQ(0.32, dmat(0, 1));
   EXPECT_DOUBLE_EQ(1.28, dmat(1, 1));
   controller.updateDensityMatrix();
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
 }
 /**
  * @test
@@ -139,7 +139,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccVec_R) {
   controller.attachOrbitals(orbset, restrictedOccupations, true);
 
   auto dmat = controller.getDensityMatrix();
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
   EXPECT_DOUBLE_EQ(0.02, dmat(0, 0));
   EXPECT_DOUBLE_EQ(0.18, dmat(1, 0));
   EXPECT_DOUBLE_EQ(0.18, dmat(0, 1));
@@ -166,7 +166,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccOrbNumber_R) {
   controller.attachOrbitals(orbset, SpinPolarizedData<Options::SCF_MODES::RESTRICTED, unsigned int>(1), true);
 
   auto dmat = controller.getDensityMatrix();
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
   EXPECT_DOUBLE_EQ(0.02, dmat(0, 0));
   EXPECT_DOUBLE_EQ(0.18, dmat(1, 0));
   EXPECT_DOUBLE_EQ(0.18, dmat(0, 1));
@@ -226,7 +226,7 @@ TEST_F(DensityMatrixControllerTest, NotifiedUpdate_R) {
   coefficients(1, 0) = 0.9;
   coefficients(0, 1) = 0.8;
   coefficients(1, 1) = 0.2;
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
 
   // trigger orbset notification by setting new coefficients
   orbset->updateOrbitals(coefficients, orbset->getEigenvalues());
@@ -286,7 +286,7 @@ TEST_F(DensityMatrixControllerTest, Constructor_Orbitals_U) {
   EXPECT_DOUBLE_EQ(0.16, dmat.beta(0, 1));
   EXPECT_DOUBLE_EQ(0.64, dmat.beta(1, 1));
   controller.updateDensityMatrix();
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
 }
 /**
  * @test
@@ -313,7 +313,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccVec_U) {
   controller.attachOrbitals(orbset, unrestrictedOccupations, true);
 
   auto dmat = controller.getDensityMatrix();
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
   EXPECT_DOUBLE_EQ(0.01, dmat.alpha(0, 0));
   EXPECT_DOUBLE_EQ(0.09, dmat.alpha(1, 0));
   EXPECT_DOUBLE_EQ(0.09, dmat.alpha(0, 1));
@@ -397,7 +397,7 @@ TEST_F(DensityMatrixControllerTest, NotifiedUpdate_U) {
   coefficients.beta(1, 0) = 0.9;
   coefficients.beta(0, 1) = 0.8;
   coefficients.beta(1, 1) = 0.2;
-  EXPECT_TRUE(nTest->notified);
+  EXPECT_FALSE(nTest->notified);
 
   // trigger orbset notification by setting new coefficients
   orbset->updateOrbitals(coefficients, orbset->getEigenvalues());

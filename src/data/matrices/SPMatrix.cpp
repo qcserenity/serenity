@@ -16,22 +16,19 @@
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-
+/* Include Class Header*/
 #include "data/matrices/SPMatrix.h"
-
 /* Include Serenity Internal Headers */
 #include "io/HDF5.h"
 
 namespace Serenity {
 
-template<>
 void SPMatrix<Options::SCF_MODES::RESTRICTED>::toHDF5(std::string fBaseName, std::string matrixName) {
   std::string name = fBaseName + ".mat.h5";
   HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
   HDF5::save(file, matrixName.c_str(), *this);
 }
 
-template<>
 void SPMatrix<Options::SCF_MODES::UNRESTRICTED>::toHDF5(std::string fBaseName, std::string matrixName) {
   std::string name = fBaseName + ".mat.h5";
   HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);

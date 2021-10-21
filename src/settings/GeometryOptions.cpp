@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-#include "GeometryOptions.h"
+/* Include Class Header*/
+#include "settings/GeometryOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {

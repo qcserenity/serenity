@@ -23,10 +23,15 @@
 #define LRSCF_RESPONSEPROPERTIES
 
 /* Include Serenity Internal Headers */
-#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h" //Options::SCF_MODES
+#include "settings/LRSCFOptions.h"               //Options::GAUGE
+#include <Eigen/Dense>                           //Dense matrices.
+#include <memory>                                //shared_ptr
 
 namespace Serenity {
+
+template<Options::SCF_MODES SCFMode>
+class DipoleIntegrals;
 
 template<Options::SCF_MODES SCFMode>
 /**
@@ -46,10 +51,12 @@ class ResponseProperties {
    * @param rotFactor Conversion factor from optical rotation parameter to specific rotation.
    * @param damping Damping factor.
    * @param gauge The gauge of the properties.
+   * @param results The results of the property calculation.
    */
-  static void printProperties(const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
-                              const std::vector<Eigen::MatrixXd>& solutionvectors, const std::vector<double>& frequencies,
-                              const double rotFactor, const double damping, Options::GAUGE gauge);
+  static void printProperties(
+      const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles, const std::vector<Eigen::MatrixXd>& solutionvectors,
+      const std::vector<double>& frequencies, const double rotFactor, const double damping, Options::GAUGE gauge,
+      std::vector<std::tuple<double, Eigen::Matrix3d, Eigen::Matrix3d, Eigen::Matrix3d, Eigen::Matrix3d>>& results);
 };
 
 } /* namespace Serenity */

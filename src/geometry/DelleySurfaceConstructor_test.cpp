@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
-#include "geometry/MolecularSurfaceFactory.h"         //Surface is tested via its factory.
+#include "geometry/MolecularSurfaceController.h"      //Surface is constructed via the controller.
 #include "settings/PCMSettings.h"                     //Change PCMSettings.
 #include "settings/Settings.h"                        //Change the settings of a test system.
 #include "system/SystemController.h"                  //getSettings.
@@ -41,7 +41,7 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_F) {
   pcmSettings.cavity = Options::PCM_CAVITY_TYPES::DELLEY;
   pcmSettings.lLarge = 3;
   pcmSettings.alpha = 50;
-  auto surfaceController = MolecularSurfaceFactory::produce(system->getGeometry(), pcmSettings);
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   double sphereRadius = 3.33348;
   double sphericalArea = 4.0 * M_PI * sphereRadius * sphereRadius;
   // The total area covered by the points has to represent the total sphere surface.
@@ -79,10 +79,10 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_Ar2) {
   Settings settings = system->getSettings();
   settings.pcm = pcmSettings;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ar2_6_31Gs, settings);
-  auto surfaceController = MolecularSurfaceFactory::produce(system->getGeometry(), pcmSettings);
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   double sphereRadius = 4.26322;
   // The total area covered by the points has to represent the total sphere surface.
-  EXPECT_NEAR(surfaceController->getWeights().sum(), 324.51347594263575, 5e-3);
+  EXPECT_NEAR(surfaceController->getWeights().sum(), 324.43963853260595, 5e-3);
   // The first points are on the axes of the coordinate system.
   unsigned int nThreads = 1;
 #ifdef _OPENMP
@@ -119,14 +119,16 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_water) {
   pcmSettings.patchLevel = 2;
   settings.pcm = pcmSettings;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
-  auto surfaceController = MolecularSurfaceFactory::produce(system->getGeometry(), pcmSettings);
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   const double weightDELLEY = surfaceController->getWeights().sum();
   // The total area covered by the points has to represent the total sphere surface.
-  EXPECT_NEAR(weightDELLEY, 168.01896673361767, 5e-3);
+  EXPECT_NEAR(weightDELLEY, 167.87040537607655, 5e-3);
+  // Ensure that the point coordinates are the same!
+  EXPECT_NEAR(surfaceController->getGridPoints().sum(), 22.895626579964713, 1e-4);
 
   // Compare to GEPOL surface.
   pcmSettings.cavity = Options::PCM_CAVITY_TYPES::GEPOL_SES;
-  surfaceController = MolecularSurfaceFactory::produce(system->getGeometry(), pcmSettings);
+  surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   const double weightGEPOL = surfaceController->getWeights().sum();
   EXPECT_NEAR(weightDELLEY, weightGEPOL, 15); // allow for roughly 10% deviation.
 
@@ -145,16 +147,16 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_C60) {
   pcmSettings.cavity = Options::PCM_CAVITY_TYPES::DELLEY;
   pcmSettings.lLarge = 7;
   pcmSettings.alpha = 50;
-  //  pcmSettings.connectivityFactor = 1.5;
+  pcmSettings.minDistance = 0.1;
   pcmSettings.oneCavity = true;
   settings.pcm = pcmSettings;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS, settings);
-  auto surfaceController = MolecularSurfaceFactory::produce(system->getGeometry(), pcmSettings);
+  auto surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   const double weightDELLEY = surfaceController->getWeights().sum();
   const unsigned int nPoints = surfaceController->getWeights().size();
 
-  EXPECT_NEAR(weightDELLEY, 1208.59, 5e-2);
-  EXPECT_EQ(nPoints, 1215);
+  EXPECT_NEAR(weightDELLEY, 1190.23, 5e-2);
+  EXPECT_EQ(nPoints, 1176);
 
   SystemController__TEST_SUPPLY::cleanUp();
 }

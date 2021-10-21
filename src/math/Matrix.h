@@ -55,8 +55,6 @@ class Matrix {
     : _nRows(nRows), _nColumns(nCols), _size(nRows * nCols), _data(std::move(data)) {
   }
 
-  virtual ~Matrix() = default;
-
   /**
    * @brief Straightforward and safe access to the matrix. Slow!
    * @param i the row index
@@ -167,7 +165,7 @@ class Matrix {
   ///@brief The rank, if viewed as a tensor
   const static int RANK = 2;
   ///@{Size indicators for the matrix
-  const unsigned int _nRows, _nColumns, _size;
+  unsigned int _nRows, _nColumns, _size;
   ///}
  protected:
   /// the underlying data object

@@ -21,37 +21,36 @@
 #include "scf/Scf.h"
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
-#include "data/OrbitalController.h"
-#include "data/matrices/FockMatrix.h"
-#include "energies/EnergyComponentController.h"
+#include "dft/Functional.h"
 #include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
 #include "misc/SerenityError.h"
 #include "misc/Timing.h"
+#include "misc/WarningTracker.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "scf/ConvergenceController.h"
 #include "settings/Settings.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
 void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
                            std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged) {
+  allowNotConverged = (allowNotConverged || settings.scf.allowNotConverged);
   es->setDiskMode(false, "", "");
   auto energyComponentController = es->getEnergyComponentController();
   auto orbitalController = es->getMolecularOrbitals();
   orbitalController->setCanOrthTh(settings.scf.canOrthThreshold);
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   // Check if range seperate hybrid is used; then it is more efficient to keep those libint engines as well
   auto functional = resolveFunctional(settings.dft.functional);
   if (functional.isRSHybrid()) {
-    libint.keepEngines(libint2::Operator::erf_coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::erf_coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::erf_coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::erf_coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::erf_coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::erf_coulomb, 0, 4);
   }
   /*
    * Perform one Roothan-Hall step without pre-diagonalization to
@@ -63,6 +62,7 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
   auto F(potentials->getFockMatrix(es->getDensityMatrix(), energyComponentController));
   ConvergenceController<SCFMode> convergenceController(settings, es->getDensityMatrixController(), orbitalController,
                                                        es->getOneElectronIntegralController(), energyComponentController);
+
   convergenceController.accelerateConvergence(F, es->getDensityMatrix());
   orbitalController->updateOrbitals(convergenceController.getLevelshift(), F, es->getOneElectronIntegralController());
   unsigned int counter = 0;
@@ -91,8 +91,7 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
     timeTaken(2, "the convergence check");
     if (converged and counter > 2) {
       if (iOOptions.printSCFCycleInfo) {
-        print((string) "Converged. Loop exited.");
-        print("");
+        printf("    Converged after %3i cycles. Loop exited.\n\n", counter);
       }
       es->state = ES_STATE::CONVERGED;
       /*
@@ -100,27 +99,35 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
        */
       std::remove((settings.path + "tmp.orbs.res.h5").c_str());
       std::remove((settings.path + "tmp.orbs.unres.h5").c_str());
+      es->setFockMatrix(F);
       es->toHDF5(settings.path + settings.name, settings.identifier);
       break;
     }
-    if (counter >= settings.scf.maxCycles) {
+    if (counter >= settings.scf.maxCycles and allowNotConverged) {
+      es->state = ES_STATE::CONVERGED;
+      libint.clearAllEngines();
+      WarningTracker::printWarning((std::string) "WARNING: SCF did NOT converge after " + settings.scf.maxCycles +
+                                       " cycles!!! Continuing...",
+                                   iOOptions.printSCFCycleInfo);
+      break;
+    }
+    else if (counter >= settings.scf.maxCycles and !allowNotConverged) {
       es->state = ES_STATE::FAILED;
       libint.clearAllEngines();
-
       energyComponentController->printAllComponents();
       if (!allowNotConverged)
-        throw SerenityError((string) "Cancelling SCF after " + settings.scf.maxCycles + " cycles. NOT CONVERGED!!!");
+        throw SerenityError((std::string) "Cancelling SCF after " + settings.scf.maxCycles + " cycles. NOT CONVERGED!!!");
       break;
     }
   }
 
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   if (functional.isRSHybrid()) {
-    libint.freeEngines(libint2::Operator::erf_coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::erf_coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::erf_coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::erf_coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::erf_coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::erf_coulomb, 0, 4);
   }
 }
 

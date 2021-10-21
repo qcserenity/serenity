@@ -111,9 +111,10 @@ inline void zip(T& t, U& u, V& v, W& w, const FuncType& func) {
  *        Note that this multiplication is extremely efficient since the sparse nature
  *        of the projection matrix is fully exploited.
  * @param negligible The prescreening vector.
+ * @param allowXZero If true matrices with 0 columns may be generated, otherwise a nx1 zero vector is returned.
  * @return The projection matrix.
  */
-inline Eigen::SparseMatrix<double> constructProjectionMatrix(Eigen::VectorXi negligible) {
+inline Eigen::SparseMatrix<double> constructProjectionMatrix(Eigen::VectorXi negligible, bool allowXZero = false) {
   negligible -= Eigen::VectorXi::Constant(negligible.rows(), 1);
   negligible = negligible.array().abs();
   Eigen::SparseVector<int> blockToBasis(negligible.rows());
@@ -127,6 +128,9 @@ inline Eigen::SparseMatrix<double> constructProjectionMatrix(Eigen::VectorXi neg
     col++;
   } // for itMu
   Eigen::SparseMatrix<double> projectionMatrix(nBasisFunctions, blockToBasis.nonZeros());
+  if (blockToBasis.nonZeros() == 0 && not allowXZero) {
+    projectionMatrix.resize(nBasisFunctions, 1);
+  }
   projectionMatrix.setFromTriplets(projectionTriplets.begin(), projectionTriplets.end());
   return projectionMatrix;
 }
@@ -145,6 +149,24 @@ inline Eigen::SparseMatrix<double> constructProjectionMatrixFromSparse(const Eig
     col++;
   } // for it
   Eigen::SparseMatrix<double> projectionMatrix(nonNegligible.rows(), nonNegligible.nonZeros());
+  projectionMatrix.setFromTriplets(projectionTriplets.begin(), projectionTriplets.end());
+  return projectionMatrix;
+}
+/**
+ * @brief Constructs a projection matrix from a sparse-non-negligible vector.
+ *        See constructProjectionMatrix and constructProjectionMatrixFromSparse.
+ *        The matrix is transposed with respect to constructProjectionMatrixFromSparse().
+ * @param nonNegligible The prescreenion vector.
+ * @return The sparse projection (transposed).
+ */
+inline Eigen::SparseMatrix<double> constructProjectionMatrixFromSparse_T(const Eigen::SparseVector<int>& nonNegligible) {
+  std::vector<Eigen::Triplet<double>> projectionTriplets;
+  unsigned int row = 0;
+  for (Eigen::SparseVector<int>::InnerIterator it(nonNegligible); it; ++it) {
+    projectionTriplets.push_back(Eigen::Triplet<double>(row, it.row(), 1.0));
+    row++;
+  } // for it
+  Eigen::SparseMatrix<double> projectionMatrix(nonNegligible.nonZeros(), nonNegligible.rows());
   projectionMatrix.setFromTriplets(projectionTriplets.begin(), projectionTriplets.end());
   return projectionMatrix;
 }
@@ -171,7 +193,6 @@ inline Eigen::SparseMatrix<double> constructSignificantMnPProjectionMatrix(Eigen
   projectionMatrix.setFromTriplets(projectionTriplets.begin(), projectionTriplets.end());
   return projectionMatrix;
 }
-
 /// @cond false
 template<class It>
 inline void _advance_(It& it) {

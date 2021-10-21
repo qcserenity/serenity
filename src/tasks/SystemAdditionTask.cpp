@@ -32,7 +32,6 @@
 #include "io/FormattedOutputStream.h"          //Filtered output streams.
 #include "misc/SerenityError.h"                //Error messages.
 #include "misc/SystemSplittingTools.h"         //Searching for atoms.
-#include "settings/Settings.h"                 //Settings.
 #include "system/SystemController.h"           //System controller definition.
 /* Include Std and External Headers */
 #include <Eigen/Dense>
@@ -98,8 +97,8 @@ void SystemAdditionTask<SCFMode>::run() {
   _supersystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_COULOMB);
   _supersystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_CORREL);
   // Set new charge/spin
-  _supersystem->setCharge(totalCharge);
   _supersystem->setSpin(totalSpin);
+  _supersystem->setCharge(totalCharge);
   // Get the occupied orbitals.
   if (settings.addOccupiedOrbitals) {
     auto supersystemBasisController = _supersystem->getBasisController();
@@ -108,22 +107,28 @@ void SystemAdditionTask<SCFMode>::run() {
         std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(supersystemBasisController));
     auto newEigenvaluesPtr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
         new SpinPolarizedData<SCFMode, Eigen::VectorXd>(Eigen::VectorXd::Zero(nSuperBasisFunc)));
+    auto newCoreOrbitalPtr =
+        std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Zero(nSuperBasisFunc));
     // Tools for creating sorting or projection matrices, which are needed in to
     // transform the subsystem MOs to the supersystem basis.
     BasisFunctionMapper basisFuncMapperSubToSuper(supersystemBasisController);
     auto& libint = Libint::getInstance();
     Eigen::MatrixXd overlapSuper =
-        libint.compute1eInts(libint2::Operator::overlap, supersystemBasisController, supersystemBasisController);
+        libint.compute1eInts(LIBINT_OPERATOR::overlap, supersystemBasisController, supersystemBasisController);
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(overlapSuper, Eigen::ComputeThinU | Eigen::ComputeThinV);
     SpinPolarizedData<SCFMode, unsigned int> nOccSuper(0);
+    SpinPolarizedData<SCFMode, unsigned int> nOccSuper2(0);
     for (unsigned int iSub = 0; iSub < _subsystems.size(); ++iSub) {
       auto subsystem = _subsystems[iSub];
       CoefficientMatrix<SCFMode>& newCoefficientMatrix = *newCoefficientMatrixPtr;
       SpinPolarizedData<SCFMode, Eigen::VectorXd>& newEigenvalues = *newEigenvaluesPtr;
+      SpinPolarizedData<SCFMode, Eigen::VectorXi>& newCoreOrbitals = *newCoreOrbitalPtr;
       CoefficientMatrix<SCFMode> subsystemCoefficients =
           subsystem->template getActiveOrbitalController<SCFMode>()->getCoefficients();
       SpinPolarizedData<SCFMode, Eigen::VectorXd> subsystemEigenvalues =
           subsystem->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      SpinPolarizedData<SCFMode, Eigen::VectorXi> subsystemCoreOrbitals =
+          subsystem->template getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
       auto nOccSub = subsystem->template getNOccupiedOrbitals<SCFMode>();
       Eigen::MatrixXd projection;
       if (subsystem->getAtomCenteredBasisController()->getBasisLabel() ==
@@ -141,7 +146,7 @@ void SystemAdditionTask<SCFMode>::run() {
         OutputControl::dOut << "      The subsystem orbitals will be projected to the supersystem basis-set." << std::endl;
         OutputControl::dOut << "      Note that this projection may be inaccurate." << std::endl;
         Eigen::MatrixXd overlapSubSuper =
-            libint.compute1eInts(libint2::Operator::overlap, subsystem->getBasisController(), supersystemBasisController);
+            libint.compute1eInts(LIBINT_OPERATOR::overlap, subsystem->getBasisController(), supersystemBasisController);
         projection = svd.solve(overlapSubSuper).transpose();
       }
       // Get the new coefficients and eigenvalues from the subsystem orbitals.
@@ -151,16 +156,21 @@ void SystemAdditionTask<SCFMode>::run() {
         newEigenvalues_spin.segment(nOccSuper_spin, nOccSub_spin) = subsystemEigenvalues_spin.head(nOccSub_spin);
         nOccSuper_spin += nOccSub_spin;
       };
+      for_spin(subsystemCoreOrbitals, newCoreOrbitals, nOccSuper2, nOccSub) {
+        newCoreOrbitals_spin.segment(nOccSuper2_spin, nOccSub_spin) = subsystemCoreOrbitals_spin.head(nOccSub_spin);
+        nOccSuper2_spin += nOccSub_spin;
+      };
     } // for iSub
     // Build the final electronic structure.
-    auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
-        std::move(newCoefficientMatrixPtr), supersystemBasisController, std::move(newEigenvaluesPtr));
+    auto newOrbitalController =
+        std::make_shared<OrbitalController<SCFMode>>(std::move(newCoefficientMatrixPtr), supersystemBasisController,
+                                                     std::move(newEigenvaluesPtr), std::move(newCoreOrbitalPtr));
     auto newElectronicStructure = std::make_shared<ElectronicStructure<SCFMode>>(
         newOrbitalController, _supersystem->getOneElectronIntegralController(), nOccSuper);
     _supersystem->setElectronicStructure<SCFMode>(newElectronicStructure);
-    newElectronicStructure->toHDF5(_supersystem->getHDF5BaseName(), _supersystem->getSettings().identifier);
+    newElectronicStructure->toHDF5(_supersystem->getHDF5BaseName(), _supersystem->getSystemIdentifier());
   } // if settings.addOccupiedOrbitals
-  _supersystem->getGeometry()->printToFile(_supersystem->getHDF5BaseName(), _supersystem->getSettings().identifier);
+  _supersystem->getGeometry()->printToFile(_supersystem->getHDF5BaseName(), _supersystem->getSystemIdentifier());
 }
 
 template class SystemAdditionTask<Options::SCF_MODES::RESTRICTED>;

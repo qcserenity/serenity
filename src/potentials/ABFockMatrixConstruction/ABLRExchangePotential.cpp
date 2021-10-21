@@ -18,9 +18,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "potentials/ABFockMatrixConstruction/ABLRExchangePotential.h"
+/* Include Serenity Internal Headers */
 #include "basis/ABShellPairCalculator.h"
+#include "basis/Basis.h"
+#include "integrals/wrappers/Libint.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -32,7 +35,12 @@ ABLRExchangePotential<SCFMode>::ABLRExchangePotential(std::shared_ptr<SystemCont
                                                       std::shared_ptr<BasisController> basisB,
                                                       std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> dMats,
                                                       double exchangeRatio, double mu)
-  : ABPotential<SCFMode>(basisA, basisB), _actSystem(actSystem), _densityMatrices(dMats), _exchangeRatio(exchangeRatio), _mu(mu) {
+  : ABPotential<SCFMode>(basisA, basisB),
+    _actSystem(actSystem),
+    _libint(Libint::getSharedPtr()),
+    _densityMatrices(dMats),
+    _exchangeRatio(exchangeRatio),
+    _mu(mu) {
   // Basis
   this->_basisA->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_basisB->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
@@ -56,12 +64,13 @@ SPMatrix<SCFMode>& ABLRExchangePotential<SCFMode>::getMatrix() {
     };
     double pre = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 * _exchangeRatio : 1.0 * _exchangeRatio;
     // intialize libint
-    libint2::Operator op = libint2::Operator::erf_coulomb;
+    LIBINT_OPERATOR op = LIBINT_OPERATOR::erf_coulomb;
     _libint->initialize(op, 0, 4, std::vector<std::shared_ptr<Atom>>(0), _mu);
 
     for (const auto& densityC : _densityMatrices) {
       auto densityMatrixC = densityC->getDensityMatrix();
       const auto& basisContC = densityC->getDensityMatrix().getBasisController();
+      const Eigen::MatrixXd maxDens = densityMatrixC.shellWiseAbsMax().total();
 
       // Calculate shellPairData
       const auto shellPairsAC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisA, basisContC);
@@ -103,10 +112,10 @@ SPMatrix<SCFMode>& ABLRExchangePotential<SCFMode>::getMatrix() {
           /*
            * Simple Prescreening, break out of loops early
            */
-          if (p.factor * q.factor < intThreshold)
-            break;
           const unsigned int b = q.bf1;
           const unsigned int c2 = q.bf2;
+          if (p.factor * q.factor * maxDens(c1, c2) < intThreshold)
+            break;
           const auto& basB = *basisB[b];
           const auto& basC2 = *basisC[c2];
           bool significant = _libint->compute(op, 0, basA, basC1, basB, basC2, ints[threadId]);
@@ -122,7 +131,6 @@ SPMatrix<SCFMode>& ABLRExchangePotential<SCFMode>::getMatrix() {
                   const unsigned int bb = this->_basisB->extendedIndex(b) + B;
                   for (unsigned int C2 = 0; C2 < basisC[c2]->getNContracted(); ++C2, ++counter) {
                     const unsigned int cc2 = basisContC->extendedIndex(c2) + C2;
-                    //                    if (cc2>cc1) continue;
 
                     const double set(integral(counter));
                     auto& eris = eriContr[threadId];

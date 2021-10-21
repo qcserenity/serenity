@@ -22,10 +22,16 @@
 #define LRSCF_DIPOLEINTEGRALS
 
 /* Include Serenity Internal Headers */
-#include "geometry/Point.h" //Default constructor of Point.
-#include "postHF/LRSCF/LRSCFController.h"
+#include "data/matrices/MatrixInBasis.h"
+#include "geometry/Point.h"                      //Default constructor of Point.
+#include "settings/ElectronicStructureOptions.h" //RESTRICTED
+/* Include Std and External Headers */
+#include <Eigen/Dense> //MatrixXd
+#include <memory>      //shared_ptr
 
 namespace Serenity {
+template<Options::SCF_MODES SCFMode>
+class LRSCFController;
 
 /**
  * @class DipoleIntegrals DipoleIntegrals.h
@@ -73,23 +79,25 @@ class DipoleIntegrals {
    *                     int-Sys2-x   int-Sys2-y   int-Sys2-z
    *                         ...           ...         ...
    * Integrals are given over pairs of occupied and virtual MOs.
-   * @param type Can be requested in analytical or numerical form.
    */
   std::shared_ptr<const Eigen::MatrixXd> getLengths();
 
   /**
    * @brief Returns the electric-dipole integrals in velocity representation.
    * One vector for each spatial component.
-   * @param type Can be requested in analytical or numerical form.
    */
   std::shared_ptr<const Eigen::MatrixXd> getVelocities();
 
   /**
    * @brief Returns the magnetic-dipole integrals.
    * One vector for each spatial component.
-   * @param type Can be requested in analytical or numerical form.
    */
   std::shared_ptr<const Eigen::MatrixXd> getMagnetics();
+
+  /**
+   * @brief Returns the gauge origin that was used to set up these integrals
+   */
+  Point getGaugeOrigin();
 
  private:
   ///@brief Contains all LRSCF controller.

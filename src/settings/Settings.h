@@ -45,16 +45,13 @@ using namespace Serenity::Reflection;
  * @class  Settings Settings.h
  * @brief  Holds one set of all switchable options for a single system.
  */
+
 struct DFT {
-  DFT()
-    : functional(CompositeFunctionals::XCFUNCTIONALS::BP86),
-      densityFitting(Options::DENS_FITS::RI),
-      dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE) {
+  DFT() : functional(CompositeFunctionals::XCFUNCTIONALS::BP86), dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE) {
   }
 
  public:
-  REFLECTABLE((CompositeFunctionals::XCFUNCTIONALS)functional, (Options::DENS_FITS)densityFitting,
-              (Options::DFT_DISPERSION_CORRECTIONS)dispersion)
+  REFLECTABLE((CompositeFunctionals::XCFUNCTIONALS)functional, (Options::DFT_DISPERSION_CORRECTIONS)dispersion)
 };
 
 struct SCF {
@@ -62,7 +59,7 @@ struct SCF {
     : initialguess(Options::INITIAL_GUESSES::ATOM_SCF),
       maxCycles(100),
       writeRestart(5),
-      energyThreshold(1e-8),
+      energyThreshold(5e-8),
       rmsdThreshold(1e-8),
       damping(Options::DAMPING_ALGORITHMS::SERIES),
       seriesDampingStart(0.7),
@@ -77,18 +74,19 @@ struct SCF {
       diisFlush(1000),
       diisStartError(5e-2),
       diisMaxStore(10),
-      diisThreshold(1e-7),
+      diisThreshold(5e-7),
       canOrthThreshold(1.0e-7),
-      useADIIS(false) {
+      useADIIS(false),
+      allowNotConverged(false) {
   }
 
  public:
   REFLECTABLE((Options::INITIAL_GUESSES)initialguess, (unsigned int)maxCycles, (unsigned int)writeRestart,
-              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping,
-              (double)seriesDampingStart, (double)seriesDampingEnd, (double)seriesDampingStep,
-              (double)seriesDampingInitialSteps, (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift,
-              (bool)useOffDiagLevelshift, (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError,
-              (unsigned int)diisMaxStore, (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS)
+              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping, (double)seriesDampingStart,
+              (double)seriesDampingEnd, (double)seriesDampingStep, (double)seriesDampingInitialSteps,
+              (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift, (bool)useOffDiagLevelshift,
+              (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError, (unsigned int)diisMaxStore,
+              (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS, (bool)allowNotConverged)
 };
 struct BASIS {
   BASIS()
@@ -96,18 +94,24 @@ struct BASIS {
       auxJLabel("RI_J_WEIGEND"),
       auxCLabel(""),
       makeSphericalBasis(true),
-      integralThreshold(1e-10),
+      integralThreshold(0),
       integralIncrementThresholdStart(1e-8),
-      integralIncrementThresholdEnd(1e-12),
+      integralIncrementThresholdEnd(0),
       incrementalSteps(5),
       basisLibPath(""),
-      firstECP(37) {
+      firstECP(37),
+      densityFitting(Options::DENS_FITS::RI),
+      cdThreshold(1e-6),
+      extendSphericalACDShells(Options::EXTEND_ACD::SIMPLE),
+      intCondition(-1) {
   }
 
  public:
   REFLECTABLE((std::string)label, (std::string)auxJLabel, (std::string)auxCLabel, (bool)makeSphericalBasis,
               (double)integralThreshold, (double)integralIncrementThresholdStart, (double)integralIncrementThresholdEnd,
-              (unsigned int)incrementalSteps, (std::string)basisLibPath, (unsigned int)firstECP)
+              (unsigned int)incrementalSteps, (std::string)basisLibPath, (unsigned int)firstECP,
+              (Options::DENS_FITS)densityFitting, (double)cdThreshold, (Options::EXTEND_ACD)extendSphericalACDShells,
+              (int)intCondition)
 };
 
 struct GRID {
@@ -131,6 +135,25 @@ struct GRID {
               (unsigned int)smallGridAccuracy, (double)blockAveThreshold, (double)basFuncRadialThreshold,
               (double)weightThreshold, (unsigned int)smoothing, (bool)gridPointSorting)
 };
+
+struct EFIELD {
+  EFIELD()
+    : use(false),
+      analytical(false),
+      pos1({0.0, 0.0, 0.0}),
+      pos2({0.0, 0.0, 1.0}),
+      distance(5e1),
+      nRings(50),
+      radius(1e0),
+      fieldStrength(1e-3),
+      nameOutput("") {
+  }
+
+ public:
+  REFLECTABLE((bool)use, (bool)analytical, (std::vector<double>)pos1, (std::vector<double>)pos2, (double)distance,
+              (unsigned)nRings, (double)radius, (double)fieldStrength, (std::string)nameOutput)
+};
+
 struct Settings {
  public:
   /**
@@ -147,6 +170,7 @@ struct Settings {
       identifier(""),
       path("./"),
       charge(0),
+      ignoreCharge(false),
       spin(0),
       geometry(""),
       load(""),
@@ -159,9 +183,10 @@ struct Settings {
   /*
    * Member Variables
    */
-  REFLECTABLE((std::string)name, (std::string)identifier, (std::string)path, (int)charge, (int)spin, (std::string)geometry,
-              (std::string)load, (Options::SCF_MODES)scfMode, (Options::ELECTRONIC_STRUCTURE_THEORIES)method, (DFT)dft,
-              (SCF)scf, (BASIS)basis, (GRID)grid, (PCMSettings)pcm)
+  REFLECTABLE((std::string)name, (std::string)identifier, (std::string)path, (int)charge, (bool)ignoreCharge, (int)spin,
+              (std::string)geometry, (std::string)load, (Options::SCF_MODES)scfMode,
+              (Options::ELECTRONIC_STRUCTURE_THEORIES)method, (DFT)dft, (SCF)scf, (BASIS)basis, (GRID)grid,
+              (EFIELD)efield, (PCMSettings)pcm)
 
   /**
    * @brief Constructor using text input.

@@ -32,10 +32,9 @@
 #include "system/SystemController.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
-MP2EnergyCorrector<T>::MP2EnergyCorrector(shared_ptr<SystemController> systemController, const double ssScaling,
+MP2EnergyCorrector<T>::MP2EnergyCorrector(std::shared_ptr<SystemController> systemController, const double ssScaling,
                                           const double osScaling)
   : _systemController(systemController), _ssScaling(ssScaling), _osScaling(osScaling) {
   assert(_systemController);
@@ -53,7 +52,7 @@ double MP2EnergyCorrector<Options::SCF_MODES::RESTRICTED>::calculateElectronicEn
   const unsigned int nvirt = nBasisFunc - nocc;
   RegularRankFourTensor<double> eris(nBasisFunc, 0.0);
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, basisController->getPrescreeningThreshold());
 
   auto const storeERIS = [&eris](const unsigned int& a, const unsigned int& b, const unsigned int& i,
                                  const unsigned int& j, const Eigen::VectorXd& integral, const unsigned int threadId) {
@@ -67,12 +66,11 @@ double MP2EnergyCorrector<Options::SCF_MODES::RESTRICTED>::calculateElectronicEn
     eris(j, i, b, a) = integral(0);
     eris(j, i, a, b) = integral(0);
   };
-  looper.loop(storeERIS);
-
-  Ao2MoTransformer ao2mo(basisController);
-
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients =
       _systemController->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients();
+  looper.loop(storeERIS, coefficients.lpNorm<Eigen::Infinity>());
+
+  Ao2MoTransformer ao2mo(basisController);
 
   ao2mo.transformTwoElectronIntegrals(eris, eris, coefficients, nBasisFunc);
 

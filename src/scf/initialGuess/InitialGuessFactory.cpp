@@ -29,8 +29,6 @@
 
 namespace Serenity {
 
-using namespace Options;
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wswitch"
 
@@ -38,22 +36,22 @@ template<>
 std::unique_ptr<InitialGuessCalculator<Options::SCF_MODES::RESTRICTED>>
 InitialGuessFactory::produce<Options::SCF_MODES::RESTRICTED>(Options::INITIAL_GUESSES flavor) {
   switch (flavor) {
-    case INITIAL_GUESSES::H_CORE:
+    case Options::INITIAL_GUESSES::H_CORE:
       return std::make_unique<HCoreGuessCalculator<RESTRICTED>>();
       break;
-    case INITIAL_GUESSES::EHT:
+    case Options::INITIAL_GUESSES::EHT:
       return std::make_unique<ExtendedHueckel>();
       break;
-    case INITIAL_GUESSES::SAP:
+    case Options::INITIAL_GUESSES::SAP:
       return std::make_unique<SuperpositionOfAtomicPotentials>();
       break;
-    case INITIAL_GUESSES::ATOM_DENS:
+    case Options::INITIAL_GUESSES::ATOM_DENS:
       return std::unique_ptr<AtomicDensityGuessCalculator>(new AtomicDensityGuessCalculator(GUESSMODES::OCCUPATIONS));
       break;
-    case INITIAL_GUESSES::ATOM_SCF:
+    case Options::INITIAL_GUESSES::ATOM_SCF:
       return std::unique_ptr<AtomicDensityGuessCalculator>(new AtomicDensityGuessCalculator(GUESSMODES::SCF));
       break;
-    case INITIAL_GUESSES::ATOM_SCF_INPLACE:
+    case Options::INITIAL_GUESSES::ATOM_SCF_INPLACE:
       return std::unique_ptr<AtomicDensityGuessCalculator>(new AtomicDensityGuessCalculator(GUESSMODES::SCF_INPLACE));
       break;
       // NO default is given (intentional!). g++ will issue a warning/an error for missing cases.
@@ -66,24 +64,24 @@ template<>
 std::unique_ptr<InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED>>
 InitialGuessFactory::produce<Options::SCF_MODES::UNRESTRICTED>(Options::INITIAL_GUESSES flavor) {
   switch (flavor) {
-    case INITIAL_GUESSES::H_CORE:
+    case Options::INITIAL_GUESSES::H_CORE:
       return std::make_unique<HCoreGuessCalculator<UNRESTRICTED>>();
       break;
-    case INITIAL_GUESSES::EHT:
+    case Options::INITIAL_GUESSES::EHT:
       return std::make_unique<UnrestrictedFromRestrictedGuess>(std::make_shared<ExtendedHueckel>());
       break;
-    case INITIAL_GUESSES::SAP:
+    case Options::INITIAL_GUESSES::SAP:
       return std::make_unique<UnrestrictedFromRestrictedGuess>(std::make_shared<SuperpositionOfAtomicPotentials>());
       break;
-    case INITIAL_GUESSES::ATOM_DENS:
+    case Options::INITIAL_GUESSES::ATOM_DENS:
       return std::unique_ptr<UnrestrictedFromRestrictedGuess>(
           new UnrestrictedFromRestrictedGuess(std::make_shared<AtomicDensityGuessCalculator>(GUESSMODES::OCCUPATIONS)));
       break;
-    case INITIAL_GUESSES::ATOM_SCF:
+    case Options::INITIAL_GUESSES::ATOM_SCF:
       return std::unique_ptr<UnrestrictedFromRestrictedGuess>(
           new UnrestrictedFromRestrictedGuess(std::make_shared<AtomicDensityGuessCalculator>(GUESSMODES::SCF)));
       break;
-    case INITIAL_GUESSES::ATOM_SCF_INPLACE:
+    case Options::INITIAL_GUESSES::ATOM_SCF_INPLACE:
       return std::unique_ptr<UnrestrictedFromRestrictedGuess>(
           new UnrestrictedFromRestrictedGuess(std::make_shared<AtomicDensityGuessCalculator>(GUESSMODES::SCF_INPLACE)));
       break;

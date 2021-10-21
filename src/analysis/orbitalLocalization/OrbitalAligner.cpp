@@ -21,11 +21,12 @@
 #include "analysis/orbitalLocalization/OrbitalAligner.h"
 /* Include Serenity Internal Headers */
 #include "analysis/populationAnalysis/IAOPopulationCalculator.h" //IAO populations for rotating.
+#include "basis/Basis.h"                                         //get N contracted.
 #include "data/ElectronicStructure.h"                            //Access to the density matrix.
 #include "data/OrbitalController.h"                              //Access to occupied orbital coefficients.
 #include "data/matrices/CoefficientMatrix.h"                     //Coefficient matrix definition.
 #include "geometry/Geometry.h"                                   //Check atom ordering.
-#include "integrals/wrappers/Libint.h"                           //AO-kinetic integrals.
+#include "integrals/OneElectronIntegralController.h"             //Kinetic integrals.
 #include "io/FormattedOutputStream.h"                            //Filtered output streams.
 #include "math/linearAlgebra/JacobiRotation.h"                   //2x2 Rotations.
 #include "math/optimizer/NewtonRaphson.h"                        //Numerical minimization.
@@ -81,9 +82,8 @@ void OrbitalAligner<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbit
 template<Options::SCF_MODES SCFMode>
 SpinPolarizedData<SCFMode, Eigen::VectorXd> OrbitalAligner<SCFMode>::getReferenceKineticEnergies() {
   Eigen::setNbThreads(1);
-  auto libint = Libint::getSharedPtr();
   const auto& coeff = _templateSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
-  auto kinIntegrals = libint->compute1eInts(libint2::Operator::kinetic, _templateSystem->getBasisController());
+  auto kinIntegrals = _templateSystem->getOneElectronIntegralController()->getKinIntegrals();
   auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
   SpinPolarizedData<SCFMode, Eigen::VectorXd> kineticEnergies;
   for_spin(nOcc, coeff, kineticEnergies) {
@@ -174,8 +174,7 @@ void OrbitalAligner<SCFMode>::alignOrbitals(OrbitalController<SCFMode>& orbitals
   Eigen::MatrixXd kinIntegrals;
   SpinPolarizedData<SCFMode, Eigen::VectorXd> kin_ref;
   if (_kineticAlign) {
-    auto libint = Libint::getSharedPtr();
-    kinIntegrals = libint->compute1eInts(libint2::Operator::kinetic, _system->getBasisController());
+    kinIntegrals = _system->getOneElectronIntegralController()->getKinIntegrals();
     kin_ref = getReferenceKineticEnergies();
   }
 
@@ -314,7 +313,7 @@ void OrbitalAligner<SCFMode>::alignOrbitals(OrbitalController<SCFMode>& orbitals
   for_spin(newP, oldP) {
     auto diff = (oldP_spin - newP_spin).array().abs().maxCoeff();
     if (diff > 1e-9)
-      throw SerenityError("Density matrix changed during orbital alignment!");
+      OutputControl::mOut << "WARNING: Density matrix changed during orbital alignment!" << std::endl;
   };
 }
 

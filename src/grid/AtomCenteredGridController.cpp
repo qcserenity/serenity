@@ -25,15 +25,13 @@
 #include "grid/construction/GridFactory.h"
 
 namespace Serenity {
-using namespace std;
 
-AtomCenteredGridController::AtomCenteredGridController(const shared_ptr<const Geometry> geometry,
-                                                       const shared_ptr<GridFactory> gridFactory, const bool gridPointSorting)
+AtomCenteredGridController::AtomCenteredGridController(const std::shared_ptr<const Geometry> geometry,
+                                                       const std::shared_ptr<GridFactory> gridFactory,
+                                                       const bool gridPointSorting)
   : _geometry(geometry), _gridFactory(gridFactory), _gridPointSorting(gridPointSorting) {
   assert(_gridFactory);
-  for (auto atom : _geometry->getAtoms()) {
-    atom->addSensitiveObject(this->_self);
-  }
+  _geometry->addSensitiveObject(this->_self);
 }
 
 std::unique_ptr<AtomCenteredGrid> AtomCenteredGridController::getAtomGrid() {

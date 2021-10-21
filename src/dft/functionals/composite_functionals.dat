@@ -1,5 +1,5 @@
 # @file   composite_functionals.dat
-# @date   Sep 3, 2002
+# @date   Sep 3, 2020
 # @author Jan Unsleber
 # @copyright
 #  This file is part of the program Serenity.
@@ -19,10 +19,10 @@
 #
 #  This file contains the names of all composite functionals
 #  known to Serenity. Each of these functionals has to appear
-#  in the functional_definitions.dat aswell.
+#  in the functional_definitions.dat as well.
 #
 #  The functionals are listed with
-#  1. Their name (unique, translated into and enum member)
+#  1. Their name (unique, translated into an enum member)
 #  2. Their class (XC, K or NONE)
 #  3. Their string representations/aliases
 #     (the first one always being the literal enum name).
@@ -35,6 +35,7 @@ VWN5         XC   VWN5
 LDAERF       XC   LDAERF LDA_ERF LDA-ERF
 LDAERF_JT    XC   LDAERF_JT LDAERFJT LDA_ERF_JT LDA-ERF-JT
 LDA          XC   LDA
+HARTREE      XC   HARTREE
 B97          XC   B97
 B97_1        XC   B97_1 B97-1
 B97_2        XC   B97_2 B97-2
@@ -46,6 +47,7 @@ KT1          XC   KT1
 KT2          XC   KT2
 KT3          XC   KT3
 PW91         XC   PW91
+BHLYP        XC   BHLYP
 PBE0         XC   PBE0
 B3LYP        XC   B3LYP
 B3LYP_G      XC   B3LYP_G B3LYP-G
@@ -55,6 +57,7 @@ BPW91        XC   BPW91
 CAMB3LYP     XC   CAMB3LYP CAM-B3LYP CAM_B3LYP
 LCBLYP       XC   LCBLYP
 LCBLYP_047   XC   LCBLYP_047 LCBLYP-047
+LCBLYP_100   XC   LCBLYP_100 LCBLYP-100
 B2PLYP       XC   B2PLYP
 B2KPLYP      XC   B2KPLYP
 B2TPLYP      XC   B2TPLYP

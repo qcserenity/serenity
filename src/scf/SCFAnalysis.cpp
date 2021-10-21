@@ -26,94 +26,174 @@
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/DensityMatrixDensityOnGridController.h"
 #include "data/grid/DensityOnGridCalculator.h"
-#include "data/matrices/CoefficientMatrix.h"
-#include "data/matrices/DensityMatrixController.h"
+#include "data/grid/DensityOnGridFactory.h"
+#include "data/grid/SupersystemDensityOnGridController.h"
 #include "data/matrices/MatrixInBasis.h"
 #include "energies/EnergyContributions.h"
+#include "geometry/Geometry.h"
+#include "grid/GridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
+#include "settings/ElectronicStructureOptions.h"
 #include "settings/Settings.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES T>
-SCFAnalysis<T>::SCFAnalysis(std::shared_ptr<SystemController> systemController,
-                            std::shared_ptr<OneElectronIntegralController> oneIntController,
-                            std::shared_ptr<EnergyComponentController> energyController)
-  : _systemController(systemController), _oneIntController(oneIntController), _energyController(energyController) {
+SCFAnalysis<T>::SCFAnalysis(std::vector<std::shared_ptr<SystemController>> systemController,
+                            std::shared_ptr<GridController> supersystemGrid)
+  : _systemController(systemController), _supersystemGrid(supersystemGrid) {
 }
 
 template<>
-double SCFAnalysis<Options::SCF_MODES::RESTRICTED>::S2() {
+double SCFAnalysis<Options::SCF_MODES::RESTRICTED>::S2(bool useUHForbitals) {
+  (void)useUHForbitals; // no warnings
   return 0.0;
 }
 
 template<>
-double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::S2() {
-  double S = 0.5 * _systemController->getSpin();
-  if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    //
-    // Calculate <S*S> as functional of density
-    //
-
-    // Calculate spin density
-    auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
-        _systemController->getSettings(), _systemController->getBasisController(), _systemController->getGridController());
-    auto densityOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::UNRESTRICTED>>(
-        basisFunctionOnGridController, _systemController->getSettings().grid.blockAveThreshold);
-    auto densityMatrixController = std::make_shared<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>>(
-        _systemController->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>(),
-        _systemController->getNOccupiedOrbitals<Options::SCF_MODES::UNRESTRICTED>());
-    auto densityOnGridController = std::make_shared<DensityMatrixDensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>(
-        densityOnGridCalculator, densityMatrixController);
-    auto& densityOnGrid = densityOnGridController->getDensityOnGrid();
-    Eigen::VectorXd spinDensity = densityOnGrid.alpha - densityOnGrid.beta;
-
-    // Integrage over all regions where spin density is negative
-    for (unsigned int i = 0; i < spinDensity.rows(); ++i) {
-      if (spinDensity(i) > 0)
-        spinDensity(i) = 0.0;
+double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::S2(bool useUHForbitals) {
+  /*
+   * Calculate physical <S*S>
+   */
+  double S = 0.0;
+  double integral = 0.0;
+  if (_systemController.size() == 1) {
+    S = 0.5 * _systemController[0]->getSpin();
+  }
+  else {
+    for (unsigned int i = 0; i < _systemController.size(); i++) {
+      S += 0.5 * _systemController[i]->getSpin();
     }
-    double integral = spinDensity.dot(_systemController->getGridController()->getWeights());
+  }
+
+  /*
+   * Calculate <S*S> as functional of density
+   */
+  if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT and useUHForbitals == false) {
+    // Calculate spin density
+    std::shared_ptr<DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>> densityOnGridController(nullptr);
+    /*
+     * Supersystem Calculation
+     */
+    if (_systemController.size() == 1) {
+      auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
+          _systemController[0]->getSettings(), _systemController[0]->getBasisController(),
+          _systemController[0]->getGridController());
+      auto densityOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::UNRESTRICTED>>(
+          basisFunctionOnGridController, _systemController[0]->getSettings().grid.blockAveThreshold);
+      auto densityMatrixController = std::make_shared<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>>(
+          _systemController[0]->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>(),
+          _systemController[0]->getNOccupiedOrbitals<Options::SCF_MODES::UNRESTRICTED>());
+      densityOnGridController = std::make_shared<DensityMatrixDensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>(
+          densityOnGridCalculator, densityMatrixController);
+      auto& densityOnGrid = densityOnGridController->getDensityOnGrid();
+      Eigen::VectorXd spinDensity = densityOnGrid.alpha - densityOnGrid.beta;
+
+      // Integrate over all regions where spin density is negative
+      for (unsigned int i = 0; i < spinDensity.rows(); ++i) {
+        if (spinDensity(i) > 0)
+          spinDensity(i) = 0.0;
+      }
+      integral = spinDensity.dot(_systemController[0]->getGridController()->getWeights());
+    }
+    /*
+     * Subsystem Calculation
+     */
+    else {
+      if (_supersystemGrid == nullptr) {
+        auto superSystemGeometry = std::make_shared<Geometry>();
+        for (unsigned int i = 0; i < _systemController.size(); i++) {
+          *superSystemGeometry += *_systemController[i]->getGeometry();
+        }
+        superSystemGeometry->deleteIdenticalAtoms();
+        // supersystem grid
+        Options::GRID_PURPOSES gridacc = Options::GRID_PURPOSES::DEFAULT;
+        _supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _systemController[0]->getSettings(), gridacc);
+      }
+
+      std::vector<std::shared_ptr<DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>> _densOnGridControllers;
+      for (unsigned int i = 0; i < _systemController.size(); i++) {
+        auto dens = DensityOnGridFactory<Options::SCF_MODES::UNRESTRICTED>::produce(
+            _systemController[i]->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController(),
+            _supersystemGrid, 1, _systemController[0]->getSettings());
+        _densOnGridControllers.push_back(dens);
+      }
+      densityOnGridController =
+          std::make_shared<SupersystemDensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>(_densOnGridControllers);
+      auto& densityOnGrid = densityOnGridController->getDensityOnGrid();
+      Eigen::VectorXd spinDensity = densityOnGrid.alpha - densityOnGrid.beta;
+
+      // Integrate over all regions where spin density is negative
+      for (unsigned int i = 0; i < spinDensity.rows(); ++i) {
+        if (spinDensity(i) > 0)
+          spinDensity(i) = 0.0;
+      }
+      integral = spinDensity.dot(_supersystemGrid->getWeights());
+    }
 
     return S * (S + 1) - integral;
+
+    /*
+     * Calculate <S*S> from UHF orbitals
+     */
   }
-  else if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-    //
-    // Calculate <S*S> from UHF orbitals
-    //
-    auto overlap = _oneIntController->getOverlapIntegrals();
-    auto nEl = _systemController->getNElectrons<Options::SCF_MODES::UNRESTRICTED>();
-    auto coeff = _systemController->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>()->getCoefficients();
-    Eigen::MatrixXd Sab = coeff.alpha.block(0, 0, overlap.rows(), nEl.alpha).transpose() * overlap *
-                          coeff.beta.block(0, 0, overlap.rows(), nEl.beta);
-    return S * (S + 1) + nEl.beta - Sab.array().square().sum();
+  else if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF or useUHForbitals == true) {
+    /*
+     * Supersystem Calculation
+     */
+    if (_systemController.size() == 1) {
+      auto overlap = _systemController[0]->getOneElectronIntegralController()->getOverlapIntegrals();
+      auto nEl = _systemController[0]->getNElectrons<Options::SCF_MODES::UNRESTRICTED>();
+      auto coeff = _systemController[0]->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>()->getCoefficients();
+      Eigen::MatrixXd Sab = coeff.alpha.block(0, 0, overlap.rows(), nEl.alpha).transpose() * overlap *
+                            coeff.beta.block(0, 0, overlap.rows(), nEl.beta);
+      return S * (S + 1) + nEl.beta - Sab.array().square().sum();
+    }
+    else {
+      throw SerenityError(
+          "No method implemented for the calculation of <S*S> from UHF orbitals for a subsystem approach");
+      assert(false);
+    }
   }
-  throw SerenityError("SCFAnalysis: No analysis available for the requested method.");
+  else {
+    throw SerenityError("SCFAnalysis: No analysis available for the requested method.");
+    assert(false);
+  }
 }
 
 template<Options::SCF_MODES T>
 double SCFAnalysis<T>::VirialRatio() {
-  // Calculate kinetic energy
-  auto& libint = Libint::getInstance();
-  Eigen::MatrixXd TInts = libint.compute1eInts(libint2::Operator::kinetic, _systemController->getBasisController());
-  auto P = _systemController->getElectronicStructure<T>()->getDensityMatrix();
-  double TEnergy = 0.0;
-  for_spin(P) {
-    TEnergy += TInts.cwiseProduct(P_spin).sum();
-  };
-  // Calculate potential energy
-  double VEnergy = 0.0;
-  if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    VEnergy = _energyController->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY) - TEnergy;
-  }
-  else if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-    VEnergy = _energyController->getEnergyComponent(ENERGY_CONTRIBUTIONS::HF_ENERGY) - TEnergy;
+  if (_systemController.size() == 1) {
+    // Calculate kinetic energy
+    auto& libint = Libint::getInstance();
+    Eigen::MatrixXd TInts = libint.compute1eInts(LIBINT_OPERATOR::kinetic, _systemController[0]->getBasisController());
+    auto P = _systemController[0]->getElectronicStructure<T>()->getDensityMatrix();
+    double TEnergy = 0.0;
+    for_spin(P) {
+      TEnergy += TInts.cwiseProduct(P_spin).sum();
+    };
+    // Calculate potential energy
+    double VEnergy = 0.0;
+    if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+      VEnergy = _systemController[0]->getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+                    ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY) -
+                TEnergy;
+    }
+    else if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+      VEnergy = _systemController[0]->getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+                    ENERGY_CONTRIBUTIONS::HF_ENERGY) -
+                TEnergy;
+    }
+    else {
+      assert(false);
+    }
+
+    return -1.0 * VEnergy / TEnergy;
   }
   else {
     assert(false);
+    return 0.0;
   }
-
-  return -1.0 * VEnergy / TEnergy;
 }
 
 template class SCFAnalysis<Options::SCF_MODES::RESTRICTED>;

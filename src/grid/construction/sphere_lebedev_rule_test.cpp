@@ -24,7 +24,6 @@
 #include <cmath>
 
 namespace Serenity {
-using namespace std;
 
 /**
  * @class AtomGridFactoryTest
@@ -37,10 +36,10 @@ class LebedevSphereTest : public ::testing::Test {
 
   virtual ~LebedevSphereTest() = default;
 
-  vector<double> sphX;
-  vector<double> sphY;
-  vector<double> sphZ;
-  vector<double> sphW;
+  std::vector<double> sphX;
+  std::vector<double> sphY;
+  std::vector<double> sphZ;
+  std::vector<double> sphW;
 };
 
 /**

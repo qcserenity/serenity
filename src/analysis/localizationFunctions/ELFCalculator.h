@@ -23,7 +23,6 @@
 
 /* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h"
-#include "system/SystemController.h"
 #include "tasks/Task.h"
 
 namespace Serenity {
@@ -31,6 +30,8 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 class GridData;
 class SystemController;
+class GridController;
+class AtomCenteredBasisController;
 
 /**
  * @class ELFCalculator ELFCalculator.h
@@ -136,7 +137,7 @@ class ELFCalculator {
 
  private:
   std::shared_ptr<SystemController> _systemController;
-  std::shared_ptr<AtomCenteredBasisController> _basisController = _systemController->getAtomCenteredBasisController();
+  std::shared_ptr<AtomCenteredBasisController> _basisController;
 };
 } /* namespace Serenity */
 #endif /* POSTSCF_LOCALIZATIONFUNCTIONS_ELFCALCULATOR_H_ */

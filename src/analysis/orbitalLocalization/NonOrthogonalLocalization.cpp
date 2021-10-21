@@ -21,6 +21,7 @@
 /* Include Class Header*/
 #include "analysis/orbitalLocalization/NonOrthogonalLocalization.h"
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"                                    //Loop shells.
 #include "data/OrbitalController.h"                         // OrbitalController
 #include "data/grid/BasisFunctionOnGridControllerFactory.h" // BasisFunctionOnGridControllerFactory
 #include "data/matrices/CoefficientMatrix.h"                // CoefficientMatrix
@@ -66,12 +67,12 @@ void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbita
   std::vector<Matrix<double>> quadrupoles(3, IntMatrix);
 
   auto& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::emultipole2, 0, 2);
+  libint.initialize(LIBINT_OPERATOR::emultipole2, 0, 2);
 
   for (unsigned int i = 0; i < basis.size(); i++) {
     for (unsigned int j = 0; j < basis.size(); j++) {
       Eigen::MatrixXd quadrupoleInts;
-      libint.compute(libint2::Operator::emultipole2, 0, *basis[i], *basis[j], quadrupoleInts);
+      libint.compute(LIBINT_OPERATOR::emultipole2, 0, *basis[i], *basis[j], quadrupoleInts);
       for (unsigned int k = 0; k < basis[i]->getNContracted(); k++) {
         auto mu = basisController->extendedIndex(i) + k;
         for (unsigned int l = 0; l < basis[j]->getNContracted(); l++) {
@@ -87,7 +88,7 @@ void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbita
       }
     }
   };
-  libint.finalize(libint2::Operator::emultipole2, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::emultipole2, 0, 2);
   /*
    * AO dipole Integrals -> MO dipole Integrals
    */

@@ -32,11 +32,12 @@
 #include "integrals/RI_J_IntegralControllerFactory.h"     //Used as dummy for metric inversion/llT
 #include "integrals/looper/CoulombInteractionIntLooper.h" //Loop integrals.
 #include "integrals/looper/TwoElecThreeCenterIntLooper.h" //Loop integrals.
+#include "integrals/wrappers/Libint.h"                    //getSharedPtr()
 #include "io/FormattedOutputStream.h"                     //Filtered output streams.
 #include "io/HDF5.h"                                      //HDF5 IO
 #include "misc/Timing.h"                                  //Timings.
 #include "potentials/CoulombPotential.h"                  //Gradient construction. Substract intra-subsystem part.
-#include "settings/Settings.h"                            //Settings.
+#include "settings/Settings.h"                            //Settings definition (gradients only).
 #include "system/SystemController.h"                      //Settings and getElectronicStructure
 /* Include Std and External Headers */
 #include <sys/stat.h> //Check for an already existing file on disk.
@@ -67,7 +68,7 @@ CoulombInteractionPotential<SCFMode>::CoulombInteractionPotential(
     bas->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   }
   _mode = Options::DENS_FITS::RI;
-  _fBaseName = actSystem->getSettings().path + actSystem->getSystemName();
+  _fBaseName = actSystem->getSystemPath() + actSystem->getSystemName();
   Timings::timeTaken("FDE -        Coulomb Pot.");
 };
 
@@ -90,7 +91,7 @@ CoulombInteractionPotential<SCFMode>::CoulombInteractionPotential(
     mat->getDensityMatrix().getBasisController()->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   }
   _mode = Options::DENS_FITS::NONE;
-  _fBaseName = actSystem->getSettings().path + actSystem->getSystemName();
+  _fBaseName = actSystem->getSystemPath() + actSystem->getSystemName();
   Timings::timeTaken("FDE -        Coulomb Pot.");
 };
 
@@ -117,7 +118,7 @@ bool CoulombInteractionPotential<SCFMode>::fromHDF5() {
       // Note: This lines will enforce a recalculation for old/wrong id
       // files. If you want to reuse old Fock matrices. You could try to remove
       // this check.
-      HDF5::check_attribute(file, "ID", actSystem->getSettings().identifier);
+      HDF5::check_attribute(file, "ID", actSystem->getSystemIdentifier());
     }
     catch (...) {
       return false;
@@ -143,7 +144,7 @@ void CoulombInteractionPotential<RESTRICTED>::toHDF5() {
   std::string fileName = _fBaseName + ".pasCoulomb.h5";
   HDF5::H5File file(fileName.c_str(), H5F_ACC_TRUNC);
   HDF5::save(file, "passiveCoulombContribution", *_potential);
-  HDF5::save_scalar_attribute(file, "ID", actSystem->getSettings().identifier);
+  HDF5::save_scalar_attribute(file, "ID", actSystem->getSystemIdentifier());
   file.close();
 }
 template<>
@@ -152,7 +153,7 @@ void CoulombInteractionPotential<UNRESTRICTED>::toHDF5() {
   std::string fileName = _fBaseName + ".pasCoulomb.h5";
   HDF5::H5File file(fileName.c_str(), H5F_ACC_TRUNC);
   HDF5::save(file, "passiveCoulombContribution", _potential->alpha);
-  HDF5::save_scalar_attribute(file, "ID", actSystem->getSettings().identifier);
+  HDF5::save_scalar_attribute(file, "ID", actSystem->getSystemIdentifier());
   file.close();
 }
 
@@ -177,144 +178,129 @@ void CoulombInteractionPotential<SCFMode>::calculateFockMatrix() {
     F_spin.setZero();
   };
 
+  unsigned nb_act = this->_basis->getNBasisFunctions();
+
   BasisFunctionMapper basisMapper(this->_basis);
   BasisFunctionMapper auxBasisMapper(_actAuxBasis);
+  unsigned int nThreads = omp_get_max_threads();
+
+  double screening = _actSystem.lock()->getSettings().basis.integralThreshold;
+  double screeningAct = (screening != 0) ? screening : this->_basis->getPrescreeningThreshold();
+
   if (_mode == Options::DENS_FITS::RI) {
     for (unsigned int i = 0; i < _envDMatController.size(); ++i) {
-      // active
-      auto nActAuxBasFunc = _actAuxBasis->getNBasisFunctions();
+      std::vector<MatrixInBasis<RESTRICTED>> fock_threads(nThreads, MatrixInBasis<RESTRICTED>(this->_basis));
+
       auto envBasis = _envDMatController[i]->getDensityMatrix().getBasisController();
       auto envAuxBasis = _envAuxBasis[i];
-      // env
-      auto envDensityMatrix = _envDMatController[i]->getDensityMatrix().total();
-      // super system
-      auto superSystemBasisController = basisMapper.getCombinedBasis(envBasis);
-      auto superSystemAuxBasisController = auxBasisMapper.getCombinedBasis(envAuxBasis);
-      auto differentialAuxBasisController = auxBasisMapper.getDifferentialBasis(envAuxBasis);
-      const unsigned int nDiffAuxBasisFunc =
-          (differentialAuxBasisController) ? differentialAuxBasisController->getNBasisFunctions() : 0;
 
-#ifdef _OPENMP
-      // create a vector of matrices for each thread
-      Eigen::MatrixXd sumMat(nActAuxBasFunc, omp_get_max_threads());
-      std::vector<MatrixInBasis<RESTRICTED>> eriContr(omp_get_max_threads(), MatrixInBasis<RESTRICTED>(this->_basis));
-#else
-      // or just one
-      Eigen::MatrixXd sumMat(nActAuxBasFunc, 1);
-      std::vector<MatrixInBasis<RESTRICTED>> eriContr(1, MatrixInBasis<RESTRICTED>(this->_basis));
-      eriContr[0].setZero();
-#endif
-      sumMat.setZero();
+      MatrixInBasis<RESTRICTED> envDensityMatrix = _envDMatController[i]->getDensityMatrix().total();
+      auto densptr = envDensityMatrix.data();
+      unsigned nb_env = envDensityMatrix.rows();
 
-#ifdef _OPENMP
-      Eigen::MatrixXd sumMatEnv(nDiffAuxBasisFunc, omp_get_max_threads());
-#else
-      Eigen::MatrixXd sumMatEnv(nDiffAuxBasisFunc, 1);
-#endif
-      auto ri_j_IntController =
-          RI_J_IntegralControllerFactory::getInstance().produce(superSystemBasisController, superSystemAuxBasisController);
-      TwoElecThreeCenterIntLooper looper1(libint2::Operator::coulomb, 0, envBasis, _actAuxBasis, 1E-10);
-      auto const loopEvalFunction1 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                         Eigen::VectorXd& integral, const unsigned int threadId) {
-        const double perm = (i == j ? 1.0 : 2.0);
-        sumMat(K, threadId) += perm * integral[0] * envDensityMatrix(i, j);
+      auto maxDens = envDensityMatrix.shellWiseAbsMax();
+      auto maxDensPtr = maxDens.data();
+      unsigned ns = maxDens.rows();
+
+      // Environment prescreening threshold.
+      double screeningEnv = (screening != 0) ? screening : envBasis->getPrescreeningThreshold();
+
+      // Supersystem basis controller.
+      auto superSystemBasis = basisMapper.getCombinedBasis(envBasis);
+      auto superSystemAuxBasis = auxBasisMapper.getCombinedBasis(envAuxBasis);
+      unsigned nx = superSystemAuxBasis->getNBasisFunctions();
+      Eigen::MatrixXd sumMat = Eigen::MatrixXd::Zero(nx, nThreads);
+      auto sumptr = sumMat.data();
+
+      auto ri_j_IntController = RI_J_IntegralControllerFactory::getInstance().produce(superSystemBasis, superSystemAuxBasis);
+
+      // Distribute function for first contraction.
+      auto distribute1 = [&](unsigned i, unsigned j, unsigned K, double integral, unsigned threadId) {
+        double perm = (i == j ? 1.0 : 2.0);
+        sumptr[nx * threadId + K] += perm * integral * densptr[i * nb_env + j];
       };
-      looper1.loop(loopEvalFunction1);
-      Eigen::VectorXd sumPMuNu_DMuNuAct = sumMat.rowwise().sum();
+
+      // Prescreening function for first contraction.
+      auto prescreen1 = [&](unsigned i, unsigned j, unsigned, double schwarz) {
+        unsigned long ij = i * ns + j;
+        return (maxDensPtr[ij] * schwarz < screeningEnv);
+      };
+
+      // Perform first contraction.
+      TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, envBasis, superSystemAuxBasis, screeningEnv);
+      looper1.loopNoDerivative(distribute1, prescreen1);
+
+      // Solve linear system.
+      Eigen::VectorXd sumPMuNu_DMuNu = sumMat.rowwise().sum();
       sumMat.resize(1, 1);
-      Eigen::VectorXd sumPMuNu_DMuNu(sumPMuNu_DMuNuAct.rows() + nDiffAuxBasisFunc);
-      if (differentialAuxBasisController) {
-        sumMatEnv.setZero();
-        TwoElecThreeCenterIntLooper looper2(libint2::Operator::coulomb, 0, envBasis, differentialAuxBasisController, 1E-10);
-        auto const loopEvalFunction2 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                           Eigen::VectorXd& integral, const unsigned int threadId) {
-          const double perm = (i == j ? 1.0 : 2.0);
-          sumMatEnv(K, threadId) += perm * integral[0] * envDensityMatrix(i, j);
-        };
-        looper2.loop(loopEvalFunction2);
-        Eigen::VectorXd sumPMuNu_DMuNuEnv = sumMatEnv.rowwise().sum();
-        sumMatEnv.resize(1, 1);
-        sumPMuNu_DMuNu << sumPMuNu_DMuNuAct, sumPMuNu_DMuNuEnv;
-      }
-      else {
-        sumPMuNu_DMuNu << sumPMuNu_DMuNuAct;
-      }
       Eigen::VectorXd coefficients = ri_j_IntController->getLLTMetric().solve(sumPMuNu_DMuNu).eval();
-      TwoElecThreeCenterIntLooper looper3(libint2::Operator::coulomb, 0, this->_basis, _actAuxBasis, 1E-10);
-      auto const loopEvalFunction3 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                         Eigen::VectorXd& integral, const unsigned int threadID) {
-        eriContr[threadID](i, j) += integral[0] * coefficients(K);
-        if (i != j) {
-          eriContr[threadID](j, i) += integral[0] * coefficients(K);
-        }
+
+      // Distribute function for second contraction.
+      auto coeff = coefficients.data();
+      auto coeffMax = superSystemAuxBasis->shellWiseAbsMax(coefficients);
+      auto distribute2 = [&](unsigned i, unsigned j, unsigned K, double integral, unsigned threadId) {
+        // Only perform half the needed contractions and symmetrize afterwards.
+        fock_threads[threadId].data()[i * nb_act + j] += integral * coeff[K];
       };
-      looper3.loop(loopEvalFunction3);
-      if (differentialAuxBasisController) {
-        TwoElecThreeCenterIntLooper looper4(libint2::Operator::coulomb, 0, this->_basis, differentialAuxBasisController, 1E-10);
-        auto const loopEvalFunction4 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
-                                           Eigen::VectorXd& integral, const unsigned int threadID) {
-          eriContr[threadID](i, j) += integral[0] * coefficients(K + nActAuxBasFunc);
-          if (i != j) {
-            eriContr[threadID](j, i) += integral[0] * coefficients(K + nActAuxBasFunc);
-          }
-        };
-        looper4.loop(loopEvalFunction4);
+
+      // Prescreening function for second contraction.
+      auto prescreen2 = [&](unsigned, unsigned, unsigned K, double schwarz) {
+        return (coeffMax(K) * schwarz < screening);
+      };
+
+      // Perform second contraction.
+      TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, this->_basis, superSystemAuxBasis, screeningAct);
+      looper2.loopNoDerivative(distribute2, prescreen2);
+
+      // Add to Fock matrix.
+      Eigen::Ref<Eigen::MatrixXd> Fc = fock_threads[0];
+      for (unsigned i = 1; i < nThreads; i++) {
+        Fc += fock_threads[i];
       }
-#ifdef _OPENMP
-      // sum over all threads
-      for (int t = 0; t < omp_get_max_threads(); ++t) {
-        for_spin(F) {
-          F_spin += eriContr[t];
-        };
-      }
-#endif
+      Eigen::MatrixXd Fc_sym = Fc + Fc.transpose();
+      // The diagonal was fine, so it needs to be halved.
+      Fc_sym.diagonal() *= 0.5;
+      for_spin(F) {
+        F_spin += Fc_sym;
+      };
     }
   }
   else {
     for (unsigned int i = 0; i < _envDMatController.size(); ++i) {
-#ifdef _OPENMP
-      // create a vector of matrices for each thread
-      std::vector<MatrixInBasis<RESTRICTED>> eriContr;
-      for (int t = 0; t < omp_get_max_threads(); ++t) {
-        eriContr.push_back(MatrixInBasis<RESTRICTED>(this->_basis));
-        eriContr[t].setZero();
-      }
-#else
-      // or just one
-      std::vector<MatrixInBasis> eriContr(1, MatrixInBasis(this->_basis));
-      eriContr[0].setZero();
-#endif
+      std::vector<MatrixInBasis<RESTRICTED>> eriContr(nThreads, MatrixInBasis<RESTRICTED>(this->_basis));
       auto envMat = _envDMatController[i]->getDensityMatrix().total();
-      CoulombInteractionIntLooper coulLooper(libint2::Operator::coulomb, 0, this->_basis, envMat.getBasisController(), 1E-10);
+      double screeningEnv = (screening != 0) ? screening : envMat.getBasisController()->getPrescreeningThreshold();
+      double minPrescreeningActEnv = std::min(screeningAct, screeningEnv);
 
+      CoulombInteractionIntLooper coulLooper(LIBINT_OPERATOR::coulomb, 0, this->_basis, envMat.getBasisController(),
+                                             minPrescreeningActEnv);
+      const auto maxDens = envMat.shellWiseAbsMax();
+
+      auto prescreen = [&](const unsigned, const unsigned, unsigned int a, unsigned int b, const double schwartz) {
+        return (std::abs(maxDens(a, b) * schwartz) < minPrescreeningActEnv);
+      };
       auto const coulLooperFunction = [&eriContr, &envMat](const unsigned int& i, const unsigned int& j,
                                                            const unsigned int& a, const unsigned int& b,
                                                            double intValues, const unsigned int& threadID) {
         double perm = 1.0;
-        if (a != b)
+        if (a != b) {
           perm *= 2.0;
-        /*
-         * Coulomb contribution
-         */
+        }
+
         const double coul = perm * envMat(a, b) * intValues;
         eriContr[threadID](i, j) += coul;
-        if (i != j)
+        if (i != j) {
           eriContr[threadID](j, i) += coul;
+        }
       };
-      coulLooper.loopNoDerivative(coulLooperFunction);
+      coulLooper.loopNoDerivative(coulLooperFunction, prescreen);
 
-#ifdef _OPENMP
       // sum over all threads
-      for (int t = 0; t < omp_get_max_threads(); ++t) {
+      for (const auto& eriCont : eriContr) {
         for_spin(F) {
-          F_spin += eriContr[t];
+          F_spin += eriCont;
         };
       }
-#else
-      for_spin(F) {
-        F_spin += eriContr[0];
-      };
-#endif
     }
   }
 }
@@ -328,28 +314,6 @@ FockMatrix<SCFMode>& CoulombInteractionPotential<SCFMode>::getMatrix() {
     calculateFockMatrix();
   Timings::timeTaken("FDE -        Coulomb Pot.");
   return *_potential;
-}
-
-template<Options::SCF_MODES T>
-std::vector<unsigned int> CoulombInteractionPotential<T>::createBasisToAtomIndexMapping(
-    const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed, unsigned int nBasisFunctionsRed) {
-  std::vector<unsigned int> mapping(nBasisFunctionsRed);
-  // Vector to check whether ALL basis function shells are assigned to an atom index
-  std::vector<bool> hasElementBeenSet(nBasisFunctionsRed, false);
-  for (unsigned int iAtom = 0; iAtom < basisIndicesRed.size(); ++iAtom) {
-    const unsigned int firstIndex = basisIndicesRed[iAtom].first;
-    const unsigned int endIndex = basisIndicesRed[iAtom].second;
-    for (unsigned int iShell = firstIndex; iShell < endIndex; ++iShell) {
-      mapping[iShell] = iAtom;
-      hasElementBeenSet[iShell] = true;
-    }
-  }
-  // Check
-  for (bool x : hasElementBeenSet) {
-    if (not x)
-      throw SerenityError("CoulombInteractionPotential: Missed basis function in mapping procedure.");
-  }
-  return mapping;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -377,10 +341,10 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
     eriContr.setZero();
 
     auto superSystemGeometry = std::make_shared<Geometry>(ActiveFrozenAtoms);
-    auto superSystemBasisController = AtomCenteredBasisControllerFactory::produce(
+    auto superSystemBasis = AtomCenteredBasisControllerFactory::produce(
         superSystemGeometry, actSystem->getSettings().basis.basisLibPath, actSystem->getSettings().basis.makeSphericalBasis,
         true, actSystem->getSettings().basis.firstECP, actSystem->getSettings().basis.label);
-    auto superSystemAuxBasisController = AtomCenteredBasisControllerFactory::produce(
+    auto superSystemAuxBasis = AtomCenteredBasisControllerFactory::produce(
         superSystemGeometry, actSystem->getSettings().basis.basisLibPath,
         actSystem->getSettings().basis.makeSphericalBasis, false, 999999999, actSystem->getSettings().basis.auxJLabel);
 
@@ -389,30 +353,25 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
     auto basisController = actSystem->getAtomCenteredBasisController();
     auto auxBasisController = actSystem->getAtomCenteredBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
     auto& auxBasisFunctions = auxBasisController->getBasis();
-    unsigned int nBasisFunctionsRed = basisController->getReducedNBasisFunctions();
     auto basisIndicesRed = actSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
-    auto mapping = createBasisToAtomIndexMapping(basisIndicesRed, nBasisFunctionsRed);
+    auto mapping = basisController->getAtomIndicesOfBasisShells();
     auto nAuxBasFunc = auxBasisController->getNBasisFunctions();
-    auto nAuxBasFuncRed = auxBasisController->getReducedNBasisFunctions();
     auto auxBasisIndicesRed = auxBasisController->getBasisIndicesRed();
-    auto auxMapping = createBasisToAtomIndexMapping(auxBasisIndicesRed, nAuxBasFuncRed);
+    auto auxMapping = auxBasisController->getAtomIndicesOfBasisShells();
 
     // Environment
     auto basisControllerEnv = envSystem->getAtomCenteredBasisController();
     auto auxBasisControllerEnv = envSystem->getAtomCenteredBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
     auto& auxBasisFunctionsEnv = auxBasisControllerEnv->getBasis();
-    unsigned int nBasisFunctionsRedEnv = basisControllerEnv->getReducedNBasisFunctions();
     auto basisIndicesRedEnv = envSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
-    auto mappingEnv = createBasisToAtomIndexMapping(basisIndicesRedEnv, nBasisFunctionsRedEnv);
+    auto mappingEnv = basisControllerEnv->getAtomIndicesOfBasisShells();
     auto nAuxBasFuncEnv = auxBasisControllerEnv->getNBasisFunctions();
-    auto nAuxBasFuncRedEnv = auxBasisControllerEnv->getReducedNBasisFunctions();
     auto auxBasisIndicesRedEnv = auxBasisControllerEnv->getBasisIndicesRed();
-    auto auxMappingEnv = createBasisToAtomIndexMapping(auxBasisIndicesRedEnv, nAuxBasFuncRedEnv);
+    auto auxMappingEnv = auxBasisControllerEnv->getAtomIndicesOfBasisShells();
     DensityMatrix<RESTRICTED> densityMatrixEnv =
         envSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix().total();
 
-    auto ri_j_IntController =
-        RI_J_IntegralControllerFactory::getInstance().produce(superSystemBasisController, superSystemAuxBasisController);
+    auto ri_j_IntController = RI_J_IntegralControllerFactory::getInstance().produce(superSystemBasis, superSystemAuxBasis);
     /*
      * Constructing the different parts of eq. ([1].[6]).
      *
@@ -432,27 +391,28 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
     std::vector<Eigen::VectorXd> CvecActPriv(1, Eigen::VectorXd::Zero(nAuxBasFunc));
     std::vector<Eigen::VectorXd> CvecEnvPriv(1, Eigen::VectorXd::Zero(nAuxBasFuncEnv));
 #endif
-
-    TwoElecThreeCenterIntLooper looper1(libint2::Operator::coulomb, 0, basisControllerEnv, auxBasisController, 1E-10);
-
+    double screening = _actSystem.lock()->getSettings().basis.integralThreshold;
+    double screeningEnv = (screening != 0) ? screening : basisControllerEnv->getPrescreeningThreshold();
+    TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, basisControllerEnv, auxBasisController, screeningEnv);
+    const auto maxDens = densityMatrixEnv.shellWiseAbsMax();
     auto const calcCVector1 = [&CvecActPriv, &densityMatrixEnv](const unsigned int& i, const unsigned int& j,
                                                                 const unsigned int& K, Eigen::VectorXd& intValues,
                                                                 const unsigned int threadId) {
       const double perm = (i == j ? 1.0 : 2.0);
       CvecActPriv[threadId][K] += perm * intValues(0) * densityMatrixEnv(i, j);
     };
-    looper1.loop(calcCVector1);
-
-    TwoElecThreeCenterIntLooper looper2(libint2::Operator::coulomb, 0, basisController, auxBasisController, 1E-10);
+    looper1.loop(calcCVector1, maxDens.maxCoeff());
+    double screeningAct = (screening != 0) ? screening : basisController->getPrescreeningThreshold();
+    TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, basisController, auxBasisController, screeningAct);
     auto const calcCVector2 = [&CvecActPriv, &densityMatrix](const unsigned int& i, const unsigned int& j,
                                                              const unsigned int& K, Eigen::VectorXd& intValues,
                                                              const unsigned int threadId) {
       const double perm = (i == j ? 1.0 : 2.0);
       CvecActPriv[threadId][K] += perm * intValues(0) * densityMatrix(i, j);
     };
-    looper2.loop(calcCVector2);
+    looper2.loop(calcCVector2, maxDens.maxCoeff());
 
-    TwoElecThreeCenterIntLooper looper3(libint2::Operator::coulomb, 0, basisController, auxBasisControllerEnv, 1E-10);
+    TwoElecThreeCenterIntLooper looper3(LIBINT_OPERATOR::coulomb, 0, basisController, auxBasisControllerEnv, screeningAct);
 
     auto const calcCVector3 = [&CvecEnvPriv, &densityMatrix](const unsigned int& i, const unsigned int& j,
                                                              const unsigned int& K, Eigen::VectorXd& intValues,
@@ -460,16 +420,16 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
       const double perm = (i == j ? 1.0 : 2.0);
       CvecEnvPriv[threadId][K] += perm * intValues(0) * densityMatrix(i, j);
     };
-    looper3.loop(calcCVector3);
+    looper3.loop(calcCVector3, maxDens.maxCoeff());
 
-    TwoElecThreeCenterIntLooper looper4(libint2::Operator::coulomb, 0, basisControllerEnv, auxBasisControllerEnv, 1E-10);
+    TwoElecThreeCenterIntLooper looper4(LIBINT_OPERATOR::coulomb, 0, basisControllerEnv, auxBasisControllerEnv, screeningEnv);
     auto const calcCVector4 = [&CvecEnvPriv, &densityMatrixEnv](const unsigned int& i, const unsigned int& j,
                                                                 const unsigned int& K, Eigen::VectorXd& intValues,
                                                                 const unsigned int threadId) {
       const double perm = (i == j ? 1.0 : 2.0);
       CvecEnvPriv[threadId][K] += perm * intValues(0) * densityMatrixEnv(i, j);
     };
-    looper4.loop(calcCVector4);
+    looper4.loop(calcCVector4, maxDens.maxCoeff());
     /*
      * Has to be merged to a supersystem C^J because calculating the inverse of the
      * 2c-integral matrix in parts gives nonsensical results.
@@ -503,7 +463,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
      *
      */
     Libint& libint = Libint::getInstance();
-    libint.initialize(libint2::Operator::coulomb, 1, 2);
+    libint.initialize(LIBINT_OPERATOR::coulomb, 1, 2);
 #ifdef _OPENMP
     // create a vector of matrices for each thread
     std::vector<Eigen::MatrixXd> eriContrPriv(omp_get_max_threads(), Eigen::MatrixXd::Zero(nAtoms, 3));
@@ -525,7 +485,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 #endif
         const unsigned int nAuxK = auxBasisFunctionsEnv[auxK]->getNContracted();
         unsigned int offauxK = auxBasisControllerEnv->extendedIndex(auxK);
-        if (libint.compute(libint2::Operator::coulomb, 1, *auxBasisFunctions[auxJ], *auxBasisFunctionsEnv[auxK], intDerivs)) {
+        if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasisFunctions[auxJ], *auxBasisFunctionsEnv[auxK], intDerivs)) {
           double perm = 1.0;
           Eigen::MatrixXd prefac =
               0.5 * perm * Dvec.segment(offauxJ, nAuxJ) * Dvec.segment(offauxK + nAuxBasFunc, nAuxK).transpose();
@@ -561,7 +521,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 #endif
         const unsigned int nAuxK = auxBasisFunctions[auxK]->getNContracted();
         unsigned int offauxK = auxBasisController->extendedIndex(auxK);
-        if (libint.compute(libint2::Operator::coulomb, 1, *auxBasisFunctionsEnv[auxJ], *auxBasisFunctions[auxK], intDerivs)) {
+        if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasisFunctionsEnv[auxJ], *auxBasisFunctions[auxK], intDerivs)) {
           double perm = 1.0;
 
           Eigen::MatrixXd prefac =
@@ -598,7 +558,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
 #endif
         const unsigned int nAuxK = auxBasisFunctions[auxK]->getNContracted();
         unsigned int offauxK = auxBasisController->extendedIndex(auxK);
-        if (libint.compute(libint2::Operator::coulomb, 1, *auxBasisFunctions[auxJ], *auxBasisFunctions[auxK], intDerivs)) {
+        if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasisFunctions[auxJ], *auxBasisFunctions[auxK], intDerivs)) {
           double perm = 1.0;
 
           Eigen::MatrixXd prefac = 0.5 * perm * Dvec.segment(offauxJ, nAuxJ) * Dvec.segment(offauxK, nAuxK).transpose();
@@ -621,7 +581,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
       }
     }
 
-    libint.finalize(libint2::Operator::coulomb, 1, 2);
+    libint.finalize(LIBINT_OPERATOR::coulomb, 1, 2);
 
     /*
      * The following set of loops calculates the complete 1st and 2nd part of eq ([1].[6])
@@ -632,8 +592,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
      * Has to be done twice in order to get the combinations
      * auxBasisEnv/Basis and auxBasis/BasisEnv.
      */
-
-    TwoElecThreeCenterIntLooper derivLooper2(libint2::Operator::coulomb, 1, basisControllerEnv, auxBasisController, 1E-10);
+    TwoElecThreeCenterIntLooper derivLooper2(LIBINT_OPERATOR::coulomb, 1, basisControllerEnv, auxBasisController, screeningEnv);
     auto const add3cDerivs2 = [&eriContrPriv, &Dvec, &densityMatrixEnv, &mappingEnv, &auxMapping, &basisControllerEnv,
                                &auxBasisController, &nAtomsAct](const unsigned int& i, const unsigned int& j,
                                                                 const unsigned int& K, Eigen::VectorXd& intValues,
@@ -658,9 +617,9 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
         }
       }
     };
-    derivLooper2.loop(add3cDerivs2);
+    derivLooper2.loop(add3cDerivs2, maxDens.maxCoeff());
 
-    TwoElecThreeCenterIntLooper derivLooper1(libint2::Operator::coulomb, 1, basisController, auxBasisControllerEnv, 1E-10);
+    TwoElecThreeCenterIntLooper derivLooper1(LIBINT_OPERATOR::coulomb, 1, basisController, auxBasisControllerEnv, screeningAct);
     auto const add3cDerivs1 = [&eriContrPriv, &Dvec, &densityMatrix, &mapping, &auxMappingEnv, &basisController,
                                &auxBasisControllerEnv, &nAtomsAct,
                                &nAuxBasFunc](const unsigned int& i, const unsigned int& j, const unsigned int& K,
@@ -685,9 +644,9 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
         }
       }
     };
-    derivLooper1.loop(add3cDerivs1);
+    derivLooper1.loop(add3cDerivs1, maxDens.maxCoeff());
 
-    TwoElecThreeCenterIntLooper derivLooper3(libint2::Operator::coulomb, 1, basisController, auxBasisController, 1E-10);
+    TwoElecThreeCenterIntLooper derivLooper3(LIBINT_OPERATOR::coulomb, 1, basisController, auxBasisController, screeningAct);
     auto const add3cDerivs3 = [&eriContrPriv, &Dvec, &densityMatrix, &mapping, &auxMapping, &basisController,
                                &auxBasisController](const unsigned int& i, const unsigned int& j, const unsigned int& K,
                                                     Eigen::VectorXd& intValues, const unsigned int threadId) {
@@ -711,7 +670,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
         }
       }
     };
-    derivLooper3.loop(add3cDerivs3);
+    derivLooper3.loop(add3cDerivs3, maxDens.maxCoeff());
 
 #ifdef _OPENMP
     for (unsigned int i = 0; i < (unsigned int)omp_get_max_threads(); ++i) {

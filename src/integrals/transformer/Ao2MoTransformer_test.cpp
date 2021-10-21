@@ -31,7 +31,6 @@
 #include <gtest/gtest.h>
 
 namespace Serenity {
-using namespace std;
 
 class Ao2MoTransformerTest : public ::testing::Test {
  protected:
@@ -51,7 +50,7 @@ TEST_F(Ao2MoTransformerTest, H2_Unrestricted) {
   auto nBasisFunc = basisController->getNBasisFunctions();
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coeffs =
       system->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getMolecularOrbitals()->getCoefficients();
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, 1E-10);
   RegularRankFourTensor<double> eris(nBasisFunc);
   Ao2MoTransformer aoToMo(basisController);
   RegularRankFourTensor<double> result(nBasisFunc, 0.0);

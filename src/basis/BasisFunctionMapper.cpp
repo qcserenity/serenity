@@ -20,6 +20,7 @@
 /* Include Class Header*/
 #include "basis/BasisFunctionMapper.h"
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"                 //Access shell info..
 #include "basis/BasisController.h"       //Basis construction from shell lists.
 #include "basis/CustomBasisController.h" //Basis construction from shell lists.
 #include "basis/Shell.h"                 //Basis construction from shell lists and shell comparison.

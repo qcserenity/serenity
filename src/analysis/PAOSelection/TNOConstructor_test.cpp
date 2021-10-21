@@ -84,7 +84,7 @@ TEST_F(TNOConstructorTest, Water) {
                           triple->getTNOCoefficients();
   Eigen::VectorXd f_TNO_diag = (p_ijk.transpose() * f * p_ijk).diagonal();
   diff = (triple->getTNOEigenvalues() - f_TNO_diag).array().abs().sum();
-  EXPECT_NEAR(0.0, diff, 1e-10);
+  EXPECT_NEAR(0.0, diff, 1e-7);
   SystemController__TEST_SUPPLY::cleanUp();
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }

@@ -31,7 +31,6 @@
 #include <stdio.h>
 
 namespace Serenity {
-using namespace std;
 
 ExportGridTask::ExportGridTask(const std::shared_ptr<SystemController> system) : _systemController(system) {
 }
@@ -49,7 +48,7 @@ void ExportGridTask::run() {
   auto indices = atomGrid->getGridIndicesOfAtoms();
   unsigned int nAtoms = _systemController->getGeometry()->getNAtoms();
   auto systemName = _systemController->getSystemName();
-  auto outptFile = fopen((_systemController->getSettings().path + systemName + ".grid").c_str(), "w");
+  auto outptFile = fopen((_systemController->getSystemPath() + systemName + ".grid").c_str(), "w");
   if (settings.withAtomInfo) {
     fprintf(outptFile, "# %4s  %10s  %16s  %16s  %16s\n", "Atom", "x", "y", "z", "w");
     for (unsigned int iAtom = 0; iAtom != nAtoms; ++iAtom) {

@@ -29,14 +29,13 @@
 #include <memory>           //smrt_ptr
 
 namespace Serenity {
-typedef std::vector<std::shared_ptr<OrbitalPair>> OrbitalPairSet;
-
 /* Forward Declarations */
 class BasisController;
 class AtomCenteredBasisController;
 class OrbitalPair;
 class QuasiCanonicalPAODomainConstructor;
 class MO3CenterIntegralController;
+class OrbitalPairSet;
 
 /**
  * @class Ao2MoExchangeIntegralTransformer Ao2MoExchangeIntegralTransformer.h
@@ -70,10 +69,14 @@ class Ao2MoExchangeIntegralTransformer {
    * @param auxBasisController The auxiliary basis controller.
    * @param mo3CenterIntegralController The MO 3 center integral controller.
    * @param orbitalPairs The orbital pairs.
+   * @param calcSigmaVectorInts Calculate the integrals necessary for the sigma vector construction.
+   * @param lowMemory A flag for low memory usage. 3-Center integrals are recalculated more often.
+   * @param memoryDemandForSet The memory demand for storing all four center integrals of the orbtial pair set.
    */
   static void transformAllIntegrals(std::shared_ptr<BasisController> auxBasisController,
                                     std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
-                                    std::vector<std::shared_ptr<OrbitalPair>>& orbitalPairs);
+                                    std::vector<std::shared_ptr<OrbitalPair>>& orbitalPairs, bool calcSigmaVectorInts,
+                                    bool lowMemory = false, double memoryDemandForSet = 0.0);
 
   /**
    * @brief Calculates all integrals needed for DLPNO-CCSD [except (ia|jb)].
@@ -82,10 +85,13 @@ class Ao2MoExchangeIntegralTransformer {
    * @param mo3CenterIntegralController The MO 3 center integral controller.
    * @param orbitalPairSets The orbital pairs as sets.
    * @param dumpIntegrals If true the integrals for each pair are written to disk.
+   * @param calcSigmaVectorInts Calculate the integrals necessary for the sigma vector construction.
+   * @param lowMemory A flag for low memory usage. 3-Center integrals are recalculated more often.
    */
   static void transformAllIntegrals(std::shared_ptr<BasisController> auxBasisController,
                                     std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
-                                    std::vector<OrbitalPairSet>& orbitalPairSets, bool dumpIntegrals);
+                                    std::vector<std::shared_ptr<OrbitalPairSet>> orbitalPairSets, bool dumpIntegrals,
+                                    std::string pairIntegralFileName, bool calcSigmaVectorInts, bool lowMemory = false);
 
   /**
    * @brief Calculates the two center integrals (K|Q).
@@ -126,60 +132,37 @@ class Ao2MoExchangeIntegralTransformer {
    */
 
   /**
-   * @brief Calculates the integrals (ac|bd), a,b,c,d in [ij].
-   */
-  static void calculate_acbd_integrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
-                                       const Eigen::LLT<Eigen::MatrixXd>& llt_metric,
-                                       const Eigen::SparseVector<int>& pairDomainToK,
-                                       const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                       const MO3CenterIntegrals& abK);
-  /**
-   * @brief Calculates the integrals:
+   * @brief Calculates the integrals with at least two virtual indices:
+   *  (ac|bd), a,b,c,d in [ij].
    *  (ka|bc) c in [ij],
    *  (ia|bc) c in [j],
    *  (ja|bc) c in [i],
    *  (ic|ab) c in [j],
-   *  (jc|ab) c in [i]
+   *  (jc|ab) c in [i],
+   *  (ij|ab) a,b in [ij]
    *  with a,b in [ij]
    */
-  static void calculate_kabcANDib_acANDjb_ac_integrals(std::shared_ptr<OrbitalPair> pair,
-                                                       std::shared_ptr<BasisController> auxBasisController,
-                                                       const Eigen::LLT<Eigen::MatrixXd>& llt_metric,
-                                                       const Eigen::SparseVector<int>& pairDomainToK,
-                                                       const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                                       const std::vector<Eigen::VectorXi>& reducedOccIndices,
-                                                       const MO3CenterIntegrals& abK, const MO3CenterIntegrals& iaK);
-
-  /**
-   * @brief Calculates the integrals
-   *  (ij|ab) a,b in [ij]
-   */
-  static void calculate_ijab_integrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
-                                       const Eigen::SparseVector<int>& pairDomainToK,
-                                       const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                       const MO3CenterIntegrals& abK, const Eigen::VectorXd& invV_ijK);
+  static void
+  calculate_2Virt_integrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
+                            const Eigen::LLT<Eigen::MatrixXd>& llt_metric, const Eigen::SparseVector<int>& pairDomainToK,
+                            const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+                            const MO3CenterIntegrals& m_abKs, const Eigen::SparseMatrix<double>& extendedPAODomainProjection_T,
+                            const Eigen::SparseMatrix<double>& extendedAuxProjectionMatrix_T,
+                            const Eigen::VectorXd& invV_ijK, const MO3CenterIntegrals& iaK,
+                            const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                            bool calcSigmaVectorInts, const MO3CenterIntegrals& abK);
 
   /**
    * @brief Calculates the integrals
    *  (ja|ik), (ia|jk), (ki|la) and (kj|la)
    *  with a in [ij].
    */
-  static void calculate_ikjaANDikjlANDkilaANDkjla_integrals(std::shared_ptr<OrbitalPair> pair,
-                                                            std::shared_ptr<BasisController> auxBasisController,
-                                                            const Eigen::LLT<Eigen::MatrixXd>& llt_metric,
-                                                            const Eigen::SparseVector<int>& pairDomainToK,
-                                                            const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                                            const std::vector<Eigen::VectorXi>& reducedOccIndices,
-                                                            const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& klK);
-  /**
-   * @brief Calculates the integrals
-   *  (ij|ka) with a in [ij]
-   */
-  static void calculate_ijka_integrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
-                                       const Eigen::SparseVector<int>& pairDomainToK,
-                                       const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                       const std::vector<Eigen::VectorXi>& reducedOccIndices,
-                                       const MO3CenterIntegrals& iaK, const Eigen::VectorXd& invV_ijK);
+  static void
+  calculate_3Occ_Integrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
+                           const Eigen::LLT<Eigen::MatrixXd>& llt_metric, const Eigen::SparseVector<int>& pairDomainToK,
+                           const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+                           const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                           const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& klK);
   /**
    * @brief Calculates the integrals over mixed PNO domains.
    *        Note: This is the most demanding step in the DLPNO-CCSD integral
@@ -190,12 +173,16 @@ class Ao2MoExchangeIntegralTransformer {
    *  (ja|kc) c in [ik],
    *  for all a in [ij]
    */
-  static void calculateMixedIntegrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
-                                      const MatrixInBasis<RESTRICTED>& metric,
-                                      const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                      const std::vector<Eigen::VectorXi>& reducedOccIndices, const SparseMap& occToK,
-                                      const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& abK,
-                                      const MO3CenterIntegrals& klK);
+  static void
+  calculateMixedIntegrals(std::shared_ptr<OrbitalPair> pair, std::shared_ptr<BasisController> auxBasisController,
+                          const MatrixInBasis<RESTRICTED>& metric,
+                          const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+                          const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                          const SparseMap& occToK, const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& klK,
+                          const Eigen::SparseMatrix<double>& extendedPAODomainProjection_T,
+                          const Eigen::SparseVector<int>& extendedAuxDomain,
+                          const Eigen::SparseMatrix<double>& extendedAuxProjectionMatrix_T,
+                          const std::vector<Eigen::MatrixXd>& mEx_amuQ, bool calcSigmaVectorInts);
 
   /**
    * @brief Calculates (ij|K)(K|Q)^(-1).
@@ -204,7 +191,8 @@ class Ao2MoExchangeIntegralTransformer {
   static Eigen::VectorXd
   calculate_invV_ijK(std::shared_ptr<OrbitalPair> pair, const Eigen::SparseVector<int>& pairDomainToK,
                      std::shared_ptr<BasisController> auxBasisController, const Eigen::LLT<Eigen::MatrixXd>& llt_metric,
-                     const std::vector<Eigen::VectorXi>& reducedOccIndices, const MO3CenterIntegrals& klK);
+                     const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                     const MO3CenterIntegrals& klK);
   /**
    * @brief Build a sparse projection matrix from the selected aux. domain to the full domain.
    * @param auxBasisController The auxiliary basis controller.
@@ -213,6 +201,29 @@ class Ao2MoExchangeIntegralTransformer {
    */
   static Eigen::SparseMatrix<double> buildSparseAuxProjection(std::shared_ptr<BasisController> auxBasisController,
                                                               const Eigen::SparseVector<int>& auxDomain);
+
+  /**
+   * @brief The integral list (ac|K) with a as the vector index is resorted to c as the vector index and c is
+   *        transformed to the given PNO basis.
+   * @param ints The initial integral list.
+   * @param toPNO The transformation for the second index.
+   * @param sparseProjection The PAO projection for the second index.
+   * @return The transformed and sorted integrals.
+   */
+  static MO3CenterIntegrals flipAndTransform(const MO3CenterIntegrals& ints, const Eigen::MatrixXd& toPNO,
+                                             const Eigen::SparseMatrix<double>& sparseProjection);
+  /**
+   * @brief The integral list (ac|K) with a as the vector index is resorted to c as the vector index and c is
+   *        transformed to the given PNO basis.
+   * @param ints The initial integral list.
+   * @param toPNO The transformation for the second index.
+   * @param sparseProjection The PAO projection for the second index.
+   * @param auxProjection The projection matrix to further reduce the auxiliary domain.
+   * @return The transformed and sorted integrals.
+   */
+  static MO3CenterIntegrals flipAndTransform(const MO3CenterIntegrals& ints, const Eigen::MatrixXd& toPNO,
+                                             const Eigen::SparseMatrix<double>& sparseProjection,
+                                             const Eigen::SparseMatrix<double>& auxProjection);
 
  public:
   /**
@@ -231,37 +242,57 @@ class Ao2MoExchangeIntegralTransformer {
   static std::vector<Eigen::MatrixXd>
   get_abK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux, const Eigen::SparseVector<int>& auxDomain,
           const Eigen::SparseMatrix<double>& projectionMatrix_a, const Eigen::SparseMatrix<double>& projectionMatrix_b,
-          const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps, const Eigen::MatrixXd& toPNO_a,
-          const Eigen::MatrixXd& toPNO_b, const MO3CenterIntegrals& abK);
+          const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+          const Eigen::MatrixXd& toPNO_a, const Eigen::MatrixXd& toPNO_b, const MO3CenterIntegrals& abK);
   /**
-   * @brief Extracts the integrals (ab|K) and (ac|K) from the linear scaling
-   *        integral list abK, where both integral sets are represented over
-   *        the same fitting domain.
-   *
-   *  Note: It is slightly faster to extract the (ab|K) and (ac|K) integrals
-   *        with this functions if both sets are needed instead of calling the
-   *        get_abK(...) function above twice.
-   *
+   * @brief Extracts the integrals (a mu|K) from the linear scaling integral list abK.
+   *        Only the index a (vector index) is transformed to the PNO basis.
    * @param auxBasisController The auxiliary basis controller.
    * @param nLocalAux The number of auxiliary basis functions.
    * @param auxDomain The fitting domain as a shell-wise list.
-   * @param projectionMatrix_a Projection to the important PAOs for PNOs a.
-   * @param projectionMatrix_b Projection to the important PAOs for PNOs b.
-   * @param projectionMatrix_c Projection to the important PAOs for PNOs c.
-   * @param k_PAOToFullPAOMaps Projection to the integrals calculated for a given aux. shell.
+   * @param projectionMatrix_a The local PAO projection matrix for the outer dimension.
+   * @param projectionMatrix_b The local PAO projection matrix for the inner dimension.
+   * @param k_PAOToFullPAOMaps PAO projection matrices for the integral lists.
    * @param toPNO_a The transformation to the PNO domain for the outer dimension (vector length).
-   * @param toPNO_b The transformation to the PNO domain for the inner dimension (matrix rows) of index b.
-   * @param toPNO_c The transformation to the PNO domain for the inner dimension (matrix rows) of index c.
    * @param abK The linear scaling integral list (ab|K)
-   * @return The (ab|K) and (ac|K) integrals over PNOs.
-   *         pair.first-->(ab|K) and pair.second-->(ac|K)
+   * @return The (ab|K) integrals over PNOs.
    */
-  static std::pair<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>>
-  get_abK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux,
-          const Eigen::SparseVector<int>& auxDomain, const Eigen::SparseMatrix<double>& projectionMatrix_a,
-          const Eigen::SparseMatrix<double>& projectionMatrix_b, const Eigen::SparseMatrix<double>& projectionMatrix_c,
-          const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps, const Eigen::MatrixXd& toPNO_a,
-          const Eigen::MatrixXd& toPNO_b, const Eigen::MatrixXd& toPNO_c, const MO3CenterIntegrals& abK);
+  static std::vector<Eigen::MatrixXd>
+  get_abK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux, const Eigen::SparseVector<int>& auxDomain,
+          const Eigen::SparseMatrix<double>& projectionMatrix_a, const Eigen::SparseMatrix<double>& projectionMatrix_b,
+          const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+          const Eigen::MatrixXd& toPNO_a, const MO3CenterIntegrals& abK);
+  /**
+   * @brief Extracts the integrals (a mu|K) from the linear scaling integral list abK
+   *        and the integrals (cd|K). For (a mu|K) only the index a (vector index) is
+   *        transformed to the PNO basis. For the list (cd|K), the set of Ks have to be
+   *        a subset of the aux. functions used for (a mu|K). The same applies for the
+   *        PAO sets used to expand the integral sets.
+   * @param auxBasisController The auxiliary basis controller.
+   * @param nLocalAux The number of auxiliary basis functions.
+   * @param auxDomain The fitting domain as a shell-wise list.
+   * @param projectionMatrix_a The local PAO projection matrix for the outer dimension.
+   * @param projectionMatrix_b The local PAO projection matrix for the inner dimension.
+   * @param projectionMatrix_c The local PAO projection matrix for the outer dimension of the second list.
+   * @param projectionMatrix_d The local PAO projection matrix for the inner dimension of the second list.
+   * @param k_PAOToFullPAOMaps PAO projection matrices for the integral lists.
+   * @param toPNO_a The transformation to the PNO domain for the outer dimension (vector length).
+   * @param toPNO_c The transformation to the PNO domain for the outer dimension (vector length) second list.
+   * @param toPNO_d The transformation to the PNO domain for the inner dimension second list.
+   * @param nLocalAuxQ The number of auxiliary basis functions of the second list.
+   * @param auxDomainQ The fitting domain as a shell-wise list for the second list.
+   * @param abK The linear scaling integral list (ab|K)
+   * @param cdK The second integral list to be filled.
+   * @return
+   */
+  static std::vector<Eigen::MatrixXd>
+  get_abK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux, const Eigen::SparseVector<int>& auxDomain,
+          const Eigen::SparseMatrix<double>& projectionMatrix_a, const Eigen::SparseMatrix<double>& projectionMatrix_b,
+          const Eigen::SparseMatrix<double>& projectionMatrix_c, const Eigen::SparseMatrix<double>& projectionMatrix_d,
+          const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps, const Eigen::MatrixXd& toPNO_a,
+          const Eigen::MatrixXd& toPNO_c, const Eigen::MatrixXd& toPNO_d, unsigned int nLocalAuxQ,
+          const Eigen::SparseVector<int>& auxDomainQ, const MO3CenterIntegrals& abK, MO3CenterIntegrals& cdK);
+
   /**
    * @brief Analogous to the function above. Extracts integrals (ia|K).
    * @param auxBasisController The auxiliary basis controller.
@@ -277,9 +308,44 @@ class Ao2MoExchangeIntegralTransformer {
    */
   static Eigen::MatrixXd get_iaK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux,
                                  const Eigen::SparseVector<int>& auxDomain, const Eigen::SparseMatrix<double>& projectionMatrix_a,
-                                 const std::vector<Eigen::SparseMatrix<double>>& k_PAOToFullPAOMaps,
-                                 const std::vector<Eigen::VectorXi>& reducedOccIndices, const Eigen::MatrixXd& toPNO_a,
-                                 const unsigned int i, const MO3CenterIntegrals& iaK);
+                                 const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+                                 const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                                 const Eigen::MatrixXd& toPNO_a, const unsigned int i, const MO3CenterIntegrals& iaK);
+  /**
+   * @brief Analogous to the function above. Extracts integrals (ia|K) for a set of i.
+   * @param auxBasisController The auxiliary basis controller.
+   * @param nLocalAux The number of auxiliary basis functions.
+   * @param auxDomain The fitting domain as a shell-wise list.
+   * @param projectionMatrix_a Projection to the important PAOs for PNOs a.
+   * @param k_PAOToFullPAOMaps Projection to the integrals calculated for a given aux. shell.
+   * @param reducedOccIndices The indices of the occupied orbitals considered for each aux. shell.
+   * @param toPNO_a The transformation to the PNO domain.
+   * @param iIndices The occupied orbital indices i.
+   * @param iaK The (ia|K) integrals over MOs and PAOs.
+   * @return The integrals (ia|K) in PNO basis over the local fitting domain.
+   */
+  static std::vector<Eigen::MatrixXd>
+  get_iaK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux,
+          const Eigen::SparseVector<int>& auxDomain, const Eigen::SparseMatrix<double>& projectionMatrix_a,
+          const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_PAOToFullPAOMaps,
+          const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+          const Eigen::MatrixXd& toPNO_a, const std::map<unsigned int, unsigned int>& iIndices, const MO3CenterIntegrals& iaK);
+  /**
+   * @brief Analogous to the function above. Extracts integrals (ik|K). Duplicates in k are not possible!
+   * @param auxBasisController The auxiliary basis controller.
+   * @param nLocalAux The number of auxiliary basis functions.
+   * @param auxDomain The fitting domain as a shell-wise list.
+   * @param reducedOccIndices The indices of the occupied orbitals considered for each aux. shell.
+   * @param kIndices The ks to be extracted as a non-redundant #-map.
+   * @param i The occupied orbital index i.
+   * @param klK All integrals (ik|K) integrals over MOs.
+   * @return The integral list (ik|K) over the local fitting domain.
+   */
+  static Eigen::MatrixXd get_ikK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux,
+                                 const Eigen::SparseVector<int>& auxDomain,
+                                 const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                                 const std::map<unsigned int, unsigned int>& kIndices, const unsigned int i,
+                                 const MO3CenterIntegrals& klK);
   /**
    * @brief Analogous to the function above. Extracts integrals (ik|K)
    * @param auxBasisController The auxiliary basis controller.
@@ -292,8 +358,10 @@ class Ao2MoExchangeIntegralTransformer {
    * @return The integral list (ik|K) over the local fitting domain.
    */
   static Eigen::MatrixXd get_ikK(std::shared_ptr<BasisController> auxBasisController, unsigned int nLocalAux,
-                                 const Eigen::SparseVector<int>& auxDomain, const std::vector<Eigen::VectorXi>& reducedOccIndices,
-                                 std::vector<unsigned int> kIndices, const unsigned int i, const MO3CenterIntegrals& klK);
+                                 const Eigen::SparseVector<int>& auxDomain,
+                                 const std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>& reducedOccIndices,
+                                 const std::vector<unsigned int> kIndices, const unsigned int i,
+                                 const MO3CenterIntegrals& klK);
 };
 } /* namespace Serenity */
 #endif /* AO2MOEXCHANGEINTEGRALTRANSFORMER_H_ */

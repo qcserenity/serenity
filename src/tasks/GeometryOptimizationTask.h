@@ -45,9 +45,7 @@ struct GeometryOptimizationTaskSettings {
       stepThresh(2.0e-3),
       maxStepThresh(4.0e-3),
       numGradStepSize(0.001),
-      printLevel(3),
       transInvar(false),
-      dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE),
       FaTmaxCycles(50),
       FaTConvThresh(1.0e-6),
       FaTgridCutOff(-1.0) {
@@ -57,8 +55,7 @@ struct GeometryOptimizationTaskSettings {
   }
   REFLECTABLE((Options::GRADIENT_TYPES)gradType, (unsigned int)maxCycles, (double)rmsgradThresh, (double)energyChangeThresh,
               (double)maxGradThresh, (double)stepThresh, (double)maxStepThresh, (double)numGradStepSize,
-              (unsigned int)printLevel, (bool)transInvar, (Options::DFT_DISPERSION_CORRECTIONS)dispersion,
-              (unsigned int)FaTmaxCycles, (double)FaTConvThresh, (double)FaTgridCutOff)
+              (bool)transInvar, (unsigned int)FaTmaxCycles, (double)FaTConvThresh, (double)FaTgridCutOff)
  public:
   EmbeddingSettings embedding;
 };
@@ -95,7 +92,7 @@ class GeometryOptimizationTask : public Task {
       visit_each(c, v);
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
     }
   }
   /**
@@ -106,14 +103,7 @@ class GeometryOptimizationTask : public Task {
    *        - maxCycles: Maximum number of steps (default: 100)
    *        - gradNormThresh: The gradient convergence threshold (default: 1.0e-5)
    *        - numGradStepSize: The displacement step size used for construction of the numerical gradients (default 0.05)
-   *        - printLevel:
-   *          - 0 : Print nothing (default)
-   *          - 1 : Print SCF results
-   *          - 2 : Print SCF results and SCF cycle information
    *        - transInvar Make gradients translationally invariant.
-   *        - naddKinFunc The non-additive kinetic energy functional.
-   *        - naddXCFunc The non-addtive exchange--correlation functional.
-   *        - dispersion The intersubsystem dispersion interaction.
    *        - FaTmaxCycles The maximum number of FaT iterations.
    *        - FaTConvThresh Convergence threshold for the FaT calculation.
    *        - FaTgridCutOff A distance cutoff for the integration grid used to calculate

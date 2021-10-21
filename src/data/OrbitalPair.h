@@ -25,6 +25,7 @@
 /* Include Std and External Headers */
 #include <Eigen/Dense>      // Dense matrices.
 #include <Eigen/SparseCore> // Sparse matrices.
+#include <limits>           //limits
 #include <memory>           // smrt_ptr
 #include <string>           // Integral file names.
 #include <vector>           // std::vector
@@ -46,11 +47,18 @@ class DomainOverlapMatrixController;
 
 /**
  * @brief Enum class for different orbital pair types.
- *   CLOSE:         Strong pairs which are iterated in the CCSD equations.
- *   DISTANT:       Pairs for which semi-canonical MP2 amplitudes are available.
- *   VERY_DISTANT:  Pairs for which only a dipole approximation is calculated.
+ *   CLOSE:           Strong pairs which are iterated in the CCSD equations.
+ *   DISTANT_TRIPLES: Pairs for which the semi-canonical MP2 pari energy is below
+ *                    the scaled CCSD-pair truncation threshold. These pairs may
+ *                    be used for the determination of orbital pairs for the triples
+ *                    correction.
+ *   DISTANT:         Pairs for which the semi-canonical MP2 pari energy is below
+ *                    the CCSD-pair truncation threshold. These pairs may be treated
+ *                    using SC-MP2 or Local MP2
+ *   VERY_DISTANT:    Pairs for which only a dipole approximation is calculated.
+ *   SPARSE_MAP_CLOSE:The close orbital pairs used in the sparse-map construction.
  */
-enum class OrbitalPairTypes { CLOSE, DISTANT_TRIPLES, DISTANT, VERY_DISTANT };
+enum class OrbitalPairTypes { CLOSE, DISTANT_TRIPLES, DISTANT, VERY_DISTANT, SPARSE_MAP_CLOSE };
 /**
  * @brief Enum class with all integral sets used in DLPNO-CCSD.
  */
@@ -96,8 +104,10 @@ class OrbitalPair {
    * @brief Constructor.
    * @param orbital_i Index of the occupied orbital i.
    * @param orbital_j Index of the occupied orbital j.
+   * @param pnoThreshold The PNO threshold used for this pair.
    */
-  OrbitalPair(unsigned int orbital_i, unsigned int orbital_j) : i(orbital_i), j(orbital_j){};
+  OrbitalPair(unsigned int orbital_i, unsigned int orbital_j, double pnoThreshold, double mainPairEnergyThreshold,
+              double collinearScaling, double sparseMapsConstructionPairScaling = std::numeric_limits<double>::infinity());
   /**
    * @brief Destructor.
    */
@@ -110,17 +120,21 @@ class OrbitalPair {
   Eigen::MatrixXd t_ij;
   ///@brief The DLPNO-CCSD residual.
   Eigen::MatrixXd residual;
+  ///@brief If false, this pair will never be used for orbital triples construction.
+  ///       This is useful for embedding.
+  bool eligibleForTriples = true;
 
   /* ========INTEGRAL SETS ======== */
   // Matrices in "pure" ij-Pair PNO basis.
   ///@brief The exchange integrals in the PAO pair basis.
   Eigen::MatrixXd k_ij; // (ia|jb) --> ia_jb
   ///@brief (ac|bd) integrals, a,b,c,d in [ij].
-  std::unique_ptr<Matrix<Eigen::MatrixXd>> ac_bd; //(ac|bd) ~ 30x30x30x30 ~ 6.5 MB per pair
+  std::unique_ptr<Matrix<Eigen::MatrixXd>> ac_bd; //(ac|bd) ~ 30x30x30x30 ~ 3.5 MB per pair, only the upper triangle is
+                                                  // saved!
   ///@brief (ij|ab) integrals, a,b in [ij].
   Eigen::MatrixXd ij_ab; //(ij|ab)
   ///@brief (ik|jl) integrals.
-  Eigen::MatrixXd ik_jl; //(ik|jl) TODO to disk
+  Eigen::MatrixXd ik_jl; //(ik|jl)
   // Integrals in mixed singles/doubles PNO basis
   ///@brief (ki|la) integrals, a in [j]
   std::vector<Eigen::MatrixXd> ki_la; // (ki|la) matrices-> a * nK x nK, a in [j]
@@ -166,7 +180,7 @@ class OrbitalPair {
   unsigned int nAuxFunctions = 0;
   ///@brief Orbital pair type. For options, see above.
   OrbitalPairTypes type = OrbitalPairTypes::CLOSE;
-  ///@brief Sets representing the orbitals k that couple to with this pair.
+  ///@brief Sets representing the orbitals k that couple with this pair.
   std::vector<std::shared_ptr<CouplingOrbitalSet>> coupledPairs;
   ///@brief Sets that represent the pairs k and l that couple with this pair.
   std::vector<std::shared_ptr<KLOrbitalSet>> klPairSets;
@@ -206,27 +220,28 @@ class OrbitalPair {
   /**
    * @brief Write all integrals to a file.
    */
-  void writeIntegralsToFile();
+  void writeIntegralsToFile(HDF5::H5File& file);
   /**
    * @brief Load all integrals from a file.
    */
-  void loadIntegralsFromFile();
+  void loadIntegralsFromFile(HDF5::H5File& file);
   /**
-   * @brief Remove all integrals from main memory.
+   * @brief Remove all (ac|bd) and k-Set integrals from main memory.
    */
   void flushIntegrals();
-
+  /**
+   * @brief Remoce all integrals and intermediates except K_ij from main memory.
+   *
+   * Only integrals K_ij and amplitudes t_ij remain.
+   */
   void cleanUp();
   /**
    * @brief Returns an estimate of the memory required for the orbital pair.
    * @param mp2Memory Flag if the pair is only used for MP2
+   * @param sigmaInts If true, the memory for the integrals used for the sigma vector is included.
    * @return The memory estimate.
    */
-  double getMemoryRequirement(bool mp2Memory);
-  /**
-   * @brief Deletes the pair integral file.
-   */
-  void deleteIntegrals();
+  double getMemoryRequirement(bool mp2Memory, bool sigmaInts = false);
   /**
    * @brief Getter for the overlap matrix between virtual domains of this pair and the i single.
    * @return The overlap matrix.
@@ -247,8 +262,61 @@ class OrbitalPair {
    * @param domainSController The domain overlap matrix controller.
    */
   void setOverlapMatrixController(std::shared_ptr<DomainOverlapMatrixController> domainSController);
+  /**
+   * @brief Getter for the local MP2 pair energy.
+   * @return The pair energy.
+   */
+  double getLMP2PairEnergy();
+  /**
+   * @brief Getter for the local CCSD pair energy.
+   * @return The pair energy.
+   */
+  double getCCSDPairEnergy();
+  /**
+   * @brief Getter for the pair energy.
+   * @return Returns the CCSD pair energy if available. Otherwise the MP2 pair energy is returned.
+   */
+  double getPairEnergy();
+  /**
+   * @brief Getter for the orbital pair specific PNO threshold.
+   * @return The PNO threshold.
+   */
+  double getPNOThreshold();
+  /**
+   * @brief Getter for the orbital pair specific pair energy truncation threshold.
+   * @return The truncation threshold.
+   */
+  double getPairEnergyThreshold();
+  /**
+   * @brief Getter for the orbital pair specific truncation threshold for the dipole approximation to the pair energy.
+   * @return The truncation threshold.
+   */
+  double getCollinearDipolePairThreshold();
+  /**
+   * @brief Getter for the truncation threshold for the "close" pairs used in the sparse map construction.
+   * @return The truncation threshold.
+   */
+  double getSparseMapConstructionPairThreshold();
+  /**
+   * @brief Getter for the extended fitting domain.
+   * @return The fitting domain.
+   */
+  const Eigen::SparseVector<int>& getFittingDomain();
+  /**
+   * @brief Setter for the extended fitting domain.
+   * @param fittingDomain The extended fitting domain.
+   */
+  void setFittingDomain(const Eigen::SparseVector<int>& fittingDomain);
 
  private:
+  ///@brief The orbital pair specific PNO threshold.
+  double _pnoThreshold;
+  ///@brief The CCSD pair truncation threshold.
+  double _mainPairEnergyThreshold;
+  ///@brief The truncation threshold for the dipole approximation.
+  double _collinearDipoleApproxThreshold;
+  ///@brief The pair energy threshold used for the sparse map construction.
+  double _sparseMapsConstructionPairThreshold;
   /**
    * @brief The file names.
    */
@@ -288,12 +356,12 @@ class OrbitalPair {
    * @brief Write the (ac|bd) integrals to file.
    * @param file The file.
    */
-  void write_acbd(HDF5::H5File& file);
+  void write_acbd(HDF5::H5File& file, std::string id);
   /**
    * @brief Load the (ac|bd) integrals from file.
    * @param file The file.
    */
-  void load_acbd(HDF5::H5File& file);
+  void load_acbd(HDF5::H5File& file, std::string id);
 
   ///@brief The PNO overlap between singles and this pair
   std::shared_ptr<Eigen::MatrixXd> _s_ij_i;
@@ -302,6 +370,10 @@ class OrbitalPair {
   std::shared_ptr<Eigen::MatrixXd> _s_i_j;
   ///@brief The domain overlap matrix controller.
   std::weak_ptr<DomainOverlapMatrixController> _domainSController;
+  ///@brief The pair identification string within the HDF5 file.
+  std::string _id = "";
+  ///@brief The extended fitting domain.
+  Eigen::SparseVector<int> _extendedAuxDomain;
 };
 
 } /* namespace Serenity */

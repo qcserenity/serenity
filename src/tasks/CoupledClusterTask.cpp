@@ -32,7 +32,7 @@
 #include "postHF/CC/DLPNO_CCSD_T0.h"            //Local coupled cluster
 #include "system/SystemController.h"            //Access to the electronic structure of the system.
 /* Include Std and External Headers */
-#include <iomanip> //setw(...) for ostream
+#include <iomanip> //std::setw(...) for ostream
 
 namespace Serenity {
 
@@ -44,13 +44,12 @@ CoupledClusterTask::CoupledClusterTask(std::shared_ptr<SystemController> systemC
 
 Eigen::VectorXd CoupledClusterTask::localCalculation() {
   if (settings.level == Options::CC_LEVEL::DLPNO_CCSD_T0)
-    settings.lcSettings.method = PNO_METHOD::DLPNO_CCSD_T0;
+    settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
   if (settings.level == Options::CC_LEVEL::DLPNO_CCSD)
-    settings.lcSettings.method = PNO_METHOD::DLPNO_CCSD;
+    settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD;
   auto localCorrelationController =
       std::make_shared<LocalCorrelationController>(_systemController, settings.lcSettings, _environmentSystems);
-  DLPNO_CCSD dlpnoCCSD(localCorrelationController, settings.normThreshold, settings.maxCycles,
-                       settings.level == Options::CC_LEVEL::DLPNO_CCSD_T0);
+  DLPNO_CCSD dlpnoCCSD(localCorrelationController, settings.normThreshold, settings.maxCycles);
   Eigen::VectorXd energies = dlpnoCCSD.calculateElectronicEnergyCorrections();
   auto energyController =
       _systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergyComponentController();
@@ -62,6 +61,8 @@ Eigen::VectorXd CoupledClusterTask::localCalculation() {
     energyController->addOrReplaceComponent(
         std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::TRIPLES_CORRECTION, energies[5]));
   }
+  if (this->settings.writePairEnergies)
+    localCorrelationController->writePairEnergies("CCSD");
   return energies;
 }
 
@@ -127,9 +128,9 @@ void CoupledClusterTask::run() {
                 "         contributions that originate from the embedding. Handle the following energies\n" +
                 "         with care. Typical errors are:\n" +
                 "            * Did you specify an environment system that is not needed?\n" +
-                "            * Did you forget to calculate the energy of the frozen environment by not setting" +
-                "                calculateEnvironmentEnergy = true in a previous FDETask?" +
-                "            * Is the method used for the active system set to DFT?",
+                "            * Did you forget to calculate the energy of the frozen environment by not setting\n" +
+                "                calculateEnvironmentEnergy = true in a previous FDETask?\n" +
+                "            * Is the method used for the active system set to DFT?\n",
             true);
     }
   }
@@ -137,58 +138,59 @@ void CoupledClusterTask::run() {
   /*
    * Print final results
    */
+  unsigned int lineLength = 80;
+  unsigned int indent = 2;
+  unsigned int numberLength = lineLength - 8 - 34 - 2 * indent;
   std::cout << std::fixed;
   printSectionTitle("CC Results");
-  std::cout << "Old Energy                        " << setw(20) << energy << " Hartree   ";
-  std::cout << setw(20) << energy * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-  std::cout << "--------------------------------------------------------------------------------------------" << std::endl;
+  std::cout << std::string(indent, ' ') << "Old Energy                        " << std::setw(numberLength) << energy
+            << " Hartree" << std::endl;
+  std::cout << std::string(lineLength, '-') << std::endl;
   if (canonical) {
-    std::cout << "MP2 Energy Correction             " << setw(20) << energies(0) << " Hartree   ";
-    std::cout << setw(20) << energies(0) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-    std::cout << "Total MP2 Energy                  " << setw(20) << (energy + energies(2)) << " Hartree   ";
-    std::cout << setw(20) << (energy + energies(2)) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-    std::cout << "CCSD Energy Correction            " << setw(20) << energies(1) << " Hartree   ";
-    std::cout << setw(20) << energies(1) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+    std::cout << std::string(indent, ' ') << "MP2 Energy Correction             " << std::setw(numberLength)
+              << energies(0) << " Hartree" << std::endl;
+    std::cout << std::string(indent, ' ') << "Total MP2 Energy                  " << std::setw(numberLength)
+              << (energy + energies(2)) << " Hartree   " << std::endl;
+    std::cout << std::string(indent, ' ') << "CCSD Energy Correction            " << std::setw(numberLength)
+              << energies(1) << " Hartree" << std::endl;
     if (settings.level == Options::CC_LEVEL::CCSD_T) {
-      std::cout << "Triples Energy Correction         " << setw(20) << energies(2) << " Hartree   ";
-      std::cout << setw(20) << energies(2) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+      std::cout << std::string(indent, ' ') << "Triples Energy Correction         " << std::setw(numberLength)
+                << energies(2) << " Hartree" << std::endl;
     }
-    std::cout << "--------------------------------------------------------------------------------------------" << std::endl;
+    std::cout << std::string(lineLength, '-') << std::endl;
     if (settings.level == Options::CC_LEVEL::CCSD_T) {
-      std::cout << "Total CCSD(T) Energy              " << setw(20) << energies(1) + energies(2) + energy << " Hartree   ";
-      std::cout << setw(20) << (energies(1) + energies(2) + energy) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+      std::cout << std::string(indent, ' ') << "Total CCSD(T) Energy              " << std::setw(numberLength)
+                << energies(1) + energies(2) + energy << " Hartree" << std::endl;
     }
     else {
-      std::cout << "Total CCSD Energy                 " << setw(20) << energies(1) + energy << " Hartree   ";
-      std::cout << setw(20) << (energies(1) + energy) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+      std::cout << std::string(indent, ' ') << "Total CCSD Energy                 " << std::setw(numberLength)
+                << energies(1) + energy << " Hartree" << std::endl;
     }
   }
   else {
-    std::cout << "Local CCSD pair energies          " << setw(20) << energies(0) << " Hartree   ";
-    std::cout << setw(20) << energies(0) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-    std::cout << "SC-MP2 pair energies              " << setw(20) << energies(2) << " Hartree   ";
-    std::cout << setw(20) << energies(2) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-    std::cout << "Dipole app. contribution          " << setw(20) << energies(3) << " Hartree   ";
-    std::cout << setw(20) << energies(3) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-    std::cout << "PNO truncation correction         " << setw(20) << energies(4) << " Hartree   ";
-    std::cout << setw(20) << energies(4) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+    std::cout << std::string(indent, ' ') << "Local CCSD pair energies          " << std::setw(numberLength)
+              << energies(0) << " Hartree" << std::endl;
+    std::cout << std::string(indent, ' ') << "SC-MP2 pair energies              " << std::setw(numberLength)
+              << energies(2) << " Hartree" << std::endl;
+    std::cout << std::string(indent, ' ') << "Dipole app. contribution          " << std::setw(numberLength)
+              << energies(3) << " Hartree" << std::endl;
+    std::cout << std::string(indent, ' ') << "PNO truncation correction         " << std::setw(numberLength)
+              << energies(4) << " Hartree" << std::endl;
     if (settings.level == Options::CC_LEVEL::DLPNO_CCSD) {
-      std::cout << "Local-CCSD Energy Correction      " << setw(20) << energies.segment(0, energies.size()).sum()
-                << " Hartree   ";
-      std::cout << setw(20) << energies.segment(0, 4).sum() * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-      std::cout << "--------------------------------------------------------------------------------------------" << std::endl;
-      std::cout << "Total Local-CCSD Energy           " << setw(20) << energies.sum() + energy << " Hartree   ";
-      std::cout << setw(20) << (energies.sum() + energy) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+      std::cout << std::string(indent, ' ') << "Local-CCSD Energy Correction      " << std::setw(numberLength)
+                << energies.segment(0, energies.size()).sum() << " Hartree   " << std::endl;
+      std::cout << std::string(lineLength, '-') << std::endl;
+      std::cout << std::string(indent, ' ') << "Total Local-CCSD Energy           " << std::setw(numberLength)
+                << energies.sum() + energy << " Hartree" << std::endl;
     }
     else {
-      std::cout << "Local-CCSD Energy Correction      " << setw(20) << energies.segment(0, energies.size() - 1).sum()
-                << " Hartree   ";
-      std::cout << setw(20) << energies.segment(0, 4).sum() * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-      std::cout << "Semi-Canonical Triples Correction " << setw(20) << energies(5) << " Hartree   ";
-      std::cout << setw(20) << energies(5) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
-      std::cout << "--------------------------------------------------------------------------------------------" << std::endl;
-      std::cout << "Total Local-CCSD(T0) Energy       " << setw(20) << energies.sum() + energy << " Hartree   ";
-      std::cout << setw(20) << (energies.sum() + energy) * HARTREE_TO_KJ_PER_MOL << " kJ/mol" << std::endl;
+      std::cout << std::string(indent, ' ') << "Local-CCSD Energy Correction      " << std::setw(numberLength)
+                << energies.segment(0, energies.size() - 1).sum() << " Hartree" << std::endl;
+      std::cout << std::string(indent, ' ') << "Semi-Canonical Triples Correction " << std::setw(numberLength)
+                << energies(5) << " Hartree" << std::endl;
+      std::cout << std::string(lineLength, '-') << std::endl;
+      std::cout << std::string(indent, ' ') << "Total Local-CCSD(T0) Energy       " << std::setw(numberLength)
+                << energies.sum() + energy << " Hartree" << std::endl;
     }
   }
   std::cout << std::scientific << std::endl;

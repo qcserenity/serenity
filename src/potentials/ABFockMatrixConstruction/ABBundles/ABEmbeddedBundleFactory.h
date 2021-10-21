@@ -27,7 +27,6 @@
 #include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundle.h" //The product.
 #include "settings/EmbeddingSettings.h"                                     //Definition of embedding settings.
 #include "settings/Options.h"                                               //Spin polarization.
-
 /* Include Std and External Headers */
 #include <memory> //smrt_ptr
 #include <vector> //std::vector

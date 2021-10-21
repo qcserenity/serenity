@@ -85,7 +85,7 @@ double EnergyComponentController::getEnergyComponentFromChildren(const ENERGY_CO
         "       or may be caused by loading corrupted/outdated files.");
   // False if the present data is insufficient to calculate the requested energy type.
   if (not(EnergyComponentPrinter::ENERGY_CONTRIBUTIONS_CHILDREN_MAP.at(energyType).size() > 0))
-    throw SerenityError("ERROR: The energy contribution " + to_string((int)energyType) + " was not set before!");
+    throw SerenityError("ERROR: The energy contribution " + std::to_string((int)energyType) + " was not set before!");
   double energy = 0.0;
   for (const auto& child : EnergyComponentPrinter::ENERGY_CONTRIBUTIONS_CHILDREN_MAP.at(energyType)) {
     if (_data.find(child) == _data.end()) {
@@ -114,7 +114,7 @@ bool EnergyComponentController::checkEnergyComponentFromChildren(const ENERGY_CO
   bool result = true;
   for (const auto& child : EnergyComponentPrinter::ENERGY_CONTRIBUTIONS_CHILDREN_MAP.at(energyType)) {
     if (_data.find(child) == _data.end()) {
-      result *= checkEnergyComponentFromChildren(child);
+      result = result && checkEnergyComponentFromChildren(child);
     }
   }
   return result;

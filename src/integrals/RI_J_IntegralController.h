@@ -37,11 +37,7 @@ namespace Serenity {
 /* Forward declarations */
 class Basis;
 class BasisController;
-class ElectronRepulsionIntegralController;
-class MatrixInverter;
 class MemoryManager;
-class SpinFreePotential;
-class TotalDensityMatrix;
 /**
  * @class RI_J_IntegralController RI_J_IntegralController.h
  * @brief A controller that handles the integrals for the RI-J approximation.
@@ -60,15 +56,15 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
  public:
   /**
    * @brief Constructor.
-   * @param basisController of the Basis in which the densityMatrix and Fock matrix are/will be
-   *                        expressed
-   * @param auxBasisController for the Basis, to which the density is fitted
-   * @param densityMatrix see IncrementalPotentialAdder for why we want a reference to the density
-   *                      matrix here
-   * @param eriController used for prescreening
+   * @param basisControllerA The first basis, for which integrals are to be managed.
+   * @param auxBasisController The basis, the auxiliary basis.
+   * @param basisControllerB A second basis, if the second index belongs to a different basis than first.
+   * @param op The libint operator for these integrals.
+   * @param mu Range-separation parameter if the operator is erf_coulomb.
    */
   RI_J_IntegralController(std::shared_ptr<BasisController> basisControllerA, std::shared_ptr<BasisController> auxBasisController,
-                          std::shared_ptr<BasisController> basisControllerB = nullptr);
+                          std::shared_ptr<BasisController> basisControllerB = nullptr,
+                          LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb, double mu = 0.0);
   /**
    * @brief Default destructor.
    */
@@ -121,7 +117,7 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
    */
   template<class Func>
   __attribute__((always_inline)) inline void loopOver3CInts(Func distribute) {
-    auto prescreen = [](const unsigned, const unsigned, const unsigned, const unsigned, const double) { return false; };
+    auto prescreen = [](const unsigned, const unsigned, const double) { return false; };
     loopOver3CInts(distribute, prescreen);
   }
 
@@ -138,12 +134,17 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
       // if there is nothing cached now there was no space
       // then run the entire loop
       if (!twoBasisMode) {
-        TwoElecThreeCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisControllerA, _auxBasisController, 1E-10);
+        TwoElecThreeCenterIntLooper looper(_op, 0, _basisControllerA, _auxBasisController,
+                                           _basisControllerA->getPrescreeningThreshold(),
+                                           std::pair<unsigned int, unsigned int>(0, 0), _mu);
         looper.loopNoDerivative(distribute, prescreen);
       }
       else {
-        ABTwoElecThreeCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisControllerA, _basisControllerB,
-                                             _auxBasisController, 1E-10);
+        double prescreeningThresholdA = _basisControllerA->getPrescreeningThreshold();
+        double prescreeningThresholdB = _basisControllerB->getPrescreeningThreshold();
+        double prescreeningThreshold = std::min(prescreeningThresholdA, prescreeningThresholdB);
+        ABTwoElecThreeCenterIntLooper looper(_op, 0, _basisControllerA, _basisControllerB, _auxBasisController,
+                                             prescreeningThreshold, std::pair<unsigned int, unsigned int>(0, 0), _mu);
         looper.loopNoDerivative(distribute);
       }
     }
@@ -169,14 +170,17 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
       if (_cache->rows() != _auxBasisController->getNBasisFunctions()) {
         if (!twoBasisMode) {
           TwoElecThreeCenterIntLooper looper(
-              libint2::Operator::coulomb, 0, _basisControllerA, _auxBasisController, 1E-10,
-              std::pair<unsigned int, unsigned int>(_cache->rows(), _auxBasisController->getNBasisFunctions()));
+              _op, 0, _basisControllerA, _auxBasisController, _basisControllerA->getPrescreeningThreshold(),
+              std::pair<unsigned int, unsigned int>(_cache->rows(), _auxBasisController->getNBasisFunctions()), _mu);
           looper.loopNoDerivative(distribute, prescreen);
         }
         else {
+          double prescreeningThresholdA = _basisControllerA->getPrescreeningThreshold();
+          double prescreeningThresholdB = _basisControllerB->getPrescreeningThreshold();
+          double prescreeningThreshold = std::min(prescreeningThresholdA, prescreeningThresholdB);
           ABTwoElecThreeCenterIntLooper looper(
-              libint2::Operator::coulomb, 0, _basisControllerA, _basisControllerB, _auxBasisController, 1E-10,
-              std::pair<unsigned int, unsigned int>(_cache->rows(), _auxBasisController->getNBasisFunctions()));
+              _op, 0, _basisControllerA, _basisControllerB, _auxBasisController, prescreeningThreshold,
+              std::pair<unsigned int, unsigned int>(_cache->rows(), _auxBasisController->getNBasisFunctions()), _mu);
           looper.loopNoDerivative(distribute);
         }
       }
@@ -259,7 +263,10 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
   const std::shared_ptr<BasisController> _basisControllerA;
   std::shared_ptr<BasisController> _basisControllerB;
   const std::shared_ptr<BasisController> _auxBasisController;
-
+  /// @brief The kernel/operator as libint enum.
+  LIBINT_OPERATOR _op;
+  /// @brief Range separation parameter mu
+  double _mu;
   /*
    * The number of basis functions inside the 'normal' basis, i.e. the basis in which e.g.
    * the density and fock matrix are expressed.

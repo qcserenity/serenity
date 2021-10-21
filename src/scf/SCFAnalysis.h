@@ -24,28 +24,30 @@
 /* Include Serenity Internal Headers */
 #include "energies/EnergyComponentController.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "settings/Options.h"
 #include "system/SystemController.h"
 
 namespace Serenity {
 
 /**
  * @class SCFAnalysis SCFAnalysis.h
+ * @param systemController
+ * @param supersystemGrid
  */
 template<Options::SCF_MODES T>
 class SCFAnalysis {
  public:
-  SCFAnalysis(std::shared_ptr<SystemController> systemController, std::shared_ptr<OneElectronIntegralController> oneIntController,
-              std::shared_ptr<EnergyComponentController> energyController);
+  SCFAnalysis(std::vector<std::shared_ptr<SystemController>> systemController,
+              std::shared_ptr<GridController> supersystemGrid = nullptr);
   virtual ~SCFAnalysis() = default;
 
   /**
    * @brief Evaluates the expectation value of the S2 operator.
    *        When DFT is used, the expectation value is calculated
    *        as functional of the density.
+   * @param useUHForbitals
    * @return The S2 expectation value
    */
-  double S2();
+  double S2(bool useUHForbitals = false);
 
   /**
    * @brief Calculates -<V>/<T>
@@ -54,9 +56,8 @@ class SCFAnalysis {
   double VirialRatio();
 
  private:
-  std::shared_ptr<SystemController> _systemController;
-  std::shared_ptr<OneElectronIntegralController> _oneIntController;
-  std::shared_ptr<EnergyComponentController> _energyController;
+  std::vector<std::shared_ptr<SystemController>> _systemController;
+  std::shared_ptr<GridController> _supersystemGrid;
 };
 
 } /* namespace Serenity */

@@ -86,6 +86,8 @@ Functional resolveLibXC(FUNCTIONALS functional) {
     case FUNCTIONALS::LDA:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::C_VWN}, {1.0, 1.0},
                         0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+    case FUNCTIONALS::HARTREE:
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::NONE}, {0.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BLYP:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
@@ -108,6 +110,10 @@ Functional resolveLibXC(FUNCTIONALS functional) {
           IMPLEMENTATIONS::LIBXC,
           {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_KT1, BASIC_FUNCTIONALS::C_OPTC, BASIC_FUNCTIONALS::C_LYP},
           {1.092, -0.004, -0.925452, 0.864409}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+    case FUNCTIONALS::BHLYP:
+      return Functional(IMPLEMENTATIONS::LIBXC,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP},
+                        {0.50, 0.50, 1.0}, 0.50, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE0:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {0.75, 1.0}, 0.25,
                         0.0, 0.0, 0.0, 1.0, 1.0);
@@ -159,6 +165,8 @@ Functional resolveLibXC(FUNCTIONALS functional) {
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_LC_BLYP}, {1.0}, 0.0, 0.0, 1.0, 0.33, 1.0, 1.0);
     case FUNCTIONALS::LCBLYP_047:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_LC_BLYP}, {1.0}, 0.0, 0.0, 1.0, 0.47, 1.0, 1.0);
+    case FUNCTIONALS::LCBLYP_100:
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_LC_BLYP}, {1.0}, 0.0, 0.0, 1.0, 1.00, 1.0, 1.0);
     case FUNCTIONALS::PW91K:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::K_PW91}, {1.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PW91:
@@ -226,6 +234,8 @@ Functional resolveXCFun(FUNCTIONALS functional) {
     case FUNCTIONALS::LDA:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::C_VWN}, {1.0, 1.0},
                         0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+    case FUNCTIONALS::HARTREE:
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::NONE}, {0.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BLYP:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
@@ -254,6 +264,10 @@ Functional resolveXCFun(FUNCTIONALS functional) {
     case FUNCTIONALS::LDAERF_JT:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_LDA_ERF, BASIC_FUNCTIONALS::C_LDA_ERF_JT},
                         {1.0, 1.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+    case FUNCTIONALS::BHLYP:
+      return Functional(IMPLEMENTATIONS::XCFUN,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP},
+                        {0.50, 0.50, 1.0}, 0.50, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE0:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {0.75, 1.0}, 0.25,
                         0.0, 0.0, 0.0, 1.0, 1.0);
@@ -310,6 +324,9 @@ Functional resolveXCFun(FUNCTIONALS functional) {
     case FUNCTIONALS::LCBLYP_047:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88_CAM, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0},
                         0.0, 0.0, 1.0, 0.47, 1.0, 1.0);
+    case FUNCTIONALS::LCBLYP_100:
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88_CAM, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0},
+                        0.0, 0.0, 1.0, 1.00, 1.0, 1.0);
     case FUNCTIONALS::PW91K:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::K_PW91}, {1.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PW91:
@@ -387,6 +404,7 @@ void resolve<CompositeFunctionals::FUNCTIONALS>(std::string& value, CompositeFun
       {"LDA_ERF_JT", CompositeFunctionals::FUNCTIONALS::LDAERF_JT},
       {"LDA-ERF-JT", CompositeFunctionals::FUNCTIONALS::LDAERF_JT},
       {"LDA", CompositeFunctionals::FUNCTIONALS::LDA},
+      {"HARTREE", CompositeFunctionals::FUNCTIONALS::HARTREE},
       {"B97", CompositeFunctionals::FUNCTIONALS::B97},
       {"B97_1", CompositeFunctionals::FUNCTIONALS::B97_1},
       {"B97-1", CompositeFunctionals::FUNCTIONALS::B97_1},
@@ -400,6 +418,7 @@ void resolve<CompositeFunctionals::FUNCTIONALS>(std::string& value, CompositeFun
       {"KT2", CompositeFunctionals::FUNCTIONALS::KT2},
       {"KT3", CompositeFunctionals::FUNCTIONALS::KT3},
       {"PW91", CompositeFunctionals::FUNCTIONALS::PW91},
+      {"BHLYP", CompositeFunctionals::FUNCTIONALS::BHLYP},
       {"PBE0", CompositeFunctionals::FUNCTIONALS::PBE0},
       {"B3LYP", CompositeFunctionals::FUNCTIONALS::B3LYP},
       {"B3LYP_G", CompositeFunctionals::FUNCTIONALS::B3LYP_G},
@@ -414,6 +433,8 @@ void resolve<CompositeFunctionals::FUNCTIONALS>(std::string& value, CompositeFun
       {"LCBLYP", CompositeFunctionals::FUNCTIONALS::LCBLYP},
       {"LCBLYP_047", CompositeFunctionals::FUNCTIONALS::LCBLYP_047},
       {"LCBLYP-047", CompositeFunctionals::FUNCTIONALS::LCBLYP_047},
+      {"LCBLYP_100", CompositeFunctionals::FUNCTIONALS::LCBLYP_100},
+      {"LCBLYP-100", CompositeFunctionals::FUNCTIONALS::LCBLYP_100},
       {"B2PLYP", CompositeFunctionals::FUNCTIONALS::B2PLYP},
       {"B2KPLYP", CompositeFunctionals::FUNCTIONALS::B2KPLYP},
       {"B2TPLYP", CompositeFunctionals::FUNCTIONALS::B2TPLYP},
@@ -470,6 +491,7 @@ void resolve<CompositeFunctionals::XCFUNCTIONALS>(std::string& value, CompositeF
       {"LDA_ERF_JT", CompositeFunctionals::XCFUNCTIONALS::LDAERF_JT},
       {"LDA-ERF-JT", CompositeFunctionals::XCFUNCTIONALS::LDAERF_JT},
       {"LDA", CompositeFunctionals::XCFUNCTIONALS::LDA},
+      {"HARTREE", CompositeFunctionals::XCFUNCTIONALS::HARTREE},
       {"B97", CompositeFunctionals::XCFUNCTIONALS::B97},
       {"B97_1", CompositeFunctionals::XCFUNCTIONALS::B97_1},
       {"B97-1", CompositeFunctionals::XCFUNCTIONALS::B97_1},
@@ -483,6 +505,7 @@ void resolve<CompositeFunctionals::XCFUNCTIONALS>(std::string& value, CompositeF
       {"KT2", CompositeFunctionals::XCFUNCTIONALS::KT2},
       {"KT3", CompositeFunctionals::XCFUNCTIONALS::KT3},
       {"PW91", CompositeFunctionals::XCFUNCTIONALS::PW91},
+      {"BHLYP", CompositeFunctionals::XCFUNCTIONALS::BHLYP},
       {"PBE0", CompositeFunctionals::XCFUNCTIONALS::PBE0},
       {"B3LYP", CompositeFunctionals::XCFUNCTIONALS::B3LYP},
       {"B3LYP_G", CompositeFunctionals::XCFUNCTIONALS::B3LYP_G},
@@ -497,6 +520,8 @@ void resolve<CompositeFunctionals::XCFUNCTIONALS>(std::string& value, CompositeF
       {"LCBLYP", CompositeFunctionals::XCFUNCTIONALS::LCBLYP},
       {"LCBLYP_047", CompositeFunctionals::XCFUNCTIONALS::LCBLYP_047},
       {"LCBLYP-047", CompositeFunctionals::XCFUNCTIONALS::LCBLYP_047},
+      {"LCBLYP_100", CompositeFunctionals::XCFUNCTIONALS::LCBLYP_100},
+      {"LCBLYP-100", CompositeFunctionals::XCFUNCTIONALS::LCBLYP_100},
       {"B2PLYP", CompositeFunctionals::XCFUNCTIONALS::B2PLYP},
       {"B2KPLYP", CompositeFunctionals::XCFUNCTIONALS::B2KPLYP},
       {"B2TPLYP", CompositeFunctionals::XCFUNCTIONALS::B2TPLYP},

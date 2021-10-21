@@ -27,44 +27,47 @@
 #include "settings/LRSCFOptions.h"
 /* Include Std and External Headers */
 #include <fstream>
+#include <iomanip>
+
 namespace Serenity {
 
 EigenvalueSolver::EigenvalueSolver(
     bool printResponseMatrix, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion,
-    unsigned maxIterations, unsigned maxSubspaceDimension, unsigned initialSubspace, Options::RESPONSE_PROBLEM responseType,
+    unsigned maxIterations, unsigned maxSubspaceDimension, unsigned initialSubspace, Options::RESPONSE_ALGORITHM algorithm,
     std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-    std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess)
-  : IterativeSolver(responseType == Options::RESPONSE_PROBLEM::RPA ? 2 : 1, nDimension, nEigen, diagonal,
-                    convergenceCriterion, maxIterations, maxSubspaceDimension, sigmaCalculator, initialGuess),
+    std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess,
+    std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk)
+  : IterativeSolver(algorithm == Options::RESPONSE_ALGORITHM::SYMPLECTIC ? 2 : 1, nDimension, nEigen, diagonal,
+                    convergenceCriterion, maxIterations, maxSubspaceDimension, sigmaCalculator, writeToDisk, initialGuess),
     _printResponseMatrix(printResponseMatrix),
     _initialSubspace(initialSubspace),
-    _responseType(responseType) {
+    _algorithm(algorithm) {
   this->initialize();
 }
 
 void EigenvalueSolver::initialize() {
   printHeader("Eigenvalue Solver");
-  if (_responseType == Options::RESPONSE_PROBLEM::TDA) {
-    printf("\n    Solving Hermitian CIS/TDA problem.\n");
+  if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIC) {
+    printf("\n    Symmetric algorithm.\n");
   }
-  else if (_responseType == Options::RESPONSE_PROBLEM::TDDFT) {
-    printf("\n    Solving Hermitian TDDFT problem.\n");
+  else if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED) {
+    printf("\n    Symmetrized algorithm.\n");
   }
   else {
-    printf("\n    Solving non-Hermitian RPA problem.\n");
+    printf("\n    Symplectic algorithm.\n");
   }
 
-  // Set dimensions
+  // set dimensions
   _sigmaVectors.resize(_nSets);
   _guessVectors.resize(_nSets);
-  _eigenvectors.resize(_nSets);
+  _eigenvectors.resize(_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED ? 2 : _nSets);
   _residualVectors.resize(_nSets);
   _expansionVectors.resize(_nSets);
   _correctionVectors.resize(_nSets);
   _residualNorms = Eigen::VectorXd::Zero(_nEigen);
   _eigenvalues = Eigen::VectorXd::Zero(_nEigen);
 
-  // Initialize all matrices
+  // initialize all matrices
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
     _guessVectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _initialSubspace);
     _eigenvectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _nEigen);
@@ -72,167 +75,193 @@ void EigenvalueSolver::initialize() {
     _correctionVectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _nEigen);
   }
 
-  // Set guess vectors to
-  // - the initial guess if one was passed to the eigenvalue solver
-  // - unit vectors in case of fresh calculation
-  if (_initialGuess) {
-    if (_nSets > (*_initialGuess).size())
-      (*_initialGuess).resize(_nSets);
-    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-      _guessVectors[iSet] = (*_initialGuess)[iSet];
-    }
-    Orthogonalization::modifiedGramSchmidtLinDep(_guessVectors, 0.0);
+  // fill up guess vectors with unit vectors with ones
+  // at the positions with the lowest orb-energy differences
+  std::vector<std::pair<double, unsigned>> diagPair;
+  for (unsigned ia = 0; ia < _nDimension; ++ia) {
+    diagPair.push_back(std::pair<double, unsigned>(_diagonal(ia), ia));
   }
-  else {
-    std::vector<std::pair<double, unsigned>> diagPair;
-    for (unsigned ia = 0; ia < _nDimension; ++ia) {
-      diagPair.push_back(std::pair<double, unsigned>(_diagonal(ia), ia));
-    }
-    std::stable_sort(diagPair.begin(), diagPair.end());
-    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-      for (unsigned i = 0; i < _initialSubspace; ++i) {
-        _guessVectors[iSet](diagPair[i].second, i) = 1.0;
-      }
+  std::stable_sort(diagPair.begin(), diagPair.end());
+  for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+    for (unsigned i = 0; i < _initialSubspace; ++i) {
+      _guessVectors[iSet](diagPair[i].second, i) = 1.0;
     }
   }
 
-  // Get initial sigma vectors
+  if (_initialGuess) {
+    unsigned inputRoots = (*_initialGuess)[0].cols();
+    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+      _guessVectors[iSet].rightCols(inputRoots) = (*_initialGuess)[iSet];
+    }
+    Orthogonalization::modifiedGramSchmidtLinDep(_guessVectors, (inputRoots < _nEigen) ? 1e-3 : 0.0);
+  }
+
+  _itStart = std::chrono::steady_clock::now();
+  // get initial sigma vectors
   _sigmaVectors = (*_sigmaCalculator(_guessVectors));
 } /* this->initialize() */
 
 void EigenvalueSolver::iterate() {
-  // Set current subspace size
+  // set current subspace size
   _subDim = _guessVectors[0].cols();
 
-  // Solve subspace problem
-  // At the end of this section, the matrix _subspaceEigenvectors will contain the current expansion
-  // coefficients of this iteration sorted according to their respective eigenvalue
+  _metric = Eigen::MatrixXd::Zero(_nSets * _subDim, _nSets * _subDim);
+  _subspaceMatrix = Eigen::MatrixXd::Zero(_nSets * _subDim, _nSets * _subDim);
+  for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+    _subspaceMatrix.block(iSet * _subDim, iSet * _subDim, _subDim, _subDim) =
+        _guessVectors[iSet].transpose() * _sigmaVectors[iSet];
+    _metric.block(iSet * _subDim, iSet * _subDim, _subDim, _subDim) = _guessVectors[iSet].transpose() * _guessVectors[iSet];
+  }
+  Eigen::MatrixXd cond = _metric.diagonal().cwiseSqrt().cwiseInverse().asDiagonal();
+
+  _subspaceMatrix = (cond * _subspaceMatrix * cond).eval();
+
   if (_nSets == 1) {
-    // Construct Hermitian subspace problem and solve it exactly
-    Eigen::MatrixXd odiag =
-        (_guessVectors[0].transpose() * _guessVectors[0]).diagonal().cwiseSqrt().cwiseInverse().asDiagonal();
-    _subspaceMatrix = odiag * _guessVectors[0].transpose() * _sigmaVectors[0] * odiag;
     if (_printResponseMatrix) {
       std::ofstream file("ResponseMatrix_" + std::to_string(this->_nIter) + ".txt");
       if (file.is_open())
-        file << _subspaceMatrix;
+        file << std::scientific << std::setprecision(16) << _subspaceMatrix;
       file.close();
     }
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> subspaceSolver(_subspaceMatrix);
-    _subspaceEigenvectors = odiag * subspaceSolver.eigenvectors();
+    _subspaceEigenvectors = cond * subspaceSolver.eigenvectors();
     _subspaceEigenvalues = subspaceSolver.eigenvalues();
   }
   else {
-    // Construct symplectic subspace problem and solve it exactly
-    _subspaceMatrix = Eigen::MatrixXd::Zero(2 * _subDim, 2 * _subDim);
-    _subspaceMatrix.topLeftCorner(_subDim, _subDim) = _guessVectors[0].transpose() * _sigmaVectors[0];
-    _subspaceMatrix.bottomRightCorner(_subDim, _subDim) = _guessVectors[1].transpose() * _sigmaVectors[1];
+    _metric.setZero();
+    _metric.topRightCorner(_subDim, _subDim) = _guessVectors[0].transpose() * _guessVectors[1];
+    _metric.bottomLeftCorner(_subDim, _subDim) = _guessVectors[1].transpose() * _guessVectors[0];
+    _metric = (cond * _metric * cond).eval();
 
-    Eigen::MatrixXd overlap = Eigen::MatrixXd::Zero(2 * _subDim, 2 * _subDim);
-    overlap.topRightCorner(_subDim, _subDim) = _guessVectors[0].transpose() * _guessVectors[1];
-    overlap.bottomLeftCorner(_subDim, _subDim) = _guessVectors[1].transpose() * _guessVectors[0];
-
-    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> subspaceSolver(_subspaceMatrix, overlap, true);
-    Eigen::MatrixXd unsortedEigenvectors = subspaceSolver.eigenvectors().real();
-    Eigen::VectorXd unsortedEigenvalues = subspaceSolver.eigenvalues().real();
-
-    // Sort (only positive) eigenvalues in ascending order
-    std::vector<std::pair<double, unsigned>> evPair(0);
-    for (unsigned i = 0; i < 2 * _subDim; ++i) {
-      if (unsortedEigenvalues(i) > 0)
-        evPair.push_back(std::make_pair(unsortedEigenvalues(i), i));
+    Eigen::FullPivLU<Eigen::MatrixXd> lu(_metric);
+    if (lu.isInvertible()) {
+      _subspaceMatrix = (lu.inverse() * _subspaceMatrix).eval();
     }
-    std::stable_sort(evPair.begin(), evPair.end());
-
-    _subspaceEigenvectors.resize(2 * _subDim, _subDim);
-    _subspaceEigenvalues.resize(_subDim);
-    // Reassemble eigenvectors
-    for (unsigned i = 0; i < _subDim; ++i) {
-      _subspaceEigenvalues(i) = evPair[i].first;
-      _subspaceEigenvectors.col(i) = unsortedEigenvectors.col(evPair[i].second);
+    else {
+      throw SerenityError("Subspace metric cannot be inverted.");
     }
+    Eigen::EigenSolver<Eigen::MatrixXd> subspaceSolver(_subspaceMatrix);
+    _subspaceEigenvectors = cond * subspaceSolver.eigenvectors().real();
+    _subspaceEigenvalues = subspaceSolver.eigenvalues().real();
+
+    // sort in ascending order
+    unsigned iMin;
+    for (unsigned i = 0; i < _nSets * _subDim; ++i) {
+      _subspaceEigenvalues.tail(_nSets * _subDim - i).minCoeff(&iMin);
+      _subspaceEigenvalues.row(i).swap(_subspaceEigenvalues.row(iMin + i));
+      _subspaceEigenvectors.col(i).swap(_subspaceEigenvectors.col(iMin + i));
+    }
+
+    _subspaceEigenvalues = _subspaceEigenvalues.tail(_subDim).eval();
+    _subspaceEigenvectors = _subspaceEigenvectors.rightCols(_subDim).eval();
   }
 
-  // If there was an initial guess, the eigenvalue solver will try to follow _nEigen roots
+  // if there was an initial guess, the eigenvalue solver will try to follow _nEigen roots
   // that were given to it based on the overlap of the ritz vectors with the initial guess
   if (_initialGuess) {
-    Eigen::MatrixXd& rootsToFollow = _nIter == 1 ? (*_initialGuess)[0] : _eigenvectors[0];
-    Eigen::MatrixXd overlap = (_guessVectors[0] * _subspaceEigenvectors.topRows(_subDim)).transpose() * rootsToFollow;
-    for (unsigned i = 0; i < _nEigen; ++i) {
-      unsigned iMax;
+    Eigen::MatrixXd& rootsToFollow = (_nIter == 1) ? (*_initialGuess)[0] : _eigenvectors[0];
+    Eigen::MatrixXd ritzVectors = _guessVectors[0] * _subspaceEigenvectors.topRows(_subDim);
+    Eigen::MatrixXd overlap = ritzVectors.transpose() * rootsToFollow;
+    // sort nRootsToFollow in descending order (wrt to overlap)
+    unsigned iMax;
+    for (unsigned i = 0; i < rootsToFollow.cols(); ++i) {
       overlap.col(i).cwiseAbs().maxCoeff(&iMax);
-      // Swap eigenvalues and expansion vectors
+      // swap eigenvalues and expansion vectors
       _subspaceEigenvalues.row(i).swap(_subspaceEigenvalues.row(iMax));
       _subspaceEigenvectors.col(i).swap(_subspaceEigenvectors.col(iMax));
     }
+    // sort the rest in ascending order to catch the lowest-lying missing roots
+    if (rootsToFollow.cols() < _nEigen) {
+      unsigned iMin;
+      for (unsigned i = rootsToFollow.cols(); i < _subDim; ++i) {
+        _subspaceEigenvalues.tail(_subDim - i).minCoeff(&iMin);
+        _subspaceEigenvalues.row(i).swap(_subspaceEigenvalues.row(iMin + i));
+        _subspaceEigenvectors.col(i).swap(_subspaceEigenvectors.col(iMin + i));
+      }
+    }
   }
 
-  // Sort eigenvalues in ascending order that were found to have the best overlap
-  std::vector<std::pair<double, unsigned>> evPair(0);
+  // only take as many as required by _nEigen
+  _subspaceEigenvalues = _subspaceEigenvalues.head(_nEigen).eval();
+  _subspaceEigenvectors = _subspaceEigenvectors.leftCols(_nEigen).eval();
+
+  // sort one last time
+  unsigned iMin;
   for (unsigned i = 0; i < _nEigen; ++i) {
-    evPair.push_back(std::make_pair(_subspaceEigenvalues(i), i));
+    _subspaceEigenvalues.tail(_nEigen - i).minCoeff(&iMin);
+    _subspaceEigenvalues.row(i).swap(_subspaceEigenvalues.row(iMin + i));
+    _subspaceEigenvectors.col(i).swap(_subspaceEigenvectors.col(iMin + i));
   }
-  std::stable_sort(evPair.begin(), evPair.end());
 
-  // Reassemble eigenvalues and expansion coefficients
+  // transfer to expansion vectors
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
     _expansionVectors[iSet].resize(_subDim, _nEigen);
   }
   for (unsigned i = 0; i < _nEigen; ++i) {
-    _eigenvalues(i) = evPair[i].first;
+    _eigenvalues(i) = _subspaceEigenvalues(i);
     for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-      _expansionVectors[iSet].col(i) = _subspaceEigenvectors.middleRows(iSet * _subDim, _subDim).col(evPair[i].second);
+      _expansionVectors[iSet].col(i) = _subspaceEigenvectors.middleRows(iSet * _subDim, _subDim).col(i);
     }
   }
 
-  // Ritz vectors
+  // ritz vectors
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
     _eigenvectors[iSet] = _guessVectors[iSet] * _expansionVectors[iSet];
   }
 
-  // Residual vectors and norms
+  // residual vectors and norms
   _residualNorms.setZero();
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
     _residualVectors[iSet] = _sigmaVectors[iSet] * _expansionVectors[iSet] -
                              _eigenvectors[_nSets == 1 ? 0 : iSet == 0 ? 1 : 0] * _eigenvalues.asDiagonal();
     _residualNorms += _residualVectors[iSet].colwise().norm() /
-                      std::sqrt(_responseType == Options::RESPONSE_PROBLEM::TDDFT ? 4 : _nSets);
+                      std::sqrt(_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED ? 4 : _nSets);
   }
 
-  // Check convergence
+  // check convergence
   _nConverged = 0;
   for (unsigned i = 0; i < _nEigen; ++i) {
     if (_residualNorms(i) < _convergenceCriterion)
       ++_nConverged;
   }
 
-  // Print iteration data
-  if (_nIter == 1)
-    printTableHead("\n   It.    Dimension    Converged    Max. Norm");
-  printf("%5i %11i %12i %14.2e\n", _nIter, (int)_subDim, _nConverged, _residualNorms.maxCoeff());
+  _itEnd = std::chrono::steady_clock::now();
+  double duration = std::chrono::duration_cast<std::chrono::duration<double>>(_itEnd - _itStart).count();
 
-  // Skip the rest of this iteration if converged or no further iterations are planned
-  if (_nConverged == _nEigen || _nIter == _maxIterations)
+  unsigned iMax;
+  _residualNorms.maxCoeff(&iMax);
+  // print iteration data
+  if (_nIter == 1) {
+    printTableHead("\n   it.    dimension    time (min)    converged     max. norm");
+  }
+  printf("%5i %10i %14.3f %11i %13.2e  (%2i)\n", _nIter, (int)_subDim, duration / 60.0, _nConverged,
+         _residualNorms.maxCoeff(), iMax + 1);
+
+  _itStart = std::chrono::steady_clock::now();
+
+  // skip the rest of this iteration if converged or no further iterations are planned
+  if (_nConverged == _nEigen || _nIter == _maxIterations) {
     return;
+  }
 
-  // Reset correction vectors
+  // reset correction vectors
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
     _correctionVectors[iSet].resize(_nDimension, _nEigen - _nConverged);
     _correctionVectors[iSet].setZero();
   }
 
-  // Use diagonal approximation to precondition residual vectors
+  // use diagonal approximation to precondition residual vectors
   int iCount = -1;
   for (unsigned j = 0; j < _nEigen; ++j) {
     if (_residualNorms(j) < _convergenceCriterion)
       continue;
     ++iCount;
     for (unsigned ia = 0; ia < _nDimension; ++ia) {
-      if (_responseType == Options::RESPONSE_PROBLEM::TDA) {
+      if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIC) {
         double aj = 1 / (_eigenvalues(j) - _diagonal(ia));
         _correctionVectors[0](ia, iCount) = aj * _residualVectors[0](ia, j);
       }
-      else if (_responseType == Options::RESPONSE_PROBLEM::TDDFT) {
+      else if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED) {
         double aj = 1 / (_eigenvalues(j) - _diagonal(ia) * _diagonal(ia));
         _correctionVectors[0](ia, iCount) = aj * _residualVectors[0](ia, j);
       }
@@ -245,49 +274,54 @@ void EigenvalueSolver::iterate() {
     }
   }
 
-  // Expand subspace
+  // expand subspace
   this->expandSubspace();
+
+  // obtain X and Y and normalize eigenvectors
+  this->normalizeEigenvectors();
+
+  // save current eigenpairs
+  this->_writeToDisk(_eigenvectors, _eigenvalues);
 } /* this->iterate() */
 
-void EigenvalueSolver::postProcessing() {
-  if (_responseType == Options::RESPONSE_PROBLEM::TDA) {
-    // Do nothing
-  }
-  else {
-    // In case of TDDFT, obtain left eigenvectors
-    if (_responseType == Options::RESPONSE_PROBLEM::TDDFT) {
-      printf(" Transforming for TDDFT.\n\n");
-      // Obtain eigenvalues
+void EigenvalueSolver::normalizeEigenvectors() {
+  if (_algorithm != Options::RESPONSE_ALGORITHM::SYMMETRIC) {
+    if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED) {
       _eigenvalues = _eigenvalues.cwiseSqrt();
-      // Obtain (X+Y)
       _eigenvectors[0] = _diagonal.cwiseSqrt().asDiagonal() * _eigenvectors[0];
-      // Obtain (X-Y)
-      _eigenvectors.push_back(_diagonal.cwiseInverse().asDiagonal() * _eigenvectors[0] * _eigenvalues.asDiagonal());
+      _eigenvectors[1] = _diagonal.cwiseInverse().asDiagonal() * _eigenvectors[0] * _eigenvalues.asDiagonal();
     }
-    // Obtain X and Y from (X+Y) and (X-Y)
+
+    for (unsigned iEigen = 0; iEigen < _nEigen; ++iEigen) {
+      double clr = _eigenvectors[1].col(iEigen).dot(_eigenvectors[0].col(iEigen));
+      _eigenvectors[0].col(iEigen) *= 0.5 / std::sqrt(clr);
+      _eigenvectors[1].col(iEigen) *= 0.5 / std::sqrt(clr);
+    }
+
     Eigen::MatrixXd xpy = _eigenvectors[0];
     Eigen::MatrixXd xmy = _eigenvectors[1];
-    _eigenvectors[0] = (xpy + xmy) / std::sqrt(2);
-    _eigenvectors[1] = (xpy - xmy) / std::sqrt(2);
-
-    // Normalize
-    Eigen::MatrixXd overlap =
-        _eigenvectors[0].transpose() * _eigenvectors[0] - _eigenvectors[1].transpose() * _eigenvectors[1];
-    Eigen::VectorXd norms = overlap.colwise().norm();
-    for (unsigned i = 0; i < norms.size(); ++i) {
-      norms(i) = 1 / std::sqrt(norms(i));
-    }
-    _eigenvectors[0] *= norms.asDiagonal();
-    _eigenvectors[1] *= norms.asDiagonal();
+    _eigenvectors[0] = xpy + xmy;
+    _eigenvectors[1] = xpy - xmy;
   }
+} /* this->normalizeEigenvectors() */
 
-  // Print eigenvalues with norms
-  printf("--------------------------------------------\n");
-  printf("   root        eigenvalue       res. norm   \n");
-  printf("           (a.u.)      (eV)                 \n");
-  printf("--------------------------------------------\n");
+void EigenvalueSolver::postProcessing() {
+  // obtain X and Y and normalize eigenvectors
+  this->normalizeEigenvectors();
+
+  // print eigenvalues with norms
+  if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIC) {
+    printf("\n         TDA excitation energies       \n");
+  }
+  else {
+    printf("\n        TDDFT excitation energies      \n");
+  }
+  printf(" ------------------------------------------\n");
+  printf("    root        eigenvalue       res norm  \n");
+  printf("            (a.u.)      (eV)               \n");
+  printf(" ------------------------------------------\n");
   for (unsigned i = 0; i < _nEigen; ++i) {
-    printf("%6i %11.6f %9.4f %12.3e\n", i + 1, _eigenvalues(i), _eigenvalues(i) * HARTREE_TO_EV, _residualNorms(i));
+    printf("%6i %12.7f %9.5f %11.3e\n", i + 1, _eigenvalues(i), _eigenvalues(i) * HARTREE_TO_EV, _residualNorms(i));
   }
   printf("\n");
 } /* this->postProcessing() */

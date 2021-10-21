@@ -23,9 +23,8 @@
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
 
-using namespace Serenity;
-using namespace Options;
 namespace py = pybind11;
+using namespace Serenity;
 
 void export_EmbeddingSettings(py::module& spy) {
   py::class_<EmbeddingSettings>(spy, "EmbeddingSettings", "Embedding settings all set to their default values.")

@@ -21,9 +21,14 @@
 /* Include Serenity Internal Headers */
 #include "tasks/PlotTask.h"
 #include "data/ElectronicStructure.h"
+#include "io/HDF5.h"
+#include "postHF/LRSCF/Analysis/NROCalculator.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
+#include "postHF/LRSCF/LRSCFController.h"
+#include "tasks/LRSCFTask.h"
 #include <gtest/gtest.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -71,8 +76,8 @@ TEST_F(PlotTaskTest, DensityRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.density = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density.cube").c_str()));
 }
 
 /**
@@ -88,8 +93,8 @@ TEST_F(PlotTaskTest, DensityRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density.dat").c_str()));
 }
 
 /**
@@ -106,14 +111,13 @@ TEST_F(PlotTaskTest, DensityRestrictedHeatmap) {
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.settings.xyHeatmap = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density_XYPLANE.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density_XYPLANE.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density_XYPLANE.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density_XYPLANE.dat").c_str()));
   EXPECT_TRUE(fileExists(
-      (systemController->getSettings().path + "TestSystem_H2_MINBAS_Density_MOLECULE_ROTATED_TO_XYPLANE.xyz").c_str()));
-  EXPECT_EQ(
-      0, std::remove(
-             (systemController->getSettings().path + "TestSystem_H2_MINBAS_Density_MOLECULE_ROTATED_TO_XYPLANE.xyz").c_str()));
-  std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_Density.dat").c_str());
+      (systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density_MOLECULE_ROTATED_TO_XYPLANE.xyz").c_str()));
+  EXPECT_EQ(0, std::remove(
+                   (systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density_MOLECULE_ROTATED_TO_XYPLANE.xyz").c_str()));
+  std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_Density.dat").c_str());
 }
 
 /**
@@ -128,8 +132,8 @@ TEST_F(PlotTaskTest, DensityRestrictedEnvironmentSystemCube) {
   auto task = PlotTask<RESTRICTED>({systemControllerA}, {systemControllerB});
   task.settings.density = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemControllerA->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemControllerA->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemControllerA->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemControllerA->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.cube").c_str()));
 }
 
 TEST_F(PlotTaskTest, DensityRestrictedEnvironmentSystemPlane) {
@@ -143,8 +147,8 @@ TEST_F(PlotTaskTest, DensityRestrictedEnvironmentSystemPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemControllerA->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemControllerA->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemControllerA->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemControllerA->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE_Density.dat").c_str()));
 }
 
 /**
@@ -157,8 +161,8 @@ TEST_F(PlotTaskTest, ELFRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.elf = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
 }
 TEST_F(PlotTaskTest, ELFRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -169,8 +173,8 @@ TEST_F(PlotTaskTest, ELFRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
 }
 
 /**
@@ -183,8 +187,8 @@ TEST_F(PlotTaskTest, ELFTSRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.elfts = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.cube").c_str()));
 }
 TEST_F(PlotTaskTest, ELFTSRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -195,8 +199,8 @@ TEST_F(PlotTaskTest, ELFTSRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ELF.dat").c_str()));
 }
 
 /**
@@ -209,8 +213,8 @@ TEST_F(PlotTaskTest, SEDDRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.sedd = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_SEDD.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_SEDD.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SEDD.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SEDD.cube").c_str()));
 }
 TEST_F(PlotTaskTest, SEDDRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -221,8 +225,8 @@ TEST_F(PlotTaskTest, SEDDRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_SEDD.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_SEDD.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SEDD.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SEDD.dat").c_str()));
 }
 
 /**
@@ -235,8 +239,8 @@ TEST_F(PlotTaskTest, DORIRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.dori = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_DORI.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_DORI.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_DORI.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_DORI.cube").c_str()));
 }
 TEST_F(PlotTaskTest, DORIRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -247,8 +251,8 @@ TEST_F(PlotTaskTest, DORIRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_DORI.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_DORI.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_DORI.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_DORI.dat").c_str()));
 }
 
 /**
@@ -261,8 +265,8 @@ TEST_F(PlotTaskTest, SignedDensityRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.signedDensity = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_signedDensity.cube").c_str()));
 }
 TEST_F(PlotTaskTest, SignedDensityRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -273,8 +277,8 @@ TEST_F(PlotTaskTest, SignedDensityRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_signedDensity.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_signedDensity.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_signedDensity.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_signedDensity.dat").c_str()));
 }
 
 /**
@@ -287,14 +291,14 @@ TEST_F(PlotTaskTest, DensityUnrestrictedCube) {
   auto task = PlotTask<UNRESTRICTED>({systemController}, {});
   task.settings.density = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_alpha_Density.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_alpha_Density.cube").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_beta_Density.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_beta_Density.cube").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_TotalDensity.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_TotalDensity.cube").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_SpinDensity.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_SpinDensity.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_alpha_Density.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_alpha_Density.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_beta_Density.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_beta_Density.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_TotalDensity.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_TotalDensity.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SpinDensity.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SpinDensity.cube").c_str()));
 }
 TEST_F(PlotTaskTest, DensityUnrestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -305,14 +309,14 @@ TEST_F(PlotTaskTest, DensityUnrestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_alpha_Density.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_alpha_Density.dat").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_beta_Density.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_beta_Density.dat").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_TotalDensity.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_TotalDensity.dat").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_SpinDensity.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_SpinDensity.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_alpha_Density.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_alpha_Density.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_beta_Density.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_beta_Density.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_TotalDensity.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_TotalDensity.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SpinDensity.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_SpinDensity.dat").c_str()));
 }
 
 /**
@@ -325,11 +329,11 @@ TEST_F(PlotTaskTest, MOsRestrictedCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.allOrbitals = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
 }
 TEST_F(PlotTaskTest, MOsRestrictedPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -340,11 +344,11 @@ TEST_F(PlotTaskTest, MOsRestrictedPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
 }
 
 /**
@@ -357,10 +361,10 @@ TEST_F(PlotTaskTest, MOsRestricted_partsCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.orbitals = {1};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
 }
 TEST_F(PlotTaskTest, MOsRestricted_partsPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -371,10 +375,10 @@ TEST_F(PlotTaskTest, MOsRestricted_partsPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
 }
 
 /**
@@ -387,11 +391,11 @@ TEST_F(PlotTaskTest, MOsRestricted_nonExisitingCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.orbitals = {1, 2, 3};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
 }
 TEST_F(PlotTaskTest, MOsRestricted_nonExisitingPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -402,11 +406,11 @@ TEST_F(PlotTaskTest, MOsRestricted_nonExisitingPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
-  EXPECT_FALSE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO1.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.dat").c_str()));
+  EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.dat").c_str()));
 }
 
 /**
@@ -419,8 +423,8 @@ TEST_F(PlotTaskTest, ESPCube) {
   auto task = PlotTask<RESTRICTED>({systemController}, {});
   task.settings.electrostaticPot = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ESP.cube").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ESP.cube").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.cube").c_str()));
 }
 TEST_F(PlotTaskTest, ESPPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
@@ -431,8 +435,61 @@ TEST_F(PlotTaskTest, ESPPlane) {
   task.settings.p2 = {0.0, 1.0, 0.0};
   task.settings.p3 = {0.0, 0.0, 1.0};
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
+}
+/**
+ * @test
+ * @brief Tests PlotTask.h/.cpp: Print transition density to file.
+ */
+TEST_F(PlotTaskTest, Transitiondensity) {
+  auto systemController =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, true);
+  std::vector<std::shared_ptr<SystemController>> active = {systemController};
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf(active);
+  auto task = PlotTask<RESTRICTED>({systemController}, {});
+  lrscf.settings.densFitK = Options::DENS_FITS::RI;
+  lrscf.settings.nEigen = 4;
+  lrscf.run();
+  task.settings.transitionDensity = true;
+  task.settings.excitations = {1, 2, 3, 4};
+  task.run();
+  for (unsigned iExc = 0; iExc < 4; iExc++) {
+    EXPECT_TRUE(fileExists((systemController->getSystemPath() + systemController->getSystemName() +
+                            "_transitiondensity_" + std::to_string(iExc + 1) + "_.cube")
+                               .c_str()));
+    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() +
+                              "_transitiondensity_" + std::to_string(iExc + 1) + "_.cube")
+                                 .c_str()));
+  }
+}
+/**
+ * @test
+ * @brief Tests PlotTask.h/.cpp: Print hole and particle density to file.
+ */
+TEST_F(PlotTaskTest, HoleParticledensity) {
+  auto systemController =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, true);
+  std::vector<std::shared_ptr<SystemController>> active = {systemController};
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf(active);
+  auto task = PlotTask<RESTRICTED>({systemController}, {});
+  lrscf.settings.densFitK = Options::DENS_FITS::RI;
+  lrscf.settings.nEigen = 4;
+  lrscf.run();
+  task.settings.holeparticleDensity = true;
+  task.settings.excitations = {1, 2, 3, 4};
+  task.run();
+  for (unsigned iExc = 0; iExc < 4; iExc++) {
+    for (unsigned holeparticle = 0; holeparticle < 2; holeparticle++) {
+      std::string filename = (holeparticle == 0) ? "_holedensity_" : "_particledensity_";
+      EXPECT_TRUE(fileExists((systemController->getSystemPath() + systemController->getSystemName() + filename +
+                              std::to_string(iExc + 1) + "_.cube")
+                                 .c_str()));
+      EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() + filename +
+                                std::to_string(iExc + 1) + "_.cube")
+                                   .c_str()));
+    }
+  }
 }
 
 } /* namespace Serenity */

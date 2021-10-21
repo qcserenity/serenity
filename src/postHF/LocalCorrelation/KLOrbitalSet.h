@@ -112,6 +112,10 @@ class KLOrbitalSet {
    * @brief Default destructor.
    */
   virtual ~KLOrbitalSet() = default;
+  /**
+   * @brief Remove integral vectors from memory.
+   */
+  void cleanUp();
 
  private:
   // The overlap matrix controller.

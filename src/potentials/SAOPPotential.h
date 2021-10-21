@@ -22,14 +22,9 @@
 #define POTENTIALS_SAOPPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "basis/BasisController.h"
-#include "data/grid/DensityOnGridCalculator.h"
-#include "data/grid/DensityOnGridController.h"
-#include "data/grid/GridPotential.h"
-#include "data/matrices/DensityMatrixController.h"
+#include "grid/Grid.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "potentials/Potential.h"
-#include "settings/Options.h"
 
 namespace Serenity {
 
@@ -37,6 +32,12 @@ namespace Serenity {
 class SystemController;
 template<Options::SCF_MODES SCFMode>
 class ScalarOperatorToMatrixAdder;
+template<Options::SCF_MODES SCFMode>
+class DensityOnGridController;
+class BasisController;
+template<Options::SCF_MODES SCFMode>
+class OrbitalController;
+class BasisFunctionOnGridController;
 
 /**
  * @class SAOPPotential SAOPPotential.h
@@ -113,6 +114,8 @@ class SAOPPotential : public Potential<SCFMode>,
   SpinPolarizedData<SCFMode, unsigned int> _nOCC;
   ///@brief The controller for the current orbital set.
   std::shared_ptr<OrbitalController<SCFMode>> _orbitalController;
+
+  std::shared_ptr<SystemController> _systemController;
   ///@brief The controller for the basis function values the grid.
   std::shared_ptr<BasisFunctionOnGridController> _basisFunctionOnGridController;
   ///@brief occupation number of the orbitals.

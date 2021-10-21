@@ -30,9 +30,6 @@
 #include "grid/GridControllerFactory.h"                               //Combinded AB grids.
 #include "integrals/OneElectronIntegralController.h"                  //Mulliken populations/Hybrid approach.
 #include "misc/SystemSplittingTools.h" //Environment density matrix controller construction.
-#include "settings/Settings.h"         //Settings.
-#include "system/SystemController.h"   //Definition of a SystemController.
-/* ABFockMatrixConstruction */
 #include "potentials/ABFockMatrixConstruction/ABCoreHamiltonian.h"
 #include "potentials/ABFockMatrixConstruction/ABCoulombInteractionPotential.h"
 #include "potentials/ABFockMatrixConstruction/ABERIPotential.h"
@@ -40,6 +37,8 @@
 #include "potentials/ABFockMatrixConstruction/ABFuncPotential.h"
 #include "potentials/ABFockMatrixConstruction/ABNAddFuncPotential.h"
 #include "potentials/ABFockMatrixConstruction/ABZeroPotential.h"
+#include "settings/Settings.h"       //Settings.
+#include "system/SystemController.h" //Definition of a SystemController.
 
 namespace Serenity {
 
@@ -120,7 +119,7 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
 
   auto environmentDensityControllers = SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(environmentSystems);
   std::vector<std::shared_ptr<BasisController>> envAuxBasis;
-  if (activeSystem->getSettings().dft.densityFitting == Options::DENS_FITS::RI) {
+  if (activeSystem->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
     for (const auto& envSys : environmentSystems) {
       envAuxBasis.push_back(envSys->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB));
     }
@@ -150,7 +149,7 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
       activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController()};
   auto activeCoulomb = std::make_shared<ABERIPotential<SCFMode>>(
       activeSystem, basisContA, basisControllerB, actDensityMatrixController, exchangeRatioActive,
-      lrExchangeRatioActive, rangeSeperationParameterActive, topDown, activeSystem->getSettings().dft.densityFitting,
+      lrExchangeRatioActive, rangeSeperationParameterActive, topDown, activeSystem->getSettings().basis.densityFitting,
       abAuxBasisController, actAuxVec);
   const auto naddXCFunc = resolveFunctional(embeddingSettings->naddXCFunc);
   double exchangeRatioNAdd = naddXCFunc.getHfExchangeRatio();
@@ -158,7 +157,7 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   double lrExchangeRatioNAdd = naddXCFunc.getLRExchangeRatio();
   auto environmentCoulomb = std::make_shared<ABERIPotential<SCFMode>>(
       activeSystem, basisContA, basisControllerB, environmentDensityControllers, exchangeRatioNAdd, lrExchangeRatioNAdd,
-      rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().dft.densityFitting, abAuxBasisController,
+      rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().basis.densityFitting, abAuxBasisController,
       envAuxBasis);
   // Build A+B grid controller
   std::shared_ptr<GridController> grid_AB = GridControllerFactory::produce(combinedGeometry, activeSystem->getSettings());

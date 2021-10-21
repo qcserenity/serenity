@@ -22,10 +22,12 @@
 #include "analysis/populationAnalysis/IAOPopulationCalculator.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisControllerFactory.h" //MINAO basis construction.
+#include "basis/Basis.h"                              //Shell wise populations
 #include "data/OrbitalController.h"                   //Orbital coefficient access.
 #include "geometry/Geometry.h"                        //Geometry defintion /getNAtoms();
 #include "integrals/OneElectronIntegralController.h"  //Overlap integrals.
 #include "integrals/wrappers/Libint.h"                //Libint.
+#include "math/linearAlgebra/MatrixFunctions.h"       //symmetrize.
 #include "settings/Settings.h"                        //Settinge definition.
 #include "system/SystemController.h"                  //System controller definition.
 
@@ -184,8 +186,8 @@ IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(const CoefficientMatrix<SC
    * Gather and calculate overlap integrals
    */
   auto& libint = Libint::getInstance();
-  Eigen::MatrixXd S2 = libint.compute1eInts(libint2::Operator::overlap, B2, B2);
-  Eigen::MatrixXd S12 = libint.compute1eInts(libint2::Operator::overlap, B2, B1);
+  Eigen::MatrixXd S2 = symmetrize(libint.compute1eInts(LIBINT_OPERATOR::overlap, B2, B2));
+  Eigen::MatrixXd S12 = libint.compute1eInts(LIBINT_OPERATOR::overlap, B2, B1);
 
   // Coefficients in IAO basis
   SPMatrix<SCFMode> CIAO;
@@ -202,7 +204,8 @@ IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(const CoefficientMatrix<SC
     Eigen::MatrixXd tmp = P12 * P21 * C_spin.leftCols(nOccOrbs_spin);
     // Symmetric orthogonalization
     {
-      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(tmp.transpose() * S1 * tmp);
+      const Eigen::MatrixXd sym = symmetrize((tmp.transpose() * S1 * tmp).eval());
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(sym);
       Ct = tmp * es.operatorInverseSqrt();
     }
 
@@ -218,7 +221,8 @@ IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(const CoefficientMatrix<SC
     // tmp = P12 + (C_spin.leftCols(nOccOrbs_spin)*C_spin.leftCols(nOccOrbs_spin).transpose()- Ct*Ct.transpose())*S12;
     // Symmetric orthogonalization
     { // these brackets make sure the solver is delete when its used and not needed
-      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(tmp.transpose() * S1 * tmp);
+      const Eigen::MatrixXd sym = symmetrize((tmp.transpose() * S1 * tmp).eval());
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(sym);
       othoA_spin = tmp * es.operatorInverseSqrt();
     }
 

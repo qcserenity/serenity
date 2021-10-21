@@ -30,18 +30,12 @@
 namespace Serenity {
 
 PNOConstructor::PNOConstructor(const CoefficientMatrix<Options::SCF_MODES::RESTRICTED>& coefficients,
-                               std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> overlapMatrix,
                                std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
                                std::shared_ptr<PAOController> paoController, double paoOrthogonalizationThreshold,
-                               double pnoThreshold, double singlesScaling, double pnoCoreScaling,
                                std::vector<std::shared_ptr<SystemController>> environmentSystems,
                                double levelShiftParameter, bool setFaiZero, double ssScaling, double osScaling)
-  : QuasiCanonicalPAODomainConstructor(coefficients, overlapMatrix, f, paoController, paoOrthogonalizationThreshold,
+  : QuasiCanonicalPAODomainConstructor(coefficients, f, paoController, paoOrthogonalizationThreshold,
                                        environmentSystems, levelShiftParameter, ssScaling, osScaling),
-    _pnoThreshold(pnoThreshold),
-    _singlesPNOThreshold(singlesScaling * pnoThreshold),
-    _pnoCoreThreshold(pnoCoreScaling * pnoThreshold),
-    _pnoCoreSinglesThreshold(pnoCoreScaling * _singlesPNOThreshold),
     _setFaiZero(setFaiZero),
     _ssScaling(ssScaling),
     _osScaling(osScaling){};
@@ -51,21 +45,20 @@ void PNOConstructor::transformExternalBasis(std::shared_ptr<OrbitalPair> pair) {
 }
 
 void PNOConstructor::transformToPNOBasis(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs) {
-  unsigned int nThreads = omp_get_max_threads();
   Eigen::setNbThreads(1);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic)
   for (unsigned int iPair = 0; iPair < orbitalPairs.size(); ++iPair) {
     auto& pair = orbitalPairs[iPair];
     transformToPNOBasis(pair);
   } // for pair
-  Eigen::setNbThreads(nThreads);
+  Eigen::setNbThreads(0);
 }
 
 std::pair<Eigen::VectorXd, Eigen::MatrixXd> PNOConstructor::orthogonalizeFockMatrix(const Eigen::MatrixXd& d_ij_red,
                                                                                     std::shared_ptr<OrbitalPair> pair) {
-  Eigen::MatrixXd R_ij = this->_paoController->getPAOsFromDomain(pair->paoDomain);
-  Eigen::MatrixXd p_ij = (R_ij * pair->toPAODomain * d_ij_red).eval();
-  Eigen::MatrixXd f_pao = (p_ij.transpose() * this->_f * p_ij).eval();
+  const Eigen::MatrixXd p_ij = pair->toPAODomain * d_ij_red;
+  const Eigen::MatrixXd tmp = pair->domainProjection * this->_f_pao * pair->domainProjection.transpose();
+  const Eigen::MatrixXd f_pao = (p_ij.transpose() * tmp * p_ij).eval();
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ef(f_pao);
   Eigen::MatrixXd transformation = (d_ij_red * ef.eigenvectors()).eval();
   return std::pair<Eigen::VectorXd, Eigen::MatrixXd>(ef.eigenvalues(), transformation);
@@ -92,11 +85,8 @@ void PNOConstructor::transformToPNOBasis(std::shared_ptr<OrbitalPair> pair) {
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(D_ij);
   auto& d_ij = es.eigenvectors();
   auto& n_ij = es.eigenvalues();
-  int nPNOs = (n_ij.array() >= _pnoThreshold).count();
+  int nPNOs = (n_ij.array() >= pair->getPNOThreshold()).count();
   if (pair->singles_i && pair->singles_j) {
-    if (pair->singles_i->coreLikeOrbital || pair->singles_j->coreLikeOrbital) {
-      nPNOs = (n_ij.array() >= _pnoCoreThreshold).count();
-    }
     if ((pair->singles_i->coreLikeOrbital && not pair->singles_j->coreLikeOrbital) ||
         (pair->singles_j->coreLikeOrbital && not pair->singles_i->coreLikeOrbital)) {
       if (std::fabs(pair->f_ij) > 1e-6) {
@@ -139,17 +129,14 @@ void PNOConstructor::transformToPNOBasis(std::shared_ptr<OrbitalPair> pair) {
 
   if (pair->i == pair->j && pair->singles_i) {
     auto single = pair->singles_i;
-    int nSinglesPNOs = (n_ij.array() >= _singlesPNOThreshold).count();
-    if (single->coreLikeOrbital)
-      nSinglesPNOs = (n_ij.array() >= _pnoCoreSinglesThreshold).count();
+    int nSinglesPNOs = (n_ij.array() >= single->getPNOThreshold()).count();
     nSinglesPNOs = (nSinglesPNOs > 0) ? nSinglesPNOs : 1;
     auto epsAndTrafo_singles = orthogonalizeFockMatrix(d_ij.rightCols(nSinglesPNOs).eval(), pair);
     const Eigen::VectorXd& eigenvalues_singles = epsAndTrafo_singles.first;
     const Eigen::MatrixXd& transformation_singles = epsAndTrafo_singles.second;
     single->toPAODomain = (pair->toPAODomain * transformation_singles).eval();
     single->t_i = Eigen::VectorXd::Zero(eigenvalues_singles.rows());
-    const Eigen::MatrixXd p_ii = _paoController->getPAOsFromDomain(pair->paoDomain) * single->toPAODomain;
-    single->f_ai = (p_ii.transpose() * _f_AO_MO.col(i)).eval();
+    single->f_ai = (single->toPAODomain.transpose() * pair->domainProjection * _f_PAO_MO.col(i)).eval();
     if (_setFaiZero)
       single->f_ai.setZero();
     single->epsMinusF = eigenvalues_singles.array() - _f_MO(i, i);

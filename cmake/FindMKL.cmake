@@ -22,24 +22,24 @@ endif()
 
 # Find libraries
 if ("${SYSTEM_BIT}" STREQUAL "64")
-  find_library(MKL_INTERFACE_LIBRARY libmkl_intel_lp64.so  PATHS ${MKL_ROOT}/lib/intel64/)
+  find_library(MKL_INTERFACE_LIBRARY NAMES libmkl_intel_lp64.so libmkl_intel_lp64.so.1 PATHS ${MKL_ROOT}/lib/intel64/)
 else()
-  find_library(MKL_INTERFACE_LIBRARY libmkl_intel.so  PATHS ${MKL_ROOT}/lib/ia32/)
+  find_library(MKL_INTERFACE_LIBRARY NAMES libmkl_intel.so libmkl_intel.so.1 PATHS ${MKL_ROOT}/lib/ia32/)
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
-  find_library(MKL_THREADING_LIBRARY libmkl_intel_thread.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
+  find_library(MKL_THREADING_LIBRARY NAMES libmkl_intel_thread.so libmkl_intel_thread.so.1 PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
-  find_library(MKL_THREADING_LIBRARY libmkl_gnu_thread.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
+  find_library(MKL_THREADING_LIBRARY NAMES libmkl_gnu_thread.so libmkl_gnu_thread.so.1 PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
 else()
   unset(MKL_FOUND)
 endif()
 
-find_library(MKL_CORE_LIBRARY libmkl_core.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
-find_library(MKL_AVX2_LIBRARY libmkl_avx2.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
-find_library(MKL_VML_AVX2_LIBRARY libmkl_vml_avx2.so PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
+find_library(MKL_CORE_LIBRARY NAMES libmkl_core.so libmkl_core.so.1 PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
+find_library(MKL_AVX2_LIBRARY NAMES libmkl_avx2.so libmkl_avx2.so.1 PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
+find_library(MKL_VML_AVX2_LIBRARY NAMES libmkl_vml_avx2.so libmkl_vml_avx2.so.1 PATHS ${MKL_ROOT}/${MKL_LIB_ARCH})
 
-set(MKL_LIBRARIES ${MKL_AVX2_LIBRARY} ${MKL_VML_AVX2_LIBRARY} ${MKL_CORE_LIBRARY} ${MKL_INTERFACE_LIBRARY} ${MKL_THREADING_LIBRARY})
+set(MKL_LIBRARIES ${MKL_AVX2_LIBRARY} ${MKL_VML_AVX2_LIBRARY} ${MKL_INTERFACE_LIBRARY} ${MKL_THREADING_LIBRARY} ${MKL_CORE_LIBRARY})
 
 find_package_handle_standard_args(MKL DEFAULT_MSG MKL_INCLUDE_DIRS MKL_LIBRARIES)
 

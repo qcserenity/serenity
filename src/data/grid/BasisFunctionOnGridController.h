@@ -20,10 +20,9 @@
 #ifndef BASISFUNCTIONONGRIDCONTROLLER_H_
 #define BASISFUNCTIONONGRIDCONTROLLER_H_
 /* Include Serenity Internal Headers */
-#include "math/Derivatives.h"
-#include "math/Matrix.h"
 #include "notification/ObjectSensitiveClass.h"
 /* Include Std and External Headers */
+#include <Eigen/Dense>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -33,7 +32,10 @@ namespace Serenity {
 class BasisController;
 class Grid;
 class GridController;
-class MemoryManager;
+template<class T>
+class Gradient;
+template<class T>
+class Hessian;
 
 /**
  * @class BasisFunctionOnGridController BasisFunctionOnGridController.h
@@ -55,36 +57,20 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
      * @param blockSize The number of grid points per block.
      * @param derivativeLevel The highest order of the derivative of the basis functions
      *                        which should be stored.
+     *
+     *    MB: This used to be defined in the .h-file. I moved the function body to the .cpp, since I
+     *        do not see the necessity of defining it here.
      */
-    BasisFunctionBlockOnGridData(const unsigned int nBasisFunctions, const unsigned int blockSize, const unsigned int derivativeLevel)
-      : negligible(nBasisFunctions),
-        functionValues(blockSize, nBasisFunctions),
-        derivativeValues(derivativeLevel >= 1 ? makeGradientPtr<Matrix<double>>(blockSize, nBasisFunctions) : nullptr),
-        secondDerivativeValues(derivativeLevel >= 2 ? makeHessianPtr<Matrix<double>>(blockSize, nBasisFunctions) : nullptr) {
-      assert(derivativeLevel < 3);
-      negligible.setZero();
-      functionValues.setZero();
-      if (derivativeValues != nullptr) {
-        derivativeValues->x.setZero();
-        derivativeValues->y.setZero();
-        derivativeValues->z.setZero();
-      }
-      if (secondDerivativeValues != nullptr) {
-        secondDerivativeValues->xx.setZero();
-        secondDerivativeValues->xy.setZero();
-        secondDerivativeValues->xz.setZero();
-        secondDerivativeValues->yy.setZero();
-        secondDerivativeValues->yz.setZero();
-        secondDerivativeValues->zz.setZero();
-      }
-    }
-    explicit BasisFunctionBlockOnGridData(const BasisFunctionBlockOnGridData& orig)
-      : center(orig.center),
-        negligible(orig.negligible),
-        functionValues(orig.functionValues),
-        derivativeValues(orig.derivativeValues ? new Gradient<Matrix<double>>(*orig.derivativeValues) : nullptr),
-        secondDerivativeValues(orig.secondDerivativeValues ? new Hessian<Matrix<double>>(*orig.secondDerivativeValues) : nullptr) {
-    }
+    BasisFunctionBlockOnGridData(const unsigned int nBasisFunctions, const unsigned int blockSize,
+                                 const unsigned int derivativeLevel);
+    /**
+     * @brief Copy constructor for BasisFunctionBlockOnGridData.
+     * @param orig The original.
+     *
+     *    MB: This used to be defined in the .h-file. I moved the function body to the .cpp, since I
+     *        do not see the necessity of defining it here.
+     */
+    explicit BasisFunctionBlockOnGridData(const BasisFunctionBlockOnGridData& orig);
     /** @cond false */
     ///@brief The block center.
     Eigen::Vector3d center;
@@ -94,13 +80,13 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
     Eigen::VectorXi negligible;
     ///@brief The basis function values.
     /// TODO: Reduce the dimension to include only non-negligible values.
-    Matrix<double> functionValues;
+    Eigen::MatrixXd functionValues;
     ///@brief The values of the derivatives.
     /// TODO: Reduce the dimension to include only non-negligible values.
-    std::unique_ptr<Gradient<Matrix<double>>> derivativeValues;
+    std::unique_ptr<Gradient<Eigen::MatrixXd>> derivativeValues;
     ///@brief The values of the second derivative.
     /// TODO: Reduce the dimension to include only non-negligible values.
-    std::unique_ptr<Hessian<Matrix<double>>> secondDerivativeValues;
+    std::unique_ptr<Hessian<Eigen::MatrixXd>> secondDerivativeValues;
     /** @endcond */
   };
   /**
@@ -127,6 +113,7 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
    */
   void notify();
   /**
+   * @brief Getter for the data associated to the given block-index.
    * @param   blockIndex       The index of the block of grid points under consideration.
    *
    * @returns The grid data for this block, which is managed by the controller. Caution: It is
@@ -135,26 +122,31 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
    */
   const std::shared_ptr<BasisFunctionBlockOnGridData> getBlockOnGridData(const unsigned int blockIndex);
   /**
+   * @brief Getter for the point index of the first point in the given block.
    * @param blockIndex The block number for which the first index is requested.
    * @returns The first index of data objects returned by this class for the block with the given
    *          index.
    */
   unsigned int getFirstIndexOfBlock(const unsigned int blockIndex);
   /**
+   * @brief Getter for the number of grid-point blocks.
    * @returns The number of blocks of grid points managed by this controller.
    */
   inline unsigned int getNBlocks() {
     return _nBlocks;
   }
   /**
+   * @brief Getter for the number of grid points.
    * @returns (forwarded from GridController)
    */
   unsigned int getNGridPoints() const;
   /**
+   * @brief Getter for the number of basis functins.
    * @returns (forwarded from BasisCntroller)
    */
   unsigned int getNBasisFunctions() const;
   /**
+   * @brief Calculate the basis function vales/their derivatives etc..
    *
    * Math for spherical basis functions (to generate more, see: sharmonics.py):\n
    * l=0\n
@@ -257,18 +249,21 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
    */
   std::shared_ptr<BasisFunctionBlockOnGridData> calculateBasisFunctionData(const unsigned int blockIndex);
   /**
+   * @brief Getter for the underlying basis controller.
    * @returns The controller for the basis, the object is working in.
    */
   inline std::shared_ptr<BasisController> getBasisController() const {
     return _basisController;
   }
   /**
+   * @brief Getter for the underlying grid controller.
    * @returns The Grid(controller) the object is working on.
    */
   inline std::shared_ptr<GridController> getGridController() const {
     return _gridController;
   }
   /**
+   * @brief Getter for the highest derivative of the basis functions to be calculated.
    * @returns A number indicating up to which order derivatives are calculated by this object.
    */
   unsigned int getHighestDerivative() const {
@@ -298,6 +293,7 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
   const double _radialThreshold;
   const double _exponentThreshold;
   unsigned int _highestDerivative;
+  bool _upToDate = false;
 
   /**
    * For the blocks of data which are recalculated always the same memory is used. This avoids
@@ -305,8 +301,6 @@ class BasisFunctionOnGridController : public ObjectSensitiveClass<Grid> {
    */
   std::vector<std::shared_ptr<BasisFunctionBlockOnGridData>> _workspace;
   std::shared_ptr<BasisFunctionBlockOnGridData> _lastBlock;
-
-  std::shared_ptr<MemoryManager> _memManager;
 
   std::mutex _lock;
 };

@@ -30,7 +30,7 @@
 
 namespace Serenity {
 
-AtomCenteredBasisController::AtomCenteredBasisController(std::shared_ptr<const Geometry> geometry,
+AtomCenteredBasisController::AtomCenteredBasisController(std::shared_ptr<Geometry> geometry,
                                                          const std::string basisLibrary, bool makeSphericalBasis,
                                                          bool makePrimary, const std::string basisLabel, int firstECP,
                                                          std::vector<Eigen::VectorXi> importantShells)
@@ -106,7 +106,6 @@ void AtomCenteredBasisController::postConstruction() {
     if (usedShells == 0) {
       endIndex = firstIndex;
       endIndexRed = firstIndexRed;
-      std::cout << "WARNING: No shells left for atom " << atomIndex + 1 << std::endl;
     }
     else {
       basisIndex += usedShells;
@@ -120,6 +119,27 @@ void AtomCenteredBasisController::postConstruction() {
     _basisIndicesOfAtom.push_back(std::pair<unsigned int, unsigned int>(firstIndex, endIndex));
     _basisIndicesRedOfAtom.push_back(std::pair<unsigned int, unsigned int>(firstIndexRed, endIndexRed));
   }
+  _atomIndicesOfBasisFunctions = std::vector<unsigned int>(this->getNBasisFunctions(), _geometry->getNAtoms());
+  _atomIndicesOfShells = std::vector<unsigned int>(this->getReducedNBasisFunctions(), _geometry->getNAtoms());
+  for (unsigned int atomIndex = 0; atomIndex < _geometry->getNAtoms(); atomIndex++) {
+    for (unsigned int iBas = _basisIndicesOfAtom[atomIndex].first; iBas < _basisIndicesOfAtom[atomIndex].second; ++iBas) {
+      _atomIndicesOfBasisFunctions[iBas] = atomIndex;
+    } // for iBas
+    for (unsigned int iShell = _basisIndicesRedOfAtom[atomIndex].first;
+         iShell < _basisIndicesRedOfAtom[atomIndex].second; ++iShell) {
+      _atomIndicesOfShells[iShell] = atomIndex;
+    } // for iShell
+  }   // for atomIndex
+  for (auto ibas : _atomIndicesOfBasisFunctions) {
+    if (ibas >= _geometry->getNAtoms())
+      throw SerenityError("ERROR: While constructing basis function to atom map.");
+  }
+  for (auto ibas : _atomIndicesOfShells) {
+    if (ibas >= _geometry->getNAtoms())
+      throw SerenityError("ERROR: While constructing basis function shell to atom map.");
+  }
+  if (_geometry->hasAtomsWithECPs())
+    _geometry->updateCoreCoreRepulsion();
 }
 
 void AtomCenteredBasisController::toHDF5(std::string fBaseName, std::string id) {

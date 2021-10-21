@@ -35,7 +35,6 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
 SpinPolarizedData<SCFMode, Eigen::VectorXd>
@@ -93,63 +92,48 @@ SpinPolarizedData<SCFMode, Eigen::VectorXd> MullikenPopulationCalculator<SCFMode
   };
   return populations;
 }
-
 template<Options::SCF_MODES SCFMode>
 SPMatrix<SCFMode> MullikenPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(
-    const CoefficientMatrix<SCFMode>& coefficients, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
+    const SPMatrix<SCFMode>& coefficients, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
     const std::vector<std::pair<unsigned int, unsigned int>>& atomBasisIndices) {
-  assert(isDefinedInSameBasis(coefficients, overlapMatrix));
-  /*
-   * Get in data locally
-   */
+  // Resize later!
+  SPMatrix<SCFMode> atomwiseOrbitalPopulations(1, 1);
   const unsigned int nAtoms = atomBasisIndices.size();
-  const unsigned int nBasisFunctions = overlapMatrix.getNBasisFunctions();
-  /* Prepare output */
-  SPMatrix<SCFMode> atomwiseOrbitalPopulations(nAtoms, nBasisFunctions);
-
-  // Does not HAVE to be equal to nBasisFunctions in principle but is assumed in many places.
-  unsigned int nOrbitals;
-  for_spin(coefficients) {
-    nOrbitals = coefficients_spin.cols();
-  };
-  for (unsigned int i = 0; i < nOrbitals; ++i) {
-    for_spin(atomwiseOrbitalPopulations, coefficients) {
-      const auto basisFunctionOrbitalPopulations = calculateOrbitalPopulations(coefficients_spin.col(i), overlapMatrix);
-      /*
-       * Loop over atoms
-       */
+  for_spin(coefficients, atomwiseOrbitalPopulations) {
+    const unsigned int nOrbs = coefficients.cols();
+    atomwiseOrbitalPopulations_spin.resize(nAtoms, coefficients.cols());
+    // For each MO: Calculate basis function population and sum them up according to the atoms.
+    Eigen::setNbThreads(1);
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iOrb = 0; iOrb < nOrbs; ++iOrb) {
+      const Eigen::VectorXd basisFunctionOrbitalPopulations =
+          calculateOrbitalPopulations(coefficients_spin.col(iOrb), overlapMatrix);
       for (unsigned int k = 0; k < nAtoms; ++k) {
-        // Find out which matrix entries belong to basis functions of this atom
-        atomwiseOrbitalPopulations_spin(k, i) = 0.0;
-        for (unsigned int mu = atomBasisIndices[k].first; mu < atomBasisIndices[k].second; ++mu) {
-          atomwiseOrbitalPopulations_spin(k, i) += basisFunctionOrbitalPopulations[mu];
-        }
+        // Find out which matrix entries belong to basis functions of this atom and sum them up.
+        unsigned nBasOnAtom = atomBasisIndices[k].second - atomBasisIndices[k].first;
+        atomwiseOrbitalPopulations_spin(k, iOrb) =
+            basisFunctionOrbitalPopulations.segment(atomBasisIndices[k].first, nBasOnAtom).sum();
       }
-    };
-  }
+    }
+    Eigen::setNbThreads(0);
+  };
   return atomwiseOrbitalPopulations;
 }
 
 template<Options::SCF_MODES SCFMode>
 Eigen::VectorXd MullikenPopulationCalculator<SCFMode>::calculateOrbitalPopulations(
     const Eigen::VectorXd& orbitalcoeffitients, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix) {
-  assert((int)orbitalcoeffitients.size() == overlapMatrix.rows());
-  /*
-   * Get in data locally
-   */
-  const unsigned int nBasisFunctions = overlapMatrix.getNBasisFunctions();
-  /* Prepare output */
-  Eigen::VectorXd populations = Eigen::VectorXd::Zero(nBasisFunctions);
-
-  /*
-   * Loop over basis functions
-   */
-  for (unsigned int i = 0; i < nBasisFunctions; ++i) {
-    for (unsigned int j = 0; j < nBasisFunctions; ++j) {
-      populations[i] += orbitalcoeffitients(i) * orbitalcoeffitients(j) * overlapMatrix(i, j);
-    }
-  }
+  Eigen::VectorXd populations =
+      ((orbitalcoeffitients * orbitalcoeffitients.transpose()).array() * overlapMatrix.array()).rowwise().sum();
   return populations;
+}
+
+template<Options::SCF_MODES SCFMode>
+SPMatrix<SCFMode>
+MullikenPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(std::shared_ptr<SystemController> system) {
+  return calculateAtomwiseOrbitalPopulations(system->template getActiveOrbitalController<SCFMode>()->getCoefficients(),
+                                             system->getOneElectronIntegralController()->getOverlapIntegrals(),
+                                             system->getAtomCenteredBasisController()->getBasisIndices());
 }
 
 template class MullikenPopulationCalculator<Options::SCF_MODES::RESTRICTED>;

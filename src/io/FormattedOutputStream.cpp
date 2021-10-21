@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "io/FormattedOutputStream.h"
 
 namespace Serenity {

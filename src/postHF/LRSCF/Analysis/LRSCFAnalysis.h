@@ -22,9 +22,16 @@
 #define LRSCF_LRSCFANALYSIS
 
 /* Include Serenity Internal Headers */
-#include "postHF/LRSCF/LRSCFController.h"
+#include "settings/ElectronicStructureOptions.h"
+
+/* Include Std and External Headers */
+#include <Eigen/Dense>
+#include <memory>
 
 namespace Serenity {
+
+template<Options::SCF_MODES SCFMode>
+class LRSCFController;
 
 template<Options::SCF_MODES SCFMode>
 /**
@@ -38,11 +45,11 @@ class LRSCFAnalysis {
    * @param lrscf The LRSCFController.
    * @param eigenvectors Eigenvectors of the response problem.
    * @param eigenvalues Eigenvalues of the response problem
-   * @param th Threshold to determine which contributions are dominant.
+   * @param contribThresh Threshold to determine which contributions are dominant.
    */
   static void printDominantContributions(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
                                          const std::vector<Eigen::MatrixXd>& eigenvectors,
-                                         const Eigen::VectorXd& eigenvalues, const double th);
+                                         const Eigen::VectorXd& eigenvalues, const double contribThresh = 0.9);
 };
 
 } /* namespace Serenity */

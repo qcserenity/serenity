@@ -25,12 +25,15 @@
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "integrals/RI_J_IntegralController.h"
-#include "integrals/wrappers/Libint.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "potentials/ABFockMatrixConstruction/ABPotential.h"
-#include "system/SystemController.h"
+#include "settings/BasisOptions.h"
 
 namespace Serenity {
+
+/* Forward Declarations */
+class SystemController;
+class Libint;
 /**
  * @class ABCoulombInteractionPotential ABCoulombInteractionPotential.h
  *
@@ -89,7 +92,7 @@ class ABCoulombInteractionPotential : public ABPotential<SCFMode>,
   ///@brief Environment densities.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDMatController;
   ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
+  const std::shared_ptr<Libint> _libint;
   ///@brief The outer diagonal block of the fock matrix.
   std::unique_ptr<SPMatrix<SCFMode>> _abPotential;
   ///@brief The AB shell pair data.

@@ -21,21 +21,16 @@
 /* Include Class Header*/
 #include "tasks/TDEmbeddingTask.h"
 /* Include Serenity Internal Headers */
-#include "analysis/populationAnalysis/MullikenPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
-#include "basis/AtomCenteredBasisControllerFactory.h"
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
-#include "data/grid/DensityOnGridCalculator.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "data/matrices/FockMatrix.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
 #include "grid/GridControllerFactory.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutputStream.h"
-#include "misc/SystemSplittingTools.h"
 #include "misc/WarningTracker.h"
 #include "postHF/MPn/MP2.h"
 #include "postHF/MPn/RIMP2.h"
@@ -43,8 +38,6 @@
 #include "scf/Scf.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-
-/* Tasks */
 #include "tasks/BasisSetTruncationTask.h"
 #include "tasks/FDETask.h"
 #include "tasks/LocalizationTask.h"
@@ -55,7 +48,7 @@
 #include <memory>
 
 namespace Serenity {
-using namespace std;
+
 template<Options::SCF_MODES SCFMode>
 TDEmbeddingTask<SCFMode>::TDEmbeddingTask(std::shared_ptr<SystemController> activeSystem,
                                           std::shared_ptr<SystemController> environmentSystem)
@@ -185,7 +178,7 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
   }
   // Everything is set in environment ElectronicStructure -> save to file
   _environmentSystem->template getElectronicStructure<SCFMode>()->toHDF5(_environmentSystem->getHDF5BaseName(),
-                                                                         _environmentSystem->getSettings().identifier);
+                                                                         _environmentSystem->getSystemIdentifier());
 
   auto es = _activeSystem->getElectronicStructure<SCFMode>();
   auto eCont = es->getEnergyComponentController();
@@ -214,8 +207,8 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
         "explicitly projected out of the MP2 calculation! This may lead to errors.",
         iOOptions.printSCFCycleInfo);
     // perform MP2 for double hybrids
-    if (actsettings.dft.densityFitting == Options::DENS_FITS::RI) {
-      _activeSystem->setBasisController(dynamic_pointer_cast<AtomCenteredBasisController>(
+    if (actsettings.basis.densityFitting == Options::DENS_FITS::RI) {
+      _activeSystem->setBasisController(std::dynamic_pointer_cast<AtomCenteredBasisController>(
                                             supersystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL)),
                                         Options::BASIS_PURPOSES::AUX_CORREL);
       RIMP2<SCFMode> rimp2(_activeSystem, functional.getssScaling(), functional.getosScaling());
@@ -232,6 +225,7 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
   // add energy to the EnergyController
   eCont->addOrReplaceComponent(
       std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, MP2Correlation));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_MP2_INT_ENERGY, 0.0);
 
   if (iOOptions.printSCFResults) {
     printSubSectionTitle("Final SCF Results");
@@ -250,12 +244,8 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
 template<Options::SCF_MODES SCFMode>
 inline void TDEmbeddingTask<SCFMode>::checkInput() {
   if (settings.embedding.carterCycles != 0 and !settings.noSupRec) {
-    throw SerenityError((string) "Zhang-Carter reconstruction does not support the double reconstruction feature!");
-  }
-  // check for double hybrid functional
-  auto envFunctional = resolveFunctional(_environmentSystem->getSettings().dft.functional);
-  if (envFunctional.isDoubleHybrid()) {
-    throw SerenityError((string) "Double hybrid functionals in the environment are not supported!");
+    throw SerenityError(
+        (std::string) "Zhang-Carter reconstruction does not support the double reconstruction feature!");
   }
 }
 template<Options::SCF_MODES SCFMode>

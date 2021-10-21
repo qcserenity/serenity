@@ -61,3 +61,4 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/serenity-targets.cmake")
 
 @PACKAGE_INIT@
+

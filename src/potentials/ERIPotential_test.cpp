@@ -118,7 +118,7 @@ TEST_F(ERIPotentialTest, H2_grad_rBP86) {
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
       systemControllerBP86->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
   Settings settings = systemControllerBP86->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, settings);
 
   ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(sys, dMat, 0.0, 0.0, 0.0, 0.0, 0);
@@ -142,7 +142,7 @@ TEST_F(ERIPotentialTest, H2_grad_uBP86) {
       systemControllerBP86->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController();
 
   Settings settings = systemControllerBP86->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, settings);
 
   ERIPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(sys, dMat, 0.0, 0.0, 0.0, 0.0, 0);

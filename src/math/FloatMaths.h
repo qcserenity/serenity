@@ -26,6 +26,15 @@
 #include <limits>
 
 namespace Serenity {
+
+/**
+ * These are accuracy thresholds to be used globally, e.g. for float comparisons.
+ */
+constexpr double SLOPPY_D = 1e-3;
+constexpr double LOOSE_D = 1e-6;
+constexpr double NORMAL_D = 1e-9;
+constexpr double TIGHT_D = 1e-12;
+
 /**
  * @brief   Check if two numbers are equal.
  * @param   lhs, rhs the numbers to be compared.

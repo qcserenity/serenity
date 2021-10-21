@@ -20,16 +20,16 @@
 /* Include Class Header*/
 #include "postHF/LocalCorrelation/LocalAOSigmaVectorWrapper.h"
 /* Include Serenity Internal Headers */
-#include "data/OrbitalController.h"                       //Tests only.
-#include "data/OrbitalPair.h"                             //PAO domains of diagonal orbital pairs.
-#include "data/PAOController.h"                           //Density matrix construction in AO basis.
-#include "data/SingleSubstitution.h"                      //Singles definition.
-#include "postHF/LRSCF/LRSCFController.h"                 //Sigma vector construction.
-#include "postHF/LRSCF/SigmaVectors/CoulombSigmaVector.h" //Sigma vector construction.
-#include "postHF/LRSCF/SigmaVectors/KSigmaVector.h"       //Sigma vector construction.
-#include "settings/Settings.h"                            //Settings defintion.
-#include "system/SystemController.h"                      //Number of occupied orbitals and tests.
-#include "tasks/LRSCFTask.h"                              //LRSCFTaskSettings for the LRSCFController.
+#include "data/OrbitalController.h"                            //Tests only.
+#include "data/OrbitalPair.h"                                  //PAO domains of diagonal orbital pairs.
+#include "data/PAOController.h"                                //Density matrix construction in AO basis.
+#include "data/SingleSubstitution.h"                           //Singles definition.
+#include "postHF/LRSCF/LRSCFController.h"                      //Sigma vector construction.
+#include "postHF/LRSCF/Sigmavectors/ExchangeSigmavector.h"     //Sigma vector construction.
+#include "postHF/LRSCF/Sigmavectors/RI/RICoulombSigmavector.h" //Sigma vector construction.
+#include "settings/Settings.h"                                 //Settings defintion.
+#include "system/SystemController.h"                           //Number of occupied orbitals and tests.
+#include "tasks/LRSCFTask.h"                                   //LRSCFTaskSettings for the LRSCFController.
 
 namespace Serenity {
 
@@ -60,7 +60,8 @@ LocalAOSigmaVectorWrapper::calculatePerturbedDensityMatrix(std::shared_ptr<Syste
 #endif
     const auto& single = singles[iSingle];
     auto& pIncrement = ps[threadId];
-    Eigen::MatrixXd virtCoeff = paoController->getPAOsFromDomain(single->getDiagonalPair()->paoDomain) * single->toPAODomain;
+    Eigen::MatrixXd virtCoeff = (Eigen::MatrixXd)paoController->getAllPAOs() *
+                                single->getDiagonalPair()->domainProjection.transpose() * single->toPAODomain;
     if (testRun)
       virtCoeff = system->getActiveOrbitalController<RESTRICTED>()->getCoefficients().rightCols(single->t_i.rows());
     const Eigen::MatrixXd pno_x_t = virtCoeff * single->t_i;
@@ -80,8 +81,8 @@ LocalAOSigmaVectorWrapper::getSigmaVector_AO_AO(std::shared_ptr<SystemController
   LRSCFTaskSettings lrscfSettings;
   auto lrscf = std::make_shared<LRSCFController<RESTRICTED>>(system, lrscfSettings);
   std::vector<std::shared_ptr<LRSCFController<RESTRICTED>>> lrscfs = {lrscf};
-  CoulombSigmaVector<RESTRICTED> coulombSigmaVector(lrscfs, system->getSettings().basis.integralThreshold);
-  KSigmaVector<RESTRICTED> kSigmaVector(lrscfs, system->getSettings().basis.integralThreshold);
+  RICoulombSigmavector<RESTRICTED> coulombSigmaVector(lrscfs);
+  ExchangeSigmavector<RESTRICTED> exchangeSigmaVector(lrscfs);
   const MatrixInBasis<RESTRICTED> p = calculatePerturbedDensityMatrix(system, singles, paoController, testRun);
   std::vector<std::vector<MatrixInBasis<RESTRICTED>>> p_set = {{p}};
   // Note: The way the sigma vectors are defined makes this here quite awkward ...
@@ -94,7 +95,7 @@ LocalAOSigmaVectorWrapper::getSigmaVector_AO_AO(std::shared_ptr<SystemController
   // MatrixInBasis from an Eigen::MatrixXd ...
   MatrixInBasis<RESTRICTED> sigma_AO_AO(system->getBasisController());
   sigma_AO_AO = 2.0 * (*coulombSigmaVector.calcF(0, 0, std::move(p_ptr1)))[0][0].transpose();
-  sigma_AO_AO -= (*kSigmaVector.calcF(0, 0, std::move(p_ptr2)))[0][0].transpose();
+  sigma_AO_AO -= (*exchangeSigmaVector.calcF(0, 0, std::move(p_ptr2)))[0][0].transpose();
   return sigma_AO_AO;
 }
 

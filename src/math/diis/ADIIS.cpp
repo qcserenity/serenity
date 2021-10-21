@@ -20,7 +20,7 @@
 
 /* Include Class Header*/
 #include "math/diis/ADIIS.h"
-/* Include Serenity Internal Header*/
+/* Include Serenity Internal Headers */
 #include "misc/WarningTracker.h"
 /* Include Std and External Headers */
 #include <iostream>

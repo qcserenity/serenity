@@ -40,18 +40,17 @@ struct GradientTaskSettings {
     : gradType(Options::GRADIENT_TYPES::ANALYTICAL),
       numGradStepSize(0.001),
       transInvar(false),
-      dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE),
       FaTmaxCycles(50),
       FaTenergyConvThresh(1.0e-6),
       FDEgridCutOff(-1.0),
-      print(true) {
+      print(true),
+      printTotal(false) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   }
-  REFLECTABLE((Options::GRADIENT_TYPES)gradType, (double)numGradStepSize, (bool)transInvar,
-              (Options::DFT_DISPERSION_CORRECTIONS)dispersion, (int)FaTmaxCycles, (double)FaTenergyConvThresh,
-              (double)FDEgridCutOff, (bool)print)
+  REFLECTABLE((Options::GRADIENT_TYPES)gradType, (double)numGradStepSize, (bool)transInvar, (int)FaTmaxCycles,
+              (double)FaTenergyConvThresh, (double)FDEgridCutOff, (bool)print, (bool)printTotal)
  public:
   EmbeddingSettings embedding;
 };
@@ -87,7 +86,7 @@ class GradientTask : public Task {
       visit_each(c, v);
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
     }
   }
   /**
@@ -102,6 +101,7 @@ class GradientTask : public Task {
  private:
   const std::vector<std::shared_ptr<SystemController>> _activeSystems;
   const std::vector<std::shared_ptr<SystemController>> _passiveSystems;
+  void printTotalGradient();
 };
 
 } /* namespace Serenity */

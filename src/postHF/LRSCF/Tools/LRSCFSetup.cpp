@@ -24,8 +24,13 @@
 #include "geometry/Geometry.h"
 #include "geometry/Point.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
+#include "postHF/LRSCF/LRSCFController.h"
+#include "postHF/LRSCF/Tools/Besley.h"
 #include "settings/LRSCFOptions.h"
+#include "tasks/LRSCFTask.h"
+#include "tasks/VirtualOrbitalSpaceSelectionTask.h"
 
 namespace Serenity {
 
@@ -39,9 +44,11 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
 
   SpinPolarizedData<SCFMode, int> dummy;
 
+  printBigCaption("LRSCF Info");
+
   printf(" System(s):\n");
   printf("%5s %20s %5s ", "", "Sys", "Stat");
-  unsigned int iStart = 0;
+  unsigned iStart = 0;
   for_spin(dummy) {
     (void)dummy_spin; // no warning
     printf("%8s%1s ", "nOcc_", (iStart == 0) ? "a" : "b");
@@ -60,10 +67,10 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
     printf("-------------------");
   };
   printf("--------------------------------------------\n");
-  for (unsigned int I = 0; I < lrscf.size(); ++I) {
+  for (unsigned I = 0; I < lrscf.size(); ++I) {
     printf("%5i ", I + 1);
-    SpinPolarizedData<SCFMode, unsigned int> nOccupied = lrscf[I]->getNOccupied();
-    SpinPolarizedData<SCFMode, unsigned int> nVirtual = lrscf[I]->getNVirtual();
+    SpinPolarizedData<SCFMode, unsigned> nOccupied = lrscf[I]->getNOccupied();
+    SpinPolarizedData<SCFMode, unsigned> nVirtual = lrscf[I]->getNVirtual();
     printf("%20s ", lrscf[I]->getSys()->getSystemName().c_str());
     printf("%5s ", "act");
     for_spin(nOccupied) {
@@ -72,13 +79,13 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
     for_spin(nVirtual) {
       printf("%8i ", nVirtual_spin);
     };
-    unsigned int nDimI = 0;
+    unsigned nDimI = 0;
     for_spin(nOccupied, nVirtual) {
       nDimI += nOccupied_spin * nVirtual_spin;
     };
     printf("%8i \n", nDimI);
   }
-  for (unsigned int I = 0; I < envSys.size(); ++I) {
+  for (unsigned I = 0; I < envSys.size(); ++I) {
     printf("%5i ", I + 1);
     auto nOccupied = envSys[I]->getNOccupiedOrbitals<SCFMode>();
     auto nVirtual = envSys[I]->getNVirtualOrbitals<SCFMode>();
@@ -90,7 +97,7 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
     for_spin(nVirtual) {
       printf("%8i ", nVirtual_spin);
     };
-    unsigned int nDimI = 0;
+    unsigned nDimI = 0;
     for_spin(nOccupied, nVirtual) {
       nDimI += nOccupied_spin * nVirtual_spin;
     };
@@ -102,16 +109,51 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
   std::string naddXCFunc_string;
   std::string naddKinFunc_string;
   std::string func;
-  auto naddxc = settings.embedding.naddXCFunc;
   auto naddkin = settings.embedding.naddKinFunc;
   auto xc = settings.func;
-  Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(naddXCFunc_string, naddxc);
   Options::resolve<CompositeFunctionals::KINFUNCTIONALS>(naddKinFunc_string, naddkin);
   Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(func, xc);
   printf(" NaddKinFunc : %22s \n", naddKinFunc_string.c_str());
-  printf(" NaddXCFunc  : %22s \n\n", naddXCFunc_string.c_str());
+  if (settings.embedding.embeddingModeList.size() > 0) {
+    OutputControl::mOut << " -------------------------------------------- " << std::endl;
+    OutputControl::mOut << " NaddXCFunc used for approx./exact embedding: " << std::endl;
+    auto naddxc = settings.embedding.naddXCFuncList[0];
+    Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(naddXCFunc_string, naddxc);
+    printf("  NaddXCFunc for exact   : %22s \n", naddXCFunc_string.c_str());
+    std::string naddXCFunc_string2;
+    naddxc = settings.embedding.naddXCFuncList[1];
+    Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(naddXCFunc_string2, naddxc);
+    printf("  NaddXCFunc for approx. : %22s \n", naddXCFunc_string2.c_str());
+  }
+  else {
+    auto naddxc = settings.embedding.naddXCFunc;
+    Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(naddXCFunc_string, naddxc);
+    printf(" NaddXCFunc  : %22s \n\n", naddXCFunc_string.c_str());
+  }
   if (settings.func != CompositeFunctionals::XCFUNCTIONALS::NONE)
     printf(" Func        : %22s \n\n", func.c_str());
+}
+
+template<Options::SCF_MODES SCFMode>
+Eigen::VectorXd LRSCFSetup<SCFMode>::getDiagonal(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf) {
+  unsigned iStart = 0;
+  Eigen::VectorXd diagonal(0);
+  for (auto& ilrscf : lrscf) {
+    auto no = ilrscf->getNOccupied();
+    auto nv = ilrscf->getNVirtual();
+    auto e = ilrscf->getEigenvalues();
+    for_spin(no, nv, e) {
+      unsigned nvno = nv_spin * no_spin;
+      diagonal.conservativeResize(diagonal.size() + nvno);
+      for (unsigned ia = 0; ia < no_spin * nv_spin; ++ia) {
+        unsigned i = ia / nv_spin;
+        unsigned a = no_spin + ia % nv_spin;
+        diagonal(iStart + ia) = e_spin(a) - e_spin(i);
+      }
+      iStart += nvno;
+    };
+  }
+  return diagonal;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -126,7 +168,7 @@ Point LRSCFSetup<SCFMode>::getGaugeOrigin(const LRSCFTaskSettings& settings,
   // Default: no custom input was given, gauge-origin is being set to center of mass
   if (std::find(settings.gaugeOrigin.begin(), settings.gaugeOrigin.end(), std::numeric_limits<double>::infinity()) !=
       settings.gaugeOrigin.end()) {
-    printf("\n Set gauge-origin to center of mass.\n");
+    printf("\n  Set gauge-origin to center of mass.\n");
     Geometry supergeo;
     for (const auto& sys : act) {
       supergeo += (*sys->getGeometry());
@@ -139,11 +181,11 @@ Point LRSCFSetup<SCFMode>::getGaugeOrigin(const LRSCFTaskSettings& settings,
   }
   else {
     // Otherwise, do nothing and keep input gauge origin
-    printf(" Found custom gauge-origin in the input.\n");
+    printf("  Found custom gauge-origin in the input.\n");
   }
 
   // Print gauge-origin
-  printf(" Gauge-origin (Angstrom): %8.4f %8.4f %8.4f\n\n", gaugeOrigin.getX() * BOHR_TO_ANGSTROM,
+  printf("  Gauge-origin (Angstrom): %8.4f %8.4f %8.4f\n\n", gaugeOrigin.getX() * BOHR_TO_ANGSTROM,
          gaugeOrigin.getY() * BOHR_TO_ANGSTROM, gaugeOrigin.getZ() * BOHR_TO_ANGSTROM);
 
   return gaugeOrigin;
@@ -156,15 +198,16 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(const LRSCFTaskSettings& settings, 
                                              const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
                                              const std::vector<std::shared_ptr<SystemController>>& act,
                                              const unsigned nDimension) {
+  printBigCaption("Assembling FDEc Transformation Matrix");
   // Set Up Matrix Size:
   // Number of excitation from each previous calculation determines the number of cols for transformation
   std::shared_ptr<std::vector<Eigen::MatrixXd>> eigenvectors = nullptr;
-  unsigned int iStart = 0;
-  unsigned int nExcPrev = 0;
+  unsigned iStart = 0;
+  unsigned nExcPrev = 0;
   if (settings.uncoupledSubspace.empty()) {
-    assert(referenceLoadingType.size() == (unsigned int)couplingPatternMatrix.rows());
+    assert(referenceLoadingType.size() == (unsigned)couplingPatternMatrix.rows());
 
-    for (unsigned int i = 0; i < lrscf.size(); i++) {
+    for (unsigned i = 0; i < lrscf.size(); i++) {
       if (i == 0) {
         if (lrscf[i]->getExcitationEnergies(referenceLoadingType[i])) {
           nExcPrev += (*lrscf[i]->getExcitationEnergies(referenceLoadingType[i])).rows();
@@ -194,14 +237,16 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(const LRSCFTaskSettings& settings, 
 
   // Initialize new eigenvectors
   eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(2);
-  (*eigenvectors)[0].resize(nDimension, nExcPrev);
-  (*eigenvectors)[0].setZero();
-  (*eigenvectors)[1].resize(nDimension, nExcPrev);
-  (*eigenvectors)[1].setZero();
-  unsigned int iCountRows = 0;
-  unsigned int iCountCols = 0;
+  Eigen::MatrixXd& XPY = (*eigenvectors)[0];
+  Eigen::MatrixXd& XMY = (*eigenvectors)[1];
+
+  XPY = Eigen::MatrixXd::Zero(nDimension, nExcPrev);
+  XMY = Eigen::MatrixXd::Zero(nDimension, nExcPrev);
+
+  unsigned iCountRows = 0;
+  unsigned iCountCols = 0;
   iStart = 0;
-  for (unsigned int I = 0; I < referenceLoadingType.size(); ++I) {
+  for (unsigned I = 0; I < referenceLoadingType.size(); ++I) {
     auto type = referenceLoadingType[I];
     std::shared_ptr<std::vector<Eigen::MatrixXd>> vecI;
     if (lrscf[I]->getExcitationVectors(type)) {
@@ -211,6 +256,8 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(const LRSCFTaskSettings& settings, 
       throw SerenityError("You tried to perform a coupled sLRSCF calculation but Serenity could not find FDEu"
                           " or isolated solution vectors for all subsystems.");
     }
+    Eigen::MatrixXd& X_I = (*vecI)[0];
+    Eigen::MatrixXd& Y_I = (*vecI)[1];
     if (settings.uncoupledSubspace.empty()) {
       // In case of coupeld calculations the coloumn does not need to be increased because
       // Carefull when two coupled calculations are coupled then the col needs to be increased
@@ -221,39 +268,36 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(const LRSCFTaskSettings& settings, 
       // Therefore make sure that the entry in the coupling matrix under the acutal position is not equal to zero
       if (I != 0) {
         if (referenceLoadingType[I] == Options::LRSCF_TYPE::COUPLED && couplingPatternMatrix(I - 1, I) != 0) {
-          iCountRows += (*vecI)[0].rows();
-          iCountCols = (*vecI)[0].cols();
+          iCountRows += X_I.rows();
+          iCountCols = X_I.cols();
         }
         else {
-          iCountRows += (*vecI)[0].rows();
-          iCountCols += (*vecI)[0].cols();
+          iCountRows += X_I.rows();
+          iCountCols += X_I.cols();
         }
       }
       else {
-        iCountRows += (*vecI)[0].rows();
-        iCountCols += (*vecI)[0].cols();
+        iCountRows += X_I.rows();
+        iCountCols += X_I.cols();
       }
 
-      (*eigenvectors)[0].block(iCountRows - (*vecI)[0].rows(), iCountCols - (*vecI)[0].cols(), (*vecI)[0].rows(),
-                               (*vecI)[0].cols()) = (*vecI)[0] + (*vecI)[1];
-      if (!(settings.tda)) {
-        (*eigenvectors)[1].block(iCountRows - (*vecI)[1].rows(), iCountCols - (*vecI)[1].cols(), (*vecI)[1].rows(),
-                                 (*vecI)[1].cols()) = (*vecI)[0] - (*vecI)[1];
-        ;
+      XPY.block(iCountRows - X_I.rows(), iCountCols - X_I.cols(), X_I.rows(), X_I.cols()) = (X_I + Y_I);
+      if (settings.method == Options::LR_METHOD::TDDFT) {
+        XMY.block(iCountRows - Y_I.rows(), iCountCols - Y_I.cols(), Y_I.rows(), Y_I.cols()) = (X_I - Y_I);
       }
     }
     else {
-      iCountRows += (*vecI)[0].rows();
-      unsigned int nStates = settings.uncoupledSubspace[iStart];
+      iCountRows += X_I.rows();
+      unsigned nStates = settings.uncoupledSubspace[iStart];
       iStart += 1;
-      for (unsigned int iState = 0; iState < nStates; ++iState) {
-        (*eigenvectors)[0].block(iCountRows - (*vecI)[0].rows(), iCountCols, (*vecI)[0].rows(), 1) =
-            (*vecI)[0].col(settings.uncoupledSubspace[iStart + iState] - 1) +
-            (*vecI)[1].col(settings.uncoupledSubspace[iStart + iState] - 1);
-        if (!(settings.tda)) {
-          (*eigenvectors)[1].block(iCountRows - (*vecI)[1].rows(), iCountCols, (*vecI)[1].rows(), 1) =
-              (*vecI)[0].col(settings.uncoupledSubspace[iStart + iState] - 1) -
-              (*vecI)[1].col(settings.uncoupledSubspace[iStart + iState] - 1);
+      for (unsigned iState = 0; iState < nStates; ++iState) {
+        XPY.block(iCountRows - X_I.rows(), iCountCols, X_I.rows(), 1) =
+            X_I.col(settings.uncoupledSubspace[iStart + iState] - 1) +
+            Y_I.col(settings.uncoupledSubspace[iStart + iState] - 1);
+        if (settings.method == Options::LR_METHOD::TDDFT) {
+          XMY.block(iCountRows - Y_I.rows(), iCountCols, Y_I.rows(), 1) =
+              X_I.col(settings.uncoupledSubspace[iStart + iState] - 1) -
+              Y_I.col(settings.uncoupledSubspace[iStart + iState] - 1);
         }
         iCountCols += 1;
       }
@@ -264,119 +308,49 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(const LRSCFTaskSettings& settings, 
 }
 
 template<Options::SCF_MODES SCFMode>
-void LRSCFSetup<SCFMode>::setupLRSCFController(const LRSCFTaskSettings& settings, const Eigen::MatrixXi& couplingPatternMatrix,
+void LRSCFSetup<SCFMode>::setupLRSCFController(const LRSCFTaskSettings& settings,
                                                const std::vector<std::shared_ptr<SystemController>>& act,
                                                const std::vector<std::shared_ptr<SystemController>>& env,
-                                               const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscfAll,
-                                               const Options::LRSCF_TYPE type) {
-  unsigned int iSystem = 0;
+                                               const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscfAll) {
   for (auto lrscf : lrscfAll) {
-    // AUTOMATICALLY: Read orbital space belonging to the individual subsystems from the uncoupled calculations
-    if (type == Options::LRSCF_TYPE::COUPLED) {
-      printf(" ------- Read Reference Orbitals -------\n");
-      try {
-        std::string mode = (SCFMode == RESTRICTED) ? "res" : "unres";
-        std::string type_str = "";
-        // If a regular coupled calculation is performed then read uncoupled reference orbitals
-        // If the lrscfController is part of an coupled uncoupled calculation the coupled vectors and uncoupled vectors
-        // are read in
-        if ((unsigned int)couplingPatternMatrix.rows() > act.size() && iSystem < act.size()) {
-          type_str = ".fdec";
-        }
-        else {
-          type_str = "";
-        }
-        std::string fName =
-            lrscf->getSys()->getSystemPath() + lrscf->getSys()->getSystemName() + type_str + ".lrscfSpace." + mode + ".h5";
-        HDF5::Filepath name(fName);
-        HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-        SpinPolarizedData<SCFMode, std::vector<unsigned int>> indexWhiteList;
-        unsigned int iCount = 0;
-        for_spin(indexWhiteList) {
-          std::string spin = "alpha";
-          if (iCount > 0)
-            spin = "beta";
-          iCount += 1;
-          HDF5::dataset_exists(file, spin);
-          Eigen::VectorXi tmp;
-          HDF5::load(file, spin, tmp);
-          for (unsigned int i = 0; i < tmp.size(); ++i) {
-            indexWhiteList_spin.push_back(tmp(i));
-          }
-        };
-        file.close();
-        lrscf->editReference(indexWhiteList, iSystem, type);
+    // Update everything
+    auto sys = lrscf->getSys();
+    if (settings.excludeProjection) {
+      if (env.size() == 0 && act.size() == 1) {
+        throw SerenityError("You need to specify an environment system for exclude projection!");
       }
-      catch (...) {
-        // nothing to be done here
+      // System vector
+      std::vector<std::shared_ptr<SystemController>> remainingSys;
+      for (auto i : act) {
+        if (i != sys) {
+          remainingSys.push_back(i);
+        }
       }
+      for (auto i : env) {
+        remainingSys.push_back(i);
+      }
+      VirtualOrbitalSpaceSelectionTask<SCFMode> voss({sys}, remainingSys);
+      voss.settings.excludeProjection = true;
+      voss.run();
+      // Update everything
+      auto coefs = sys->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+      auto orbitalEner = sys->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      auto nOcc = sys->template getNOccupiedOrbitals<SCFMode>();
+      auto nVirt = sys->template getNVirtualOrbitalsTruncated<SCFMode>();
+
+      lrscf->setNOccupied(nOcc);
+      lrscf->setNVirtual(nVirt);
+      lrscf->setCoefficients(coefs);
+      lrscf->setEigenvalues(orbitalEner);
     }
-
-    // Initialize index array
-    auto indexWhiteList = lrscf->getReferenceOrbitals();
-    // For reference
-    auto oldIndexWhiteList = indexWhiteList;
-
-    // Exclude Projection:
-    // Exclude artificial projected orbitals from the occupied environment
-    // orbitals into the virtual orbital space of the active subsystems
-    if (settings.excludeProjection && type != Options::LRSCF_TYPE::ISOLATED) {
-      printf("  ------- Exclude Projection -------\n");
-      // calculate overlap
-      auto& libint = Libint::getInstance();
-      auto nOccupied = lrscf->getNOccupied();
-      auto nVirtual = lrscf->getNVirtual();
-      auto coefAct = lrscf->getCoefficients();
-
-      for (unsigned int iSysAct = 0; iSysAct < lrscfAll.size() + env.size(); iSysAct++) {
-        std::shared_ptr<SystemController> envSys = nullptr;
-        if (iSysAct != iSystem && iSysAct < lrscfAll.size())
-          envSys = lrscfAll[iSysAct]->getSys();
-        if (iSysAct >= lrscfAll.size())
-          envSys = env[iSysAct - lrscfAll.size()];
-        if (envSys == nullptr) {
-          // DO nothing
-        }
-        else {
-          // First Basiscontroller --> Col entries in Overlap
-          // Second Basiscontroller --> Row entries in Overlap
-          // Order therefore here important
-          auto overlapAB =
-              libint.compute1eInts(libint2::Operator::overlap, lrscf->getBasisController(), envSys->getBasisController());
-          std::vector<Eigen::MatrixXd> overlapMO;
-          auto nOccEnv = envSys->getNOccupiedOrbitals<SCFMode>();
-          auto coefEnv = envSys->getActiveOrbitalController<SCFMode>()->getCoefficients();
-
-          // Calculate overlap Sia between occ env and virt act
-          for_spin(nOccEnv, nVirtual, nOccupied, coefEnv, coefAct) {
-            auto nBasisEnv = envSys->getBasisController()->getNBasisFunctions();
-            auto nBasisAct = lrscf->getBasisController()->getNBasisFunctions();
-            overlapMO.push_back(coefEnv_spin.block(0, 0, nBasisEnv, nOccEnv_spin).transpose() * overlapAB *
-                                coefAct_spin.block(0, nOccupied_spin, nBasisAct, nVirtual_spin));
-          };
-          // Find orbitals of env system through overlap criteria
-          unsigned int spinCounter = 0;
-          for_spin(indexWhiteList, nOccupied, oldIndexWhiteList) {
-            for (unsigned int col = 0; col < overlapMO[spinCounter].cols(); col++) {
-              double sum = 0.0;
-              for (unsigned int row = 0; row < overlapMO[spinCounter].rows(); row++) {
-                sum += std::fabs(overlapMO[spinCounter](row, col));
-              }
-              // remove Orbital from Index
-              if (sum > 0.95) {
-                indexWhiteList_spin.erase(std::remove(indexWhiteList_spin.begin(), indexWhiteList_spin.end(),
-                                                      oldIndexWhiteList_spin[col + nOccupied_spin]),
-                                          indexWhiteList_spin.end());
-              }
-            }
-            spinCounter += 1;
-          };
-          // edit Reference Orbitals
-          lrscf->editReference(indexWhiteList, iSystem, type);
-        }
-      }
+    // Restrict Orbitals according to Besley's criterion for occupied and virtual orbitals
+    if (settings.besleyAtoms > 0) {
+      if (settings.besleyCutoff.size() != 2)
+        throw SerenityError("Keyword besleyCutoff needs two arguments!");
+      Besley<SCFMode> besley(sys, settings.besleyAtoms, settings.besleyCutoff);
+      auto indexWhiteList = besley.getWhiteList();
+      lrscf->editReference(indexWhiteList);
     }
-    iSystem += 1;
   }
 }
 

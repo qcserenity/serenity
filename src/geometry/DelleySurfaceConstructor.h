@@ -34,6 +34,7 @@ class Sphere;
 class GridController;
 class Ellipse;
 class Plane;
+class MolecularSurface;
 
 /**
  * @struct
@@ -83,15 +84,10 @@ class DelleySurfaceConstructor {
    */
   ~DelleySurfaceConstructor();
   /**
-   * @brief Getter for the grid controller.
+   * @brief Getter for the molecular surface..
    * @return The grid controller.
    */
-  std::shared_ptr<GridController> getGridController();
-  /**
-   * @brief Getter for the normal vectors on the molecular surface.
-   * @return The normal vectors.
-   */
-  const Eigen::Matrix3Xd& getNormVectors();
+  std::unique_ptr<MolecularSurface> getMolecularSurface();
 
  private:
   /**
@@ -198,10 +194,6 @@ class DelleySurfaceConstructor {
   const double _cutOff;
   /// Map between unit spheres and angular momentum.
   static std::map<unsigned int, std::shared_ptr<UnitSphere>> _unitSpheres;
-  /// The normal vectors on the molecular surface.
-  std::unique_ptr<Eigen::Matrix3Xd> _normVectors;
-  /// The molecular surface grid controller.
-  std::shared_ptr<GridController> _gridController;
   /// The auxiliary function f(x).
   inline double f(double x) const {
     return -exp(-_alpha * x) + _a * x + _b * x * x;
@@ -236,7 +228,8 @@ class DelleySurfaceConstructor {
    * to construct a connectivity matrix between points. All points are kept that can
    * be reached via this matrix from the point with the most extreme x-coordinate.
    */
-  void groupPoints(std::vector<Eigen::Vector3d>& coords, std::vector<Eigen::Vector3d>& norms, std::vector<double>& weights);
+  void groupPoints(std::vector<Eigen::Vector3d>& coords, std::vector<Eigen::Vector3d>& norms,
+                   std::vector<double>& weights, std::vector<unsigned int>& sphereIndices);
   /**
    * @brief Get the indices of all points connected arcording to connections to the given seed.
    * @param connections   The connections. 0 for non-connected.
@@ -244,6 +237,34 @@ class DelleySurfaceConstructor {
    * @return  The connected indices.
    */
   std::vector<unsigned int> buildPointCloud(Eigen::SparseMatrix<int>& connections, unsigned int seed);
+  /**
+   * @biref Construct the mapping between spheres and grid points.
+   * @param sphereIndices The sphere indices.
+   * @param nSpheres      The total number of spheres.
+   * @return The map from spheres to cavity points as pairs. All cavity points are ordered according to
+   *         their sphere index. Each pair holds the first and last index of the cavity point of the sphere
+   *         that corresponds to its vector-index.
+   */
+  std::vector<std::pair<unsigned int, unsigned int>> collectSphereIndices(std::vector<unsigned int> sphereIndices,
+                                                                          unsigned int nSpheres);
+  /**
+   * @brief Construct from the thread-wise lists of cavity points, the final list.
+   * @param allCoordinates   Thread-wise coordinates.
+   * @param allNorms         Thread-wise norms.
+   * @param allWeights       Thread-wise weights.
+   * @param allSphereIndices Thread-wise sphere indices.
+   * @param coords           Final list of coordinates.
+   * @param norms            Final list of norms.
+   * @param weights          Final list of weights.
+   * @param sphereIndices    Final list of sphere indices.
+   * @param spheres          List of spheres.
+   */
+  void mergeGridPoints(const std::vector<std::vector<Eigen::Vector3d>>& allCoordinates,
+                       const std::vector<std::vector<Eigen::Vector3d>>& allNorms,
+                       const std::vector<std::vector<double>>& allWeights,
+                       const std::vector<std::vector<unsigned int>>& allSphereIndices, std::vector<Eigen::Vector3d>& coords,
+                       std::vector<Eigen::Vector3d>& norms, std::vector<double>& weights,
+                       std::vector<unsigned int>& sphereIndices, const std::vector<Sphere>& spheres);
 };
 
 } /* namespace Serenity */

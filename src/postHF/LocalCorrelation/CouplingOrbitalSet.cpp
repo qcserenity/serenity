@@ -32,29 +32,36 @@ CouplingOrbitalSet::CouplingOrbitalSet(std::shared_ptr<OrbitalPair> parentPair, 
 }
 
 void CouplingOrbitalSet::flushIntegrals() {
-  ia_kc = Eigen::MatrixXd(0, 0);
-  ja_kc = Eigen::MatrixXd(0, 0);
-  ik_ca = Eigen::MatrixXd(0, 0);
-  jk_ca = Eigen::MatrixXd(0, 0);
-  ka_bc = {};
+  ia_kc.resize(0, 0);
+  ja_kc.resize(0, 0);
+  ik_ca.resize(0, 0);
+  jk_ca.resize(0, 0);
+  std::vector<Eigen::MatrixXd>().swap(ka_bc);
+  std::vector<Eigen::MatrixXd>().swap(ab_kcX2_M_ak_bc);
 }
 
-void CouplingOrbitalSet::loadIntegralsFromFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames) {
+void CouplingOrbitalSet::loadIntegralsFromFile(HDF5::H5File& file,
+                                               std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames, std::string id) {
   std::string kString = std::to_string(_k) + "_";
-  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc]);
-  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc]);
-  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca]);
-  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca]);
+  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc] + id);
+  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc] + id);
+  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca] + id);
+  HDF5::dataset_exists(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca] + id);
 
-  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc], ia_kc);
-  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc], ja_kc);
-  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca], ik_ca);
-  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca], jk_ca);
+  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc] + id, ia_kc);
+  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc] + id, ja_kc);
+  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca] + id, ik_ca);
+  EigenHDF5::load(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca] + id, jk_ca);
   unsigned int nPNOs_ij = _ijPair.lock()->t_ij.rows();
-  load_vectorSet(file, ka_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ka_bc], nPNOs_ij, nPNOs_ij);
+  load_vectorSet(file, ka_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ka_bc] + id, nPNOs_ij, nPNOs_ij);
+  if (_loadSinglesSigmaInts) {
+    load_vectorSet(file, ab_kcX2_M_ak_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ab_kcX2_M_ak_bc] + id,
+                   nPNOs_ij, nPNOs_ij);
+  }
 }
 
-void CouplingOrbitalSet::writeIntegralsToFile(HDF5::H5File& file, std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames) {
+void CouplingOrbitalSet::writeIntegralsToFile(HDF5::H5File& file,
+                                              std::map<FOUR_CENTER_INTEGRAL_TYPE, std::string>& groupNames, std::string id) {
   std::string kString = std::to_string(_k) + "_";
   assert(ia_kc.rows() > 0);
   assert(ja_kc.rows() > 0);
@@ -62,11 +69,15 @@ void CouplingOrbitalSet::writeIntegralsToFile(HDF5::H5File& file, std::map<FOUR_
   assert(jk_ca.rows() > 0);
   assert(ka_bc.size() > 0);
 
-  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc], ia_kc);
-  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc], ja_kc);
-  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca], ik_ca);
-  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca], jk_ca);
-  write_vectorSet(file, ka_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ka_bc]);
+  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ia_kc] + id, ia_kc);
+  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ja_kc] + id, ja_kc);
+  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ik_ca] + id, ik_ca);
+  EigenHDF5::save(file, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::jk_ca] + id, jk_ca);
+  write_vectorSet(file, ka_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ka_bc] + id);
+  if (ab_kcX2_M_ak_bc.size() > 0) {
+    _loadSinglesSigmaInts = true;
+    write_vectorSet(file, ab_kcX2_M_ak_bc, kString + groupNames[FOUR_CENTER_INTEGRAL_TYPE::ab_kcX2_M_ak_bc] + id);
+  }
 }
 
 void CouplingOrbitalSet::write_vectorSet(HDF5::H5File& file, std::vector<Eigen::MatrixXd>& ints, std::string name) {
@@ -92,17 +103,24 @@ void CouplingOrbitalSet::load_vectorSet(HDF5::H5File& file, std::vector<Eigen::M
   }
 }
 
-double CouplingOrbitalSet::getMemoryRequirement() {
+double CouplingOrbitalSet::getMemoryRequirement(bool sigmaInts) {
   double memorySize = 0.0;
   const unsigned int nPNOs_ij = _ijPair.lock()->toPAODomain.cols();
   const unsigned int nPNOs_kj = _ikPair.lock()->toPAODomain.cols();
   const unsigned int nPNOs_ik = _kjPair.lock()->toPAODomain.cols();
+  const unsigned int nPNOs_k = this->getKSingles()->toPAODomain.cols();
   //(ia|kc),(ja|kc),(ik|ca),(jk|ca)
   memorySize += 2 * nPNOs_ij * (nPNOs_kj + nPNOs_ik);
   //(ij|ak),(ja|ik),(ia|jk)
   memorySize += 3 * nPNOs_ij;
   //(ka|bc)
   memorySize += nPNOs_ij * nPNOs_ij * nPNOs_ij;
+  if (sigmaInts) {
+    // 2(ij|ak)-(ia|jk) and 2(ij|ak)-(ja|ik)
+    memorySize += 2 * nPNOs_k;
+    // 2(ab|kc)-(ak|bc)
+    memorySize += nPNOs_ij * nPNOs_ij * nPNOs_k;
+  }
   return memorySize * sizeof(double);
 }
 const Eigen::MatrixXd& CouplingOrbitalSet::getS_ij_kj() {

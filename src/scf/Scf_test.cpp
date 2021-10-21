@@ -21,6 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/ScfTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -50,7 +51,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RHF) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 /**
  * @test
@@ -69,7 +70,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RHF_ADIIS) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 
 /**
@@ -90,7 +91,7 @@ TEST(BasicSCFTests, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 //===================================
 //          UHF
@@ -111,7 +112,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UHF) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.unres.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 
 //===================================
@@ -125,7 +126,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.dft.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densityFitting = Options::DENS_FITS::RI;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -136,7 +137,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_RI) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 /**
  * @test
@@ -146,7 +147,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -157,7 +158,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_noRI) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 //===================================
 //          UKS
@@ -170,7 +171,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.dft.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densityFitting = Options::DENS_FITS::RI;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -181,7 +182,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_RI) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.unres.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 /**
  * @test
@@ -191,7 +192,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -202,7 +203,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_noRI) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.unres.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 /**
  * @test
@@ -213,7 +214,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
   settings.spin = 2;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -224,7 +225,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.unres.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 
 } /* namespace Serenity */

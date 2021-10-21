@@ -21,8 +21,7 @@
 #ifndef POSTHF_MPN_DIPOLEAPPROXIMATIONTOPAIRENERGIES_H_
 #define POSTHF_MPN_DIPOLEAPPROXIMATIONTOPAIRENERGIES_H_
 /* Include Serenity Internal Headers */
-#include "data/matrices/FockMatrix.h"  //Fock matrix/MatrixInBasis definition
-#include "integrals/wrappers/Libint.h" //Dipole integrals
+#include "data/matrices/FockMatrix.h" //Fock matrix/MatrixInBasis definition
 /* Include Std and External Headers */
 #include <Eigen/Dense>      //Dense matrices
 #include <Eigen/SparseCore> //Sparse maps
@@ -68,18 +67,14 @@ class DipoleApproximationToPairEnergies {
   /**
    * @brief Calculates the dipole approximation.
    * @param orbitalPairs The orbital pairs.
-   * @param cutOff Assume a constant distance (>0) between charge density centers
-   *        for very close pairs.
    */
-  void calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs, double cutOff = 0.0);
+  void calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs);
   /**
    * @brief Calculates the dipole approximation by assuming collinear orientation between
    *        the dipoles (i|r|i) and (j|r|j).
    * @param orbitalPairs The orbital pairs.
-   * @param cutOff Assume a constant distant (>0) between charge density centers
-   *        for very close pairs.
    */
-  void calculateDipoleApproximationCollinear(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs, double cutOff = 0.0);
+  void calculateDipoleApproximationCollinear(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs);
 
  private:
   // The basis controller.
@@ -97,31 +92,19 @@ class DipoleApproximationToPairEnergies {
   // The orthogonalization threshold for the construction
   // of the quasi canonical, linear independent PAO domains.
   double _paoOrthogonalizationThreshold;
-  // An instance of Libint in order to calculate the multipole integrals.
-  Libint& _libint = Libint::getInstance();
+  // The dipole integrals for every orbital. Columns transformed to occupied basis.
   std::vector<Eigen::MatrixXd> _dipoleInts;
   /**
    * @brief Calculates the dipole integrals (mu|x|nu),(mu|y|nu) and (mu|z|nu).
    * @return A vector containing the dipole integrals (x-->0, y-->1, z-->2).
    */
   inline std::vector<Eigen::MatrixXd> calculateDipoleIntegrals();
-  /**
-   * @brief Prepares the evaluation of the pair energies. This is identical for
-   *        calculateDipoleApproximation and calculateDipoleApproximationCollinear.
-   * @param muPAO_r_i Will be filled with integrals (mu_PAO|r|i).
-   * @param muPAO_r_j Will be filled with integrals (mu_PAO|r|j).
-   * @param r_ij Will be filled with integrals (i|r|i)-(j|r|j).
-   * @param denominator Will be filled with eps_muPAO+eps_muPAO-F_ii-F_jj
-   * @param f_MO The fock matrix.
-   * @param pair The pair the integrals are transformed for.
-   */
-  inline void prepareEvaluation(Eigen::MatrixXd& muPAO_r_i, Eigen::MatrixXd& muPAO_r_j, Eigen::Vector3d& r_ij,
-                                Eigen::MatrixXd& denominator, const Eigen::MatrixXd& f_MO,
-                                const std::shared_ptr<OrbitalPair> pair);
-  ///@brief Transformations to the QC-PAO basis for the diagonal pairs.
-  std::vector<std::shared_ptr<Eigen::MatrixXd>> _transformation_ii;
   ///@brief QC-eigenvalues for the diagonal pairs.
   std::vector<std::shared_ptr<Eigen::VectorXd>> _eigenvalues_ii;
+  ///@brief Integrals (i|r|i)
+  Eigen::Matrix3Xd _iri;
+  ///@brief Integrals (mu|r|i), mu in [ii] PAO domain.
+  std::vector<std::shared_ptr<Eigen::MatrixXd>> _pao_r_i;
 
   /**
    * @brief Calculate non-redundant, quasi-canonical PAOs for the given orbital i.

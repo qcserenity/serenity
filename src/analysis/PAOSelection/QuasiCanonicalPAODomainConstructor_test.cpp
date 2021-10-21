@@ -43,6 +43,7 @@ class QuasiCanonicalPAODomainConstructorTest : public ::testing::Test {
  *        for a diagonal pair 1|1.
  */
 TEST_F(QuasiCanonicalPAODomainConstructorTest, Water) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -52,7 +53,7 @@ TEST_F(QuasiCanonicalPAODomainConstructorTest, Water) {
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
   auto orbitalPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
   localCorrelationController->initializeSingles();
-  auto qcPAOConst = localCorrelationController->produceQCPAOConstructor();
+  auto qcPAOConst = localCorrelationController->produceQCPAOConstructor(1.0, 1.0, false);
   Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
       system->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
       localCorrelationController->getMO3CenterIntegralController(), orbitalPairs, qcPAOConst);
@@ -64,6 +65,7 @@ TEST_F(QuasiCanonicalPAODomainConstructorTest, Water) {
   double f_ii = pair->f_ij; // The pair is actually the 11-pair.
   double diff = f_ii - canOrbEnergies(pair->i);
   diff = (pair->f_ab - canOrbEnergies.segment(5, canOrbEnergies.size() - 5)).array().abs().sum();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   EXPECT_NEAR(diff, 0.0, 1e-6);
 }
 

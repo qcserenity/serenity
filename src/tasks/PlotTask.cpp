@@ -21,8 +21,9 @@
 /* Include Class Header*/
 #include "tasks/PlotTask.h"
 /* Include Serenity Internal Headers */
-#include "analysis/localizationFunctions/ELFCalculator.h"     //ELF
-#include "analysis/localizationFunctions/SEDD.h"              //SEDD
+#include "analysis/localizationFunctions/ELFCalculator.h" //ELF
+#include "analysis/localizationFunctions/SEDD.h"          //SEDD
+#include "basis/AtomCenteredBasisController.h"
 #include "data/ElectronicStructure.h"                         //ElectronicStructure
 #include "data/OrbitalController.h"                           //OrbitalController
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"   //BasisFunctionOnGridControllerFactory
@@ -30,17 +31,24 @@
 #include "data/grid/ElectrostaticPotentialOnGridController.h" //Plot electrostatic potential.
 #include "geometry/Geometry.h"                                //Geometry construction.
 #include "geometry/MolecularSurfaceController.h"              //Cavity grid getter.
-#include "io/CubeFileWriter.h"                                //CubeFileWriter
-#include "io/FormattedOutputStream.h"                         //OutputControl
-#include "io/GeneralGridFileWriter.h"                         //Plot cavity.
-#include "io/PlaneFileWriter.h"                               //PlaneFileWriter
-#include "misc/WarningTracker.h"                              //WarningTracker
-#include "settings/Settings.h"                                //Settings.
-#include "system/SystemController.h"                          //System controller definition.
-#include "tasks/SystemAdditionTask.h"                         //SystemAdditionTask
+#include "integrals/OneElectronIntegralController.h"
+#include "io/CubeFileWriter.h"                 //CubeFileWriter
+#include "io/FormattedOutputStream.h"          //OutputControl
+#include "io/GeneralGridFileWriter.h"          //Plot cavity.
+#include "io/MolecularSurfaceGridFileWriter.h" //Plot cavity
+#include "io/PlaneFileWriter.h"                //PlaneFileWriter
+#include "misc/WarningTracker.h"               //WarningTracker
+#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
+#include "postHF/LRSCF/Analysis/ExcitedStatesAnalysis.h"
+#include "postHF/LRSCF/Analysis/NROCalculator.h"
+#include "postHF/LRSCF/Analysis/NTOCalculator.h" //NTO
+#include "postHF/LRSCF/LRSCFController.h"
+#include "settings/Settings.h"       //Settings.
+#include "system/SystemController.h" //System controller definition.
+#include "tasks/LRSCFTask.h"
+#include "tasks/SystemAdditionTask.h" //SystemAdditionTask
 
 namespace Serenity {
-using namespace std;
 
 template<>
 PlotTask<RESTRICTED>::PlotTask(const std::vector<std::shared_ptr<SystemController>>& systems,
@@ -67,12 +75,12 @@ void PlotTask<SCFMode>::run() {
   }
   else if (std::find(settings.p2.begin(), settings.p2.end(), std::numeric_limits<double>::infinity()) != settings.p2.end() and
            settings.atom2 == std::numeric_limits<int>::infinity()) {
-    throw SerenityError((string) "The plot for one point is not implemented yet!");
+    throw SerenityError((std::string) "The plot for one point is not implemented yet!");
     _pointTask = true;
   }
   else if (std::find(settings.p3.begin(), settings.p3.end(), std::numeric_limits<double>::infinity()) != settings.p3.end() and
            settings.atom3 == std::numeric_limits<int>::infinity()) {
-    throw SerenityError((string) "The plot for a linear grid is not implemented yet!");
+    throw SerenityError((std::string) "The plot for a linear grid is not implemented yet!");
     _lineTask = true;
   }
   else if (std::find(settings.p4.begin(), settings.p4.end(), std::numeric_limits<double>::infinity()) != settings.p4.end() and
@@ -80,12 +88,12 @@ void PlotTask<SCFMode>::run() {
     _planeTask = true;
   }
   else {
-    throw SerenityError((string) "The plot for a cubic grid defined with four points is not implemented yet!");
+    throw SerenityError((std::string) "The plot for a cubic grid defined with four points is not implemented yet!");
     _cubeTask = true;
   }
 
   std::shared_ptr<SystemController> supersystem = nullptr;
-  if (_systems.size() > 1) {
+  if (_systems.size() > 1 && settings.ntos == false) {
     Settings superSettings = _systems[0]->getSettings();
     superSettings.name = (_systems[0]->getSettings()).name + "+" + (_systems[1]->getSettings()).name;
     superSettings.path = "./";
@@ -100,7 +108,7 @@ void PlotTask<SCFMode>::run() {
   else {
     supersystem = _systems[0];
   }
-  auto geom = supersystem->getGeometry();
+  std::shared_ptr<Geometry> geom = std::make_shared<Geometry>(*(supersystem->getGeometry()));
   // Create supersystem geometry
   for (auto sys : _environmentSystems) {
     *geom += (*sys->getGeometry());
@@ -118,21 +126,21 @@ void PlotTask<SCFMode>::run() {
   std::shared_ptr<DataOnGridWriter> plotWriter = nullptr;
   std::string fileExtension;
   if (settings.cavity) {
-    printSubSectionTitle((string) "Printing Data on the Molecular Cavity");
-    auto cavityGrid = supersystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE)->getGridController();
-    plotWriter = std::make_shared<GeneralGridFileWriter>(sysSettings, cavityGrid);
+    printSubSectionTitle((std::string) "Printing Data on the Molecular Cavity");
+    auto cavityGrid = supersystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE);
+    plotWriter = std::make_shared<MolecularSurfaceGridFileWriter>(sysSettings, cavityGrid);
   }
   else if (_cubeTask) {
-    printSubSectionTitle((string) "Printing Data to Cube Files");
-    if (isinf(settings.gridSpacing[0]) or isinf(settings.gridSpacing[1]) or isinf(settings.gridSpacing[2])) {
+    printSubSectionTitle((std::string) "Printing Data to Cube Files");
+    if (std::isinf(settings.gridSpacing[0]) or std::isinf(settings.gridSpacing[1]) or std::isinf(settings.gridSpacing[2])) {
       settings.gridSpacing = defaultCubeSpacing;
     }
     plotWriter = std::make_shared<CubeFileWriter>(sysSettings, settings);
     fileExtension = ".cube";
   }
   else if (_planeTask) {
-    printSubSectionTitle((string) "Printing Data to Dat Files");
-    if (isinf(settings.gridSpacing[0]) or isinf(settings.gridSpacing[1]) or isinf(settings.gridSpacing[2])) {
+    printSubSectionTitle((std::string) "Printing Data to Dat Files");
+    if (std::isinf(settings.gridSpacing[0]) or std::isinf(settings.gridSpacing[1]) or std::isinf(settings.gridSpacing[2])) {
       settings.gridSpacing = defaultPlaneSpacing;
     }
     plotWriter = std::make_shared<PlaneFileWriter>(sysSettings, settings);
@@ -147,16 +155,16 @@ void PlotTask<SCFMode>::run() {
     const MatrixInBasis<SCFMode>& density = supersystem->template getElectronicStructure<SCFMode>()->getDensityMatrix();
     auto basis = density.getBasisController();
     for_spin(density, _fnameSuffix) {
-      print((string) "Printing electron density to file: " + _filename + _fnameSuffix_spin + "Density" + fileExtension);
-      plotWriter->writeMatrixToGrid(supersystem->getSettings().path + _filename + _fnameSuffix_spin + "Density", geom,
+      print((std::string) "Printing electron density to file: " + _filename + _fnameSuffix_spin + "Density" + fileExtension);
+      plotWriter->writeMatrixToGrid(supersystem->getSystemPath() + _filename + _fnameSuffix_spin + "Density", geom,
                                     basis, density_spin);
     };
     if (SCFMode == UNRESTRICTED) {
       // print total density
-      print((string) "Printing total electron density to file: " + _filename + "_TotalDensity" + fileExtension);
-      plotWriter->writeMatrixToGrid(supersystem->getSettings().path + _filename + "_TotalDensity", geom, density.total());
-      print((string) "Printing spin difference density to file: " + _filename + "_SpinDensity" + fileExtension);
-      plotWriter->writeMatrixToGrid(supersystem->getSettings().path + _filename + "_SpinDensity", geom, density.difference());
+      print((std::string) "Printing total electron density to file: " + _filename + "_TotalDensity" + fileExtension);
+      plotWriter->writeMatrixToGrid(supersystem->getSystemPath() + _filename + "_TotalDensity", geom, density.total());
+      print((std::string) "Printing spin difference density to file: " + _filename + "_SpinDensity" + fileExtension);
+      plotWriter->writeMatrixToGrid(supersystem->getSystemPath() + _filename + "_SpinDensity", geom, density.difference());
     }
   }
 
@@ -174,7 +182,7 @@ void PlotTask<SCFMode>::run() {
     // print all requested orbitals
     const auto& coeffMat = supersystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
     printSmallCaption("Molecular Orbitals");
-    print((string) "Printing MOs to files: " + _filename + "_<a/b>MO<number>" + fileExtension);
+    print((std::string) "Printing MOs to files: " + _filename + "_<a/b>MO<number>" + fileExtension);
     if (_systems.size() > 1) {
       OutputControl::nOut << "The orbitals of the active systems are numbered as follows:" << std::endl;
       OutputControl::nOut << "  * all occupied orbitals of the first active system" << std::endl;
@@ -194,7 +202,7 @@ void PlotTask<SCFMode>::run() {
       std::vector<std::string> fileNames;
       for (unsigned int i = 0; i < range_spin; i++) {
         moCoefficients.col(i) = coeffMat_spin.col(i);
-        fileNames.push_back(supersystem->getSettings().path + _filename + _fnameSuffix_spin + "MO" + std::to_string(i + 1));
+        fileNames.push_back(supersystem->getSystemPath() + _filename + _fnameSuffix_spin + "MO" + std::to_string(i + 1));
       } // for i
       plotWriter->writeVectorSetToGrid(fileNames, geom, supersystem->getBasisController(), moCoefficients);
     };
@@ -202,7 +210,7 @@ void PlotTask<SCFMode>::run() {
 
   if (settings.orbitals.size() > 0) {
     printSmallCaption("Molecular Orbitals");
-    print((string) "Printing MOs to files: " + _filename + "_<a/b>MO<number>" + fileExtension);
+    print((std::string) "Printing MOs to files: " + _filename + "_<a/b>MO<number>" + fileExtension);
     if (_systems.size() > 1) {
       WarningTracker::printWarning(
           "\n\n The orbitals of the active systems are numbered as follows: \n   * all occupied orbitals of the first "
@@ -231,7 +239,7 @@ void PlotTask<SCFMode>::run() {
       for (unsigned int orbital : settings.orbitals) {
         if (orbital >= (unsigned int)1 and orbital <= (unsigned int)nOrbs) {
           moCoefficients.col(col) = coeffMat_spin.col(orbital - 1);
-          fileNames.push_back(supersystem->getSettings().path + _filename + _fnameSuffix_spin + "MO" + std::to_string(orbital));
+          fileNames.push_back(supersystem->getSystemPath() + _filename + _fnameSuffix_spin + "MO" + std::to_string(orbital));
           ++col;
         }
       } // for orbital
@@ -261,7 +269,7 @@ void PlotTask<SCFMode>::run() {
       potGrid.array() *= -1.0;
       return potGrid;
     };
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_ESP", geom, calculateESPOnGrid);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_ESP", geom, calculateESPOnGrid);
   }
   if (settings.elf) {
     ELFCalculator<SCFMode> elf(supersystem);
@@ -270,7 +278,7 @@ void PlotTask<SCFMode>::run() {
       elfGrid = elf.calculateTotalELFOnGrid(gridController);
       return elfGrid;
     };
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_ELF", geom, calculateElfOnGrid);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_ELF", geom, calculateElfOnGrid);
   }
   if (settings.elfts) {
     ELFCalculator<SCFMode> elf(supersystem);
@@ -279,27 +287,266 @@ void PlotTask<SCFMode>::run() {
       elfGrid = elf.calculateTotalELFTSOnGrid(gridController);
       return elfGrid;
     };
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_ELF", geom, calculateElfTSOnGrid);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_ELF", geom, calculateElfTSOnGrid);
   }
   if (settings.sedd) {
     SEDD<SCFMode> sedd;
     auto lambda = sedd.getSEDDLambda(supersystem);
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_SEDD", geom, lambda);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_SEDD", geom, lambda);
   }
   if (settings.dori) {
     SEDD<SCFMode> dori;
     auto lambda = dori.getDORILambda(supersystem);
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_DORI", geom, lambda);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_DORI", geom, lambda);
   }
   if (settings.signedDensity) {
     SEDD<SCFMode> dori;
     auto lambda = dori.getSignedDensityLambda(supersystem);
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_signedDensity", geom, lambda);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_signedDensity", geom, lambda);
+  }
+  if (settings.ntos) {
+    NTOCalculator<SCFMode> ntoCalculator(_systems, _environmentSystems, settings.ntoPlotThreshold);
+    std::vector<int> indices;
+    if (settings.orbitals.size() > 0) {
+      for (auto i : settings.orbitals) {
+        indices.push_back(i - 1);
+      }
+    }
+    else {
+      unsigned int nStates = ntoCalculator.getNumberOfStates();
+      for (unsigned int i = 0; i < nStates; i++) {
+        indices.push_back(i);
+      }
+    }
+    for (auto i : indices) {
+      for (unsigned int iSys = 0; iSys < _systems.size(); iSys++) {
+        // System data
+        geom = _systems[iSys]->getGeometry();
+        std::shared_ptr<BasisController> basisController = _systems[iSys]->getBasisController();
+        // NTO data
+        const std::string dirName = ntoCalculator.getDir(i, iSys);
+        auto oNTOs = ntoCalculator.getOccNTOs(i, iSys);
+        auto vNTOs = ntoCalculator.getVirtNTOs(i, iSys);
+        auto oEigenvalues = ntoCalculator.getOccEigenvalues(i);
+        auto vEigenvalues = ntoCalculator.getVirtEigenvalues(i);
+        for_spin(oNTOs, vNTOs, oEigenvalues, vEigenvalues, _fnameSuffix) {
+          std::vector<std::string> fileNames;
+          std::vector<unsigned int> indicesToPlot;
+          for (unsigned int j = 0; j < oNTOs_spin.cols(); j++) {
+            if (oEigenvalues_spin(j) > settings.ntoPlotThreshold) {
+              int tmpState = j + 1;
+              std::string fileName = dirName + tmpState + _fnameSuffix_spin + "occ";
+              fileNames.push_back(fileName);
+              indicesToPlot.push_back(j);
+            }
+          }
+
+          Eigen::MatrixXd ntoToPlot = Eigen::MatrixXd::Zero(oNTOs_spin.rows(), indicesToPlot.size());
+          unsigned int counter = 0;
+          for (auto index : indicesToPlot) {
+            ntoToPlot.col(counter) = oNTOs_spin.col(index);
+            counter++;
+          }
+          plotWriter->writeVectorSetToGrid(fileNames, geom, basisController, ntoToPlot);
+          fileNames.resize(0);
+          indicesToPlot.resize(0);
+          for (unsigned int j = 0; j < vNTOs_spin.cols(); j++) {
+            if (vEigenvalues_spin(j) > settings.ntoPlotThreshold) {
+              std::string tmpState = std::to_string(vEigenvalues_spin.size() - j + oEigenvalues_spin.size());
+              std::string fileName = dirName + tmpState + _fnameSuffix_spin + "virt";
+              fileNames.push_back(fileName);
+              indicesToPlot.push_back(j);
+            }
+          }
+          ntoToPlot = Eigen::MatrixXd::Zero(vNTOs_spin.rows(), indicesToPlot.size());
+          counter = 0;
+          for (auto index : indicesToPlot) {
+            ntoToPlot.col(counter) = vNTOs_spin.col(index);
+            counter++;
+          }
+          plotWriter->writeVectorSetToGrid(fileNames, geom, basisController, ntoToPlot);
+        };
+      }
+    }
   }
   if (settings.gridCoordinates) {
     auto lambda = [&](std::shared_ptr<GridController> gridController) { return gridController->getWeights(); };
-    plotWriter->writeFile(supersystem->getSettings().path + _filename + "_coords", geom, lambda);
+    plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_coords", geom, lambda);
   }
+  if (settings.transitionDensity) {
+    if (!settings.excitations[0])
+      throw SerenityError("You need to specify the desired excitations in the plot task's input");
+    for (auto system : _systems) {
+      printBigCaption("Excitation State Analysis for the system called " + system->getSystemName());
+      LRSCFTaskSettings lrscfSettings;
+      lrscfSettings.loadType = Options::LRSCF_TYPE::ISOLATED;
+      auto lrscfcontroller = std::make_shared<LRSCFController<SCFMode>>(system, lrscfSettings);
+      try {
+        lrscfcontroller->getExcitationEnergies(lrscfSettings.loadType);
+      }
+      catch (...) {
+        throw SerenityError("You need to perform an LRSCFTask before you can plot transition densities.");
+      }
+      ExcitedStatesAnalysis<SCFMode> excAna(settings.excitations, lrscfcontroller);
+      settings.gridSpacing = defaultCubeSpacing;
+      CubeFileWriter writer = CubeFileWriter(_systems[0]->getSettings(), settings);
+      for (unsigned n = 0; n < settings.excitations.size(); n++) {
+        std::string filename = system->getSystemPath() + system->getSystemName() + "_transitiondensity_";
+        const auto& density = *(excAna.getTransitionDensityMatrix(n));
+        auto geom = system->getGeometry();
+        filename += std::to_string(settings.excitations[n]);
+        for_spin(density, _fnameSuffix) {
+          OutputControl::nOut << "Printing electron density to file: " + filename + _fnameSuffix_spin + ".cube" << std::endl;
+          writer.writeMatrixToGrid(filename + _fnameSuffix_spin, geom, lrscfcontroller->getBasisController(), density_spin);
+        };
+        if (SCFMode == UNRESTRICTED) {
+          OutputControl::nOut << "Printing total electron density to file: " + filename + "_TotalDensity" + ".cube"
+                              << std::endl;
+          writer.writeMatrixToGrid(filename + "_TotalDensity", geom, density.total());
+          OutputControl::nOut << "Printing spin difference density to file: " + filename + "_SpinDensity" + ".cube"
+                              << std::endl;
+          writer.writeMatrixToGrid(filename + "_SpinDensity", geom, density.difference());
+        }
+      }
+    }
+  }
+
+  if (settings.holeparticleDensity) {
+    for (auto system : _systems) {
+      printBigCaption("Hole- and particle-densities during electronic transitions for " + system->getSystemName());
+      LRSCFTaskSettings lrscfSettings;
+      lrscfSettings.loadType = Options::LRSCF_TYPE::ISOLATED;
+      auto lrscfcontroller = std::make_shared<LRSCFController<SCFMode>>(system, lrscfSettings);
+      try {
+        lrscfcontroller->getExcitationEnergies(lrscfSettings.loadType);
+      }
+      catch (...) {
+        throw SerenityError("You need to perform an LRSCFTask before you can plot hole and particle densities.");
+      }
+      ExcitedStatesAnalysis<SCFMode> excAna(settings.excitations, lrscfcontroller);
+      settings.gridSpacing = defaultCubeSpacing;
+      CubeFileWriter writer = CubeFileWriter(system->getSettings(), settings);
+      auto geom = system->getGeometry();
+      for (unsigned n = 0; n < settings.excitations.size(); n++) {
+        for (unsigned holeparticle = 0; holeparticle < 2; holeparticle++) {
+          MatrixInBasis<SCFMode> density =
+              (holeparticle == 0) ? *(excAna.getHoleDensityMatrix(n)) : *(excAna.getParticleDensityMatrix(n));
+          std::string filename = system->getSystemPath() + system->getSystemName();
+          filename += (holeparticle == 0) ? "_holedensity_" : "_particledensity_";
+          filename += std::to_string(settings.excitations[n]);
+          for_spin(density, _fnameSuffix) {
+            OutputControl::nOut << "Printing electron density to file: " + filename + _fnameSuffix_spin + ".cube" << std::endl;
+            writer.writeMatrixToGrid(filename + _fnameSuffix_spin, geom, lrscfcontroller->getBasisController(), density_spin);
+          };
+          if (SCFMode == UNRESTRICTED) {
+            OutputControl::nOut << "Printing total electron density to file: " + filename + "_TotalDensity" + ".cube"
+                                << std::endl;
+            writer.writeMatrixToGrid(filename + "_TotalDensity", geom, density.total());
+            OutputControl::nOut << "Printing spin difference density to file: " + filename + "_SpinDensity" + ".cube"
+                                << std::endl;
+            writer.writeMatrixToGrid(filename + "_SpinDensity", geom, density.difference());
+          }
+        }
+      }
+    }
+  }
+
+  if (settings.nros) {
+    for (auto system : _systems) {
+      LRSCFTaskSettings lrscfSettings;
+      lrscfSettings.loadType = Options::LRSCF_TYPE::ISOLATED;
+      auto lrscfcontroller = std::make_shared<LRSCFController<SCFMode>>(system, lrscfSettings);
+      std::vector<Eigen::MatrixXd> XY(2);
+      Eigen::VectorXd freque;
+      std::string fileName = system->getSystemPath() + system->getSystemName() + "_lrscf_resp.";
+      if (lrscfSettings.method == Options::LR_METHOD::TDA || lrscfSettings.method == Options::LR_METHOD::TDDFT) {
+        fileName += "tddft.";
+      }
+      else {
+        fileName += "cc2.";
+      }
+      if (lrscfSettings.loadType == Options::LRSCF_TYPE::ISOLATED) {
+        fileName += "iso.";
+      }
+      else if (lrscfSettings.loadType == Options::LRSCF_TYPE::UNCOUPLED) {
+        fileName += "fdeu.";
+      }
+      fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
+      fileName += "h5";
+      HDF5::H5File afile(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+      HDF5::dataset_exists(afile, "X+Y");
+      HDF5::dataset_exists(afile, "X-Y");
+      HDF5::dataset_exists(afile, "frequencies");
+      HDF5::load(afile, "X+Y", XY[0]);
+      HDF5::load(afile, "X-Y", XY[1]);
+      HDF5::load(afile, "frequencies", freque);
+      afile.close();
+      auto nocc = lrscfcontroller->getNOccupied();
+      auto nvirt = lrscfcontroller->getNVirtual();
+      auto geom = system->getGeometry();
+      auto basis = lrscfcontroller->getBasisController();
+      DipoleIntegrals<SCFMode> dip({lrscfcontroller}, Point(0.0, 0.0, 0.0));
+      Eigen::MatrixXd dipolelengths = *(dip.getLengths());
+      NROCalculator<SCFMode> nro(XY, lrscfcontroller);
+      for (unsigned iFreq = 0; iFreq < XY[0].cols() / 3; iFreq++) {
+        auto NROs = nro.getNROs(iFreq);
+        Eigen::MatrixXd xpy = XY[0].middleCols(iFreq * 3, 3);
+        Eigen::MatrixXd xmy = XY[1].middleCols(iFreq * 3, 3);
+        SpinPolarizedData<SCFMode, Eigen::MatrixXd> singularvalues;
+        unsigned ia_start = 0;
+        for_spin(nocc, nvirt, singularvalues) {
+          singularvalues_spin = Eigen::MatrixXd::Zero(nocc_spin, 3);
+          for (unsigned j = 0; j < 3; j++) {
+            Eigen::MatrixXd xpymatrix =
+                (Eigen::Map<Eigen::MatrixXd>(xpy.col(j).data() + ia_start, nvirt_spin, nocc_spin)).transpose();
+            Eigen::JacobiSVD<Eigen::MatrixXd> svdp(xpymatrix, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            singularvalues_spin.col(j) = svdp.singularValues() / (svdp.singularValues().sum());
+          }
+        };
+
+        // write NRO-pairs to disk
+        PlotTaskSettings plottasksettings;
+        plottasksettings.gridSpacing = {0.12, 0.12, 0.12};
+        CubeFileWriter writer = CubeFileWriter(system->getSettings(), plottasksettings);
+        std::vector<std::string> partfilenames;
+        std::vector<std::string> holefilenames;
+        std::vector<std::string> SpatDirection = {"x", "y", "z"};
+
+        std::string spin = (SCFMode == RESTRICTED) ? "" : " alpha";
+        for_spin(singularvalues, NROs) {
+          for (unsigned row = 0; row < 3; row++) {
+            double accSingularValues = 0;
+            unsigned plotcounter = 0;
+            for (unsigned i = 0; i < singularvalues_spin.rows(); i++) {
+              partfilenames = {};
+              holefilenames = {};
+              if (accSingularValues < settings.nrominimum) {
+                partfilenames.push_back(system->getSystemPath() + "freq_" + std::to_string(iFreq + 1) +
+                                        SpatDirection[row] + "particleNRO_" + std::to_string(i + 1) + spin);
+                holefilenames.push_back(system->getSystemPath() + "freq_" + std::to_string(iFreq + 1) +
+                                        SpatDirection[row] + "holeNRO_" + std::to_string(i + 1) + spin);
+                OutputControl::nOut << "Printing to files " << partfilenames[0] << " and " << holefilenames[0] << std::endl;
+                Eigen::MatrixXd parts = NROs_spin[row * 2 + 1].col(i);
+                Eigen::MatrixXd holes = NROs_spin[row * 2].col(i);
+
+                writer.writeVectorSetToGrid(partfilenames, geom, basis, parts);
+                writer.writeVectorSetToGrid(holefilenames, geom, basis, holes);
+                plotcounter++;
+                accSingularValues += singularvalues_spin(i, row);
+              }
+            }
+            if (generalSettings.printLevel >= Options::GLOBAL_PRINT_LEVELS::NORMAL) {
+              printf("For the frequency %f in direction %s, %i NRO pairs were printed to cube files accounting for "
+                     "approximately %.2f%% of the%s response.\n",
+                     freque[iFreq], SpatDirection[row].c_str(), plotcounter, accSingularValues * 100, spin.c_str());
+            }
+          }
+          spin = (SCFMode == RESTRICTED) ? "" : " beta";
+        };
+      } /* frequency loop */
+    }   /* system loop */
+  }     /* settings.nrotest */
+
 } /* run */
 
 template class PlotTask<Options::SCF_MODES::RESTRICTED>;

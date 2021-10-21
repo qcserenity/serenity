@@ -25,7 +25,6 @@
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/Options.h"
-#include "settings/Settings.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -40,6 +39,7 @@ class DIIS;
 class ADIIS;
 class EnergyComponentController;
 class OneElectronIntegralController;
+class Settings;
 /**
  * @class ConvergenceController ConvergenceController.h
  *
@@ -104,14 +104,22 @@ class ConvergenceController {
   std::string _mode;
   unsigned int _cycle = 0;
   bool _first = true;
+  // Get the number of convergence criteria met.
+  unsigned int getNConverged();
+  // Print the SCF cycle info.
+  void printCycleInfo();
   /**
    *
    * @param A possibly modified overlap matrix. This is needed for EDA calculations.
    * @return The error vector [F,P].
    */
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> calcFPSminusSPF(FockMatrix<SCFMode>& F);
+  MatrixInBasis<SCFMode> calcFPSminusSPF(FockMatrix<SCFMode>& F);
 
   double calcRMSDofDensity();
+
+  bool _levelShiftInLastIteration = false;
+
+  const unsigned int _nNeccessaryToConverge = 2;
 };
 
 } /* namespace Serenity */

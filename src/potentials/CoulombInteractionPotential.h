@@ -22,9 +22,8 @@
 #define POTENTIALS_COULOMBINTERACTIONPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "integrals/wrappers/Libint.h" //getSharedPtr()
-#include "potentials/Potential.h"      //Base class.
-#include "settings/Options.h"          //SCF_MODES
+#include "potentials/Potential.h" //Base class.
+#include "settings/Options.h"     //SCF_MODES
 
 namespace Serenity {
 
@@ -33,6 +32,7 @@ class AtomCenteredBasisController;
 class SystemController;
 template<Options::SCF_MODES T>
 class DensityMatrixController;
+class Libint;
 namespace Options {
 enum class DENS_FITS;
 }
@@ -141,8 +141,6 @@ class CoulombInteractionPotential : public Potential<SCFMode>,
   const std::shared_ptr<BasisController> _actAuxBasis;
   ///@brief Environment aux. basis sets.
   std::vector<std::shared_ptr<BasisController>> _envAuxBasis;
-  ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief switch for RI.

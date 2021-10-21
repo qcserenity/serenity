@@ -22,11 +22,28 @@
 #define LRSCF_LRSCFSETUP
 
 /* Include Serenity Internal Headers */
-#include "postHF/LRSCF/LRSCFController.h"
+#include "geometry/Point.h"
+#include "settings/ElectronicStructureOptions.h"
+
+/* Include External Header */
+#include <Eigen/Dense>
+#include <memory>
+#include <vector>
 
 namespace Serenity {
 
+namespace Options {
+enum class LRSCF_TYPE;
+} // namespace Options
+
 class Point;
+
+struct LRSCFTaskSettings;
+
+template<Options::SCF_MODES SCFMode>
+class LRSCFController;
+
+class SystemController;
 
 template<Options::SCF_MODES SCFMode>
 /**
@@ -49,6 +66,13 @@ class LRSCFSetup {
                         const std::vector<std::shared_ptr<SystemController>>& envSys, const Options::LRSCF_TYPE type);
 
   /**
+   * @brief Prints information about the response problem (used functional etc).
+   * @param lrscf The LRSCFController.
+   * @return The orbital-energy differences, i.e. the leading term of the diagonal of the response matrix.
+   */
+  static Eigen::VectorXd getDiagonal(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf);
+
+  /**
    * @brief Returns the gauge origin for the given systems and settings.
    * @param settings The LRSCFTaskSettings.
    * @param act The active systems.
@@ -59,13 +83,14 @@ class LRSCFSetup {
 
   /**
    * @brief Sets up transformation matrices for the coupled response problem.
+   * @param settings The LRSCFTaskSettings.
    * @param couplingPatternMatrix The special coupling pattern.
    * @param referenceLoadingType Determine what is being coupled.
    * @param lrscf The LRSCF controller.
    * @param act The active systems.
    * @param nDimension The dimension of the response problem.
    */
-  static shared_ptr<std::vector<Eigen::MatrixXd>>
+  static std::shared_ptr<std::vector<Eigen::MatrixXd>>
   setupFDEcTransformation(const LRSCFTaskSettings& settings, const Eigen::MatrixXi& couplingPatternMatrix,
                           const std::vector<Options::LRSCF_TYPE>& referenceLoadingType,
                           const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
@@ -74,17 +99,14 @@ class LRSCFSetup {
   /**
    * @brief Sets up all LRSCFController that take part in a response calculation.
    * @param settings The LRSCFTaskSettings.
-   * @param couplingPatternMatrix The special coupling pattern.
    * @param act The active systems.
    * @param env The environment systems.
    * @param response The LRSCF controller.
-   * @param type The LRSCF type (Isolated, FDEu, FDEc).
    */
-  static void setupLRSCFController(const LRSCFTaskSettings& settings, const Eigen::MatrixXi& couplingPatternMatrix,
+  static void setupLRSCFController(const LRSCFTaskSettings& settings,
                                    const std::vector<std::shared_ptr<SystemController>>& act,
                                    const std::vector<std::shared_ptr<SystemController>>& env,
-                                   const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& response,
-                                   const Options::LRSCF_TYPE type);
+                                   const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscfAll);
 };
 
 } /* namespace Serenity */

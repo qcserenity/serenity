@@ -47,8 +47,6 @@ class SystemController;
 template<Options::SCF_MODES SCFMode>
 class MullikenPopulationCalculator {
  public:
-  MullikenPopulationCalculator() = default;
-  virtual ~MullikenPopulationCalculator() = default;
   /**
    * @param   system of which the atoms, i.e. also the mapping of basis functions to atoms, are
    *                 taken
@@ -85,14 +83,19 @@ class MullikenPopulationCalculator {
                                     const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix);
   /**
    * @brief Analog of calculateAtomPopulations() for orbitals (uses calculateOrbitalPopulations())
-   * @param coefficients
-   * @param overlapMatrix
-   * @param atomBasisIndices
+   * @param coefficients The orbital coefficients.
+   * @param overlapMatrix The overlap matrix.
+   * @param atomBasisIndices The atom to basis function map.
    */
   static SPMatrix<SCFMode>
-  calculateAtomwiseOrbitalPopulations(const CoefficientMatrix<SCFMode>& coefficients,
+  calculateAtomwiseOrbitalPopulations(const SPMatrix<SCFMode>& coefficients,
                                       const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& overlapMatrix,
                                       const std::vector<std::pair<unsigned int, unsigned int>>& atomBasisIndices);
+  /**
+   * @brief Analog of calculateAtomPopulations() for orbitals.
+   * @param system The system controller to calculate the populations for.
+   */
+  static SPMatrix<SCFMode> calculateAtomwiseOrbitalPopulations(std::shared_ptr<SystemController> system);
 
  private:
   /**

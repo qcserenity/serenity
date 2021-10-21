@@ -21,7 +21,6 @@
 #include "scf/damper/StaticDamping.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
 StaticDamping<T>::StaticDamping(const double dampingFactor)

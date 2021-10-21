@@ -23,51 +23,24 @@
 #include "geometry/DelleySurfaceConstructor.h"
 #include "geometry/GEPOLSurfaceConstructor.h"
 #include "geometry/Geometry.h"
-#include "geometry/MolecularSurfaceController.h"
+#include "geometry/MolecularSurface.h"
 #include "geometry/Sphere.h"
-#include "misc/SerenityError.h"
 #include "misc/Timing.h" //Timings.
 #include "settings/PCMSettings.h"
 #include "solvation/Solvents.h"
-/* Include Std and External Headers */
-#include <Eigen/Dense>
 
 namespace Serenity {
 
-std::shared_ptr<MolecularSurfaceController>
+std::unique_ptr<MolecularSurface>
 MolecularSurfaceFactory::produce(std::shared_ptr<const Geometry> geometry, Options::PCM_CAVITY_TYPES cavityType,
                                  Options::PCM_ATOMIC_RADII_TYPES radiiType, unsigned int calveLevel, double minDistance,
                                  double minRadius, double solvRadius, double overlapFactor, bool scaling,
                                  unsigned int sphericalAngularMomentum, unsigned int smallSphericalAngularMomentum,
                                  double alpha, double projectionCutOff, bool oneCavity, double connectivityFactor) {
-  if (!_sufaceFactoryInstance)
-    _sufaceFactoryInstance.reset(new MolecularSurfaceFactory);
-  return _sufaceFactoryInstance->getOrProduce(
-      geometry, cavityType, radiiType, calveLevel, minDistance, minRadius, solvRadius, overlapFactor, scaling,
-      sphericalAngularMomentum, smallSphericalAngularMomentum, alpha, projectionCutOff, oneCavity, connectivityFactor);
-}
-
-std::shared_ptr<MolecularSurfaceController> MolecularSurfaceFactory::produce(std::shared_ptr<const Geometry> geometry,
-                                                                             const PCMSettings& pcmSettings) {
-  double solvRad = pcmSettings.probeRadius;
-  if (pcmSettings.solvent != Options::PCM_SOLVENTS::EXPLICIT)
-    solvRad = Solvents::getProbeRadius(pcmSettings.solvent);
-  return produce(geometry, pcmSettings.cavity, pcmSettings.radiiType, pcmSettings.patchLevel, pcmSettings.minDistance,
-                 pcmSettings.minRadius, solvRad, pcmSettings.overlapFactor, pcmSettings.scaling, pcmSettings.lLarge,
-                 pcmSettings.lSmall, pcmSettings.alpha, pcmSettings.projectionCutOff, pcmSettings.oneCavity,
-                 pcmSettings.connectivityFactor);
-}
-
-std::unique_ptr<MolecularSurfaceController>
-MolecularSurfaceFactory::produceNew(std::shared_ptr<const Geometry> geometry, Options::PCM_CAVITY_TYPES cavityType,
-                                    Options::PCM_ATOMIC_RADII_TYPES radiiType, unsigned int calveLevel, double minDistance,
-                                    double minRadius, double solvRadius, double overlapFactor, bool scaling,
-                                    unsigned int sphericalAngularMomentum, unsigned int smallSphericalAngularMomentum,
-                                    double alpha, double projectionCutOff, bool oneCavity, double connectivityFactor) {
   Timings::takeTime(" Tech. -    Cavity Construction");
   auto atoms = geometry->getAtoms();
   std::vector<Sphere> initialSpheres;
-  std::unique_ptr<MolecularSurfaceController> molecularSurfaceController;
+  std::unique_ptr<MolecularSurface> molecularSurface;
   for (auto atom : atoms) {
     unsigned int l = sphericalAngularMomentum;
     if (atom->getAtomType()->getElementSymbol() == "H")
@@ -77,32 +50,34 @@ MolecularSurfaceFactory::produceNew(std::shared_ptr<const Geometry> geometry, Op
   switch (cavityType) {
     case Options::PCM_CAVITY_TYPES::GEPOL_SAS: {
       GEPOLSurfaceConstructor gepol(initialSpheres, true, calveLevel, minDistance, minRadius, solvRadius, overlapFactor);
-      Eigen::Matrix3Xd tmp = gepol.getNormVectors();
-      auto normVectors = std::make_unique<Eigen::Matrix3Xd>(tmp);
-      molecularSurfaceController =
-          std::make_unique<MolecularSurfaceController>(gepol.getSurfaceGrid(), std::move(normVectors), "GEPOL-SAS");
+      molecularSurface = gepol.getMolecularSurface();
       break;
     }
     case Options::PCM_CAVITY_TYPES::GEPOL_SES: {
       GEPOLSurfaceConstructor gepol(initialSpheres, false, calveLevel, minDistance, minRadius, solvRadius, overlapFactor);
-      Eigen::Matrix3Xd tmp = gepol.getNormVectors();
-      auto normVectors = std::make_unique<Eigen::Matrix3Xd>(tmp);
-      molecularSurfaceController =
-          std::make_unique<MolecularSurfaceController>(gepol.getSurfaceGrid(), std::move(normVectors), "GEPOL-SES");
+      molecularSurface = gepol.getMolecularSurface();
       break;
     }
     case Options::PCM_CAVITY_TYPES::DELLEY: {
       DelleySurfaceConstructor delley(initialSpheres, solvRadius, alpha, projectionCutOff, minDistance, oneCavity,
                                       connectivityFactor);
-      Eigen::Matrix3Xd tmp = delley.getNormVectors();
-      auto normVectors = std::make_unique<Eigen::Matrix3Xd>(tmp);
-      molecularSurfaceController =
-          std::make_unique<MolecularSurfaceController>(delley.getGridController(), std::move(normVectors), "DELLEY");
+      molecularSurface = delley.getMolecularSurface();
       break;
     }
   }
   Timings::timeTaken(" Tech. -    Cavity Construction");
-  return molecularSurfaceController;
+  return molecularSurface;
+}
+
+std::unique_ptr<MolecularSurface> MolecularSurfaceFactory::produce(std::shared_ptr<const Geometry> geometry,
+                                                                   const PCMSettings& pcmSettings) {
+  double solvRad = pcmSettings.probeRadius;
+  if (pcmSettings.solvent != Options::PCM_SOLVENTS::EXPLICIT)
+    solvRad = Solvents::getProbeRadius(pcmSettings.solvent);
+  return produce(geometry, pcmSettings.cavity, pcmSettings.radiiType, pcmSettings.patchLevel, pcmSettings.minDistance,
+                 pcmSettings.minRadius, solvRad, pcmSettings.overlapFactor, pcmSettings.scaling, pcmSettings.lLarge,
+                 pcmSettings.lSmall, pcmSettings.alpha, pcmSettings.projectionCutOff, pcmSettings.oneCavity,
+                 pcmSettings.connectivityFactor);
 }
 
 double MolecularSurfaceFactory::getAtomRadius(std::shared_ptr<Atom> atom, Options::PCM_ATOMIC_RADII_TYPES radiiType,

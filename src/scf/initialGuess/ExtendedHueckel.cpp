@@ -21,6 +21,7 @@
 #include "scf/initialGuess/ExtendedHueckel.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/Basis.h"
 #include "basis/Transformation.h"
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
@@ -34,15 +35,14 @@
 #include "system/SystemController.h"
 
 namespace Serenity {
-using namespace std;
 
-const string ExtendedHueckel::USED_BASIS = "STO-6G";
+const std::string ExtendedHueckel::USED_BASIS = "STO-6G";
 // const string ExtendedHueckel::USED_BASIS="STO-6G_NoCore";
 
-const map<string, vector<double>> ExtendedHueckel::PARAMETERS = ExtendedHueckel::assignParameters();
+const std::map<std::string, std::vector<double>> ExtendedHueckel::PARAMETERS = ExtendedHueckel::assignParameters();
 
 std::unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>
-ExtendedHueckel::calculateHueckelOrbitals(const shared_ptr<SystemController> systemController,
+ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController> systemController,
                                           std::shared_ptr<AtomCenteredBasisController> minimalBasisController,
                                           const MatrixInBasis<RESTRICTED>& minimalBasisOverlaps) {
   assert(minimalBasisController);
@@ -111,12 +111,12 @@ ExtendedHueckel::calculateHueckelOrbitals(const shared_ptr<SystemController> sys
   /*
    * Construct and return set of final orbitals
    */
-  return unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
-      new OrbitalController<Options::SCF_MODES::RESTRICTED>(move(coefficients), minimalBasisController, move(eigenvalues)));
+  return std::make_unique<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
+      move(coefficients), minimalBasisController, move(eigenvalues), systemController->getNCoreElectrons());
 }
 
-unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
-ExtendedHueckel::calculateInitialGuess(const shared_ptr<SystemController> systemController) {
+std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
+ExtendedHueckel::calculateInitialGuess(const std::shared_ptr<SystemController> systemController) {
   assert(systemController);
   /*
    * Collect necessary data from the systemController and create the Hueckel orbitals
@@ -137,7 +137,7 @@ ExtendedHueckel::calculateInitialGuess(const shared_ptr<SystemController> system
   /*
    * Transform to the basis which is actually used
    */
-  shared_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>> guessOrbs(
+  std::shared_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>> guessOrbs(
       Transformation::transformMOs(*hueckelOrbs, systemController->getBasisController(),
                                    systemController->getOneElectronIntegralController()->getOverlapIntegrals()));
   guessOrbs->setCanOrthTh(systemController->getSettings().scf.canOrthThreshold);

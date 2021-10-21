@@ -26,20 +26,19 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
-GeometryFileReader::GeometryFileReader(string filePath) : _filePath(filePath) {
+GeometryFileReader::GeometryFileReader(std::string filePath) : _filePath(filePath) {
 }
 
 GeometryFileReader::~GeometryFileReader() {
   assert(!_file.is_open());
 }
 
-void GeometryFileReader::loadFile(string filePath) {
+void GeometryFileReader::loadFile(std::string filePath) {
   assert(!_file.is_open());
-  _file.open(filePath.c_str(), ifstream::in);
+  _file.open(filePath.c_str(), std::ifstream::in);
   if (!_file.good()) {
-    throw SerenityError((string) "Error while loading file: " + filePath + ". Does it exist?");
+    throw SerenityError((std::string) "Error while loading file: " + filePath + ". Does it exist?");
   }
 }
 
@@ -50,25 +49,25 @@ std::unique_ptr<Geometry> GeometryFileReader::readGeometry() {
   return result;
 }
 
-std::unique_ptr<Geometry> GeometryFileReader::readGeometry(string filePath) {
+std::unique_ptr<Geometry> GeometryFileReader::readGeometry(std::string filePath) {
   loadFile(filePath);
   auto result = readGeometry(0);
   _file.close();
   return result;
 }
 
-std::unique_ptr<Geometry> GeometryFileReader::readGeometry(string filePath, unsigned int index) {
+std::unique_ptr<Geometry> GeometryFileReader::readGeometry(std::string filePath, unsigned int index) {
   loadFile(filePath);
   auto result = readGeometry(index);
   _file.close();
   return result;
 }
 
-vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries() {
+std::vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries() {
   const bool fileWasOpen = _file.is_open();
   if (!fileWasOpen)
     loadFile(_filePath);
-  vector<unique_ptr<Geometry>> geometries;
+  std::vector<std::unique_ptr<Geometry>> geometries;
   unsigned int index = 0;
   while (true) {
     auto newGeometry = readGeometry(index++);
@@ -84,7 +83,7 @@ vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries() {
   return geometries;
 }
 
-unique_ptr<Geometry> GeometryFileReader::readGeometry(unsigned int index) {
+std::unique_ptr<Geometry> GeometryFileReader::readGeometry(unsigned int index) {
   const bool fileWasOpen = _file.is_open();
   if (!fileWasOpen)
     loadFile(_filePath);
@@ -94,7 +93,7 @@ unique_ptr<Geometry> GeometryFileReader::readGeometry(unsigned int index) {
   return result;
 }
 
-vector<unique_ptr<Geometry>> GeometryFileReader::readAllGeometries(string filePath) {
+std::vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries(std::string filePath) {
   loadFile(filePath);
   auto result = readAllGeometries();
   _file.close();

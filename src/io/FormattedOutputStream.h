@@ -30,8 +30,6 @@
 
 namespace Serenity {
 
-using namespace Options;
-
 ///@brief The global print level. Every task manipulates this setting
 ///       in its parseGeneralSettings() routine.
 extern Options::GLOBAL_PRINT_LEVELS GLOBAL_PRINT_LEVEL;
@@ -41,7 +39,7 @@ extern Options::GLOBAL_PRINT_LEVELS GLOBAL_PRINT_LEVEL;
  * @brief A custom output stream buffer that only parses to the stream if
  *        the print level is higher or equal to the given template argument.
  */
-template<GLOBAL_PRINT_LEVELS PrintLevel>
+template<Options::GLOBAL_PRINT_LEVELS PrintLevel>
 class IndentStreamBuf : public std::stringbuf {
  public:
   /**
@@ -88,7 +86,7 @@ class IndentStreamBuf : public std::stringbuf {
  * @brief Custom output stream that filters the given output according to
  *       a given print level.
  */
-template<GLOBAL_PRINT_LEVELS PrintLevel>
+template<Options::GLOBAL_PRINT_LEVELS PrintLevel>
 class FOut : public std::ostream {
   IndentStreamBuf<PrintLevel> buffer;
 
@@ -128,11 +126,11 @@ class FOut : public std::ostream {
  *  and indented output.
  */
 namespace OutputControl {
-static FOut<GLOBAL_PRINT_LEVELS::MINIMUM> mOut(std::cout, "");
-static FOut<GLOBAL_PRINT_LEVELS::NORMAL> nOut(std::cout, "");
-static FOut<GLOBAL_PRINT_LEVELS::VERBOSE> vOut(std::cout, "==V==  ");
-static FOut<GLOBAL_PRINT_LEVELS::VERBOSE> vnOut(std::cout, "");
-static FOut<GLOBAL_PRINT_LEVELS::DEBUGGING> dOut(std::cout, "==D==  ");
+static FOut<Options::GLOBAL_PRINT_LEVELS::MINIMUM> mOut(std::cout, "");
+static FOut<Options::GLOBAL_PRINT_LEVELS::NORMAL> nOut(std::cout, "");
+static FOut<Options::GLOBAL_PRINT_LEVELS::VERBOSE> vOut(std::cout, "==V==  ");
+static FOut<Options::GLOBAL_PRINT_LEVELS::VERBOSE> vnOut(std::cout, "");
+static FOut<Options::GLOBAL_PRINT_LEVELS::DEBUGGING> dOut(std::cout, "==D==  ");
 } /* namespace OutputControl */
 
 } /* namespace Serenity */

@@ -48,14 +48,6 @@ class SystemController;
  */
 class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
  private:
-  ///@brief The threshold for the PNO truncation.
-  double _pnoThreshold;
-  ///@brief The PNO threshold for the singles.
-  double _singlesPNOThreshold;
-  ///@brief The threshold for the PNO truncation of pairs containing at least one core orbital.
-  double _pnoCoreThreshold;
-  ///@brief The threshold for the PNO truncation of core singles.
-  double _pnoCoreSinglesThreshold;
   ///@brief Force the F_ai block of the fock matrix to be zero.
   bool _setFaiZero;
   ///@brief Same-spin scaling parameter.
@@ -80,7 +72,6 @@ class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
   /**
    * @brief Constructor.
    * @param coefficients The coefficient matrix.
-   * @param overlapMatrix The overlap matrix.
    * @param f The Fock matrix.
    * @param paoController The PAO-Controller.
    * @param paoOrthogonalizationThreshold Threshold for the canonical PAO orthogonalisation.
@@ -94,10 +85,8 @@ class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
    * @param osScaling Opposite spin scaling factor.
    */
   PNOConstructor(const CoefficientMatrix<Options::SCF_MODES::RESTRICTED>& coefficients,
-                 std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> overlapMatrix,
                  std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
                  std::shared_ptr<PAOController> paoController, double paoOrthogonalizationThreshold,
-                 double pnoThreshold, double singlesPNOScaling, double pnoCoreScaling,
                  std::vector<std::shared_ptr<SystemController>> environmentSystems = {}, double levelShiftParameter = 1e+6,
                  bool setFaiZero = false, double ssScaling = 1.0, double osScaling = 1.0);
 

@@ -18,14 +18,18 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "scf/initialGuess/SuperpositionOfAtomicPotentials.h"
+/* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "geometry/Geometry.h"
+#include "integrals/OneElectronIntegralController.h"
+#include "math/Matrix.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
@@ -62,9 +66,9 @@ SuperpositionOfAtomicPotentials::calculateInitialGuess(const std::shared_ptr<Sys
     const auto& type = x.first;
     auto& potential = x.second;
     std::string line;
-    ifstream file(pathToGuessDensities + "v_" + type + ".dat");
+    std::ifstream file(pathToGuessDensities + "v_" + type + ".dat");
     while (getline(file, line)) {
-      istringstream lineStream(line);
+      std::istringstream lineStream(line);
       double distance, value;
       lineStream >> distance >> value;
       potential.first.push_back(distance);

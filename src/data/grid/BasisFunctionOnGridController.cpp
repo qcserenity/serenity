@@ -24,8 +24,8 @@
 #include "basis/BasisController.h"
 #include "geometry/Point.h"
 #include "grid/GridController.h"
+#include "math/Derivatives.h"
 #include "math/FloatMaths.h"
-#include "memory/MemoryManager.h"
 #include "misc/HelperFunctions.h"
 #include "misc/Timing.h"
 /* Include Std and External Headers */
@@ -36,10 +36,42 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
-BasisFunctionOnGridController::BasisFunctionOnGridController(shared_ptr<BasisController> basisController,
-                                                             shared_ptr<GridController> gridController,
+BasisFunctionOnGridController::BasisFunctionBlockOnGridData::BasisFunctionBlockOnGridData(const unsigned int nBasisFunctions,
+                                                                                          const unsigned int blockSize,
+                                                                                          const unsigned int derivativeLevel)
+  : negligible(nBasisFunctions),
+    functionValues(blockSize, nBasisFunctions),
+    derivativeValues(derivativeLevel >= 1 ? makeGradientPtr<Eigen::MatrixXd>(blockSize, nBasisFunctions) : nullptr),
+    secondDerivativeValues(derivativeLevel >= 2 ? makeHessianPtr<Eigen::MatrixXd>(blockSize, nBasisFunctions) : nullptr) {
+  assert(derivativeLevel < 3);
+  negligible.setZero();
+  functionValues.setZero();
+  if (derivativeValues != nullptr) {
+    derivativeValues->x.setZero();
+    derivativeValues->y.setZero();
+    derivativeValues->z.setZero();
+  }
+  if (secondDerivativeValues != nullptr) {
+    secondDerivativeValues->xx.setZero();
+    secondDerivativeValues->xy.setZero();
+    secondDerivativeValues->xz.setZero();
+    secondDerivativeValues->yy.setZero();
+    secondDerivativeValues->yz.setZero();
+    secondDerivativeValues->zz.setZero();
+  }
+}
+
+BasisFunctionOnGridController::BasisFunctionBlockOnGridData::BasisFunctionBlockOnGridData(const BasisFunctionBlockOnGridData& orig)
+  : center(orig.center),
+    negligible(orig.negligible),
+    functionValues(orig.functionValues),
+    derivativeValues(orig.derivativeValues ? new Gradient<Eigen::MatrixXd>(*orig.derivativeValues) : nullptr),
+    secondDerivativeValues(orig.secondDerivativeValues ? new Hessian<Eigen::MatrixXd>(*orig.secondDerivativeValues) : nullptr) {
+}
+
+BasisFunctionOnGridController::BasisFunctionOnGridController(std::shared_ptr<BasisController> basisController,
+                                                             std::shared_ptr<GridController> gridController,
                                                              const unsigned int maxBlockSize, const double radialThreshold,
                                                              const unsigned int highestDerivative)
   : _basisController(basisController),
@@ -50,8 +82,7 @@ BasisFunctionOnGridController::BasisFunctionOnGridController(shared_ptr<BasisCon
     _radialThreshold(radialThreshold),
     _exponentThreshold(-log(_radialThreshold)),
     _highestDerivative(highestDerivative),
-    _lastBlock(nullptr),
-    _memManager(MemoryManager::getInstance()) {
+    _lastBlock(nullptr) {
   assert(_basisController);
   assert(_gridController);
   assert(_highestDerivative <= 2);
@@ -69,8 +100,7 @@ BasisFunctionOnGridController::BasisFunctionOnGridController(shared_ptr<BasisCon
 }
 
 void BasisFunctionOnGridController::notify() {
-  _nPoints = _gridController->getNGridPoints();
-  _nBlocks = (unsigned int)ceil((double)_nPoints / _maxBlockSize);
+  _upToDate = false;
 }
 
 void BasisFunctionOnGridController::setHighestDerivative(unsigned int newHighestDerivative) {
@@ -89,11 +119,21 @@ void BasisFunctionOnGridController::setHighestDerivative(unsigned int newHighest
 
 const std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData>
 BasisFunctionOnGridController::getBlockOnGridData(const unsigned int blockIndex) {
+  if (!_upToDate) {
+    _nPoints = _gridController->getNGridPoints();
+    _nBlocks = (unsigned int)ceil((double)_nPoints / _maxBlockSize);
+    _upToDate = true;
+  }
   assert(blockIndex < _nBlocks);
   return calculateBasisFunctionData(blockIndex);
 }
 
 unsigned int BasisFunctionOnGridController::getFirstIndexOfBlock(const unsigned int blockIndex) {
+  if (!_upToDate) {
+    _nPoints = _gridController->getNGridPoints();
+    _nBlocks = (unsigned int)ceil((double)_nPoints / _maxBlockSize);
+    _upToDate = true;
+  }
   assert(blockIndex < _nBlocks);
   return blockIndex * _maxBlockSize;
 }
@@ -108,6 +148,11 @@ unsigned int BasisFunctionOnGridController::getNBasisFunctions() const {
 
 std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData>
 BasisFunctionOnGridController::calculateBasisFunctionData(const unsigned int blockIndex) {
+  if (!_upToDate) {
+    _nPoints = _gridController->getNGridPoints();
+    _nBlocks = (unsigned int)ceil((double)_nPoints / _maxBlockSize);
+    _upToDate = true;
+  }
   assert(blockIndex < _nBlocks);
 
   if (omp_get_thread_num() == 0)
@@ -147,11 +192,11 @@ BasisFunctionOnGridController::calculateBasisFunctionData(const unsigned int blo
   double* values = thisBlockData->functionValues.data();
   Gradient<double*> derivatives;
   if (_highestDerivative >= 1)
-    zip(*thisBlockData->derivativeValues, derivatives, [](Matrix<double>& matrix, double*& ptr) { ptr = matrix.data(); });
+    zip(*thisBlockData->derivativeValues, derivatives, [](Eigen::MatrixXd& matrix, double*& ptr) { ptr = matrix.data(); });
   Hessian<double*> secondDerivatives;
   if (_highestDerivative >= 2)
     zip(*thisBlockData->secondDerivativeValues, secondDerivatives,
-        [](Matrix<double>& matrix, double*& ptr) { ptr = matrix.data(); });
+        [](Eigen::MatrixXd& matrix, double*& ptr) { ptr = matrix.data(); });
 
   /*
    * Loop over basis functions and prescreen
@@ -1014,8 +1059,8 @@ BasisFunctionOnGridController::calculateBasisFunctionData(const unsigned int blo
             }
             break;
           default:
-            cout << "Angular momentum too high for transformation spherical harmonics." << endl;
-            throw exception();
+            std::cout << "Angular momentum too high for transformation spherical harmonics." << std::endl;
+            throw std::exception();
             break;
         }
 

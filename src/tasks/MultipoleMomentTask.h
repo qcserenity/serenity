@@ -27,6 +27,7 @@
 #include "settings/Reflection.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
+#include <Eigen/Dense>
 #include <memory>
 
 namespace Serenity {
@@ -34,23 +35,23 @@ class SystemController;
 
 using namespace Serenity::Reflection;
 struct MultipoleMomentTaskSettings {
-  MultipoleMomentTaskSettings() : highestOrder(2), numerical(false), origin(Options::GAUGE_ORIGIN::ORIGIN) {
+  MultipoleMomentTaskSettings()
+    : highestOrder(2), numerical(false), origin(Options::GAUGE_ORIGIN::ORIGIN), printTotal(false), printFragments(true) {
   }
-  REFLECTABLE((unsigned int)highestOrder, (bool)numerical, (Options::GAUGE_ORIGIN)origin)
+  REFLECTABLE((unsigned int)highestOrder, (bool)numerical, (Options::GAUGE_ORIGIN)origin, (bool)printTotal, (bool)printFragments)
 };
 
 /**
  * @class  MultipoleMomentTask MultipoleMomentTask.h
  * @brief  A task to calculate the multipole moments of a system, numerically or analytically
  */
-template<Options::SCF_MODES SCFMode>
 class MultipoleMomentTask : public Task {
  public:
   /**
    * @brief Constructor
    * @param systemController The system of which the multipole moments should be calculated
    */
-  MultipoleMomentTask(std::shared_ptr<SystemController> systemController);
+  MultipoleMomentTask(std::vector<std::shared_ptr<SystemController>> activeSystems);
   /**
    * @brief Default destructor.
    */
@@ -74,9 +75,12 @@ class MultipoleMomentTask : public Task {
 
  private:
   ///@brief The underlying systemController
-  std::shared_ptr<SystemController> _systemController;
+  std::vector<std::shared_ptr<SystemController>> _activeSystems;
   ///@brief The origin used to calculate origin-corrected multipole moments
   Point _origin = {0, 0, 0};
+
+  void calculateMultipoleMoments(Eigen::Vector3d& dipoleMoment, Eigen::MatrixXd& quadrupoleMoment,
+                                 std::shared_ptr<SystemController> system);
 };
 
 } /* namespace Serenity */

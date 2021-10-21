@@ -752,7 +752,7 @@ class ForSpinHelperSix<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, isCon
                           typename std::conditional<isConstW, const W&, W&>::type w,
                           typename std::conditional<isConstX, const X&, X&>::type x,
                           typename std::conditional<isConstY, const Y&, Y&>::type y,
-                          typename std::conditional<isConstY, const Z&, Z&>::type z)
+                          typename std::conditional<isConstZ, const Z&, Z&>::type z)
     : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z){};
   void
   operator<<(const std::function<
@@ -880,7 +880,7 @@ class ForSpinHelperSeven<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q, is
                             typename std::conditional<isConstX, const X&, X&>::type x,
                             typename std::conditional<isConstY, const Y&, Y&>::type y,
                             typename std::conditional<isConstZ, const Z&, Z&>::type z,
-                            typename std::conditional<isConstZ, const Q&, Q&>::type q)
+                            typename std::conditional<isConstQ, const Q&, Q&>::type q)
     : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q){};
   void operator<<(
       const std::function<void(
@@ -896,7 +896,7 @@ class ForSpinHelperSeven<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q, is
   typename std::conditional<isConstX, const X&, X&>::type _x;
   typename std::conditional<isConstY, const Y&, Y&>::type _y;
   typename std::conditional<isConstZ, const Z&, Z&>::type _z;
-  typename std::conditional<isConstZ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
   typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
   typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
   typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
@@ -916,8 +916,8 @@ class ForSpinHelperSeven<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, 
                             typename std::conditional<isConstW, const W&, W&>::type w,
                             typename std::conditional<isConstX, const X&, X&>::type x,
                             typename std::conditional<isConstY, const Y&, Y&>::type y,
-                            typename std::conditional<isConstY, const Z&, Z&>::type z,
-                            typename std::conditional<isConstY, const Q&, Q&>::type q)
+                            typename std::conditional<isConstZ, const Z&, Z&>::type z,
+                            typename std::conditional<isConstQ, const Q&, Q&>::type q)
     : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q){};
   void
   operator<<(const std::function<
@@ -1053,7 +1053,796 @@ class ForSpinHelperSeven<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, 
               std::is_const<typename std::remove_reference<decltype(g)>::type>::value>::typeQ &                                 \
               g##_spin)
 
-#define _GET_FOR_SPIN_MACRO(_1, _2, _3, _4, _5, _6, _7, NAME, ...) NAME
+/*
+ * Eight arguments
+ */
+
+template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU,
+         bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR>
+class ForSpinHelperEight;
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR>
+class ForSpinHelperEight<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q, R, isConstU, isConstV, isConstW, isConstX,
+                         isConstY, isConstZ, isConstQ, isConstR> {
+ public:
+  inline ForSpinHelperEight(typename std::conditional<isConstU, const U&, U&>::type u,
+                            typename std::conditional<isConstV, const V&, V&>::type v,
+                            typename std::conditional<isConstW, const W&, W&>::type w,
+                            typename std::conditional<isConstX, const X&, X&>::type x,
+                            typename std::conditional<isConstY, const Y&, Y&>::type y,
+                            typename std::conditional<isConstZ, const Z&, Z&>::type z,
+                            typename std::conditional<isConstQ, const Q&, Q&>::type q,
+                            typename std::conditional<isConstR, const R&, R&>::type r)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r){};
+  void operator<<(
+      const std::function<void(
+          typename std::conditional<isConstU, const U&, U&>::type&, typename std::conditional<isConstV, const V&, V&>::type&,
+          typename std::conditional<isConstW, const W&, W&>::type&, typename std::conditional<isConstX, const X&, X&>::type&,
+          typename std::conditional<isConstY, const Y&, Y&>::type&, typename std::conditional<isConstZ, const Z&, Z&>::type&,
+          typename std::conditional<isConstQ, const Q&, Q&>::type&, typename std::conditional<isConstR, const R&, R&>::type&)>& f) {
+    f(_u, _v, _w, _x, _y, _z, _q, _r);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+  typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+  typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+  typedef typename std::conditional<isConstZ, const Z&, Z&>::type typeZ;
+  typedef typename std::conditional<isConstQ, const Q&, Q&>::type typeQ;
+  typedef typename std::conditional<isConstR, const R&, R&>::type typeR;
+};
+
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR>
+class ForSpinHelperEight<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, R, isConstU, isConstV, isConstW,
+                         isConstX, isConstY, isConstZ, isConstQ, isConstR> {
+ public:
+  inline ForSpinHelperEight(typename std::conditional<isConstU, const U&, U&>::type u,
+                            typename std::conditional<isConstV, const V&, V&>::type v,
+                            typename std::conditional<isConstW, const W&, W&>::type w,
+                            typename std::conditional<isConstX, const X&, X&>::type x,
+                            typename std::conditional<isConstY, const Y&, Y&>::type y,
+                            typename std::conditional<isConstZ, const Z&, Z&>::type z,
+                            typename std::conditional<isConstQ, const Q&, Q&>::type q,
+                            typename std::conditional<isConstR, const R&, R&>::type r)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r){};
+  void
+  operator<<(const std::function<
+             void(typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type&,
+                  typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type&,
+                  typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type&,
+                  typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type&,
+                  typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type&,
+                  typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type&,
+                  typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type&,
+                  typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type&)>& f) {
+    f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha, _z.alpha, _q.alpha, _r.alpha);
+    f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta, _z.beta, _q.beta, _r.beta);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typedef typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type typeU;
+  typedef typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type typeV;
+  typedef typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type typeW;
+  typedef typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type typeX;
+  typedef typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type typeY;
+  typedef typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type typeZ;
+  typedef typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type typeQ;
+  typedef typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type typeR;
+};
+
+#define _FOR_SPIN_8(a, b, c, d, e, f, g, h)                                                                                             \
+  ForSpinHelperEight<                                                                                                                   \
+      std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,                      \
+      typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type,                 \
+      typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type,                 \
+      typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type,                 \
+      typename std::remove_reference<decltype(h)>::type::type, std::is_const<typename std::remove_reference<decltype(a)>::type>::value, \
+      std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(h)>::type>::value>(a, b, c, d, e, f, g, h)                                  \
+      <<                                                                                                                                \
+      [&](typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeU &                                         \
+              a##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeV &                                         \
+              b##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeW &                                         \
+              c##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeX &                                         \
+              d##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeY &                                         \
+              e##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeZ &                                         \
+              f##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeQ &                                         \
+              g##_spin,                                                                                                                 \
+          typename ForSpinHelperEight<                                                                                                  \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value>::typeR &                                         \
+              h##_spin)
+
+/*
+ * Nine arguments
+ */
+
+template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU,
+         bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS>
+class ForSpinHelperNine;
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS>
+class ForSpinHelperNine<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q, R, S, isConstU, isConstV, isConstW,
+                        isConstX, isConstY, isConstZ, isConstQ, isConstR, isConstS> {
+ public:
+  inline ForSpinHelperNine(typename std::conditional<isConstU, const U&, U&>::type u,
+                           typename std::conditional<isConstV, const V&, V&>::type v,
+                           typename std::conditional<isConstW, const W&, W&>::type w,
+                           typename std::conditional<isConstX, const X&, X&>::type x,
+                           typename std::conditional<isConstY, const Y&, Y&>::type y,
+                           typename std::conditional<isConstZ, const Z&, Z&>::type z,
+                           typename std::conditional<isConstQ, const Q&, Q&>::type q,
+                           typename std::conditional<isConstR, const R&, R&>::type r,
+                           typename std::conditional<isConstS, const S&, S&>::type s)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r), _s(s){};
+  void operator<<(
+      const std::function<void(
+          typename std::conditional<isConstU, const U&, U&>::type&, typename std::conditional<isConstV, const V&, V&>::type&,
+          typename std::conditional<isConstW, const W&, W&>::type&, typename std::conditional<isConstX, const X&, X&>::type&,
+          typename std::conditional<isConstY, const Y&, Y&>::type&, typename std::conditional<isConstZ, const Z&, Z&>::type&,
+          typename std::conditional<isConstQ, const Q&, Q&>::type&, typename std::conditional<isConstR, const R&, R&>::type&,
+          typename std::conditional<isConstS, const S&, S&>::type&)>& f) {
+    f(_u, _v, _w, _x, _y, _z, _q, _r, _s);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typename std::conditional<isConstS, const S&, S&>::type _s;
+  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+  typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+  typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+  typedef typename std::conditional<isConstZ, const Z&, Z&>::type typeZ;
+  typedef typename std::conditional<isConstQ, const Q&, Q&>::type typeQ;
+  typedef typename std::conditional<isConstR, const R&, R&>::type typeR;
+  typedef typename std::conditional<isConstS, const S&, S&>::type typeS;
+};
+
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS>
+class ForSpinHelperNine<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, R, S, isConstU, isConstV, isConstW,
+                        isConstX, isConstY, isConstZ, isConstQ, isConstR, isConstS> {
+ public:
+  inline ForSpinHelperNine(typename std::conditional<isConstU, const U&, U&>::type u,
+                           typename std::conditional<isConstV, const V&, V&>::type v,
+                           typename std::conditional<isConstW, const W&, W&>::type w,
+                           typename std::conditional<isConstX, const X&, X&>::type x,
+                           typename std::conditional<isConstY, const Y&, Y&>::type y,
+                           typename std::conditional<isConstZ, const Z&, Z&>::type z,
+                           typename std::conditional<isConstQ, const Q&, Q&>::type q,
+                           typename std::conditional<isConstR, const R&, R&>::type r,
+                           typename std::conditional<isConstS, const S&, S&>::type s)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r), _s(s){};
+  void
+  operator<<(const std::function<
+             void(typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type&,
+                  typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type&,
+                  typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type&,
+                  typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type&,
+                  typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type&,
+                  typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type&,
+                  typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type&,
+                  typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type&,
+                  typename std::conditional<isConstS, typename S::constspinlesstype, typename S::spinlesstype>::type&)>& f) {
+    f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha, _z.alpha, _q.alpha, _r.alpha, _s.alpha);
+    f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta, _z.beta, _q.beta, _r.beta, _s.beta);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typename std::conditional<isConstS, const S&, S&>::type _s;
+  typedef typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type typeU;
+  typedef typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type typeV;
+  typedef typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type typeW;
+  typedef typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type typeX;
+  typedef typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type typeY;
+  typedef typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type typeZ;
+  typedef typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type typeQ;
+  typedef typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type typeR;
+  typedef typename std::conditional<isConstS, typename S::constspinlesstype, typename S::spinlesstype>::type typeS;
+};
+
+#define _FOR_SPIN_9(a, b, c, d, e, f, g, h, k)                                                                                  \
+  ForSpinHelperNine<                                                                                                            \
+      std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+      typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type,         \
+      typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type,         \
+      typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type,         \
+      typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type,         \
+      std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+      std::is_const<typename std::remove_reference<decltype(k)>::type>::value>(a, b, c, d, e, f, g, h, k)                       \
+      <<                                                                                                                        \
+      [&](typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeU &                                 \
+              a##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeV &                                 \
+              b##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeW &                                 \
+              c##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeX &                                 \
+              d##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeY &                                 \
+              e##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeZ &                                 \
+              f##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeQ &                                 \
+              g##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeR &                                 \
+              h##_spin,                                                                                                         \
+          typename ForSpinHelperNine<                                                                                           \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,      \
+              typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type, \
+              typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type, \
+              typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type, \
+              typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type, \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                          \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value>::typeS &                                 \
+              k##_spin)
+
+/*
+ * Ten arguments
+ */
+
+template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, class P, bool isConstU,
+         bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS, bool isConstP>
+class ForSpinHelperTen;
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, class P, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS, bool isConstP>
+class ForSpinHelperTen<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, Z, Q, R, S, P, isConstU, isConstV, isConstW,
+                       isConstX, isConstY, isConstZ, isConstQ, isConstR, isConstS, isConstP> {
+ public:
+  inline ForSpinHelperTen(
+      typename std::conditional<isConstU, const U&, U&>::type u, typename std::conditional<isConstV, const V&, V&>::type v,
+      typename std::conditional<isConstW, const W&, W&>::type w, typename std::conditional<isConstX, const X&, X&>::type x,
+      typename std::conditional<isConstY, const Y&, Y&>::type y, typename std::conditional<isConstZ, const Z&, Z&>::type z,
+      typename std::conditional<isConstQ, const Q&, Q&>::type q, typename std::conditional<isConstR, const R&, R&>::type r,
+      typename std::conditional<isConstS, const S&, S&>::type s, typename std::conditional<isConstP, const P&, P&>::type p)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r), _s(s), _p(p){};
+  void operator<<(
+      const std::function<void(
+          typename std::conditional<isConstU, const U&, U&>::type&, typename std::conditional<isConstV, const V&, V&>::type&,
+          typename std::conditional<isConstW, const W&, W&>::type&, typename std::conditional<isConstX, const X&, X&>::type&,
+          typename std::conditional<isConstY, const Y&, Y&>::type&, typename std::conditional<isConstZ, const Z&, Z&>::type&,
+          typename std::conditional<isConstQ, const Q&, Q&>::type&, typename std::conditional<isConstR, const R&, R&>::type&,
+          typename std::conditional<isConstS, const S&, S&>::type&, typename std::conditional<isConstP, const P&, P&>::type&)>& f) {
+    f(_u, _v, _w, _x, _y, _z, _q, _r, _s, _p);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typename std::conditional<isConstS, const S&, S&>::type _s;
+  typename std::conditional<isConstP, const P&, P&>::type _p;
+  typedef typename std::conditional<isConstU, const U&, U&>::type typeU;
+  typedef typename std::conditional<isConstV, const V&, V&>::type typeV;
+  typedef typename std::conditional<isConstW, const W&, W&>::type typeW;
+  typedef typename std::conditional<isConstX, const X&, X&>::type typeX;
+  typedef typename std::conditional<isConstY, const Y&, Y&>::type typeY;
+  typedef typename std::conditional<isConstZ, const Z&, Z&>::type typeZ;
+  typedef typename std::conditional<isConstQ, const Q&, Q&>::type typeQ;
+  typedef typename std::conditional<isConstR, const R&, R&>::type typeR;
+  typedef typename std::conditional<isConstS, const S&, S&>::type typeS;
+  typedef typename std::conditional<isConstP, const P&, P&>::type typeP;
+};
+
+template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, class P, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS, bool isConstP>
+class ForSpinHelperTen<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, R, S, P, isConstU, isConstV, isConstW,
+                       isConstX, isConstY, isConstZ, isConstQ, isConstR, isConstS, isConstP> {
+ public:
+  inline ForSpinHelperTen(
+      typename std::conditional<isConstU, const U&, U&>::type u, typename std::conditional<isConstV, const V&, V&>::type v,
+      typename std::conditional<isConstW, const W&, W&>::type w, typename std::conditional<isConstX, const X&, X&>::type x,
+      typename std::conditional<isConstY, const Y&, Y&>::type y, typename std::conditional<isConstZ, const Z&, Z&>::type z,
+      typename std::conditional<isConstQ, const Q&, Q&>::type q, typename std::conditional<isConstR, const R&, R&>::type r,
+      typename std::conditional<isConstS, const S&, S&>::type s, typename std::conditional<isConstP, const P&, P&>::type p)
+    : _u(u), _v(v), _w(w), _x(x), _y(y), _z(z), _q(q), _r(r), _s(s), _p(p){};
+  void
+  operator<<(const std::function<
+             void(typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type&,
+                  typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type&,
+                  typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type&,
+                  typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type&,
+                  typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type&,
+                  typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type&,
+                  typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type&,
+                  typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type&,
+                  typename std::conditional<isConstS, typename S::constspinlesstype, typename S::spinlesstype>::type&,
+                  typename std::conditional<isConstP, typename P::constspinlesstype, typename P::spinlesstype>::type&)>& f) {
+    f(_u.alpha, _v.alpha, _w.alpha, _x.alpha, _y.alpha, _z.alpha, _q.alpha, _r.alpha, _s.alpha, _p.alpha);
+    f(_u.beta, _v.beta, _w.beta, _x.beta, _y.beta, _z.beta, _q.beta, _r.beta, _s.beta, _p.beta);
+  }
+  typename std::conditional<isConstU, const U&, U&>::type _u;
+  typename std::conditional<isConstV, const V&, V&>::type _v;
+  typename std::conditional<isConstW, const W&, W&>::type _w;
+  typename std::conditional<isConstX, const X&, X&>::type _x;
+  typename std::conditional<isConstY, const Y&, Y&>::type _y;
+  typename std::conditional<isConstZ, const Z&, Z&>::type _z;
+  typename std::conditional<isConstQ, const Q&, Q&>::type _q;
+  typename std::conditional<isConstR, const R&, R&>::type _r;
+  typename std::conditional<isConstS, const S&, S&>::type _s;
+  typename std::conditional<isConstP, const P&, P&>::type _p;
+  typedef typename std::conditional<isConstU, typename U::constspinlesstype, typename U::spinlesstype>::type typeU;
+  typedef typename std::conditional<isConstV, typename V::constspinlesstype, typename V::spinlesstype>::type typeV;
+  typedef typename std::conditional<isConstW, typename W::constspinlesstype, typename W::spinlesstype>::type typeW;
+  typedef typename std::conditional<isConstX, typename X::constspinlesstype, typename X::spinlesstype>::type typeX;
+  typedef typename std::conditional<isConstY, typename Y::constspinlesstype, typename Y::spinlesstype>::type typeY;
+  typedef typename std::conditional<isConstZ, typename Z::constspinlesstype, typename Z::spinlesstype>::type typeZ;
+  typedef typename std::conditional<isConstQ, typename Q::constspinlesstype, typename Q::spinlesstype>::type typeQ;
+  typedef typename std::conditional<isConstR, typename R::constspinlesstype, typename R::spinlesstype>::type typeR;
+  typedef typename std::conditional<isConstS, typename S::constspinlesstype, typename S::spinlesstype>::type typeS;
+  typedef typename std::conditional<isConstP, typename P::constspinlesstype, typename P::spinlesstype>::type typeP;
+};
+
+#define _FOR_SPIN_10(a, b, c, d, e, f, g, h, k, l)                                                                                      \
+  ForSpinHelperTen<                                                                                                                     \
+      std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,                      \
+      typename std::remove_reference<decltype(b)>::type::type, typename std::remove_reference<decltype(c)>::type::type,                 \
+      typename std::remove_reference<decltype(d)>::type::type, typename std::remove_reference<decltype(e)>::type::type,                 \
+      typename std::remove_reference<decltype(f)>::type::type, typename std::remove_reference<decltype(g)>::type::type,                 \
+      typename std::remove_reference<decltype(h)>::type::type, typename std::remove_reference<decltype(k)>::type::type,                 \
+      typename std::remove_reference<decltype(l)>::type::type, std::is_const<typename std::remove_reference<decltype(a)>::type>::value, \
+      std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                          \
+      std::is_const<typename std::remove_reference<decltype(l)>::type>::value>(a, b, c, d, e, f, g, h, k, l)                            \
+      <<                                                                                                                                \
+      [&](typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeU &                                         \
+              a##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeV &                                         \
+              b##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeW &                                         \
+              c##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeX &                                         \
+              d##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeY &                                         \
+              e##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeZ &                                         \
+              f##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeQ &                                         \
+              g##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeR &                                         \
+              h##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeS &                                         \
+              k##_spin,                                                                                                                 \
+          typename ForSpinHelperTen<                                                                                                    \
+              std::remove_reference<decltype(a)>::type::scf_mode, typename std::remove_reference<decltype(a)>::type::type,              \
+              typename std::remove_reference<decltype(b)>::type::type,                                                                  \
+              typename std::remove_reference<decltype(c)>::type::type, typename std::remove_reference<decltype(d)>::type::type,         \
+              typename std::remove_reference<decltype(e)>::type::type, typename std::remove_reference<decltype(f)>::type::type,         \
+              typename std::remove_reference<decltype(g)>::type::type, typename std::remove_reference<decltype(h)>::type::type,         \
+              typename std::remove_reference<decltype(k)>::type::type, typename std::remove_reference<decltype(l)>::type::type,         \
+              std::is_const<typename std::remove_reference<decltype(a)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(b)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(c)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(d)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(e)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(f)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(g)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(h)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(k)>::type>::value,                                                  \
+              std::is_const<typename std::remove_reference<decltype(l)>::type>::value>::typeP &                                         \
+              l##_spin)
+
+#define _GET_FOR_SPIN_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, NAME, ...) NAME
+
 /**
  * TODO Check whether this is the correct place for a comment -> check whether/how doxygen can pick it up!
  *
@@ -1086,9 +1875,9 @@ class ForSpinHelperSeven<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, 
  * Note that the variable which may be restricted or unrestricted is accessed with a suffix '_spin'
  * inside the structure, and note that it has to be ended with a semicolon!
  */
-#define for_spin(...)                                                                                            \
-  _GET_FOR_SPIN_MACRO(__VA_ARGS__, _FOR_SPIN_7, _FOR_SPIN_6, _FOR_SPIN_5, _FOR_SPIN_4, _FOR_SPIN_3, _FOR_SPIN_2, \
-                      _FOR_SPIN_1, DUMMY)                                                                        \
+#define for_spin(...)                                                                                             \
+  _GET_FOR_SPIN_MACRO(__VA_ARGS__, _FOR_SPIN_10, _FOR_SPIN_9, _FOR_SPIN_8, _FOR_SPIN_7, _FOR_SPIN_6, _FOR_SPIN_5, \
+                      _FOR_SPIN_4, _FOR_SPIN_3, _FOR_SPIN_2, _FOR_SPIN_1, DUMMY)                                  \
   (__VA_ARGS__)
 // Note: the final argument DUMMY is only there to avoid a compiler warning.
 } /* namespace Serenity */

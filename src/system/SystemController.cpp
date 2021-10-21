@@ -24,18 +24,18 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/grid/ElectrostaticPotentialOnGridController.h" //Potential on grid construction.
-#include "data/matrices/CoefficientMatrix.h"
 #include "dft/functionals/CompositeFunctionals.h"
-#include "geometry/Geometry.h"
 #include "geometry/Geometry.h"                   //Geometry definition.
 #include "geometry/MolecularSurfaceController.h" //Cavity generation.
-#include "geometry/MolecularSurfaceFactory.h"
 #include "geometry/XyzFileToGeometryConverter.h"
 #include "grid/AtomCenteredGridController.h"
 #include "grid/GridControllerFactory.h"
-#include "integrals/OneIntControllerFactory.h" //One electron integral controller construction.
+#include "integrals/CDIntegralController.h"
+#include "integrals/IntegralCachingController.h" //Four center selective integral caching
+#include "integrals/OneIntControllerFactory.h"   //One electron integral controller construction.
 #include "integrals/RI_J_IntegralControllerFactory.h"
 #include "math/IntegerMaths.h"
+#include "misc/WarningTracker.h" //Warnings
 #include "potentials/ERIPotential.h"
 #include "potentials/FuncPotential.h"
 #include "potentials/HCorePotential.h"
@@ -48,11 +48,10 @@
 #include "tasks/SystemAdditionTask.h" //needed in operator+
 
 namespace Serenity {
-using namespace std;
 
 SystemController::~SystemController() = default;
 
-SystemController::SystemController(Settings settings) : _system(nullptr) {
+SystemController::SystemController(Settings settings) : _system(nullptr), _cdIntController(nullptr) {
   // If system should be loaded: Load new settings in load/name/...
   bool read = !settings.load.empty();
   std::string loadPath;
@@ -119,11 +118,14 @@ SystemController::SystemController(Settings settings) : _system(nullptr) {
   if (read)
     fromHDF5(loadPath + settings.name);
   setCharge(_system->_settings.charge);
+  geom->deleteIdenticalAtoms();
   geom->printToFile(getHDF5BaseName(), settings.identifier);
   print();
+  this->getCDIntegralController();
 }
 
-SystemController::SystemController(std::shared_ptr<Geometry> geometry, Settings settings) : _system(nullptr) {
+SystemController::SystemController(std::shared_ptr<Geometry> geometry, Settings settings)
+  : _system(nullptr), _cdIntController(nullptr) {
   if (settings.basis.basisLibPath.empty()) {
     if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
       settings.basis.basisLibPath = (std::string)env_p + "basis/";
@@ -150,8 +152,10 @@ SystemController::SystemController(std::shared_ptr<Geometry> geometry, Settings 
   setCharge(_system->_settings.charge);
   // print settings
   settings.printSettings();
+  geometry->deleteIdenticalAtoms();
   geometry->printToFile(getHDF5BaseName(), settings.identifier);
   print();
+  this->getCDIntegralController();
 }
 
 /********************/
@@ -218,21 +222,27 @@ void SystemController::setElectrostaticPotentialOnMolecularSurfaceController<UNR
 template<>
 void SystemController::produceElectrostaticPotentialOnMolecularSurfaceController<Options::SCF_MODES::RESTRICTED>(
     MOLECULAR_SURFACE_TYPES surfaceType) {
-  auto gridController = this->getMolecularSurface(surfaceType)->getGridController();
+  auto gridController = this->getMolecularSurface(surfaceType);
+  std::shared_ptr<Eigen::Matrix3Xd> normalVectors =
+      nullptr; // std::make_shared<Eigen::Matrix3Xd>(this->getMolecularSurface(surfaceType)->getNormalVectors());
   auto densityMatrixController = this->getElectronicStructure<RESTRICTED>()->getDensityMatrixController();
   this->setElectrostaticPotentialOnMolecularSurfaceController<RESTRICTED>(
       std::make_shared<ElectrostaticPotentialOnGridController<Options::SCF_MODES::RESTRICTED>>(
-          gridController, densityMatrixController, this->getGeometry(), this->getHDF5BaseName(), _system->_settings.pcm.cacheSize),
+          gridController, densityMatrixController, this->getGeometry(), this->getHDF5BaseName(),
+          _system->_settings.pcm.cacheSize, normalVectors, this->getAtomCenteredBasisController()),
       surfaceType);
 }
 
 template<>
 void SystemController::produceElectrostaticPotentialOnMolecularSurfaceController<UNRESTRICTED>(MOLECULAR_SURFACE_TYPES surfaceType) {
-  auto gridController = this->getMolecularSurface(surfaceType)->getGridController();
+  auto gridController = this->getMolecularSurface(surfaceType);
+  std::shared_ptr<Eigen::Matrix3Xd> normalVectors =
+      nullptr; // std::make_shared<Eigen::Matrix3Xd>(this->getMolecularSurface(surfaceType)->getNormalVectors());
   auto densityMatrixController = this->getElectronicStructure<UNRESTRICTED>()->getDensityMatrixController();
   this->setElectrostaticPotentialOnMolecularSurfaceController<UNRESTRICTED>(
       std::make_shared<ElectrostaticPotentialOnGridController<Options::SCF_MODES::UNRESTRICTED>>(
-          gridController, densityMatrixController, this->getGeometry(), this->getHDF5BaseName(), _system->_settings.pcm.cacheSize),
+          gridController, densityMatrixController, this->getGeometry(), this->getHDF5BaseName(),
+          _system->_settings.pcm.cacheSize, normalVectors, this->getAtomCenteredBasisController()),
       surfaceType);
 }
 
@@ -306,12 +316,50 @@ SpinPolarizedData<UNRESTRICTED, unsigned int> SystemController::getNVirtualOrbit
       (unsigned int)(nMolecularOrbitals - (_system->_nElectrons - _system->_settings.spin) / 2));
 }
 
+template<>
+SpinPolarizedData<RESTRICTED, unsigned int> SystemController::getNVirtualOrbitalsTruncated<RESTRICTED>() {
+  auto eigenValues = getActiveOrbitalController<RESTRICTED>()->getEigenvalues();
+  auto nOcc = getNOccupiedOrbitals<RESTRICTED>();
+  SpinPolarizedData<RESTRICTED, unsigned int> nVirt;
+  for_spin(nVirt, nOcc, eigenValues) {
+    nVirt_spin = 0;
+    for (unsigned int i = 0; i < eigenValues_spin.size() - nOcc_spin; i++) {
+      if (eigenValues_spin(nOcc_spin + i) < 1e20) {
+        nVirt_spin++;
+      }
+    }
+  };
+  return nVirt;
+}
+template<>
+SpinPolarizedData<UNRESTRICTED, unsigned int> SystemController::getNVirtualOrbitalsTruncated<UNRESTRICTED>() {
+  auto eigenValues = getActiveOrbitalController<UNRESTRICTED>()->getEigenvalues();
+  auto nOcc = getNOccupiedOrbitals<UNRESTRICTED>();
+  SpinPolarizedData<UNRESTRICTED, unsigned int> nVirt;
+  for_spin(nVirt, nOcc, eigenValues) {
+    nVirt_spin = 0;
+    for (unsigned int i = 0; i < eigenValues_spin.size() - nOcc_spin; i++) {
+      if (eigenValues_spin(nOcc_spin + i) < 1e20) {
+        nVirt_spin++;
+      }
+    }
+  };
+  return nVirt;
+}
 /**
  * @brief Forworded getter for _settings.pcm.use.
  */
 bool SystemController::getSystemContinuumModelMode() {
   return _system->_settings.pcm.use;
 }
+
+std::shared_ptr<CDIntegralController> SystemController::getCDIntegralController() {
+  if (!_cdIntController) {
+    _cdIntController = std::make_shared<CDIntegralController>(this->getSettings());
+  }
+  return _cdIntController;
+}
+
 /********************/
 /* Setter functions */
 /********************/
@@ -360,8 +408,17 @@ void SystemController::setCharge(const int charge) {
   assert((int)_system->_nElectrons >= _system->_settings.charge);
   _system->_nElectrons -= _system->_settings.charge;
   if (!isEven(_system->_nElectrons + _system->_settings.spin)) {
-    throw SerenityError("ERROR: Number of electron + spin yields an odd number."
-                        " Please check your charge/spin!");
+    if (_system->_settings.ignoreCharge) {
+      _system->_nElectrons++;
+      _system->_settings.charge--;
+      WarningTracker::printWarning("WARNING: System charges and spin will be largely ignored! This may lead to\n"
+                                   "         unexpected behaviour!",
+                                   true);
+    }
+    else {
+      throw SerenityError("ERROR: Number of electron + spin yields an odd number."
+                          " Please check your charge/spin!");
+    }
   }
   _system->_settings.printSettings();
 }
@@ -369,6 +426,20 @@ void SystemController::setCharge(const int charge) {
 void SystemController::setSpin(const int spin) {
   _system->_settings.spin = spin;
   _system->_settings.printSettings();
+}
+
+void SystemController::setElectricField(std::vector<double> position, double fStrength, bool analytical, bool use) {
+  _system->_settings.efield.use = use;
+  _system->_settings.efield.analytical = analytical;
+  _system->_settings.efield.pos2 = position;
+  _system->_settings.efield.fieldStrength = fStrength;
+}
+
+void SystemController::setXCfunctional(CompositeFunctionals::XCFUNCTIONALS XCfunc) {
+  _system->_settings.dft.functional = XCfunc;
+}
+void SystemController::setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES method) {
+  _system->_settings.method = method;
 }
 
 /*************/
@@ -393,10 +464,10 @@ void SystemController::setDiskMode(bool diskmode) {
   }
   // Switch modes for electronic structures
   if (_system->_restrictedElectronicStructure) {
-    _system->_restrictedElectronicStructure->setDiskMode(diskmode, this->getHDF5BaseName(), this->getSettings().identifier);
+    _system->_restrictedElectronicStructure->setDiskMode(diskmode, this->getHDF5BaseName(), this->getSystemIdentifier());
   }
   if (_system->_unrestrictedElectronicStructure) {
-    _system->_unrestrictedElectronicStructure->setDiskMode(diskmode, this->getHDF5BaseName(), this->getSettings().identifier);
+    _system->_unrestrictedElectronicStructure->setDiskMode(diskmode, this->getHDF5BaseName(), this->getSystemIdentifier());
   }
 }
 
@@ -425,6 +496,7 @@ SystemController::getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORI
   auto pcm = std::make_shared<PCMPotential<RESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
       (usesPCM) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE) : nullptr,
+      (usesPCM && _system->_settings.pcm.cavityFormation) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW) : nullptr,
       (usesPCM) ? this->getElectrostaticPotentialOnMolecularSurfaceController<RESTRICTED>(MOLECULAR_SURFACE_TYPES::ACTIVE)
                 : nullptr);
   return std::make_shared<HFPotentials<RESTRICTED>>(hcore, hf, pcm, this->getGeometry());
@@ -446,6 +518,7 @@ SystemController::getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEO
   auto pcm = std::make_shared<PCMPotential<UNRESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
       (usesPCM) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE) : nullptr,
+      (usesPCM && _system->_settings.pcm.cavityFormation) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW) : nullptr,
       (usesPCM) ? this->getElectrostaticPotentialOnMolecularSurfaceController<UNRESTRICTED>(MOLECULAR_SURFACE_TYPES::ACTIVE)
                 : nullptr);
   return std::make_shared<HFPotentials<UNRESTRICTED>>(hcore, hf, pcm, this->getGeometry());
@@ -477,6 +550,7 @@ SystemController::getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORI
   auto pcm = std::make_shared<PCMPotential<RESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
       (usesPCM) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE) : nullptr,
+      (usesPCM && _system->_settings.pcm.cavityFormation) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW) : nullptr,
       (usesPCM) ? this->getElectrostaticPotentialOnMolecularSurfaceController<RESTRICTED>(MOLECULAR_SURFACE_TYPES::ACTIVE)
                 : nullptr);
   // Bundle
@@ -510,6 +584,7 @@ SystemController::getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEO
   auto pcm = std::make_shared<PCMPotential<UNRESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
       (usesPCM) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE) : nullptr,
+      (usesPCM && _system->_settings.pcm.cavityFormation) ? this->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW) : nullptr,
       (usesPCM) ? this->getElectrostaticPotentialOnMolecularSurfaceController<UNRESTRICTED>(MOLECULAR_SURFACE_TYPES::ACTIVE)
                 : nullptr);
   // Bundle
@@ -520,7 +595,7 @@ SystemController::getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEO
 
 void SystemController::fromHDF5(std::string loadPath) {
   try {
-    this->getAtomCenteredBasisController()->fromHDF5(loadPath, this->getSettings().identifier);
+    this->getAtomCenteredBasisController()->fromHDF5(loadPath, this->getSystemIdentifier());
     this->getAtomCenteredBasisController()->getBasis();
   }
   catch (...) {
@@ -553,7 +628,7 @@ std::shared_ptr<SystemController> SystemController::operator+(SystemController& 
   *geom += *(rhs.getGeometry());
   geom->deleteIdenticalAtoms();
   auto newSys = std::make_shared<SystemController>(geom, settings);
-  if (this->getSettings().scfMode == UNRESTRICTED or rhs.getSettings().scfMode == UNRESTRICTED) {
+  if (this->getSCFMode() == UNRESTRICTED or rhs.getSCFMode() == UNRESTRICTED) {
     SystemAdditionTask<UNRESTRICTED> addTask(newSys, {this->getSharedPtr(), rhs.getSharedPtr()});
     addTask.settings.checkSuperGeom = true;
     addTask.settings.checkSuperCharge = true;
@@ -571,7 +646,7 @@ std::shared_ptr<SystemController> SystemController::operator+(SystemController& 
 }
 
 void SystemController::print() {
-  std::string name = "System " + getSettings().name;
+  std::string name = "System " + getSystemName();
   printSubSectionTitle(name);
   auto m = getSettings().method;
   std::string method;
@@ -601,6 +676,9 @@ std::shared_ptr<MolecularSurfaceController> SystemController::getMolecularSurfac
     if (surfaceType == MOLECULAR_SURFACE_TYPES::ACTIVE) {
       this->produceMolecularSurface();
     }
+    else if (surfaceType == MOLECULAR_SURFACE_TYPES::ACTIVE_VDW) {
+      this->produceMolecularVanDerWaalsSurface();
+    }
     else {
       throw SerenityError("Logic error in molecular surface creation. Molecular surfaces containing more than one "
                           "molecule can not be created from the SystemController.");
@@ -614,11 +692,22 @@ std::shared_ptr<MolecularSurfaceController> SystemController::getMolecularSurfac
 /*********************/
 void SystemController::produceMolecularSurface() {
   _system->_molecularSurfaces[MOLECULAR_SURFACE_TYPES::ACTIVE] =
-      MolecularSurfaceFactory::produce(this->getGeometry(), _system->_settings.pcm);
+      std::make_shared<MolecularSurfaceController>(this->getGeometry(), _system->_settings.pcm);
+}
+
+void SystemController::produceMolecularVanDerWaalsSurface() {
+  PCMSettings vdwSurfaceSettings = this->getSettings().pcm;
+  // The Van der Waals radii are just the BONDI radii without any additional scaling.
+  vdwSurfaceSettings.radiiType = Options::PCM_ATOMIC_RADII_TYPES::BONDI;
+  vdwSurfaceSettings.scaling = false;
+  vdwSurfaceSettings.cavity = Options::PCM_CAVITY_TYPES::DELLEY;
+  _system->_molecularSurfaces[MOLECULAR_SURFACE_TYPES::ACTIVE_VDW] =
+      std::make_shared<MolecularSurfaceController>(this->getGeometry(), vdwSurfaceSettings);
 }
 
 void SystemController::produceBasisController(const Options::BASIS_PURPOSES basisPurpose) const {
   std::string label;
+  std::string basisPath = _system->_settings.basis.basisLibPath;
   if (basisPurpose == Options::BASIS_PURPOSES::DEFAULT) {
     label = _system->_settings.basis.label;
   }
@@ -637,23 +726,48 @@ void SystemController::produceBasisController(const Options::BASIS_PURPOSES basi
   else if (basisPurpose == Options::BASIS_PURPOSES::IAO_LOCALIZATION) {
     label = "MINAO";
   }
+  else if (basisPurpose == Options::BASIS_PURPOSES::ATOMIC_CHOLESKY) {
+    label = "ACD-" + _system->_settings.basis.label;
+    basisPath = _system->_settings.path;
+    _cdIntController->generateACDBasis(_system->_geometry);
+  }
+  else if (basisPurpose == Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY) {
+    this->getAtomCenteredBasisController(Options::BASIS_PURPOSES::ATOMIC_CHOLESKY);
+    label = "ACCD-" + _system->_settings.basis.label;
+    basisPath = _system->_settings.path;
+    _cdIntController->generateACCDBasis(_system->_geometry);
+  }
+  else if (basisPurpose == Options::BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY) {
+    label = "ACD-" + _system->_settings.basis.label + "-ERF";
+    basisPath = _system->_settings.path;
+    _cdIntController->generateACDBasis(_system->_geometry, "-ERF", LIBINT_OPERATOR::erf_coulomb);
+  }
+  else if (basisPurpose == Options::BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY) {
+    this->getAtomCenteredBasisController(Options::BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY);
+    label = "ACCD-" + _system->_settings.basis.label + "-ERF";
+    basisPath = _system->_settings.path;
+    _cdIntController->generateACCDBasis(_system->_geometry, "-ERF", LIBINT_OPERATOR::erf_coulomb);
+  }
   else if (basisPurpose == Options::BASIS_PURPOSES::AUX_CORREL) {
     if (_system->_settings.basis.auxCLabel == "") {
       label = _system->_settings.basis.label;
       std::transform(label.begin(), label.end(), label.begin(), ::toupper);
       label += "-RI-C";
       auto auxCPath = _system->_settings.basis.basisLibPath + label;
-      ifstream f(auxCPath.c_str());
+      std::ifstream f(auxCPath.c_str());
       if (!f.good())
         throw SerenityError(
-            (std::string) "No default auxiliary (correlation optimized) basis set for chosen basis. Set AuxCLabel: " + label);
+            (std::string) "No default auxiliary (correlation optimized) basis set for chosen basis. Set AuxCLabel: " + label +
+            ".\n"
+            "You may have to manually specify an auxiliary basis or make sure that the file " +
+            auxCPath + " exists.");
     }
     else {
       label = _system->_settings.basis.auxCLabel;
     }
   }
   _system->_basisControllers[basisPurpose] = AtomCenteredBasisControllerFactory::produce(
-      _system->_geometry, _system->_settings.basis.basisLibPath, _system->_settings.basis.makeSphericalBasis,
+      _system->_geometry, basisPath, _system->_settings.basis.makeSphericalBasis,
       (basisPurpose == Options::BASIS_PURPOSES::DEFAULT) ? true : false, _system->_settings.basis.firstECP, label);
 }
 
@@ -666,10 +780,16 @@ void SystemController::setSCFMode(Options::SCF_MODES mode) {
   _system->_settings.scfMode = mode;
 }
 
+Options::SCF_MODES SystemController::getSCFMode() {
+  return _system->_settings.scfMode;
+}
+
 std::string SystemController::getSystemName() {
   return _system->_settings.name;
 }
-
+void SystemController::setSystemName(std::string name) {
+  _system->_settings.name = name;
+}
 std::string SystemController::getSystemIdentifier() {
   return _system->_settings.identifier;
 }
@@ -686,9 +806,17 @@ int SystemController::getCharge() const {
   return _system->_settings.charge;
 }
 
+unsigned int SystemController::getNCoreElectrons() const {
+  return this->getGeometry()->getNumberOfCoreElectrons();
+}
+
 enum Options::SCF_MODES SystemController::getLastSCFMode() const {
   return _system->_lastSCFMode;
 };
+
+enum Options::SCF_MODES SystemController::getSCFMode() const {
+  return _system->_settings.scfMode;
+}
 
 int SystemController::getSpin() const {
   return _system->_settings.spin;
@@ -751,6 +879,20 @@ const std::vector<std::shared_ptr<Atom>>& SystemController::getAtoms() const {
 
 unsigned int SystemController::getNAtoms() const {
   return _system->_geometry->getAtoms().size();
+}
+
+std::shared_ptr<IntegralCachingController> SystemController::getIntegralCachingController() {
+  if (!_integralCachingController and this->getSettings().basis.intCondition > 0) {
+    _integralCachingController =
+        std::make_shared<IntegralCachingController>(this->getBasisController(), this->getSettings().basis.intCondition);
+  }
+  return _integralCachingController;
+}
+
+void SystemController::clear4CenterCache() {
+  if (_integralCachingController)
+    _integralCachingController->clearCache();
+  _integralCachingController = nullptr;
 }
 
 } /* namespace Serenity */

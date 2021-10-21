@@ -21,14 +21,12 @@
 #include "math/optimizer/BFGS.h"
 /* Include Serenity Internal Headers */
 #include "io/FormattedOutputStream.h" //Filtered output.
-#include "math/VectorMaths.h"
 /* Include Std and External Headers */
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
 BFGS::BFGS(Eigen::VectorXd& parameters, double initialStepLength, bool lineSearch, Eigen::MatrixXd initialInverseHess)
   : Optimizer(parameters), _initialStepLength(initialStepLength), _lineSearch(lineSearch), _initialInverseHess(initialInverseHess) {

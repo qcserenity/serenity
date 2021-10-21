@@ -22,7 +22,7 @@
 #include "tasks/FDETask.h"
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
-#include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -140,7 +140,7 @@ TEST_F(FDETaskTest, restrictedPCM) {
   task.settings.embedding.pcm.use = true;
   task.settings.embedding.pcm.solvent = Options::PCM_SOLVENTS::N_HEPTANE;
   task.run();
-  EXPECT_NEAR(-1.8131489368669345, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
+  EXPECT_NEAR(-1.8131957184036818, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   SystemController__TEST_SUPPLY::cleanUp();
 }

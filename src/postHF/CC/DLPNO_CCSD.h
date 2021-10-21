@@ -29,6 +29,9 @@
 #include <memory>      //smart ptr
 #include <string>      //Printing the time for each update cycle.
 
+namespace H5 {
+class H5File;
+} // namespace H5
 namespace Serenity {
 
 /* Forward Declarations */
@@ -36,6 +39,9 @@ class LocalCorrelationController;
 class OrbitalPair;
 class SingleSubstitution;
 class CouplingOrbitalSet;
+namespace HDF5 {
+using H5File = H5::H5File;
+} // namespace HDF5
 
 /**
  * @class DLPNO_CCSD DLPNO_CCSD.h
@@ -125,6 +131,11 @@ class DLPNO_CCSD {
    * @brief Sigma vector in the basis of the occupied orbitals.
    */
   Eigen::MatrixXd _g_occ_occ;
+  /**
+   * @brief If true, the integrals for the sigma vector construction are directly calculated in their PNO basis and
+   * cached.
+   */
+  const bool _linearScalingSigmaVector;
 
   /**
    * @brief Time of the start of the last iteration.
@@ -225,6 +236,11 @@ class DLPNO_CCSD {
    * @return The time as a string.
    */
   std::string getTimeString();
+  /**
+   * @brief Try to load as many integrals as possible. Some memory was probably freed previeosly.
+   * @return A pointer to the open HDF5 file, if not all integrals can be loaded. Nullptr otherwise.
+   */
+  std::shared_ptr<HDF5::H5File> tryLoadingIntegrals();
 };
 
 } /* namespace Serenity */

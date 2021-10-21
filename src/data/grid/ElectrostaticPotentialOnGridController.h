@@ -21,6 +21,7 @@
 #ifndef DATA_GRID_ELECTROSTATICPOTENTIALONGRIDCONTROLLER_H_
 #define DATA_GRID_ELECTROSTATICPOTENTIALONGRIDCONTROLLER_H_
 /* Include Serenity Internal Headers */
+#include "data/grid/CoulombIntegralsOnGridController.h"
 #include "data/grid/GridPotential.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
@@ -43,27 +44,34 @@ template<Options::SCF_MODES T>
 class DensityMatrixController;
 class Geometry;
 class BasisController;
+class AtomCenteredBasisController;
 
 /**
  * @class
- * @brief A controller for the elctrostatic potential on a given grid. This controller uses chaching of two center
+ * @brief A controller for the electrostatic potential on a given grid. This controller uses caching of two center
  *        integrals on disk. The electrostatic potential may depend on a geometry and a density matrix controller.
  */
 template<Options::SCF_MODES SCFMode>
-class ElectrostaticPotentialOnGridController : public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
+class ElectrostaticPotentialOnGridController : public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
+                                               public ObjectSensitiveClass<Grid> {
  public:
   /**
    * @brief Constructor.
-   * @param gridController           The grid controller.
-   * @param densityMatrixController  The density matrix controller.
-   * @param geometry                 The geometry.
-   * @param fBaseName                The file base name.
-   * @param cacheSize                The maximum number of two electron center sets to be stored in memory.
+   * @param gridController               The grid controller.
+   * @param densityMatrixController      The density matrix controller.
+   * @param geometry                     The geometry.
+   * @param fBaseName                    The file base name.
+   * @param cacheSize                    The maximum number of two electron center sets to be stored in memory.
+   * @param normalVectors                The normal vectors on the molecular surface (only needed for the electric
+   * field).
+   * @param atomCenteredBasisController  The atom centered basis controller of the density matrix. Only needed for
+   * gradients.
    */
   ElectrostaticPotentialOnGridController(std::shared_ptr<GridController> gridController,
                                          std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrixController,
                                          std::shared_ptr<Geometry> geometry, std::string fBaseName,
-                                         unsigned int cacheSize = 60);
+                                         unsigned int cacheSize = 60, std::shared_ptr<Eigen::Matrix3Xd> normalVectors = nullptr,
+                                         std::shared_ptr<AtomCenteredBasisController> atomCenteredBasisController = nullptr);
   /**
    * @brief Destructor. Deletes chache-files on disk.
    */
@@ -107,13 +115,26 @@ class ElectrostaticPotentialOnGridController : public ObjectSensitiveClass<Densi
    */
   FockMatrix<RESTRICTED> integrateFockMatrix(const GridPotential<RESTRICTED>& charges);
   /**
-   * @brief Removes any integrals or potential files from disk and resetts the cache.
+   * @brief Removes any integrals or potential files from disk and resets the cache.
    */
   void cleanUpDisk();
+  /**
+   * @brief Getter for the associated basis controller.
+   */
+  std::shared_ptr<BasisController> getBasisController();
+  /**
+   * @brief Getter for the associated grid controller.
+   */
+  std::shared_ptr<GridController> getGridController();
+  /**
+   * @brief calculate the contribution for the gradient.
+   */
+  Eigen::MatrixXd calculateGradient(const std::vector<unsigned int>& atomIndicesOfPoints,
+                                    const GridPotential<RESTRICTED>& charges);
 
  private:
-  // The grid controller
-  std::shared_ptr<GridController> _gridController;
+  // The controller for the two center integrals.
+  std::shared_ptr<CoulombIntegralsOnGridController> _coulombIntegralsOnDiskController;
   // The density matrix controller.
   std::shared_ptr<DensityMatrixController<SCFMode>> _densityMatrixController;
   // The geometry.
@@ -126,20 +147,8 @@ class ElectrostaticPotentialOnGridController : public ObjectSensitiveClass<Densi
   bool _diskUpToDate = false;
   // The file base name.
   std::string _fBaseName;
-  // The base name for the two center integral file.
-  std::string _intFileBaseName;
-  // Calculate the two center integrals for the sed of grid coordinates.
-  void initializeIntegrals(std::shared_ptr<BasisController> basisController, const Eigen::Matrix3Xd& coordinates);
-  // Save the integrals on file.
-  void integralsToHDF5(std::vector<std::shared_ptr<Eigen::MatrixXd>> interals, unsigned int blockIndex, HDF5::H5File& file);
-  // Load the integrals from file.
-  std::vector<std::shared_ptr<Eigen::MatrixXd>> integralsFromHDF5(unsigned int blockIndex, HDF5::H5File& file);
-  // Calculate the integrals for the given set of grid coordinates.
-  std::vector<std::shared_ptr<Eigen::MatrixXd>> calculateIntegralSet(std::shared_ptr<BasisController> basisController,
-                                                                     Eigen::Matrix3Xd coordinates);
-  // Integral cache. For each grid point a set of two center integrals needs to be calculated and saved.
-  // This vector will contain the integrals or nullptr, if they have to be loaded from disk.
-  std::vector<std::shared_ptr<Eigen::MatrixXd>> _cache;
+  // The atom centered basis controller of the density matrix. Only needed for gradients.
+  std::shared_ptr<AtomCenteredBasisController> _atomCenteredBasisController;
   // Update the electrostatic potential.
   void update();
   // Make sure that _electrostaticPotential contains the current electrostatic potential.
@@ -148,12 +157,6 @@ class ElectrostaticPotentialOnGridController : public ObjectSensitiveClass<Densi
   void toHDF5();
   // Load the electrostatic potential from disk.
   void fromHDF5();
-  // The maximum number of two electron center sets to be stored in memory.
-  // Contraction of the integrals with the density matrix is done block wise.
-  unsigned int _nSetsCached;
-  // The number of two center integral sets in each block.
-  // Contraction of the integrals with the density matrix is done block wise.
-  std::vector<unsigned int> _blockSizes;
 };
 
 } /* namespace Serenity */

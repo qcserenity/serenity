@@ -22,7 +22,6 @@
 #include "scf/initialGuess/HCoreGuessCalculator.h"
 #include "data/ElectronicStructure.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "settings/Settings.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

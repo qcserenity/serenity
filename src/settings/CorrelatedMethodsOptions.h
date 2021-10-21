@@ -21,6 +21,7 @@
 #ifndef SETTINGS_CORRELATEDMETHODSOPTIONS_H_
 #define SETTINGS_CORRELATEDMETHODSOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -51,7 +52,7 @@ void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field);
 /**************************************************************************************************/
 /*                                  PNO Macro Settings                                            */
 /**************************************************************************************************/
-/*
+/**
  * These flags are used to adjust multiple threshold in PNO based
  * calculation at once. Note that they may have different effects
  * based on the calculation that is performed. NORMAL-PNO for DLPNO-MP2
@@ -60,6 +61,17 @@ void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field);
 enum class PNO_SETTINGS { LOOSE, NORMAL, TIGHT };
 template<>
 void resolve<PNO_SETTINGS>(std::string& value, PNO_SETTINGS& field);
+
+/**
+ * Different local correlation methods.
+ *   DLPNO_MP2:     DLPNO-MP2
+ *   DLPNO_CCSD:    DLPNO-CCSD
+ *   DLPNO_CCSD_T0: DLPNO-CCSD(T0)
+ *   NONE:          Hartree-Fock
+ */
+enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0, NONE };
+template<>
+void resolve<PNO_METHOD>(std::string& value, PNO_METHOD& field);
 } /* namespace Options */
 } /* namespace Serenity */
 

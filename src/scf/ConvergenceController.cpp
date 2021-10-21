@@ -30,6 +30,7 @@
 #include "io/IOOptions.h"
 #include "math/diis/ADIIS.h"
 #include "math/diis/DIIS.h"
+#include "math/linearAlgebra/MatrixFunctions.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/Timing.h"
 #include "scf/damper/ArithmeticSeriesDamping.h"
@@ -100,15 +101,53 @@ enum class CONVERGENCE_CRITERIA { E_TOT, RMSD_DENSITY, FPSminusSPF };
 template<Options::SCF_MODES SCFMode>
 bool ConvergenceController<SCFMode>::checkConvergence() {
   bool converged = false;
-  // calculate energy difference
-  const double energy = _energyComponentController->getTotalEnergy();
-  double deltaESquare = (energy - _oldEnergy) * (energy - _oldEnergy);
-  _oldEnergy = energy;
 
+  ++_cycle;
+  if (iOOptions.printSCFCycleInfo) {
+    this->printCycleInfo();
+  }
+  clock_gettime(CLOCK_REALTIME, &_time);
+
+  // check for convergence. Do not allow convergence if a level-shift is stll used.
+  // ToDo: Implement option to converge below a selected combination of convergence criteria.
+  if (this->getNConverged() >= _nNeccessaryToConverge && not _levelShiftInLastIteration) {
+    converged = true;
+  }
+  auto currentLevelshift = this->getLevelshift().first;
+  _levelShiftInLastIteration = currentLevelshift[0] > 1e-9 || std::abs(currentLevelshift[1] - 1) > 1e-9;
+  // Update old energy.
+  _oldEnergy = _energyComponentController->getTotalEnergy();
+  return converged;
+}
+
+template<Options::SCF_MODES SCFMode>
+void ConvergenceController<SCFMode>::printCycleInfo() {
+  const double energy = _energyComponentController->getTotalEnergy();
+  double deltaE_abs = std::abs(energy - _oldEnergy);
+  if (_cycle == 1) {
+    const double inf = std::numeric_limits<double>::infinity();
+    std::printf("    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "",
+                "", "", "");
+    std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02u \n", _cycle, energy, inf, inf, _diisConvMeasure, 0, 0);
+  }
+  else {
+    timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    double sec = (double)(now.tv_sec - _time.tv_sec) + (now.tv_nsec - _time.tv_nsec) * 0.000000001;
+    int ms = (int)(sec * 1000) - 1000 * (int)sec;
+    std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02i:%03i    %3s\n", _cycle, energy, deltaE_abs,
+                _rmsdOfDensity, _diisConvMeasure, (int)(sec / 60), (int)(sec) % 60, ms, _mode.c_str());
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+unsigned int ConvergenceController<SCFMode>::getNConverged() {
   // Prepare convergence map (map is initialized to false by default)
   std::map<CONVERGENCE_CRITERIA, bool> convergenceMap;
+  const double energy = _energyComponentController->getTotalEnergy();
+  double deltaE_abs = std::abs(energy - _oldEnergy);
 
-  if (deltaESquare <= _settings.scf.energyThreshold * _settings.scf.energyThreshold) {
+  if (deltaE_abs <= _settings.scf.energyThreshold) {
     convergenceMap[CONVERGENCE_CRITERIA::E_TOT] = true;
   }
   else {
@@ -126,37 +165,11 @@ bool ConvergenceController<SCFMode>::checkConvergence() {
   else {
     convergenceMap[CONVERGENCE_CRITERIA::FPSminusSPF] = false;
   }
-
-  ++_cycle;
-  if (iOOptions.printSCFCycleInfo) {
-    if (_cycle == 1) {
-      const double inf = std::numeric_limits<double>::infinity();
-      std::printf("    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "",
-                  "", "", "");
-      std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02u \n", _cycle, energy, inf, inf, _diisConvMeasure, 0, 0);
-    }
-    else {
-      timespec now;
-      clock_gettime(CLOCK_REALTIME, &now);
-      double sec = (double)(now.tv_sec - _time.tv_sec) + (now.tv_nsec - _time.tv_nsec) * 0.000000001;
-      int ms = (int)(sec * 1000) - 1000 * (int)sec;
-      std::printf("    %4d %16.10f %16.10f %16.10f %16.10f %6i:%02i:%03i    %3s\n", _cycle, energy, sqrt(deltaESquare),
-                  _rmsdOfDensity, _diisConvMeasure, (int)(sec / 60), (int)(sec) % 60, ms, _mode.c_str());
-    }
-  }
-  clock_gettime(CLOCK_REALTIME, &_time);
-
-  // check for convergence
-  // ToDo: Implement option to converge below a selected combination of convergence criteria.
   unsigned int nConverged = 0;
   for (auto& keyValuePair : convergenceMap) {
     nConverged += keyValuePair.second;
   }
-  if (nConverged >= 2) {
-    converged = true;
-  }
-
-  return converged;
+  return nConverged;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -173,7 +186,7 @@ double ConvergenceController<SCFMode>::calcRMSDofDensity() {
   }
   else {
     rmsd = std::numeric_limits<double>::infinity();
-    _oldP = make_shared<DensityMatrix<SCFMode>>(_dmatContr->getDensityMatrix());
+    _oldP = std::make_shared<DensityMatrix<SCFMode>>(_dmatContr->getDensityMatrix());
   }
   return rmsd;
 }
@@ -184,9 +197,9 @@ double ConvergenceController<SCFMode>::calcRMSDofDensity() {
  * Experience shows that this actually does work pretty well.
  */
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, Eigen::MatrixXd> ConvergenceController<SCFMode>::calcFPSminusSPF(FockMatrix<SCFMode>& F) {
+MatrixInBasis<SCFMode> ConvergenceController<SCFMode>::calcFPSminusSPF(FockMatrix<SCFMode>& F) {
   takeTime("Optimizer 1");
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> result(F.getNBasisFunctions(), F.getNBasisFunctions());
+  MatrixInBasis<SCFMode> result(F.getBasisController());
   const auto& S = _oneIntController->getOverlapIntegrals();
   auto P = _dmatContr->getDensityMatrix();
   for_spin(result, F, P) {
@@ -199,12 +212,11 @@ SpinPolarizedData<SCFMode, Eigen::MatrixXd> ConvergenceController<SCFMode>::calc
    */
   takeTime("Optimizer 2");
   if (!_orthoS)
-    _orthoS.reset(new Eigen::MatrixXd(S.householderQr().householderQ()));
+    _orthoS = std::make_unique<Eigen::MatrixXd>(S.householderQr().householderQ());
   for_spin(result) {
     result_spin = (*_orthoS) * result_spin * (*_orthoS).transpose();
   };
   timeTaken(3, "Optimizer 2");
-
   return result;
 }
 
@@ -224,10 +236,13 @@ std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> Converge
   Eigen::VectorXd levelshift(2);
   levelshift[0] = 0.0;
   levelshift[1] = 1.0;
-  if (_diisConvMeasure > _settings.scf.diisThreshold * 100.0 and _settings.scf.useLevelshift)
-    levelshift[0] = std::max(sqrt(log(_diisConvMeasure + 1)), _settings.scf.minimumLevelshift);
-  if (_diisConvMeasure > min(_settings.scf.diisThreshold * 100.0, 1e-5) and _settings.scf.useOffDiagLevelshift)
-    levelshift[1] = (1.0 / (_diisConvMeasure + 2)) + 0.5;
+  // Turn off any level-shift if the SCF would be converged otherwise.
+  if (this->getNConverged() < _nNeccessaryToConverge) {
+    if ((_diisConvMeasure > _settings.scf.diisThreshold * 100.0 and _settings.scf.useLevelshift))
+      levelshift[0] = std::max(sqrt(log(_diisConvMeasure + 1)), _settings.scf.minimumLevelshift);
+    if (_diisConvMeasure > std::min(_settings.scf.diisThreshold * 100.0, 1e-5) and _settings.scf.useOffDiagLevelshift)
+      levelshift[1] = (1.0 / (_diisConvMeasure + 2)) + 0.5;
+  }
   return std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>>(levelshift, _dmatContr->getOccupations());
 }
 
@@ -243,6 +258,7 @@ void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergenc
    * Optimizer part: set up the new error vector
    */
   takeTime("Optimizer error measure");
+  symInPlace<RESTRICTED>(F);
   Eigen::MatrixXd errorVector = calcFPSminusSPF(F);
   timeTaken(3, "Optimizer error measure");
   /*
@@ -311,6 +327,7 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
    * Optimizer part: set up the new error vector
    */
   takeTime("Optimizer error measure");
+  symInPlace<UNRESTRICTED>(F);
   auto errorVectors = calcFPSminusSPF(F);
   timeTaken(3, "Optimizer error measure");
 

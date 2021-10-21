@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/LocalizationOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -43,7 +45,17 @@ void resolve<POPULATION_ANALYSIS_ALGORITHMS>(std::string& value, POPULATION_ANAL
       {"MUL", POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN},
       {"HIRSHFELD", POPULATION_ANALYSIS_ALGORITHMS::HIRSHFELD},
       {"IAO", POPULATION_ANALYSIS_ALGORITHMS::IAO},
-      {"IAOSHELL", POPULATION_ANALYSIS_ALGORITHMS::IAOShell}};
+      {"IAOSHELL", POPULATION_ANALYSIS_ALGORITHMS::IAOShell},
+      {"BECKE", POPULATION_ANALYSIS_ALGORITHMS::BECKE}};
+  check(m, value, field);
+}
+
+template<>
+void resolve<DOS_SETTINGS>(std::string& value, DOS_SETTINGS& field) {
+  static const std::map<std::string, DOS_SETTINGS> m = {
+      {"LOOSE", DOS_SETTINGS::LOOSE},           {"NORMAL", DOS_SETTINGS::NORMAL},
+      {"TIGHT", DOS_SETTINGS::TIGHT},           {"VERYTIGHT", DOS_SETTINGS::VERY_TIGHT},
+      {"VERY_TIGHT", DOS_SETTINGS::VERY_TIGHT}, {"EXTREME", DOS_SETTINGS::EXTREME}};
   check(m, value, field);
 }
 } /* namespace Options */

@@ -25,7 +25,6 @@
 #include <gtest/gtest.h>
 
 namespace Serenity {
-using namespace std;
 
 class CartesianToSphericalTransformerTest : public ::testing::Test {
  protected:

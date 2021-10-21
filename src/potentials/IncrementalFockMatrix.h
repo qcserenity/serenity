@@ -42,7 +42,7 @@ class DensityMatrixController;
  *        incrementSteps.
  */
 template<Options::SCF_MODES SCFMode>
-class IncrementalFockMatrix {
+class IncrementalFockMatrix : public ObjectSensitiveClass<Basis> {
  public:
   /**
    * @brief Constructor.
@@ -67,7 +67,8 @@ class IncrementalFockMatrix {
    * @param f            The Fock matrix. May be set to zero.
    * @return True if the Fock matrix is reset and a full build is required.
    */
-  bool updateDensityAndThreshold(DensityMatrix<SCFMode>& p, double& threshold, FockMatrix<SCFMode>& f);
+  bool updateDensityAndThreshold(DensityMatrix<SCFMode>& p, double& threshold,
+                                 std::vector<std::shared_ptr<FockMatrix<SCFMode>>> fs);
   /**
    * @brief Reset the Fock matrix.
    * @param f              The Fock matrix to be resetted.
@@ -75,7 +76,7 @@ class IncrementalFockMatrix {
    *
    * This function may be overwritten by derived classes.
    */
-  virtual void resetFockMatrix(FockMatrix<SCFMode>& f, double nextTreshold);
+  void resetFockMatrix(std::vector<std::shared_ptr<FockMatrix<SCFMode>>> fs, double nextTreshold);
   /**
    * @brief Getter for the increment counter.
    * @return The increment counter.
@@ -86,6 +87,17 @@ class IncrementalFockMatrix {
    * @return The interval.
    */
   unsigned int getIncrementSteps();
+  /**
+   * @brief IncrementalFockMatrix is sensitive to any change in the basis set.
+   */
+  void notify() override final;
+  /**
+   * @brief Getter for the prescreening threshold for the full Fock-matrix construction.
+   * @return The prescreening threshold.
+   */
+  double getPrescreeningThreshold() {
+    return _prescreeningThreshold;
+  };
 
  private:
   // The density matrix controller.
@@ -104,12 +116,16 @@ class IncrementalFockMatrix {
   bool _alwaysFullBuild = false;
   // Start with -1 in order to "hide" the first hidden SCF-step.
   int _counter = -1;
+  // The basis changed since the last notfy call.
+  bool _basisChanged;
   // The old density matrix.
   std::shared_ptr<DensityMatrix<SCFMode>> _oldDensityMatrix;
   // Stop any complete rebuild of the Fock matrix after reaching the final threshold.
   bool _reachedFinalThreshold = false;
   // Getter for the currently used prescreening threshold.
   double getCurrentThreshold();
+  // Initialize the density matrix.
+  void initializeOldDensityMatrix();
 };
 
 } /* namespace Serenity */

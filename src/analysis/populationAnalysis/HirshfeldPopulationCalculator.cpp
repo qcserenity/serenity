@@ -23,9 +23,12 @@
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisControllerFactory.h"
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
+#include "data/grid/DensityMatrixDensityOnGridController.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/grid/DensityOnGridController.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
+#include "data/grid/SupersystemDensityOnGridController.h"
+#include "data/matrices/DensityMatrixController.h"
 #include "geometry/Geometry.h"
 #include "scf/initialGuess/AtomicDensityGuessCalculator.h"
 #include "settings/Settings.h"
@@ -47,7 +50,7 @@ void HirshfeldPopulationCalculator<SCFMode>::calculateHirshfeldAtomPopulations()
       _system->getSettings(), _system->getAtomCenteredBasisController(), _system->getGridController());
   auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<RESTRICTED>>(
       basisFunctionOnGridController, _system->getSettings().grid.blockAveThreshold);
-  GridData<RESTRICTED> convergedSystem = _densOnGrid->getDensityOnGrid().total();
+  const GridData<SCFMode>& convergedSystem = _densOnGrid->getDensityOnGrid();
 
   // Grid weights, points
   auto& weightOfGrid = _system->getGridController()->getWeights();
@@ -72,10 +75,10 @@ void HirshfeldPopulationCalculator<SCFMode>::calculateHirshfeldAtomPopulations()
   auto nAtoms = _system->getGeometry()->getNAtoms();
 
   // Initialize
-  DensityOnGrid<RESTRICTED> proMolDens(_system->getGridController());
-  std::vector<DensityOnGrid<RESTRICTED>> atomDensities;
-  _atomPopulations.reset(new Eigen::VectorXd(Eigen::VectorXd::Zero(nAtoms)));
-  auto& atomPopulations = *_atomPopulations;
+  std::vector<std::shared_ptr<DensityOnGridController<RESTRICTED>>> atomDensities;
+  std::vector<Eigen::VectorXi> nonNegligibleBlockAtomWise;
+  _atomPopulations = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(Eigen::VectorXd::Zero(nAtoms));
+  SpinPolarizedData<SCFMode, Eigen::VectorXd>& atomPopulations = *_atomPopulations;
 
   // Create promolecular density and free atom densities
   for (unsigned int iAtom = 0; iAtom < nAtoms; ++iAtom) {
@@ -96,15 +99,25 @@ void HirshfeldPopulationCalculator<SCFMode>::calculateHirshfeldAtomPopulations()
                                                      indices[iAtom].second - indices[iAtom].first);
 
     // Get grid representation
-    atomDensities.push_back(atomDensOnGridCalculator->calcDensityOnGrid(atomDensityMatrix));
-    proMolDens += atomDensities[iAtom];
+    // MB: I will use the density matrix controller here in order to retain the prescreening information
+    //     from the BasisFunctionOnGridController.
+    auto atomDensityMatrixController = std::make_shared<DensityMatrixController<RESTRICTED>>(atomDensityMatrix);
+    auto atomDensityMatrixDensityOnGridController = std::make_shared<DensityMatrixDensityOnGridController<RESTRICTED>>(
+        atomDensOnGridCalculator, atomDensityMatrixController, 0);
+    atomDensities.push_back(atomDensityMatrixDensityOnGridController);
+    atomDensityMatrixDensityOnGridController->getDensityOnGrid();
+    nonNegligibleBlockAtomWise.push_back(atomDensityMatrixDensityOnGridController->getNonNegligibleBlocks());
   }
+  // Build the pro molecular density from the superposition of the atom densities. We will recycle the FDE-framework
+  // here.
+  auto proMolDensController = std::make_shared<SupersystemDensityOnGridController<RESTRICTED>>(atomDensities);
+  const DensityOnGrid<RESTRICTED>& proMolDens = proMolDensController->getDensityOnGrid();
 
-  for (unsigned int iAtom = 0; iAtom < nAtoms; ++iAtom) {
-    // Prepare variables
-    Eigen::VectorXd thisAtomPopulation = Eigen::VectorXd::Zero(omp_get_max_threads());
-    // Calculate
-#pragma omp for schedule(static)
+  for_spin(convergedSystem, atomPopulations) {
+    Eigen::MatrixXd threadWiseAtomPops = Eigen::MatrixXd::Zero(nAtoms, omp_get_num_threads());
+    // The outer loop is over the grid points block in order to allow the precalculation of
+    // the product of density and grid weights as well as efficient vector operations.
+#pragma omp for schedule(dynamic)
     for (unsigned int block = 0; block < nBlocks; block++) {
       unsigned int blockEnd;
       if (block == (nBlocks - 1)) {
@@ -114,17 +127,33 @@ void HirshfeldPopulationCalculator<SCFMode>::calculateHirshfeldAtomPopulations()
         blockEnd = basisFunctionOnGridController->getFirstIndexOfBlock(block + 1);
       }
       auto blockStart = basisFunctionOnGridController->getFirstIndexOfBlock(block);
-      for (unsigned int i = blockStart; i < blockEnd; ++i) {
-        if (proMolDens[i] < 1.0e-9)
-          continue;
-        const double weightPerAtomGrid = atomDensities[iAtom][i] / proMolDens[i];
-        thisAtomPopulation[omp_get_thread_num()] += convergedSystem[i] * weightPerAtomGrid * weightOfGrid[i];
+      const unsigned int blockSize = blockEnd - blockStart;
+
+      // Calculate product of density and grid weights. These will be used for every atom.
+      const Eigen::VectorXd weightedDensity = convergedSystem_spin.segment(blockStart, blockSize).array() *
+                                              weightOfGrid.segment(blockStart, blockSize).array();
+      // Calculate the reciprocal of the pro molecular density.
+      // If the pro molecular density is small, we will simply assign its reciprocal zero.
+      // Note that the pro molecular density is always equal or larger than the atom densities. Thus, this
+      // does not introduce any error.
+      Eigen::VectorXd reciProMolDens = Eigen::VectorXd::Zero(blockSize);
+      for (unsigned int i = 0; i < blockSize; ++i) {
+        const double proMolDens_i = proMolDens(i + blockStart);
+        if (proMolDens_i > 1.0e-9)
+          reciProMolDens(i) = 1.0 / proMolDens_i;
       }
+      // Calculate atom-specific weights and contract with weighted density.
+      for (unsigned int iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        // Skip the atom, if there are no non-zero entries in the atom density in this block.
+        if (not nonNegligibleBlockAtomWise[iAtom](block))
+          continue;
+        const Eigen::VectorXd weightPerAtomGrid =
+            atomDensities[iAtom]->getDensityOnGrid().segment(blockStart, blockSize).array() * reciProMolDens.array();
+        threadWiseAtomPops(iAtom, omp_get_thread_num()) += (weightPerAtomGrid.array() * weightedDensity.array()).sum();
+      } // iAtom
     }
-
-    atomPopulations[iAtom] = thisAtomPopulation.sum();
-
-  } // iAtom
+    atomPopulations_spin = threadWiseAtomPops.rowwise().sum();
+  };
 }
 template class HirshfeldPopulationCalculator<Options::SCF_MODES::RESTRICTED>;
 template class HirshfeldPopulationCalculator<Options::SCF_MODES::UNRESTRICTED>;

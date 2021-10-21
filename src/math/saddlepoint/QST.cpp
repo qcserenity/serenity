@@ -20,9 +20,9 @@
 /* Include Class Header*/
 #include "math/saddlepoint/QST.h"
 /* Include Serenity Internal Headers */
-#include "math/optimizer/BFGS.h"
-//#include "parameters/Constants.h"
 #include "integrals/wrappers/Libint.h"
+#include "math/optimizer/BFGS.h"
+#include "misc/SerenityError.h"
 
 namespace Serenity {
 

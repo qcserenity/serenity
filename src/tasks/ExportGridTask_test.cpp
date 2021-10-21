@@ -20,7 +20,6 @@
 
 /* Include Serenity Internal Headers */
 #include "tasks/ExportGridTask.h"
-#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -66,8 +65,8 @@ TEST_F(ExportGridTaskTest, FileGenerated_noAtomInfo) {
   auto task = ExportGridTask(systemController);
   task.settings.withAtomInfo = false;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS.grid").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS.grid").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS.grid").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS.grid").c_str()));
 }
 
 /**
@@ -79,8 +78,8 @@ TEST_F(ExportGridTaskTest, FileGenerated_withAtomInfo) {
   auto task = ExportGridTask(systemController);
   task.settings.withAtomInfo = true;
   task.run();
-  EXPECT_TRUE(fileExists((systemController->getSettings().path + "TestSystem_H2_MINBAS.grid").c_str()));
-  EXPECT_EQ(0, std::remove((systemController->getSettings().path + "TestSystem_H2_MINBAS.grid").c_str()));
+  EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS.grid").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS.grid").c_str()));
 }
 
 } /* namespace Serenity */

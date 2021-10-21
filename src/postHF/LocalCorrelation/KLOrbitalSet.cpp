@@ -51,4 +51,11 @@ void KLOrbitalSet::setOverlapMatrixController(std::shared_ptr<DomainOverlapMatri
   _domainSController = domainSController;
 }
 
+void KLOrbitalSet::cleanUp() {
+  ki_la.resize(0);
+  kj_la.resize(0);
+  li_ka.resize(0);
+  lj_ka.resize(0);
+}
+
 } /* namespace Serenity */

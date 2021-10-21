@@ -39,10 +39,9 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
-unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
-DensityInitialGuessCalculator::calculateInitialGuess(shared_ptr<SystemController> systemController) {
+std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
+DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemController> systemController) {
   assert(systemController);
   /*
    * Perform the density guess
@@ -76,7 +75,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(shared_ptr<SystemController
         systemController->getSharedPtr(), dMatController, 1.0, systemController->getSettings().basis.integralThreshold,
         systemController->getSettings().basis.integralIncrementThresholdStart,
         systemController->getSettings().basis.integralIncrementThresholdEnd,
-        systemController->getSettings().basis.incrementalSteps));
+        systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
     pot = std::make_shared<HFPotentials<Options::SCF_MODES::RESTRICTED>>(hcore, hf, pcm, systemController->getGeometry());
   }
   else {
@@ -91,7 +90,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(shared_ptr<SystemController
     std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>> J;
     if (!functional.isHybrid()) {
       double thresh = systemController->getSettings().basis.integralThreshold;
-      if (systemController->getSettings().dft.densityFitting == Options::DENS_FITS::RI) {
+      if (systemController->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
         J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>>(new CoulombPotential<Options::SCF_MODES::RESTRICTED>(
             systemController->getSharedPtr(), dMatController,
             RI_J_IntegralControllerFactory::getInstance().produce(
@@ -106,7 +105,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(shared_ptr<SystemController
             systemController->getSharedPtr(), dMatController, 0.0, thresh,
             systemController->getSettings().basis.integralIncrementThresholdStart,
             systemController->getSettings().basis.integralIncrementThresholdEnd,
-            systemController->getSettings().basis.incrementalSteps));
+            systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
       }
     }
     else {
@@ -115,7 +114,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(shared_ptr<SystemController
           systemController->getSharedPtr(), dMatController, functional.getHfExchangeRatio(), thresh,
           systemController->getSettings().basis.integralIncrementThresholdStart,
           systemController->getSettings().basis.integralIncrementThresholdEnd,
-          systemController->getSettings().basis.incrementalSteps));
+          systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
     }
 
     // Bundle

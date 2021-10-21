@@ -88,6 +88,13 @@ FunctionalData<T> LibXC<T>::calcData(FUNCTIONAL_DATA_TYPE type, const Functional
   for (unsigned int f = 0; f < functionals.size(); f++) {
     if (xc_func_init(&func, functionals[f], (T == RESTRICTED) ? XC_UNPOLARIZED : XC_POLARIZED) != 0)
       throw SerenityError("Error while initializing functional in LibXC.");
+    if (functional.isRSHybrid()) {
+      // TODO Check how to cover all functionals in LibXC
+      //   Currently it looks like only XC_GGA_X_WPBEH has this _omega parameter
+      if (functionals[f] == XC_GGA_X_WPBEH) {
+        xc_func_set_ext_params_name(&func, "_omega", functional.getRangeSeparationParameter());
+      }
+    }
     this->eval(funcData, density, gradient, mixing[f], functional.getFunctionalClass(), func, order);
     xc_func_end(&func);
   } /*  Loop over functionals */
@@ -402,7 +409,7 @@ void LibXC<RESTRICTED>::eval(const FunctionalData<RESTRICTED>& funcData, const D
     // size of this block
     const unsigned int blockSize = determineBlockSize(iBlock, nPoints, nBlocks);
     bool skip = true;
-    skip *= (density.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
+    skip = skip && (density.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
     if (skip)
       continue;
 
@@ -493,8 +500,8 @@ void LibXC<UNRESTRICTED>::eval(const FunctionalData<UNRESTRICTED>& funcData, con
     // size of this block
     const unsigned int blockSize = determineBlockSize(iBlock, nPoints, nBlocks);
     bool skip = true;
-    skip *= (density.alpha.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
-    skip *= (density.beta.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
+    skip = skip && (density.alpha.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
+    skip = skip && (density.beta.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
     if (skip)
       continue;
 

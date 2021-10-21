@@ -19,6 +19,8 @@
  */
 #ifndef MATHS_DERIVATIVES_CORECOREREPULSIONDERIVATIVE_H_
 #define MATHS_DERIVATIVES_CORECOREREPULSIONDERIVATIVE_H_
+/* Include Serenity Internal Headers */
+#include "math/Matrix.h" //This is a harmless include.
 /* Include Std and External Headers */
 #include <array>
 #include <memory>
@@ -27,8 +29,6 @@
 namespace Serenity {
 /* Forward declarations */
 class Atom;
-template<typename>
-class Matrix;
 /**
  * @class CoreCoreRepulsionDerivative CoreCoreRepulsionDerivative.h
  *

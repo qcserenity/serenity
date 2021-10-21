@@ -25,10 +25,14 @@
 #include "geometry/Geometry.h"
 #include "geometry/gradients/HessianCalculator.h"
 #include "math/Matrix.h"
+#include "settings/DFTOptions.h"
 #include "settings/Options.h"
-#include "settings/Settings.h"
 
 namespace Serenity {
+
+class Settings;
+struct EmbeddingSettings;
+
 /**
  * @class
  * @brief A calculator for fully numerical and semi-numerical Hessians.
@@ -74,10 +78,8 @@ class NumericalHessianCalc : public HessianCalculator {
    */
   virtual Eigen::MatrixXd calcFaTHessian(std::vector<std::shared_ptr<SystemController>> activeSystems,
                                          std::vector<std::shared_ptr<SystemController>> passiveSystems,
-                                         CompositeFunctionals::KINFUNCTIONALS FaTnaddKinFunc,
-                                         CompositeFunctionals::XCFUNCTIONALS FaTnaddXCFunc, int FatmaxCycles,
-                                         double FaTenergyConvThresh, double FaTgridCutOff,
-                                         Options::DFT_DISPERSION_CORRECTIONS dispersion) override;
+                                         EmbeddingSettings embedding, int FatmaxCycles, double FaTenergyConvThresh,
+                                         double FaTgridCutOff) override;
   /**
    * @brief Calculates the frequencies and normal modes, dumps them to a file in the systems' directories.
    *

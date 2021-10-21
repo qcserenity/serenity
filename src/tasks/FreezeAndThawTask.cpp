@@ -27,12 +27,13 @@
 #include "data/grid/CustomDensityOnGridController.h"
 #include "data/grid/DensityOnGridController.h"
 #include "data/grid/DensityOnGridFactory.h"
+#include "data/grid/ElectrostaticPotentialOnGridController.h" //Potential on grid construction.
 #include "data/grid/SupersystemDensityOnGridController.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "dft/functionals/FunctionalLibrary.h"
 #include "energies/EnergyContributions.h"
-#include "geometry/Atom.h"
 #include "geometry/Geometry.h"
+#include "geometry/MolecularSurfaceController.h"
 #include "geometry/gradients/GeometryGradientCalculator.h"
 #include "grid/GridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
@@ -47,6 +48,7 @@
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */
 #include <stdio.h>
+#include <string>
 
 namespace Serenity {
 
@@ -68,10 +70,9 @@ void FreezeAndThawTask<SCFMode>::run() {
   bool info(iOOptions.printSCFCycleInfo);
   bool results(iOOptions.printSCFResults);
   bool gridAcc(iOOptions.gridAccuracyCheck);
-  int timings(iOOptions.timingsPrintLevel);
   bool printTitle = true;
 
-  switch (generalSettings.printLevel) {
+  switch (GLOBAL_PRINT_LEVEL) {
     case Options::GLOBAL_PRINT_LEVELS::MINIMUM:
       iOOptions.printSCFCycleInfo = false;
       iOOptions.printSCFResults = false;
@@ -86,25 +87,24 @@ void FreezeAndThawTask<SCFMode>::run() {
       break;
   }
   iOOptions.gridAccuracyCheck = false;
-  iOOptions.timingsPrintLevel = 1;
 
   // keep Libint throughout freeze and thaw cycles
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::kinetic, 0, 2);
-  libint.keepEngines(libint2::Operator::nuclear, 0, 2);
-  libint.keepEngines(libint2::Operator::overlap, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+  libint.keepEngines(LIBINT_OPERATOR::kinetic, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::nuclear, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::overlap, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   // Isolated runs if needed
   for (auto sys : _activeSystems) {
-    if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+    if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
       if (printTitle && !sys->template hasElectronicStructure<Options::SCF_MODES::RESTRICTED>()) {
         printSubSectionTitle((std::string) "Isolated Run");
       }
       sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
     }
-    else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+    else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
       if (printTitle && !sys->template hasElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()) {
         printSubSectionTitle((std::string) "Isolated Run");
       }
@@ -115,10 +115,10 @@ void FreezeAndThawTask<SCFMode>::run() {
     }
   }
   for (auto sys : _passiveSystems) {
-    if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+    if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
       sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
     }
-    else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+    else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
       sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
     }
     else {
@@ -168,13 +168,13 @@ void FreezeAndThawTask<SCFMode>::run() {
       }
 
       if (printTitle)
-        printBigCaption((std::string) "Active System: " + activeSystem->getSettings().name);
+        printBigCaption((std::string) "Active System: " + activeSystem->getSystemName());
       // Store old energy of the active System
       DensityMatrix<RESTRICTED> rhoOld(activeSystem->getBasisController());
-      if (activeSystem->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         rhoOld = activeSystem->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix().total();
       }
-      else if (activeSystem->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (activeSystem->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         rhoOld =
             activeSystem->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix().total();
       }
@@ -186,7 +186,7 @@ void FreezeAndThawTask<SCFMode>::run() {
       passiveSystems.erase(std::remove(passiveSystems.begin(), passiveSystems.end(), activeSystem), passiveSystems.end());
       passiveSystems.insert(passiveSystems.end(), _passiveSystems.begin(), _passiveSystems.end());
       // Update the active System
-      if (activeSystem->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         FDETask<Options::SCF_MODES::RESTRICTED> task(activeSystem, passiveSystems);
         task.settings.embedding = settings.embedding;
         task.settings.gridCutOff = settings.gridCutOff;
@@ -203,7 +203,7 @@ void FreezeAndThawTask<SCFMode>::run() {
         task.run();
         supersystemgrid = task.getSuperSystemGrid();
       }
-      else if (activeSystem->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (activeSystem->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         FDETask<Options::SCF_MODES::UNRESTRICTED> task(activeSystem, passiveSystems);
         task.settings.embedding = settings.embedding;
         task.settings.gridCutOff = settings.gridCutOff;
@@ -226,7 +226,7 @@ void FreezeAndThawTask<SCFMode>::run() {
       molecularSurfaceIsInitialized = true;
       // Converged subsystem?
       double deltaRho = std::numeric_limits<double>::infinity();
-      if (activeSystem->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         deltaRho =
             (rhoOld -
              activeSystem->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix().total())
@@ -235,7 +235,7 @@ void FreezeAndThawTask<SCFMode>::run() {
                 .sum();
         deltaRho = sqrt(deltaRho);
       }
-      else if (activeSystem->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (activeSystem->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         deltaRho =
             (rhoOld -
              activeSystem->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix().total())
@@ -258,11 +258,11 @@ void FreezeAndThawTask<SCFMode>::run() {
       auto energyContribution = (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT)
                                     ? ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT
                                     : ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_WF_DFT;
-      if (activeSystem->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         superSysE =
             activeSystem->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(energyContribution);
       }
-      else if (activeSystem->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (activeSystem->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         superSysE =
             activeSystem->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(energyContribution);
       }
@@ -376,39 +376,53 @@ void FreezeAndThawTask<SCFMode>::run() {
     }
   }
   std::cout << std::endl;
-  std::cout << std::endl;
   printSubSectionTitle("Final Freeze-and-Thaw Energies");
   for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
-    printBigCaption((std::string) "Active System: " + _activeSystems[nSystem]->getSettings().name);
+    printBigCaption((std::string) "Active System: " + _activeSystems[nSystem]->getSystemName());
     auto eCont = _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
     eCont->printAllComponents();
-    std::cout << std::endl;
-    std::cout << std::endl;
+  }
+
+  std::vector<std::shared_ptr<SystemController>> Systems;
+  for (auto& sys : _activeSystems) {
+    Systems.push_back(sys);
+  }
+  for (auto& sys : _passiveSystems) {
+    Systems.push_back(sys);
   }
 
   // allow for freeing of Libint engines
-  libint.freeEngines(libint2::Operator::kinetic, 0, 2);
-  libint.freeEngines(libint2::Operator::nuclear, 0, 2);
-  libint.freeEngines(libint2::Operator::overlap, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+  libint.freeEngines(LIBINT_OPERATOR::kinetic, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::nuclear, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::overlap, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
 
   // reset print options
   iOOptions.printSCFCycleInfo = info;
   iOOptions.printSCFResults = results;
   iOOptions.gridAccuracyCheck = gridAcc;
-  iOOptions.timingsPrintLevel = timings;
 
   // Clean up cache.
-  if (not settings.keepCoulombCache)
-    cleanUp();
+  cleanUp();
 }
 template<Options::SCF_MODES SCFMode>
 void FreezeAndThawTask<SCFMode>::cleanUp() {
   for (auto sys : _activeSystems) {
-    std::string fileName = sys->getSettings().path + sys->getSystemName() + ".pasCoulomb.h5";
-    std::remove(fileName.c_str());
+    if (not settings.keepCoulombCache) {
+      std::string fileName = sys->getSettings().path + sys->getSystemName() + ".pasCoulomb.h5";
+      std::remove(fileName.c_str());
+    }
+    // TODO: Remove this as soon as the destruction of the system controllers works properly.
+    if (settings.embedding.pcm.use)
+      sys->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
+  }
+  // TODO: Remove this as soon as the destruction of the system controllers works properly.
+  if (settings.embedding.pcm.use) {
+    for (auto sys : _passiveSystems) {
+      sys->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
+    }
   }
 }
 

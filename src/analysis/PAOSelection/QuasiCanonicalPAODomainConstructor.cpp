@@ -32,28 +32,29 @@ namespace Serenity {
 
 QuasiCanonicalPAODomainConstructor::QuasiCanonicalPAODomainConstructor(
     const CoefficientMatrix<Options::SCF_MODES::RESTRICTED>& coefficients,
-    std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> overlapMatrix,
     std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f, std::shared_ptr<PAOController> paoController,
     double paoOrthogonalizationThreshold, std::vector<std::shared_ptr<SystemController>> environmentSystems,
-    double levelShiftParameter, double ssScaling, double osScaling)
+    double levelShiftParameter, double ssScaling, double osScaling, bool clear)
   : _paoController(paoController),
-    _S(overlapMatrix),
     _paoOrthogonalizationThreshold(paoOrthogonalizationThreshold),
     _coeff(coefficients),
     _ssScaling(ssScaling),
-    _osScaling(osScaling) {
+    _osScaling(osScaling),
+    _clear(clear) {
   assert(_paoController);
   assert(f);
-  _f = *f;
-  _f_MO = (coefficients.transpose() * _f * coefficients).eval();
+  _f_pao = *f;
+  _f_MO = (coefficients.transpose() * *f * coefficients).eval();
   for (const auto& envSys : environmentSystems) {
     assert(envSys->getLastSCFMode() == Options::SCF_MODES::RESTRICTED);
     LevelshiftPotential<RESTRICTED> levelshift(f->getBasisController(),
                                                envSys->getElectronicStructure<RESTRICTED>()->getDensityMatrixController(),
                                                levelShiftParameter);
-    _f += levelshift.getMatrix();
+    _f_pao += levelshift.getMatrix();
   } // for envSys
-  _f_AO_MO = (_f * coefficients).eval();
+  const auto& paoCoefficients = _paoController->getAllPAOs();
+  _f_PAO_MO = (paoCoefficients.transpose() * _f_pao * coefficients).eval();
+  _f_pao = (paoCoefficients.transpose() * _f_pao * paoCoefficients).eval();
 }
 
 void QuasiCanonicalPAODomainConstructor::initializeAmplitudes(std::shared_ptr<OrbitalPair> pair) {
@@ -67,13 +68,11 @@ void QuasiCanonicalPAODomainConstructor::initializeAmplitudes(std::shared_ptr<Or
 
 void QuasiCanonicalPAODomainConstructor::transformToQuasiCanonicalPAOBasis(std::shared_ptr<OrbitalPair> pair) {
   // Get the PAO coefficients of the pair domain.
-  const Eigen::MatrixXd& R_ij = _paoController->getPAOsFromDomain(pair->paoDomain);
+  const Eigen::MatrixXd s_pao = pair->domainProjection * _paoController->getS_PAO() * pair->domainProjection.transpose();
+  const Eigen::MatrixXd f_pao = pair->domainProjection * _f_pao * pair->domainProjection.transpose();
   Eigen::VectorXd eigenvalues;
-  Eigen::MatrixXd transformation;
-  SystemSplittingTools<RESTRICTED>::diagonalizationInNonRedundantPAOBasis(R_ij, *_S, _f, _paoOrthogonalizationThreshold,
-                                                                          eigenvalues, transformation);
-  // Save transformation to linear independent PAO-pair basis that diagonalize the fock matrix (in this block).
-  pair->toPAODomain = transformation;
+  SystemSplittingTools<RESTRICTED>::diagonalizationInNonRedundantPAOBasis(s_pao, f_pao, _paoOrthogonalizationThreshold,
+                                                                          eigenvalues, pair->toPAODomain);
   // Save matrix of eps_r + eps_s - f_ii - f_jj. This is needed in every amplitude opt. iteration.
   unsigned int i = pair->i;
   unsigned int j = pair->j;
@@ -83,6 +82,14 @@ void QuasiCanonicalPAODomainConstructor::transformToQuasiCanonicalPAOBasis(std::
   pair->uncoupledTerm.array() -= _f_MO(i, i) + _f_MO(j, j);
   pair->f_ij = _f_MO(i, j);
   pair->f_ab = eigenvalues;
+}
+
+void QuasiCanonicalPAODomainConstructor::clearIntegrals(std::shared_ptr<OrbitalPair> pair) {
+  pair->k_ij.resize(0, 0);
+  pair->t_ij.resize(0, 0);
+  pair->uncoupledTerm.resize(0, 0);
+  pair->f_ab.resize(0);
+  pair->toPAODomain.resize(0, 0);
 }
 
 } /* namespace Serenity */

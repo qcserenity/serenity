@@ -42,7 +42,7 @@ TEST_F(ElectrostaticPotentialOnGridControllerTest, WaterOnCavity) {
 
   const GridPotential<RESTRICTED> potential = elecPotOnGridController->getPotential();
   const double testSum = potential.sum();
-  EXPECT_NEAR(testSum, -0.74642539044135536, 1e-5);
+  EXPECT_NEAR(testSum, -0.80515632923108371, 1e-5);
 
   elecPotOnGridController->setDiskMode(true);
   const GridPotential<RESTRICTED> potentialFromDisk = elecPotOnGridController->getPotential();

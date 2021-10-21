@@ -20,13 +20,17 @@
 
 /* Include Class Header*/
 #include "basis/BasisController.h"
-
 /* Include Serenity Internal Headers */
-#include "integrals/wrappers/Libint.h"
+#include "basis/Basis.h"
+#include "misc/SerenityError.h"
 
 /* Include Std and External Headers */
 
 namespace Serenity {
+
+BasisController::BasisController(const std::string& basisString)
+  : _basis(nullptr), _shellPairList(nullptr), _RIPrescreeningFactors(nullptr), _basisString(basisString) {
+}
 
 void BasisController::produceBasis() {
   assert(!_basis);
@@ -82,6 +86,9 @@ void BasisController::produceBasis() {
   }
   _pureCartesian = (_nBasisFunctions == _nBasisFunctionsCart);
   _pureSpherical = (_nBasisFunctions == _nBasisFunctionsSpherical);
+  _maxPrim = 1;
+  for (const auto& shell : *_basis)
+    _maxPrim = std::max(_maxPrim, shell->getNPrimitives());
   postConstruction();
 }
 
@@ -89,27 +96,29 @@ void BasisController::calculateRIPrescreeningFactors() {
   _RIPrescreeningFactors = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb, 0, 2);
+  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 2, std::numeric_limits<double>::epsilon() / 1e4,
+                          this->getMaxNumberOfPrimitives());
   Eigen::MatrixXd integrals;
   const unsigned int nShells = (*_basis).size();
   for (unsigned int i = 0; i < nShells; ++i) {
     const auto& shellI = *(*_basis)[i];
     // calculate integrals
-    if (libint.compute(libint2::Operator::coulomb, 0, shellI, shellI, integrals)) {
+    if (libint.compute(LIBINT_OPERATOR::coulomb, 0, shellI, shellI, integrals)) {
       (*_RIPrescreeningFactors).push_back(ShellPairData(i, i, sqrt(integrals.maxCoeff())));
     } /* if (prescreen) */
   }   /* i/shellI */
   // finalize libint
-  libint.finalize(libint2::Operator::coulomb, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::coulomb, 0, 2);
 }
 
 void BasisController::createShellPairData() {
   unsigned nShells = (*_basis).size();
-  _schwartzParams = Eigen::MatrixXd::Zero(nShells, nShells);
+  _schwarzParams = Eigen::MatrixXd::Zero(nShells, nShells);
   _shellPairList = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize(libint2::Operator::coulomb, 0, 4);
+  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 4, std::numeric_limits<double>::epsilon() / 1e4,
+                          this->getMaxNumberOfPrimitives());
   // loops over shells
   Eigen::MatrixXd integrals;
   for (unsigned int i = 0; i < nShells; ++i) {
@@ -117,16 +126,16 @@ void BasisController::createShellPairData() {
     for (unsigned int j = 0; j <= i; ++j) {
       const auto& shellJ = *(*_basis)[j];
       // calculate integrals
-      if (libint.compute(libint2::Operator::coulomb, 0, shellI, shellJ, shellI, shellJ, integrals)) {
-        double schwartz = std::sqrt(integrals.maxCoeff());
-        (*_shellPairList).push_back(ShellPairData(i, j, schwartz));
-        _schwartzParams(i, j) = schwartz;
-        _schwartzParams(j, i) = schwartz;
+      if (libint.compute(LIBINT_OPERATOR::coulomb, 0, shellI, shellJ, shellI, shellJ, integrals)) {
+        double schwarz = std::sqrt(integrals.maxCoeff());
+        (*_shellPairList).push_back(ShellPairData(i, j, schwarz));
+        _schwarzParams(i, j) = schwarz;
+        _schwarzParams(j, i) = schwarz;
       } /* if (prescreen) */
     }   /* j/shellJ */
   }     /* i/shellI */
   // finalize libint
-  libint.finalize(libint2::Operator::coulomb, 0, 4);
+  libint.finalize(LIBINT_OPERATOR::coulomb, 0, 4);
   // sort the list
   std::sort((*_shellPairList).begin(), (*_shellPairList).end());
   std::reverse((*_shellPairList).begin(), (*_shellPairList).end());
@@ -150,10 +159,79 @@ const SparseMap& BasisController::getFunctionToShellMap() {
   return *_functionToShellMap;
 }
 
+unsigned int BasisController::getMaxNumberOfPrimitives() {
+  return _maxPrim;
+}
+
 void BasisController::notify() {
   this->notifyObjects();
   this->_shellPairList = nullptr;
   this->_RIPrescreeningFactors = nullptr;
 }
+
+size_t BasisController::getReducedNBasisFunctions() {
+  if (!_basis)
+    produceBasis();
+  return _basis->size();
+}
+
+Eigen::VectorXd BasisController::shellWiseAbsMax(const Eigen::VectorXd& target) {
+  unsigned ns = _basis->size();
+  auto basis = *_basis;
+  Eigen::VectorXd result = Eigen::VectorXd::Zero(ns);
+  for (unsigned i = 0; i < ns; ++i) {
+    unsigned ni = basis[i]->size();
+    unsigned iStart = this->extendedIndex(i);
+    result(i) = target.segment(iStart, ni).array().abs().maxCoeff();
+  } // for i
+  return result;
+}
+
+double BasisController::getPrescreeningThreshold() {
+  if (!_basis) {
+    produceBasis();
+  }
+  return 1e-8 / (3.0 * _nBasisFunctionsCart);
+}
+
+const Eigen::MatrixXd& BasisController::getSchwarzParams(LIBINT_OPERATOR op, double mu) {
+  if (op == LIBINT_OPERATOR::coulomb) {
+    return _schwarzParams;
+  }
+  else if (op == LIBINT_OPERATOR::erf_coulomb) {
+    // Represent mu as long. I know that this is kind of hacky and
+    // I don't like it either, but it turned out that passing a
+    // functional enum here makes things unnecessarily complicated.
+    long int muInt = (long int)(mu * 1e7 + 0.5);
+    if (_schwarzParamsErf.count(muInt) > 0) {
+      return _schwarzParamsErf[muInt];
+    }
+    else {
+      unsigned nShells = (*_basis).size();
+      Eigen::MatrixXd schwarzParams = Eigen::MatrixXd::Zero(nShells, nShells);
+      auto& libint = Libint::getInstance();
+      libint.initialize(LIBINT_OPERATOR::erf_coulomb, 0, 4, std::vector<std::shared_ptr<Atom>>(0), mu,
+                        std::numeric_limits<double>::epsilon() / 1e4, 10, this->getMaxNumberOfPrimitives());
+      Eigen::MatrixXd integrals;
+      for (auto& shellPair : (*_shellPairList)) {
+        const auto& shellI = *(*_basis)[shellPair.bf1];
+        const auto& shellJ = *(*_basis)[shellPair.bf2];
+        if (libint.compute(LIBINT_OPERATOR::erf_coulomb, 0, shellI, shellJ, shellI, shellJ, integrals)) {
+          double schwarz = std::sqrt(integrals.maxCoeff());
+          schwarzParams(shellPair.bf1, shellPair.bf2) = schwarz;
+          schwarzParams(shellPair.bf2, shellPair.bf1) = schwarz;
+        } /* if (prescreen) */
+      }
+      libint.finalize(LIBINT_OPERATOR::erf_coulomb, 0, 4);
+      _schwarzParamsErf[muInt] = schwarzParams;
+      return _schwarzParamsErf[muInt];
+    }
+  }
+  else {
+    throw SerenityError("No Schwarz-prescreening parameters available for this operator.");
+  }
+}
+
+BasisController::~BasisController() = default;
 
 } /* namespace Serenity */

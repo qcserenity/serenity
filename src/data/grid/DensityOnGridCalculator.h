@@ -55,20 +55,30 @@ class DensityOnGridCalculator {
 
   virtual ~DensityOnGridCalculator() = default;
   /**
+   * @brief Uses the class MatrixOperatorToGridTransformer to calculate
+   * \f$ {\rm result}(r) = \sum_{i,j} \chi_i(r) \cdot {\rm matrix}_{i,j} \chi_j(r) \f$ for all grid
+   * points.
+   *
    * @param[in] densityMatrix the electron density of the system in matrix form
    * @returns the density on the grid as vector
    */
   DensityOnGrid<T> calcDensityOnGrid(const DensityMatrix<T>& densityMatrix);
   /**
    * Call this to avoid a copy of the density on the grid
+   * @brief Uses the class MatrixOperatorToGridTransformer to calculate
+   * \f$ {\rm result}(r) = \sum_{i,j} \chi_i(r) \cdot {\rm matrix}_{i,j} \chi_j(r) \f$ for all grid
+   * points.
    *
    * @param[in]  densityMatrix the electron density of the system in matrix form
-   * @param[out] the density on the grid as vector, will be resized/overwritten
+   * @param[out] densityOnGrid the density on the grid as vector, will be resized/overwritten
    */
   void calcDensityOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid);
   /**
+   * @brief Uses the class MatrixOperatorToGridTransformer to calculate
+   * the density and its gradient for all grid points.
+   *
    * @param[in] densityMatrix the electron density of the system in matrix form
-   * @param[out] gradient additional to the density also the density gradient is calculated when
+   * @param[out] densityGradientOnGrid gradient additional to the density also the density gradient is calculated when
    *                      calling this method.
    * @returns the density on the grid as vector
    */
@@ -76,10 +86,12 @@ class DensityOnGridCalculator {
                                                 Gradient<DensityOnGrid<T>>& densityGradientOnGrid);
   /**
    * Call this to avoid a copy of the density on the grid
+   * @brief Uses the class MatrixOperatorToGridTransformer to calculate
+   * the density and its gradient for all grid points.
    *
    * @param[in] densityMatrix the electron density of the system in matrix form
-   * @param[out] the density on the grid as vector, will be resized/overwritten
-   * @param[out] gradient additional to the density also the density gradient is calculated when
+   * @param[out] densityOnGrid the density on the grid as vector, will be resized/overwritten
+   * @param[out] densityGradientOnGrid gradient additional to the density also the density gradient is calculated when
    *                      calling this method.
    */
   void calcDensityAndGradientOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid,
@@ -87,10 +99,12 @@ class DensityOnGridCalculator {
   /**
    * @brief Calculates the density and its first and second derivatives on the grid.
    *
-   * @param[in] densityMatrix
-   * @param[out] densityOnGrid
-   * @param[out] densityGradientOnGrid
-   * @param[out] densityHessianOnGrid
+   * @param[in] densityMatrix the electron density of the system in matrix form
+   * @param[out] densityOnGrid the density on the grid as vector, will be resized/overwritten
+   * @param[out] densityGradientOnGrid gradient additional to the density also the density gradient is calculated when
+   *                      calling this method.
+   * @param[out] densityHessianOnGrid Hessian additional to the density also the density Hessian is calculated when
+   *                      calling this method.
    */
   void calcDensityAndDerivativesOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid,
                                        Gradient<DensityOnGrid<T>>& densityGradientOnGrid,

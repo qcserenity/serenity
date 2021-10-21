@@ -25,6 +25,7 @@
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "grid/GridController.h"
+#include "math/Matrix.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */

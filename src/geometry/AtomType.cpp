@@ -27,11 +27,11 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
-AtomType::AtomType(const string name, const int nuclearCharge, const double mass, const double braggSlaterRadius,
-                   const double vanDerWaalsRadius, double uffRadius,
-                   const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations, const bool isDummy)
+AtomType::AtomType(const std::string name, const int nuclearCharge, const double mass, const double braggSlaterRadius,
+                   const double vanDerWaalsRadius, double uffRadius, unsigned int nCoreElectrons,
+                   const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>>& occupations,
+                   double chemicalHardness, const bool isDummy)
   : _name(name),
     _nuclearCharge(isDummy ? 0 : nuclearCharge),
     _psePosition(nuclearCharge),
@@ -39,12 +39,14 @@ AtomType::AtomType(const string name, const int nuclearCharge, const double mass
     _braggSlaterRadius(braggSlaterRadius),
     _vanDerWaalsRadius(vanDerWaalsRadius),
     _uffRadius(uffRadius),
+    _nCoreElectrons(isDummy ? 0 : nCoreElectrons),
     _occupations(occupations),
+    _chemicalHardness(chemicalHardness),
     _isDummy(isDummy) {
   assert(_psePosition && "Even dummy atoms need to have a position in the PSE, that of the actual atom they mimic.");
 }
 
-string AtomType::getElementSymbol() const {
+std::string AtomType::getElementSymbol() const {
   std::string copy = _name;
   if (copy.substr(copy.size() - 1) == ":") {
     copy.pop_back();
@@ -80,6 +82,10 @@ double AtomType::getUFFRadius() const {
   else {
     return _uffRadius;
   }
+}
+
+unsigned int AtomType::getNCoreElectrons() const {
+  return _nCoreElectrons;
 }
 
 template<>
@@ -149,6 +155,16 @@ SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<double>> getOccu
     occVec.beta.push_back(betaElectronsPerFunc);
   }
   return occVec;
+}
+
+double AtomType::getChemicalHardness() const {
+  if (_chemicalHardness < 0.0) {
+    WarningTracker::printWarning("Warning: No tabulated chemical hardness available. Simply guessing 0.2 a.u.", true);
+    return 0.2;
+  }
+  else {
+    return _chemicalHardness;
+  }
 }
 
 int getAtomSpin(const AtomType& atomType) {

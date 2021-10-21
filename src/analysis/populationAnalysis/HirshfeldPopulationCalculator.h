@@ -61,6 +61,8 @@ class SystemController;
  * in the resulting atom populations (in the 4th decimal). If a higher accuracy is needed, the atom scf
  * convergence criteria need to be tightened (take a look at the AtomDensityGuessCalculator for this).
  *
+ * In case of an UNRESTRICTED calculation, the Hirshfeld populations are evaluated separately for alpha and
+ * beta densities using the same weighting factor \f$ \frac{\rho^\mathrm{at}_A(r)}{\rho^\mathrm{pro}(r)} \f$.
  */
 template<Options::SCF_MODES SCFMode>
 class HirshfeldPopulationCalculator : public ObjectSensitiveClass<DensityOnGrid<SCFMode>> {
@@ -76,10 +78,10 @@ class HirshfeldPopulationCalculator : public ObjectSensitiveClass<DensityOnGrid<
   virtual ~HirshfeldPopulationCalculator() = default;
 
   /**
-   * @brief Calculates the atom populations (if necessary) and returns them
+   * @brief Calculates the atom populations (if necessary) and returns them.
    * @return The atom populations.
    */
-  const Eigen::VectorXd& getAtomPopulations() {
+  const SpinPolarizedData<SCFMode, Eigen::VectorXd>& getAtomPopulations() {
     if (!_atomPopulations) {
       calculateHirshfeldAtomPopulations();
     }
@@ -104,7 +106,7 @@ class HirshfeldPopulationCalculator : public ObjectSensitiveClass<DensityOnGrid<
   std::shared_ptr<SystemController> _system;
   std::shared_ptr<DensityOnGridController<SCFMode>> _densOnGrid;
   std::shared_ptr<BasisController> _basis;
-  std::unique_ptr<Eigen::VectorXd> _atomPopulations;
+  std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> _atomPopulations;
 };
 } // namespace Serenity
 #endif /* POSTSCF_ANALYSIS_HIRSHFELDPOPULATIONCALCULATOR_H_ */

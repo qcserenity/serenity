@@ -93,8 +93,8 @@ TEST_F(OrbitalAlignerTest, test_kineticAlign) {
   locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO;
   locTask.run();
   auto libint = Libint::getSharedPtr();
-  auto templateInts = libint->compute1eInts(libint2::Operator::kinetic, templateSystem->getBasisController());
-  auto ints = libint->compute1eInts(libint2::Operator::kinetic, system->getBasisController());
+  auto templateInts = libint->compute1eInts(LIBINT_OPERATOR::kinetic, templateSystem->getBasisController());
+  auto ints = libint->compute1eInts(LIBINT_OPERATOR::kinetic, system->getBasisController());
 
   auto coeff_template = templateSystem->getActiveOrbitalController<RESTRICTED>()->getCoefficients();
   auto coeff = system->getActiveOrbitalController<RESTRICTED>()->getCoefficients();

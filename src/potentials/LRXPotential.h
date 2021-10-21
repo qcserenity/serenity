@@ -37,8 +37,7 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 class LRXPotential : public Potential<SCFMode>,
                      public ObjectSensitiveClass<Basis>,
-                     public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
-                     public IncrementalFockMatrix<SCFMode> {
+                     public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
  public:
   /**
    * @brief Constructor.
@@ -99,12 +98,6 @@ class LRXPotential : public Potential<SCFMode>,
   virtual ~LRXPotential() = default;
 
  private:
-  /**
-   * @brief Matches each basis function to its respective atom center.
-   * @param basis The AtomCenteredBasisController holding tha basis to be mapped.
-   * @return A vector mapping a basis function index to an atom index.
-   */
-  static Eigen::VectorXi createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis);
   ///@brief The system
   std::weak_ptr<SystemController> _systemController;
   ///@brief The exchange ratio.
@@ -119,8 +112,8 @@ class LRXPotential : public Potential<SCFMode>,
   bool _outOfDate;
   ///@brief Screening Threshold for the current iteration
   double _screening;
-  ///@brief Internal iteration counter
-  unsigned int _counter = 0;
+  // Helper for the incremental fock matrix construction.
+  std::shared_ptr<IncrementalFockMatrix<SCFMode>> _incrementHelper;
 };
 
 } /* namespace Serenity */

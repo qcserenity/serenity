@@ -18,9 +18,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "potentials/ABFockMatrixConstruction/ABExchangePotential.h"
+/* Include Serenity Internal Headers */
 #include "basis/ABShellPairCalculator.h"
+#include "basis/Basis.h"
+#include "integrals/wrappers/Libint.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -32,7 +35,11 @@ ABExchangePotential<SCFMode>::ABExchangePotential(std::shared_ptr<SystemControll
                                                   std::shared_ptr<BasisController> basisB,
                                                   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> dMats,
                                                   double exchangeRatio)
-  : ABPotential<SCFMode>(basisA, basisB), _actSystem(actSystem), _densityMatrices(dMats), _exchangeRatio(exchangeRatio) {
+  : ABPotential<SCFMode>(basisA, basisB),
+    _actSystem(actSystem),
+    _libint(Libint::getSharedPtr()),
+    _densityMatrices(dMats),
+    _exchangeRatio(exchangeRatio) {
   // Basis
   this->_basisA->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_basisB->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
@@ -56,15 +63,19 @@ SPMatrix<Options::SCF_MODES::RESTRICTED>& ABExchangePotential<Options::SCF_MODES
       f_AB_spin.setZero();
     };
     double pre = 0.5 * _exchangeRatio;
+    double maxD = 1;
+    for (const auto& densityC : _densityMatrices)
+      maxD = std::max(maxD, densityC->getDensityMatrix().total().array().abs().maxCoeff());
     // intialize libint
-    libint2::Operator op = libint2::Operator::coulomb;
+    LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb;
     _libint->keepEngines(op, 0, 4);
-    _libint->initialize(op, 0, 4);
+    _libint->initialize_plain(op, 4, std::numeric_limits<double>::epsilon(), maxD,
+                              std::max(_basisA->getMaxNumberOfPrimitives(), _basisB->getMaxNumberOfPrimitives()));
 
     for (const auto& densityC : _densityMatrices) {
       auto densityMatrixC = densityC->getDensityMatrix();
       const auto& basisContC = densityC->getDensityMatrix().getBasisController();
-      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().total();
+      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().shellWiseAbsMax();
 
       // Calculate shellPairData
       const auto shellPairsAC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisA, basisContC);
@@ -109,12 +120,7 @@ SPMatrix<Options::SCF_MODES::RESTRICTED>& ABExchangePotential<Options::SCF_MODES
           if (p.factor * q.factor < intThreshold)
             break;
           const unsigned int c2 = q.bf2;
-          double densMax = densMatrixCTotal
-                               .block(basisContC->extendedIndex(c1), basisContC->extendedIndex(c2),
-                                      basisC[c1]->getNContracted(), basisC[c2]->getNContracted())
-                               .array()
-                               .abs()
-                               .maxCoeff();
+          double densMax = densMatrixCTotal(c1, c2);
           if (densMax * p.factor * q.factor < intThreshold)
             continue;
           const auto& basC2 = *basisC[c2];
@@ -175,15 +181,19 @@ SPMatrix<Options::SCF_MODES::UNRESTRICTED>& ABExchangePotential<Options::SCF_MOD
       f_AB_spin.setZero();
     };
     double pre = 1.0 * _exchangeRatio;
+    double maxD = 1;
+    for (const auto& densityC : _densityMatrices)
+      maxD = std::max(maxD, densityC->getDensityMatrix().total().array().abs().maxCoeff());
     // intialize libint
-    libint2::Operator op = libint2::Operator::coulomb;
+    LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb;
     _libint->keepEngines(op, 0, 4);
-    _libint->initialize(op, 0, 4);
+    _libint->initialize_plain(op, 4, std::numeric_limits<double>::epsilon(), maxD,
+                              std::max(_basisA->getMaxNumberOfPrimitives(), _basisB->getMaxNumberOfPrimitives()));
 
     for (const auto& densityC : _densityMatrices) {
       auto densityMatrixC = densityC->getDensityMatrix();
       const auto& basisContC = densityC->getDensityMatrix().getBasisController();
-      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().total();
+      const Eigen::MatrixXd densMatrixCTotal = densityC->getDensityMatrix().shellWiseAbsMax().total();
 
       // Calculate shellPairData
       const auto shellPairsAC = ABShellPairCalculator::calculateShellPairData_AB(this->_basisA, basisContC);
@@ -228,12 +238,7 @@ SPMatrix<Options::SCF_MODES::UNRESTRICTED>& ABExchangePotential<Options::SCF_MOD
           if (p.factor * q.factor < intThreshold)
             break;
           const unsigned int c2 = q.bf2;
-          double densMax = densMatrixCTotal
-                               .block(basisContC->extendedIndex(c1), basisContC->extendedIndex(c2),
-                                      basisC[c1]->getNContracted(), basisC[c2]->getNContracted())
-                               .array()
-                               .abs()
-                               .maxCoeff();
+          double densMax = densMatrixCTotal(c1, c2);
           if (densMax * p.factor * q.factor < intThreshold)
             continue;
           const auto& basC2 = *basisC[c2];

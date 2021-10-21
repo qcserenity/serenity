@@ -128,6 +128,14 @@ class Point {
     return *this;
   }
 
+  /**
+   * @brief A function to check if two points are identical.
+   * @param point The other point.
+   * @param precision Precision to compare two doubles.
+   * @return A bool determining if the two points are identical.
+   */
+  bool isSamePoint(const Point& point, double precision);
+
  protected:
   double _x;
   double _y;

@@ -24,7 +24,6 @@
 #include "grid/GridController.h" //GridController
 
 namespace Serenity {
-using namespace std;
 
 CubeFileWriter::CubeFileWriter(const Settings& settings, const PlotTaskSettings& cubeGridSettings)
   : DataOnGridWriter(settings),
@@ -35,12 +34,13 @@ CubeFileWriter::CubeFileWriter(const Settings& settings, const PlotTaskSettings&
     _gridSpacing(_cubeGridSettings.gridSpacing.data()),
     _borderWidth(_cubeGridSettings.borderWidth * ANGSTROM_TO_BOHR){};
 
-shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(string filename, shared_ptr<const Geometry> geometry) {
-  return writeHeaderAndCreateGrid(vector<string>{filename}, geometry);
+std::shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(std::string filename,
+                                                                         std::shared_ptr<const Geometry> geometry) {
+  return writeHeaderAndCreateGrid(std::vector<std::string>{filename}, geometry);
 } /* writeHeaderAndCreateGrid */
 
-shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(vector<string> filenames,
-                                                                    shared_ptr<const Geometry> geometry) {
+std::shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(std::vector<std::string> filenames,
+                                                                         std::shared_ptr<const Geometry> geometry) {
   /*
    * Create grid
    */
@@ -85,7 +85,7 @@ shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(vector<strin
    * Print headers
    */
   for (const auto& filename : filenames) {
-    string fullFileName = filename + ".cube";
+    std::string fullFileName = filename + ".cube";
     FILE* file = fopen(fullFileName.data(), "w");
     fprintf(file, "%s\n\n", "CUBE FILE");
     const unsigned int nAtoms = geometry->getNAtoms();
@@ -100,14 +100,14 @@ shared_ptr<GridController> CubeFileWriter::writeHeaderAndCreateGrid(vector<strin
     }
     fclose(file);
   }
-  return make_shared<GridController>(unique_ptr<Grid>(new Grid(move(points), move(weights))));
+  return std::make_shared<GridController>(std::unique_ptr<Grid>(new Grid(std::move(points), std::move(weights))));
 } /* writeHeaderAndCreateGrid */
 
-void CubeFileWriter::writeData(string filename, const Eigen::VectorXd& data) {
+void CubeFileWriter::writeData(std::string filename, const Eigen::VectorXd& data) {
   /*
    * Print data
    */
-  string fullFileName = filename + ".cube";
+  std::string fullFileName = filename + ".cube";
   FILE* file = fopen(fullFileName.data(), "a");
   for (unsigned int i = 0; i < data.size(); i++) {
     fprintf(file, "%g ", data[i]);

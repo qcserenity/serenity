@@ -36,7 +36,6 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
 GridFactory::GridFactory(Options::GRID_TYPES flavour, unsigned int smoothing, const Options::RADIAL_GRID_TYPES radialType,
                          const Options::SPHERICAL_GRID_TYPES sphericalType, unsigned int accuracyLevel, double weightThreshold)
@@ -50,7 +49,7 @@ GridFactory::GridFactory(Options::GRID_TYPES flavour, unsigned int smoothing, co
 /*
  * This implementation is according to: A.D. Becke, J.Chem.Phys. 88 (1988), 2547.
  */
-std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry> geometry) {
+std::unique_ptr<AtomCenteredGrid> GridFactory::produce(std::shared_ptr<const Geometry> geometry) {
   Timings::takeTime("Tech. -     Grid Constructions");
   assert(geometry);
 
@@ -114,7 +113,7 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry
    *   Construct Initial Grid Per Atom
    * ===================================*/
   // First atom explicitly, to have the Singletons initialized
-  vector<shared_ptr<const AtomGrid>> atomGrids(nAtoms, nullptr);
+  std::vector<std::shared_ptr<const AtomGrid>> atomGrids(nAtoms, nullptr);
   const auto& currentGridAtm = atoms[0];
   /* get the reference grid of the current atom type */
   atomGrids[0] = AtomGridFactory::produce(_radialType, _sphericalType, currentGridAtm->getAtomType(), _accuracyLevel);
@@ -144,7 +143,7 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry
       if (atomDistPtr[l + nAtoms * k] < 40.0)
         significantAtoms.push_back(l);
       if (l != k)
-        minAtomDist = min(minAtomDist, atomDistPtr[l + nAtoms * k]);
+        minAtomDist = std::min(minAtomDist, atomDistPtr[l + nAtoms * k]);
     }
     /* get the reference grid of the current atom type */
     const auto& currentAtomGrid = atomGrids[k];
@@ -275,7 +274,7 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry
   /* ============================
    *   Set indices needed later
    * ============================*/
-  std::vector<pair<unsigned int, unsigned int>> gridIndicesOfAtoms(nAtoms);
+  std::vector<std::pair<unsigned int, unsigned int>> gridIndicesOfAtoms(nAtoms);
   int sum = 0;
   unsigned int nGridPointsTot = atomGrids[nAtoms - 1]->nPoints();
   for (unsigned int i = 0; i < nAtoms - 1; i++) {
@@ -291,8 +290,8 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry
   /* ============================
    *   Merge atomwise grid data
    * ============================*/
-  auto gridPoints = unique_ptr<Eigen::Matrix3Xd>(new Eigen::Matrix3Xd(3, nGridPointsRelevant));
-  auto weights = unique_ptr<Eigen::VectorXd>(new Eigen::VectorXd(nGridPointsRelevant));
+  auto gridPoints = std::unique_ptr<Eigen::Matrix3Xd>(new Eigen::Matrix3Xd(3, nGridPointsRelevant));
+  auto weights = std::unique_ptr<Eigen::VectorXd>(new Eigen::VectorXd(nGridPointsRelevant));
 
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int k = 0; k < nAtoms; ++k) {
@@ -310,8 +309,8 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(shared_ptr<const Geometry
   assert(nGridPointsRelevant == weights->size());
 
   if (iOOptions.printGridInfo) {
-    print((string) "Total number of grid points (before weight cutoff):    " + nGridPointsTot);
-    print((string) "Total number of grid points (after weight cutoff):     " + nGridPointsRelevant);
+    print((std::string) "Total number of grid points (before weight cutoff):    " + nGridPointsTot);
+    print((std::string) "Total number of grid points (after weight cutoff):     " + nGridPointsRelevant);
     print("");
   }
   timeTaken(2, "Setup Grid");

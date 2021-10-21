@@ -36,16 +36,15 @@
 #include <sstream>
 
 namespace Serenity {
-using namespace std;
 
-Geometry::Geometry(vector<shared_ptr<Atom>> atoms)
+Geometry::Geometry(std::vector<std::shared_ptr<Atom>> atoms)
   : _atoms(atoms),
-    _minX(numeric_limits<double>::max()),
-    _minY(numeric_limits<double>::max()),
-    _minZ(numeric_limits<double>::max()),
-    _maxX(numeric_limits<double>::lowest()),
-    _maxY(numeric_limits<double>::lowest()),
-    _maxZ(numeric_limits<double>::lowest()),
+    _minX(std::numeric_limits<double>::max()),
+    _minY(std::numeric_limits<double>::max()),
+    _minZ(std::numeric_limits<double>::max()),
+    _maxX(std::numeric_limits<double>::lowest()),
+    _maxY(std::numeric_limits<double>::lowest()),
+    _maxZ(std::numeric_limits<double>::lowest()),
     _coreCoreRepulsion(0.0),
     _centerOfMass(Point(0.0, 0.0, 0.0)),
     _coreCoreRepulsionUpToDate(false),
@@ -69,13 +68,13 @@ Geometry::Geometry(vector<shared_ptr<Atom>> atoms)
 }
 
 Geometry::Geometry()
-  : _atoms(vector<shared_ptr<Atom>>(0, nullptr)),
-    _minX(numeric_limits<double>::max()),
-    _minY(numeric_limits<double>::max()),
-    _minZ(numeric_limits<double>::max()),
-    _maxX(numeric_limits<double>::lowest()),
-    _maxY(numeric_limits<double>::lowest()),
-    _maxZ(numeric_limits<double>::lowest()),
+  : _atoms(std::vector<std::shared_ptr<Atom>>(0, nullptr)),
+    _minX(std::numeric_limits<double>::max()),
+    _minY(std::numeric_limits<double>::max()),
+    _minZ(std::numeric_limits<double>::max()),
+    _maxX(std::numeric_limits<double>::lowest()),
+    _maxY(std::numeric_limits<double>::lowest()),
+    _maxZ(std::numeric_limits<double>::lowest()),
     _coreCoreRepulsion(0.0),
     _centerOfMass(Point(0.0, 0.0, 0.0)),
     _coreCoreRepulsionUpToDate(false),
@@ -104,6 +103,85 @@ Geometry::Geometry(std::vector<std::string> atomSymbols, Matrix<double> atomPosi
     if (_atoms[i]->getZ() > _maxZ || i == 0)
       _maxZ = _atoms[i]->getZ();
   }
+}
+
+double Geometry::getCoreCoreRepulsion() const {
+  if (!_coreCoreRepulsionUpToDate) {
+    calcCoreCoreRepulsion();
+  }
+  return _coreCoreRepulsion;
+}
+
+Point Geometry::getCenterOfMass() const {
+  if (!_centerOfMassUpToDate) {
+    calcCenterOfMass();
+  }
+  return _centerOfMass;
+}
+
+std::vector<std::string> Geometry::getAtomSymbols() const {
+  std::vector<std::string> symbols;
+  for (auto& atom : this->_atoms) {
+    symbols.push_back(atom->getAtomType()->getElementSymbol());
+  }
+  return symbols;
+}
+
+void Geometry::deleteAtom(unsigned int i) {
+  std::vector<std::shared_ptr<Atom>>::iterator it = _atoms.begin();
+  std::advance(it, i);
+  _atoms.erase(it);
+  notify();
+};
+
+bool Geometry::hasAtomsWithECPs() const {
+  bool atomsWithECPs = false;
+  for (auto& atom : _atoms) {
+    if (atom->usesECP())
+      atomsWithECPs = true;
+  }
+  return atomsWithECPs;
+}
+
+Geometry& Geometry::operator+=(const Geometry& rhs) {
+  for (auto atom : rhs.getAtoms()) {
+    this->_atoms.push_back(atom);
+    atom->addSensitiveObject(this->_self);
+    if (atom->getX() < this->_minX) {
+      this->_minX = atom->getX();
+    }
+    if (atom->getY() < this->_minY) {
+      this->_minY = atom->getY();
+    }
+    if (atom->getZ() < this->_minZ) {
+      this->_minZ = atom->getZ();
+    }
+    if (atom->getX() > this->_maxX) {
+      this->_maxX = atom->getX();
+    }
+    if (atom->getY() > this->_maxY) {
+      this->_maxY = atom->getY();
+    }
+    if (atom->getZ() > this->_maxZ) {
+      this->_maxZ = atom->getZ();
+    }
+  }
+  return *this;
+}
+
+bool Geometry::operator==(const Geometry& rhs) {
+  bool same;
+  if (_atoms.size() == rhs.getAtoms().size()) {
+    for (unsigned iAtom = 0; iAtom < _atoms.size(); ++iAtom) {
+      same = (*(_atoms[iAtom]) == *(rhs.getAtoms()[iAtom])) ? true : false;
+      if (!same)
+        break;
+    }
+  }
+  else {
+    same = false;
+  }
+  return same;
 }
 
 void Geometry::calcCoreCoreRepulsion() const {
@@ -157,6 +235,7 @@ void Geometry::notify() {
   }
   _coreCoreRepulsionUpToDate = false;
   _centerOfMassUpToDate = false;
+  this->notifyObjects();
 }
 
 void Geometry::print() const {
@@ -177,8 +256,8 @@ void Geometry::printToFile(std::string baseName, std::string id) const {
   for (auto atom : _atoms) {
     //    std::string dummy=atom->isDummy()? ":" : ""; // The name already contains the information whether it is a dummy.
     file << atom->getAtomType()->getName() //<< dummy
-         << "  " << fixed << std::setprecision(12) << atom->getX() * BOHR_TO_ANGSTROM << "  " << fixed
-         << std::setprecision(12) << atom->getY() * BOHR_TO_ANGSTROM << "  " << fixed << std::setprecision(12)
+         << "  " << std::fixed << std::setprecision(12) << atom->getX() * BOHR_TO_ANGSTROM << "  " << std::fixed
+         << std::setprecision(12) << atom->getY() * BOHR_TO_ANGSTROM << "  " << std::fixed << std::setprecision(12)
          << atom->getZ() * BOHR_TO_ANGSTROM << std::endl;
   }
   file.close();
@@ -304,7 +383,7 @@ Matrix<double> Geometry::getAlignedCoordinates() const {
 void Geometry::setCoordinates(const Eigen::MatrixXd& newCoords) const {
   assert(newCoords.rows() == this->getNAtoms());
   assert(newCoords.cols() == 3);
-  for (unsigned int i = 0; i != this->getNAtoms(); ++i) {
+  for (unsigned int i = 0; i < this->getNAtoms(); ++i) {
     this->_atoms[i]->setX(newCoords(i, 0));
     this->_atoms[i]->setY(newCoords(i, 1));
     this->_atoms[i]->setZ(newCoords(i, 2));
@@ -543,10 +622,10 @@ void Geometry::addAsDummy(const Geometry& add, bool toFront) {
       continue;
     auto oldAtomType = atom->getAtomType();
     // Create new dummy atomtype
-    auto atomType =
-        std::make_shared<AtomType>(oldAtomType->getName() + ":", oldAtomType->getNuclearCharge(), oldAtomType->getMass(),
-                                   oldAtomType->getBraggSlaterRadius(), oldAtomType->getVanDerWaalsRadius(),
-                                   oldAtomType->getUFFRadius(), oldAtomType->getOccupations(), true);
+    auto atomType = std::make_shared<AtomType>(
+        oldAtomType->getName() + ":", oldAtomType->getNuclearCharge(), oldAtomType->getMass(),
+        oldAtomType->getBraggSlaterRadius(), oldAtomType->getVanDerWaalsRadius(), oldAtomType->getUFFRadius(),
+        oldAtomType->getNCoreElectrons(), oldAtomType->getOccupations(), oldAtomType->getChemicalHardness(), true);
 
     std::string basisLabel = atom->getPrimaryBasisLabel();
     auto basisFunctions = atom->getBasisFunctions();
@@ -565,6 +644,45 @@ void Geometry::addAsDummy(const Geometry& add, bool toFront) {
     _atoms.insert(_atoms.end(), dummyAtoms.begin(), dummyAtoms.end());
   }
   this->notifyObjects();
+}
+
+void Geometry::addDummy(const Geometry& add, bool toFront) {
+  auto addAtoms = add.getAtoms();
+
+  std::vector<std::shared_ptr<Atom>> dummyAtoms;
+  for (auto atom : addAtoms) {
+    // Dummy atoms should not be added
+    if (!atom->isDummy())
+      continue;
+    dummyAtoms.push_back(atom);
+  }
+
+  if (toFront) {
+    _atoms.insert(_atoms.begin(), dummyAtoms.begin(), dummyAtoms.end());
+  }
+  else {
+    _atoms.insert(_atoms.end(), dummyAtoms.begin(), dummyAtoms.end());
+  }
+  this->notifyObjects();
+}
+
+int Geometry::getTotalEffectiveCharge() {
+  int effCharge = 0;
+  for (const auto& atom : _atoms)
+    effCharge += atom->getEffectiveCharge();
+  return effCharge;
+}
+
+void Geometry::updateCoreCoreRepulsion() {
+  _coreCoreRepulsionUpToDate = false;
+}
+
+unsigned int Geometry::getNumberOfCoreElectrons() {
+  unsigned int nCoreElectrons = 0;
+  for (const auto& atom : _atoms) {
+    nCoreElectrons += atom->getNCoreElectrons();
+  }
+  return nCoreElectrons;
 }
 
 } /* namespace Serenity */

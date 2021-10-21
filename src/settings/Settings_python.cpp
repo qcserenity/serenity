@@ -23,16 +23,14 @@
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
 
-using namespace Serenity;
-using namespace Options;
 namespace py = pybind11;
+using namespace Serenity;
 
 // Settings deepcopySettings(const Settings settings){return Settings(settings);};
 
 void export_Settings(py::module& spy) {
   py::class_<DFT>(spy, "DFTSettings", "DFT settings all set to their default values.")
       .def_readwrite("functional", &DFT::functional)
-      .def_readwrite("densityFitting", &DFT::densityFitting)
       .def_readwrite("dispersion", &DFT::dispersion);
 
   py::class_<SCF>(spy, "SCFSettings", "SCF settings all set to their default values.")
@@ -63,6 +61,7 @@ void export_Settings(py::module& spy) {
       .def_readwrite("auxJLabel", &BASIS::auxJLabel)
       .def_readwrite("makeSphericalBasis", &BASIS::makeSphericalBasis)
       .def_readwrite("integralThreshold", &BASIS::integralThreshold)
+      .def_readwrite("densityFitting", &BASIS::densityFitting)
       .def_readwrite("basisLibPath", &BASIS::basisLibPath);
 
   py::class_<GRID>(spy, "GridSettings", "Grid settings all set to their default values.")

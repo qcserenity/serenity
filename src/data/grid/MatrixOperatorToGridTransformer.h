@@ -33,8 +33,6 @@
 namespace Serenity {
 /* Forward Declarations */
 class BasisFunctionOnGridController;
-template<class T>
-class Matrix;
 
 /**
  * @class MatrixOperatorToGridTransformer MatrixOperatorToGridTransformer.h
@@ -85,7 +83,6 @@ class MatrixOperatorToGridTransformer {
    * Several overloads for this function exist to make the calculation of the Hessian (or of gradient
    * and Hessian) optional, and to treat several matrices in one run (for computational efficiency).
    *
-   * MatrixT must be derived from Eigen::MatrixXd, DataT must be derived from Eigen::VectorXd.
    */
   static Eigen::SparseVector<int> transform(const MatrixInBasis<RESTRICTED>& matrix, Eigen::VectorXd& result,
                                             BasisFunctionOnGridController& basisFunctionOnGridController) {
@@ -127,10 +124,6 @@ class MatrixOperatorToGridTransformer {
    * @param basisFunctionOnGridController
    * @param derivativeOrder
    *
-   * MatrixPairT must be derived from std::pair<MatrixT, MatrixT>, where MatrixT is derived from
-   * Matrix<double>
-   * VectorPairT must be derived from std::pair<VectorT, VectorT>, where VectorT is derived from
-   * std::vector<double>
    */
   static Eigen::SparseVector<int> transform(const MatrixInBasis<UNRESTRICTED>& matrices, DensityOnGrid<UNRESTRICTED>& results,
                                             BasisFunctionOnGridController& basisFunctionOnGridController) {

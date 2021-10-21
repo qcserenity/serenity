@@ -53,7 +53,7 @@ template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& LevelshiftPotential<SCFMode>::getMatrix() {
   if (!_potential) {
     auto& libint = Libint::getInstance();
-    auto overlap = libint.compute1eInts(libint2::Operator::overlap, this->_basis,
+    auto overlap = libint.compute1eInts(LIBINT_OPERATOR::overlap, this->_basis,
                                         _envDMatController->getDensityMatrix().getBasisController());
     _potential.reset(new FockMatrix<SCFMode>(this->_basis));
     auto& F = *_potential;

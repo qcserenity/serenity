@@ -26,7 +26,6 @@
 #include <memory>        //smrt_ptr.
 
 namespace Serenity {
-using namespace std;
 
 class IAOPopulationCalculatorTest : public ::testing::Test {
  protected:

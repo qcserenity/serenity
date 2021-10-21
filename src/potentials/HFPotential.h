@@ -51,8 +51,7 @@ class AtomCenteredBasisController;
 template<Options::SCF_MODES SCFMode>
 class HFPotential : public Potential<SCFMode>,
                     public ObjectSensitiveClass<Basis>,
-                    public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
-                    public IncrementalFockMatrix<SCFMode> {
+                    public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
  public:
   /**
    * @brief Constructor
@@ -62,16 +61,14 @@ class HFPotential : public Potential<SCFMode>,
    * @param prescreeningIncrementStart The start integrals prescreening threshold for the incremental Fock-matrix build
    * @param prescreeningIncrementEnd   The end integrals prescreening threshold for the incremental Fock-matrix build
    * @param incrementSteps             The number of steps of an incremental Fock-matrix build until it gets rebuild
-   * @param externalSplitting          This parameter enforces a split evaluation of exchange and Coulomb interactions
-   *                                     in DFT if true, and if density fitting is allowed [default true].
-   * @param lrxRatio                   The amount of long-range exchange added [default 0.0].
-   * @param mu                         The range separation paramter (only used if lrxRatio !=0) [default 0.3].
+   * @param clear4CenterCache          If true, the 4-center integral cache is deleted upon destruction of the
+   *                                   potential.
    */
   HFPotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
               const double xRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
-              double prescreeningIncrementEnd, unsigned int incrementSteps);
+              double prescreeningIncrementEnd, unsigned int incrementSteps, bool clear4CenterCache = true);
   /// @brief Default destructor.
-  virtual ~HFPotential() = default;
+  virtual ~HFPotential();
   /**
    * @brief Getter for the actual potential.
    *
@@ -87,7 +84,7 @@ class HFPotential : public Potential<SCFMode>,
    * @param F      A reference to the potential to be added to.
    * @param deltaP An increment of the density matrix.
    */
-  void addToMatrix(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP);
+  virtual void addToMatrix(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP);
 
   /**
    * @brief Getter for the energy associated with this potential.
@@ -123,22 +120,8 @@ class HFPotential : public Potential<SCFMode>,
   void notify() override final {
     _outOfDate = true;
   };
-  /**
-   * @brief Resett the (incrementally build) Fock matrix.
-   *
-   * Overrides the already existing implementation in IncrementalFockMatrix.
-   * @param f              The matrix to be zeroed.
-   * @param nextTreshold   The next integral prescreening threshold.
-   */
-  void resetFockMatrix(FockMatrix<SCFMode>& f, double nextTreshold) override;
 
- private:
-  /**
-   * @brief Matches each basis function to its respective atom center.
-   * @param basis The AtomCenteredBasisController holding tha basis to be mapped.
-   * @return A vector mapping a basis function index to an atom index.
-   */
-  static Eigen::VectorXi createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis);
+ protected:
   ///@brief The underlying systemController
   std::weak_ptr<SystemController> _systemController;
   ///@brief The exchange ratio.
@@ -153,6 +136,10 @@ class HFPotential : public Potential<SCFMode>,
   bool _outOfDate;
   ///@brief Screening Threshold for the current iteration
   double _screening;
+  /// @brief Helper for the incremental fock matrix construction.
+  std::shared_ptr<IncrementalFockMatrix<SCFMode>> _incrementHelper;
+  /// @brief If true, the 4-center integral cache of the system is deleted upon potential destruction.
+  bool _clear4CenterCache;
 };
 
 } /* namespace Serenity */

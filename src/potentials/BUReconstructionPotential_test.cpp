@@ -28,7 +28,9 @@
 #include "geometry/Geometry.h"
 #include "grid/GridController.h"
 #include "grid/GridControllerFactory.h"
+#include "integrals/wrappers/Libint.h"
 #include "settings/DFTOptions.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -44,16 +46,16 @@ class BUReconstructionPotentialTest : public ::testing::Test {
 
   static void SetUpTestCase() {
     auto& libint = Libint::getInstance();
-    libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
-    libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
 };
 

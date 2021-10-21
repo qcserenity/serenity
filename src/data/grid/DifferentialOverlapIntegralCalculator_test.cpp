@@ -24,6 +24,7 @@
 #include "data/ElectronicStructure.h"                        //Run scfs.
 #include "data/OrbitalController.h"                          //Orbital coefficients.
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"  //Needed for DOI calculation.
+#include "system/SystemController.h"                         //Test systems.
 #include "testsupply/SystemController__TEST_SUPPLY.h"        //Test systems.
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
@@ -87,12 +88,12 @@ TEST_F(DifferentialOverlapIntegralCalculatorTest, dois_WaterOccupiedOrbitals) {
    * The functionality of the code was checked by calculating the overlap matrix (drop the square for x and y).
    * The results were accurate up to a precision of ~ 1e-5 to 1e-6.
    */
-  EXPECT_NEAR(dois(0, 0), 4.173270760012, 1e-4);
+  EXPECT_NEAR(dois(0, 0), 4.1724123596531957, 1e-4);
   EXPECT_NEAR(dois(1, 0), 8.360601159692e-01, 1e-4);
-  EXPECT_NEAR(dois(2, 0), 2.617797535506e-01, 1e-4);
-  EXPECT_NEAR(dois(3, 0), 4.031575023210e-01, 1e-4);
-  EXPECT_NEAR(dois(4, 0), 3.325644850940e-01, 1e-4);
-  EXPECT_NEAR(dois(1, 1), 2.881364284062e-01, 1e-4);
+  EXPECT_NEAR(dois(2, 0), 0.26167785576210734, 1e-4);
+  EXPECT_NEAR(dois(3, 0), 0.40303050173570215, 1e-4);
+  EXPECT_NEAR(dois(4, 0), 0.33241201125842823, 1e-4);
+  EXPECT_NEAR(dois(1, 1), 0.28794496068802067, 1e-4);
   EXPECT_NEAR(dois(2, 2), 2.430418783570e-01, 1e-4);
   EXPECT_NEAR(dois(3, 3), 2.868143703955e-01, 1e-4);
   EXPECT_NEAR(dois(4, 4), 3.080575761869e-01, 1e-4);

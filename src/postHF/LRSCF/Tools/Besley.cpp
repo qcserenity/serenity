@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/Besley.h"
-
 /* Include Serenity Internal Headers */
 #include "analysis/populationAnalysis/MullikenPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
@@ -28,6 +27,7 @@
 #include "data/OrbitalController.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/DensityMatrix.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "system/SystemController.h"
 
 namespace Serenity {

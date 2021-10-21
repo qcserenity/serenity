@@ -21,9 +21,11 @@
 #ifndef TASKS_SYSTEMADDITIONTASK_H_
 #define TASKS_SYSTEMADDITIONTASK_H_
 
+/* Include Serenity Internal Headers */
 #include "tasks/Task.h" //inherits from.
-#include <memory>       //smrt_ptr.
-#include <vector>       //std::vector.
+/* Include Std and External Headers */
+#include <memory> //smrt_ptr.
+#include <vector> //std::vector.
 
 namespace Serenity {
 
@@ -34,6 +36,20 @@ struct SystemAdditionTaskSettings {
   SystemAdditionTaskSettings() : checkSuperGeom(false), checkSuperCharge(false), addOccupiedOrbitals(true) {
   }
   REFLECTABLE((bool)checkSuperGeom, (bool)checkSuperCharge, (bool)addOccupiedOrbitals)
+ public:
+  /**
+   * @brief Parse the settings from the input an instance of this class.
+   * @param c The settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("ADD")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
 };
 /**
  * @class SystemAdditionTask SystemAdditionTask.h

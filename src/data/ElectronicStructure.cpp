@@ -22,7 +22,10 @@
 #include "data/ElectronicStructure.h"
 /* Include Serenity Internal Headers */
 #include "data/OrbitalController.h"
+#include "integrals/OneIntControllerFactory.h"
 #include "io/FormattedOutputStream.h"
+#include "io/HDF5.h"
+#include "parameters/Constants.h"
 #include "potentials/bundles/PotentialBundle.h"
 
 namespace Serenity {
@@ -88,6 +91,12 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::string fBaseName, std::sh
   _densityMatrixController->attachOrbitals(_molecularOrbitals, _densityMatrixController->getOccupations(), false);
   _molecularOrbitals->fromHDF5(fBaseName, id);
   _densityMatrixController->fromHDF5(fBaseName, id);
+  try {
+    this->fockFromHDF5(fBaseName, id);
+  }
+  catch (...) {
+    _fockMatrix = nullptr;
+  }
   if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
     fBaseName = fBaseName + ".energies.unres";
   }
@@ -108,9 +117,19 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::string fBaseName, std::sh
  * ============================== */
 
 template<Options::SCF_MODES SCFMode>
+void ElectronicStructure<SCFMode>::setFockMatrix(FockMatrix<SCFMode>& fock) {
+  _fockMatrix = std::make_shared<FockMatrix<SCFMode>>(fock);
+}
+
+template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode> ElectronicStructure<SCFMode>::getFockMatrix() {
-  assert(this->potentialsAvailable() && "Tried to generate Fock matrix without any potentials present.");
-  return this->getPotentialBundle()->getFockMatrix(this->getDensityMatrix(), _energyComponentController);
+  if (_fockMatrix) {
+    return *_fockMatrix;
+  }
+  else {
+    assert(this->potentialsAvailable() && "Tried to generate Fock matrix without any potentials present.");
+    return this->getPotentialBundle()->getFockMatrix(this->getDensityMatrix(), _energyComponentController);
+  }
 }
 
 /* ==============================
@@ -138,6 +157,32 @@ template<Options::SCF_MODES SCFMode>
 void ElectronicStructure<SCFMode>::toHDF5(std::string fBaseName, std::string id) {
   _molecularOrbitals->toHDF5(fBaseName, id);
   _densityMatrixController->toHDF5(fBaseName, id);
+  if (_fockMatrix) {
+    std::string name = fBaseName;
+    if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
+      name += ".FockMatrix.unres.h5";
+    }
+    else {
+      name += ".FockMatrix.res.h5";
+    }
+    HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
+    const auto& fock = *_fockMatrix;
+    unsigned int spinCounter = 0;
+    for_spin(fock) {
+      if (SCFMode == Options::SCF_MODES::RESTRICTED) {
+        HDF5::save(file, "FockMatrix", fock_spin);
+      }
+      else if (SCFMode == Options::SCF_MODES::UNRESTRICTED && spinCounter == 0) {
+        HDF5::save(file, "FockMatrix_alpha", fock_spin);
+      }
+      else if (SCFMode == Options::SCF_MODES::UNRESTRICTED && spinCounter == 1) {
+        HDF5::save(file, "FockMatrix_beta", fock_spin);
+      }
+      spinCounter++;
+    };
+    HDF5::save_scalar_attribute(file, "ID", id);
+    file.close();
+  }
   if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
     fBaseName = fBaseName + ".energies.unres";
   }
@@ -145,6 +190,33 @@ void ElectronicStructure<SCFMode>::toHDF5(std::string fBaseName, std::string id)
     fBaseName = fBaseName + ".energies.res";
   }
   _energyComponentController->toFile(fBaseName, id);
+}
+
+template<>
+void ElectronicStructure<Options::SCF_MODES::RESTRICTED>::fockFromHDF5(std::string fBaseName, std::string id) {
+  HDF5::Filepath name(fBaseName + ".FockMatrix.res.h5");
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::dataset_exists(file, "FockMatrix");
+  HDF5::attribute_exists(file, "ID");
+  HDF5::check_attribute(file, "ID", id);
+  _fockMatrix = std::make_shared<FockMatrix<Options::SCF_MODES::RESTRICTED>>(
+      FockMatrix<Options::SCF_MODES::RESTRICTED>(_oneEIntController->getBasisController()));
+  HDF5::load(file, "FockMatrix", *_fockMatrix);
+  file.close();
+}
+template<>
+void ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>::fockFromHDF5(std::string fBaseName, std::string id) {
+  HDF5::Filepath name(fBaseName + ".FockMatrix.unres.h5");
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::dataset_exists(file, "FockMatrix_alpha");
+  HDF5::dataset_exists(file, "FockMatrix_beta");
+  HDF5::attribute_exists(file, "ID");
+  HDF5::check_attribute(file, "ID", id);
+  _fockMatrix = std::make_shared<FockMatrix<Options::SCF_MODES::UNRESTRICTED>>(
+      FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_oneEIntController->getBasisController()));
+  HDF5::load(file, "FockMatrix_alpha", _fockMatrix->alpha);
+  HDF5::load(file, "FockMatrix_beta", _fockMatrix->beta);
+  file.close();
 }
 
 template<>
@@ -184,7 +256,7 @@ void ElectronicStructure<Options::SCF_MODES::RESTRICTED>::printMOEnergies() cons
   printf("%4s %5s  %6s %12s %19s\n", "", " # ", " Occ. ", " Hartree ", "   eV   ");
   printf("%4s %5s  %6s %12s %19s\n", "", "---", "------", "---------", "--------");
   for (unsigned int i = firstToPrint; i < nToPrint + firstToPrint; i++) {
-    if (eigenvalues[i] == numeric_limits<double>::infinity())
+    if (eigenvalues[i] == std::numeric_limits<double>::infinity())
       continue;
     printf("%4s %5d   %4.2f %+15.10f %+19.10f\n", "", (i + 1), occ[i], eigenvalues[i], eigenvalues[i] * HARTREE_TO_EV);
   }

@@ -28,6 +28,7 @@ namespace Serenity {
 
 /* Forward Declarations */
 class DomainOverlapMatrixController;
+class OrbitalPair;
 
 /**
  * @class localMP2Settings LocalMP2.h
@@ -73,7 +74,7 @@ struct localMP2Settings {
  * PNOs which diagonalize the pair density matrix. The PNOs are then rotated again that they diagonalize the fock
  * matrix. This reduces the number of PAOs/PNOs significantly and increases the computational speed.
  *
- * Orbital pairs are prescreened based on their differential overlap and an upper bound to the dipole approximation of
+ * Orbital pairs are precreened based on their differential overlap and an upper bound to the dipole approximation of
  * the pair energies.
  *
  * If you are interesed in the theory, have a look into:\n
@@ -97,13 +98,23 @@ class LocalMP2 {
    */
   virtual ~LocalMP2() = default;
   /**
-   * @brief Calculates the energy corrections.
+   * @brief Calculates the energy corrections. Pairs are constructed on the fly.
    * @return The energy corrections order as:\n
    *         LMP2 pair energies,\n
    *         dipole approximation,\n
    *         PNO truncation
    */
   Eigen::VectorXd calculateEnergyCorrection();
+
+  /**
+   * @brief Calculates the energy corrections for a given set of pairs..
+   * @param pairs The pairs.
+   * @return The energy corrections order as:\n
+   *         LMP2 pair energies,\n
+   *         dipole approximation,\n
+   *         PNO truncation
+   */
+  Eigen::VectorXd calculateEnergyCorrection(std::vector<std::shared_ptr<OrbitalPair>> pairs);
   /**
    * @brief The settings. More details are above.
    */
@@ -113,11 +124,14 @@ class LocalMP2 {
   // The local correlation controler.
   std::shared_ptr<LocalCorrelationController> _localCorrelationController;
   // Calculate (ia|jb) integrals for all significant pairs.
-  void generateExchangeIntegrals();
+  void generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
+                                 std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
   // Optimize the amplitudes.
-  void optimizeAmplitudes();
+  void optimizeAmplitudes(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
+                          std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
   // Calculate the energy
-  Eigen::VectorXd calculateEnergy();
+  Eigen::VectorXd calculateEnergy(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
+                                  std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
 };
 
 } /* namespace Serenity */

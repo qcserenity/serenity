@@ -21,7 +21,6 @@
 /* Include Serenity Internal Headers */
 #include "math/optimizer/SteepestDescent.h"
 #include "parameters/Constants.h"
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 

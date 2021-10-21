@@ -27,8 +27,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-using namespace Serenity;
 namespace py = pybind11;
+using namespace Serenity;
 
 static std::shared_ptr<GridController> createGridControllerPtr1(std::vector<double> x, std::vector<double> y,
                                                                 std::vector<double> z, std::vector<double> w) {

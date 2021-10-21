@@ -64,11 +64,13 @@ class ERIPotential : public Potential<SCFMode>,
    *                                     in DFT if true, and if density fitting is allowed [default true].
    * @param lrxRatio                   The amount of long-range exchange added [default 0.0].
    * @param mu                         The range separation paramter (only used if lrxRatio !=0) [default 0.3].
+   * @param clear4CenterCache          If true, the 4-center integral cache is deleted upon destruction of the
+   *                                   potential.
    */
-  ERIPotential(std::shared_ptr<SystemController> systemController,
-               std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double xRatio,
-               const double prescreeningThreshold, double prescreeningIncrementStart, double prescreeningIncrementEnd,
-               unsigned int incrementSteps, bool externalSplitting = true, double lrxRatio = 0.0, double mu = 0.3);
+  ERIPotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
+               const double xRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
+               double prescreeningIncrementEnd, unsigned int incrementSteps, bool externalSplitting = true,
+               double lrxRatio = 0.0, double mu = 0.3, bool clear4CenterCache = true);
   /// @brief Default destructor.
   virtual ~ERIPotential() = default;
   /**

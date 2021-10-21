@@ -33,8 +33,7 @@
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
 
-using namespace Serenity;
-using namespace Options;
+using namespace Serenity::Options;
 namespace py = pybind11;
 
 void export_Options(py::module& spy) {
@@ -69,10 +68,6 @@ void export_Options(py::module& spy) {
       .value("STATIC", DAMPING_ALGORITHMS::STATIC)
       .value("SERIES", DAMPING_ALGORITHMS::SERIES)
       .value("DYNAMIC", DAMPING_ALGORITHMS::DYNAMIC)
-      .export_values();
-  py::enum_<MULTIPLICITY>(spy, "MULTIPLICITY")
-      .value("SINGLET", MULTIPLICITY::SINGLET)
-      .value("TRIPLET", MULTIPLICITY::TRIPLET)
       .export_values();
   py::enum_<BASIS_PURPOSES>(spy, "BASIS_PURPOSES")
       .value("DEFAULT", BASIS_PURPOSES::DEFAULT)

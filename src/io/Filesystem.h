@@ -27,6 +27,12 @@
 namespace Serenity {
 
 /**
+ * @brief Removes any Serenity-system files at the given path and name.
+ * @param path        The path to the system directory.
+ * @param systemName  The file base name.
+ */
+void removeSystemFiles(std::string path, std::string systemName);
+/**
  * @brief Checks if a directory or path exists.
  * @param path The path to check for.
  * @return true  If the path exists.

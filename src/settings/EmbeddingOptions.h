@@ -21,6 +21,7 @@
 #ifndef SETTINGS_EMBEDDINGOPTIONS_H_
 #define SETTINGS_EMBEDDINGOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -47,6 +48,19 @@ enum class KIN_EMBEDDING_MODES {
 };
 template<>
 void resolve<KIN_EMBEDDING_MODES>(std::string& value, KIN_EMBEDDING_MODES& field);
+
+template<>
+void resolve<std::vector<KIN_EMBEDDING_MODES>>(std::string& value, std::vector<KIN_EMBEDDING_MODES>& field);
+/**
+ * Embedding modes which can be used for the BS-DFT task:
+ * NONE: KS-DFT calculation
+ * ISOLATED :
+ * FDE : Frozen Density Embedding
+ * FAT : Freeze and Thaw embedding
+ */
+enum class EMBEDDING_SCHEME { NONE = 0, ISOLATED = 1, FDE = 2, FAT = 3 };
+template<>
+void resolve<EMBEDDING_SCHEME>(std::string& value, EMBEDDING_SCHEME& field);
 
 } /* namespace Options */
 } /* namespace Serenity */

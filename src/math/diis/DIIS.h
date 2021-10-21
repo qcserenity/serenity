@@ -21,7 +21,6 @@
 #define DIIS_H_
 /* Include Serenity Internal Headers */
 #include "math/optimizer/Optimizer.h"
-/* Experimental FaT convergence acceleration */
 #include "misc/VectorOnDiskStorageController.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>

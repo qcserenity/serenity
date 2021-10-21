@@ -33,11 +33,10 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
-unique_ptr<ElectronicStructure<SCFMode>>
-HCoreGuessCalculator<SCFMode>::calculateInitialGuess(shared_ptr<SystemController> systemController) {
+std::unique_ptr<ElectronicStructure<SCFMode>>
+HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemController> systemController) {
   assert(systemController);
   /*
    * Get variables local
@@ -50,10 +49,10 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(shared_ptr<SystemController
    * the OrbitalUpdater is designed to work only with a FockMatrix, and not with a spinless quantity
    * as we have here (oneElectronIntegrals).
    */
-  auto eigenvalues =
-      unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nOrbitals));
+  auto eigenvalues = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
+      new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nOrbitals));
   auto& eps = *eigenvalues;
-  auto coefficientMatrix = unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisController));
+  auto coefficientMatrix = std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisController));
   auto& c = *coefficientMatrix;
   const auto oneIntController = systemController->getOneElectronIntegralController();
   //  auto F = oneIntController->getOneElectronIntegrals();
@@ -70,8 +69,9 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(shared_ptr<SystemController
       eps_spin[i] = es.eigenvalues()[i];
     }
   };
-  auto orbs = shared_ptr<OrbitalController<SCFMode>>(
-      new OrbitalController<SCFMode>(move(coefficientMatrix), systemController->getBasisController(), move(eigenvalues)));
+  auto orbs =
+      std::make_shared<OrbitalController<SCFMode>>(std::move(coefficientMatrix), systemController->getBasisController(),
+                                                   std::move(eigenvalues), systemController->getNCoreElectrons());
   orbs->setCanOrthTh(systemController->getSettings().scf.canOrthThreshold);
   std::unique_ptr<ElectronicStructure<SCFMode>> elecStruct(new ElectronicStructure<SCFMode>(
       orbs, systemController->getOneElectronIntegralController(), systemController->getNOccupiedOrbitals<SCFMode>()));

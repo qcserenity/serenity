@@ -34,7 +34,6 @@
 #include "tasks/ScfTask.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES T>
 NumericalGeomGradCalc<T>::NumericalGeomGradCalc(double stepsize) : _delta(stepsize) {
@@ -48,16 +47,17 @@ void NumericalGeomGradCalc<T>::calcFDEGradients(std::vector<std::shared_ptr<Syst
                                                 int FaTmaxCycles, double FaTenergyConvThresh,
                                                 Options::DFT_DISPERSION_CORRECTIONS dispersion) {
   iOOptions.printGridInfo = false;
-
+  const auto oldPrintLevel = GLOBAL_PRINT_LEVEL;
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
   FreezeAndThawTask<T> task(activeSystems, environmentSystems);
   task.settings.embedding.naddKinFunc = naddKinFunc;
   task.settings.embedding.naddXCFunc = naddXCFunc;
   task.settings.gridCutOff = FDEgridCutOff;
   task.settings.maxCycles = FaTmaxCycles;
   task.settings.convThresh = FaTenergyConvThresh;
-  task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
   task.settings.embedding.dispersion = dispersion;
   task.run();
+  GLOBAL_PRINT_LEVEL = oldPrintLevel;
 
   for (unsigned int i = 0; i < activeSystems.size(); i++) {
     Matrix<double> gradients(activeSystems[i]->getGeometry()->getNAtoms(), 3);

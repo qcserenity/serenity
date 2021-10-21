@@ -38,8 +38,10 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
    * @param system The system this potential is defined for.
    */
   HCorePotential(std::shared_ptr<SystemController> system);
+
   /// @brief Default destructor.
   virtual ~HCorePotential() = default;
+
   /**
    * @brief Getter for the actual potential.
    *
@@ -67,15 +69,6 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
   Eigen::MatrixXd getGeomGradients() override final;
 
   /**
-   * @brief Matches each basis function shell to its respective atom center.
-   *
-   * @param basisIndicesRed see AtomCenteredBasisController
-   * @param nBasisFunctionRed the (reduced) number of basis functions
-   */
-  std::vector<unsigned int> createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
-                                                          unsigned int nBasisFunctionsRed);
-
-  /**
    * @brief Calculates the energy weighted density matrix.
    * @param systemController The system.
    * @param orbitalSet The chosen orbitals.
@@ -98,6 +91,8 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
   std::weak_ptr<SystemController> _system;
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
+  ///@brief A collection of external point charges associated with this potential.
+  std::vector<std::pair<double, std::array<double, 3>>> _extCharges;
 };
 
 } /* namespace Serenity */

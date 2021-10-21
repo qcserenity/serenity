@@ -18,13 +18,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/ABFockMatrixConstruction/ABCoulombInteractionPotential.h"
+/* Include Serenity Internal Headers */
 #include "basis/ABShellPairCalculator.h"
 #include "basis/BasisFunctionMapper.h"
 #include "basis/CustomBasisController.h"
 #include "integrals/RI_J_IntegralControllerFactory.h"
 #include "integrals/looper/ABTwoElecThreeCenterIntLooper.h"
+#include "integrals/wrappers/Libint.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
@@ -38,6 +42,7 @@ ABCoulombInteractionPotential<SCFMode>::ABCoulombInteractionPotential(
   : ABPotential<SCFMode>(basisA, basisB),
     _actSystem(actSystem),
     _envDMatController(envDensityMatrixController),
+    _libint(Libint::getSharedPtr()),
     _topDown(topDown),
     _mode(densityFitting),
     _auxBasisControllerAB(auxBasisAB),
@@ -102,9 +107,14 @@ SPMatrix<SCFMode>& ABCoulombInteractionPotential<SCFMode>::getMatrix() {
 template<Options::SCF_MODES SCFMode>
 void ABCoulombInteractionPotential<SCFMode>::calculateFockMatrixNoFitting() {
   // intialize libint
-  libint2::Operator op = libint2::Operator::coulomb;
+  double maxD = 1;
+  for (const auto& densityC : _envDMatController)
+    maxD = std::max(maxD, densityC->getDensityMatrix().total().array().abs().maxCoeff());
+  // intialize libint
+  LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb;
   _libint->keepEngines(op, 0, 4);
-  _libint->initialize(op, 0, 4);
+  _libint->initialize_plain(op, 4, std::numeric_limits<double>::epsilon(), maxD,
+                            std::max(this->_basisA->getMaxNumberOfPrimitives(), this->_basisB->getMaxNumberOfPrimitives()));
   for (const auto& densityC : _envDMatController) {
     auto totDensC = densityC->getDensityMatrix().total();
     auto actSystem = _actSystem.lock();
@@ -243,22 +253,14 @@ void ABCoulombInteractionPotential<SCFMode>::calculateFockMatrixRI() {
 
     // Simple prescreenfunction
     // Maximum absolute value in densityMatrix
-    const double maxDens = densityC.template lpNorm<Eigen::Infinity>();
     auto actSystem = _actSystem.lock();
     const double threshold = actSystem->getSettings().basis.integralThreshold;
-    auto prescreeningFunc = [&](unsigned int i, unsigned int j, unsigned int nI, unsigned int nJ, double schwartz) {
-      /*
-       * Early return for insignificance based on the largest element in the whole density matrix
-       */
-      (void)i;
-      (void)j;
-      (void)nI;
-      (void)nJ;
-      if (fabs(maxDens * schwartz) < threshold)
+    const auto maxDens = densityC.shellWiseAbsMax();
+    auto prescreeningFunc = [&](const unsigned i, const unsigned j, const unsigned, const double schwartz) {
+      if (std::abs(maxDens(i, j) * schwartz) < threshold)
         return true;
       return false;
     };
-
 #ifdef _OPENMP
     // create a vector of matrices for each thread
     Eigen::MatrixXd sumMat(nABAuxBasFunc, omp_get_max_threads());
@@ -285,23 +287,24 @@ void ABCoulombInteractionPotential<SCFMode>::calculateFockMatrixRI() {
       Eigen::MatrixXd sumMatC(nDiffAuxBasisFunc, 1);
 #endif
       sumMatC.setZero();
-      TwoElecThreeCenterIntLooper looper1(libint2::Operator::coulomb, 0, basisControllerC, _auxBasisControllerAB, 1E-10);
+      TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, basisControllerC, _auxBasisControllerAB,
+                                          basisControllerC->getPrescreeningThreshold());
       auto const loopEvalFunction1 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
                                          Eigen::VectorXd& integral, const unsigned int threadId) {
         sumMat(K, threadId) += (i == j ? 1.0 : 2.0) * integral[0] * densityC(i, j);
       };
-      looper1.loop(loopEvalFunction1, prescreeningFunc);
+      looper1.loop(loopEvalFunction1, prescreeningFunc, maxDens.maxCoeff());
       Eigen::VectorXd sumPMuNu_DMuNuAB = sumMat.rowwise().sum();
       sumMat.resize(1, 1);
       Eigen::VectorXd sumPMuNu_DMuNu(sumPMuNu_DMuNuAB.rows() + nDiffAuxBasisFunc);
       if (differentialAuxBasisController) {
-        TwoElecThreeCenterIntLooper looper2(libint2::Operator::coulomb, 0, basisControllerC,
-                                            differentialAuxBasisController, 1E-10);
+        TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, basisControllerC,
+                                            differentialAuxBasisController, basisControllerC->getPrescreeningThreshold());
         auto const loopEvalFunction2 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
                                            Eigen::VectorXd& integral, const unsigned int threadId) {
           sumMatC(K, threadId) += (i == j ? 1.0 : 2.0) * integral[0] * densityC(i, j);
         };
-        looper2.loop(loopEvalFunction2, prescreeningFunc);
+        looper2.loop(loopEvalFunction2, prescreeningFunc, maxDens.maxCoeff());
         Eigen::VectorXd sumPMuNu_DMuNuC = sumMatC.rowwise().sum();
         sumMatC.resize(1, 1);
         sumPMuNu_DMuNu << sumPMuNu_DMuNuAB, sumPMuNu_DMuNuC;
@@ -313,21 +316,24 @@ void ABCoulombInteractionPotential<SCFMode>::calculateFockMatrixRI() {
           RI_J_IntegralControllerFactory::getInstance().produce(_superABBasis, superABCAuxBasisController);
       Eigen::VectorXd coefficients = ri_j_IntController->getLLTMetric().solve(sumPMuNu_DMuNu).eval();
       auto coeffptr = coefficients.data();
-      ABTwoElecThreeCenterIntLooper looper3(libint2::Operator::coulomb, 0, this->_basisA, this->_basisB,
-                                            _auxBasisControllerAB, 1E-10);
+      double prescreeningThresholdA = this->_basisA->getPrescreeningThreshold();
+      double prescreeningThresholdB = this->_basisB->getPrescreeningThreshold();
+      double prescreeningThreshold = std::min(prescreeningThresholdA, prescreeningThresholdB);
+      ABTwoElecThreeCenterIntLooper looper3(LIBINT_OPERATOR::coulomb, 0, this->_basisA, this->_basisB,
+                                            _auxBasisControllerAB, prescreeningThreshold);
       auto const loopEvalFunction3 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
                                          Eigen::VectorXd& integral, const unsigned int threadID) {
         eriContr[threadID](i, j) += integral[0] * coeffptr[K];
       };
-      looper3.loop(loopEvalFunction3);
+      looper3.loop(loopEvalFunction3, coefficients.array().abs().maxCoeff());
       if (differentialAuxBasisController) {
-        ABTwoElecThreeCenterIntLooper looper4(libint2::Operator::coulomb, 0, this->_basisA, this->_basisB,
-                                              differentialAuxBasisController, 1E-10);
+        ABTwoElecThreeCenterIntLooper looper4(LIBINT_OPERATOR::coulomb, 0, this->_basisA, this->_basisB,
+                                              differentialAuxBasisController, prescreeningThreshold);
         auto const loopEvalFunction4 = [&](const unsigned int& i, const unsigned int& j, const unsigned int& K,
                                            Eigen::VectorXd& integral, const unsigned int threadID) {
           eriContr[threadID](i, j) += integral[0] * coeffptr[K + nABAuxBasFunc];
         };
-        looper4.loop(loopEvalFunction4);
+        looper4.loop(loopEvalFunction4, coefficients.array().abs().maxCoeff());
       } // if differentialAuxBasisController
     }   /* A != C */
     else {
@@ -352,7 +358,13 @@ void ABCoulombInteractionPotential<SCFMode>::calculateFockMatrixRI() {
                                          const double& integral, const unsigned int threadID) {
         eriContr[threadID](i, j) += integral * coefficients(K);
       };
-      _ri_j_IntegralController_A_B_AB->loopOver3CInts(loopEvalFunction3, prescreeningFunc);
+      auto coeffMax = _auxBasisControllerAB->shellWiseAbsMax(coefficients);
+      auto prescreeningCoeff = [&](const unsigned, const unsigned, const unsigned K, const double schwartz) {
+        if (std::abs(coeffMax(K) * schwartz) < threshold)
+          return true;
+        return false;
+      };
+      _ri_j_IntegralController_A_B_AB->loopOver3CInts(loopEvalFunction3, prescreeningCoeff);
     } /* A == C */
 #ifdef _OPENMP
     // sum over all threads

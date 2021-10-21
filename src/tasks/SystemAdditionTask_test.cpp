@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "tasks/SystemAdditionTask.h"                 //To be tested.
 #include "basis/BasisController.h"                    //GetNBasisFunctions.
 #include "data/ElectronicStructure.h"                 //GetDensityMatrix.
@@ -62,12 +63,12 @@ TEST_F(SystemAdditionTaskTest, mixedBasis) {
   EXPECT_EQ(20, supersystem->getNElectrons<RESTRICTED>());
 
   std::string supersystemName = supersystem->getSystemName();
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".settings").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".xyz").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".energies.res").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".orbs.res.h5").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".dmat.res.h5").c_str());
-  std::remove((supersystem->getSettings().path).c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".settings").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".xyz").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".energies.res").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".orbs.res.h5").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".dmat.res.h5").c_str());
+  std::remove((supersystem->getSystemPath()).c_str());
   SystemController__TEST_SUPPLY::cleanUp();
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
@@ -101,12 +102,12 @@ TEST_F(SystemAdditionTaskTest, electronicStrucure) {
   EXPECT_NEAR(0.0, diff, 1e-12);
 
   std::string supersystemName = supersystem->getSystemName();
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".settings").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".xyz").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".energies.res").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".orbs.res.h5").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".dmat.res.h5").c_str());
-  std::remove((supersystem->getSettings().path).c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".settings").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".xyz").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".energies.res").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".orbs.res.h5").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".dmat.res.h5").c_str());
+  std::remove((supersystem->getSystemPath()).c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -124,12 +125,12 @@ TEST_F(SystemAdditionTaskTest, onlyAtoms) {
   EXPECT_EQ(6, supersystem->getGeometry()->getNAtoms());
 
   std::string supersystemName = supersystem->getSystemName();
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".settings").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".xyz").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".energies.res").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".orbs.res.h5").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".dmat.res.h5").c_str());
-  std::remove((supersystem->getSettings().path).c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".settings").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".xyz").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".energies.res").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".orbs.res.h5").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".dmat.res.h5").c_str());
+  std::remove((supersystem->getSystemPath()).c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 TEST_F(SystemAdditionTaskTest, checkGeometryAndCharge) {
@@ -147,12 +148,12 @@ TEST_F(SystemAdditionTaskTest, checkGeometryAndCharge) {
   EXPECT_NO_THROW(add2.run());
 
   std::string supersystemName = supersystem->getSystemName();
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".settings").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".xyz").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".energies.res").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".orbs.res.h5").c_str());
-  std::remove((supersystem->getSettings().path + "/" + supersystemName + ".dmat.res.h5").c_str());
-  std::remove((supersystem->getSettings().path).c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".settings").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".xyz").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".energies.res").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".orbs.res.h5").c_str());
+  std::remove((supersystem->getSystemPath() + "/" + supersystemName + ".dmat.res.h5").c_str());
+  std::remove((supersystem->getSystemPath()).c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 } /*namespace Serenity*/

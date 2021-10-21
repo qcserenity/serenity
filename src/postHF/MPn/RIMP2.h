@@ -23,7 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -37,10 +37,7 @@ class SystemController;
  * @class  RIMP2 RIMP2.h
  * @brief  Calculates the MP2 correction of the electronic energy using RI.
  *
- * Coded in reference to:
- * Chemical Physics Letters, 294 (1998) 143–152
- * and:
- * Chemical Physics Letters, 208 (1993) 359-363
+ * Largely based on the RICC2 code.
  */
 template<Options::SCF_MODES SCFMode>
 class RIMP2 {
@@ -49,7 +46,7 @@ class RIMP2 {
    * @brief Constructor
    * @param systemController
    */
-  RIMP2(std::shared_ptr<SystemController> systemController, const double ssScaling = 1.0, const double osScaling = 1.0);
+  RIMP2(std::shared_ptr<SystemController> systemController, const double sss = 1.0, const double oss = 1.0);
   /**
    * @brief Default destructor;
    */
@@ -71,9 +68,10 @@ class RIMP2 {
   double calculateEnergy();
 
   std::shared_ptr<SystemController> _systemController;
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _BiaQ;
-  const double _ssScaling;
-  const double _osScaling;
+  std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jia;
+
+  const double _sss;
+  const double _oss;
 };
 
 } /* namespace Serenity */

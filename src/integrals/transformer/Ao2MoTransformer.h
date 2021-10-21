@@ -29,7 +29,6 @@
 #include <memory>
 
 namespace Serenity {
-using namespace std;
 /**
  * @class Ao2MoTransformer Ao2MoTransformer.h
  * @brief In quantum chemistry, in order to perform calculations, we usually expand the

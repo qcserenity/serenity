@@ -27,15 +27,14 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/matrices/SPMatrix.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "io/IOOptions.h"
 #include "misc/SystemSplittingTools.h"
 #include "misc/Timing.h"
+#include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundleFactory.h"
 #include "settings/EmbeddingSettings.h"
 #include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
-
-/* ABFockMatrixConstruction */
-#include "potentials/ABFockMatrixConstruction/ABBundles/ABEmbeddedBundleFactory.h"
 
 namespace Serenity {
 

@@ -21,7 +21,8 @@
 #include "data/grid/DensityMatrixDensityOnGridController.h" //To be tested
 #include "data/ElectronicStructure.h"                       //getDensityMatrixController.
 #include "data/grid/DensityOnGridFactory.h"                 //DensityMatrixDensityOnGridController construction.
-#include "testsupply/SystemController__TEST_SUPPLY.h"       //Test supply.
+#include "system/SystemController.h"
+#include "testsupply/SystemController__TEST_SUPPLY.h" //Test supply.
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
 namespace Serenity {

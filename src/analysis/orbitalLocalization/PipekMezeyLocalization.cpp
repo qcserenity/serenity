@@ -34,10 +34,9 @@
 #include <limits>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
-PipekMezeyLocalization<SCFMode>::PipekMezeyLocalization(shared_ptr<SystemController> systemController)
+PipekMezeyLocalization<SCFMode>::PipekMezeyLocalization(std::shared_ptr<SystemController> systemController)
   : _systemController(systemController),
     // TODO this should be switchable via the input
     _convThreshold(1e-7) {
@@ -63,11 +62,11 @@ void PipekMezeyLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode
      * Get in / prepare some data for more convenient handling.
      */
     const unsigned int nAtoms = _systemController->getNAtoms();
-    double oldLocalizationMeasure = numeric_limits<double>::lowest();
+    double oldLocalizationMeasure = std::numeric_limits<double>::lowest();
     // TODO this should still be specified by the incoming matrix.
     const auto basisController = _systemController->getAtomCenteredBasisController();
     const unsigned int nBasisFunctions = basisController->getNBasisFunctions();
-    const vector<pair<unsigned int, unsigned int>>& basisIndices = basisController->getBasisIndices();
+    const std::vector<std::pair<unsigned int, unsigned int>>& basisIndices = basisController->getBasisIndices();
     const auto oneIntController = _systemController->getOneElectronIntegralController();
     assert(oneIntController->getBasisController() == basisController);
     const auto& overlaps = oneIntController->getOverlapIntegrals();
@@ -154,7 +153,7 @@ void PipekMezeyLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode
       JacobiRotation::rotate(coefficients_spin.col(sOfMaxGamma), coefficients_spin.col(tOfMaxGamma), maxGamma);
 
       // Rotate other pairs of orbitals which were untouched so far
-      vector<bool> wasRotated(nOccOrbs_spin, false);
+      std::vector<bool> wasRotated(nOccOrbs_spin, false);
       wasRotated[sOfMaxGamma] = true;
       wasRotated[tOfMaxGamma] = true;
       for (unsigned int sOrb = 0; sOrb < orbitalRange_spin.size(); ++sOrb) {

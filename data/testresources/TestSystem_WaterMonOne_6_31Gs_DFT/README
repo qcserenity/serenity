@@ -1,0 +1,7 @@
+The files
+  * mos
+  * alpha
+  * beta
+are turbomole ASCII-MO output files for the water molecule defined in this
+directory. The orbitals were calculated using Hartree-Fock, def2-QZVP and
+the convergence setting 'conv 9'.

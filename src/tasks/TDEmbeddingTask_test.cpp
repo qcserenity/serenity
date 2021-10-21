@@ -21,8 +21,13 @@
 /* Include Serenity Internal Headers */
 #include "tasks/TDEmbeddingTask.h"
 #include "data/ElectronicStructure.h"
+#include "energies/EnergyContributions.h"
+#include "geometry/Geometry.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
+#include "tasks/CoupledClusterTask.h"
 #include "tasks/ScfTask.h"
+#include "tasks/SystemAdditionTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -100,7 +105,7 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_NORI) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-SVP";
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
@@ -127,7 +132,7 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_LOCAL) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-SVP";
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
@@ -143,6 +148,71 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_LOCAL) {
 
   std::string name = "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy for double hybrid embedding
+ *        with different basis sets in environment and active system.
+ *        Note: This tests print-level adjustments for the task, too.
+ */
+TEST_F(TDEmbeddingTaskTest, restricteCCSDinDoubleHybrid_LOCAL) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
+  Settings settings = act->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.label = "DEF2-SVP";
+  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+  Settings envSettings = env->getSettings();
+  envSettings.basis.label = "DEF2-SVP";
+  envSettings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE, envSettings);
+  auto task = TDEmbeddingTask<RESTRICTED>(act, env);
+  task.settings.mp2Type = Options::MP2_TYPES::LOCAL;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.parseGeneralSettings();
+  task.run();
+  task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  task.parseGeneralSettings();
+  // The difference between RI and no-fitting is around 1.8e-5.
+  double naddXCEnergy =
+      act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_NAD_XC);
+  // EXPECT_NEAR(-1.7501306206,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+
+  CoupledClusterTask ccTask(act, {env});
+  ccTask.settings.level = Options::CC_LEVEL::DLPNO_CCSD;
+  ccTask.settings.lcSettings.embeddingSettings = task.settings.embedding;
+  ccTask.run();
+  double naddXCEnergy2 =
+      act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_NAD_XC);
+
+  std::cout << "NaddXCEnergy " << naddXCEnergy << "  " << naddXCEnergy2 << std::endl;
+
+  std::remove((env->getSettings().path +
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
+                  .c_str());
+  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+                                         "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
+                  .c_str());
+  std::remove((env->getSettings().path +
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res.h5")
+                  .c_str());
+  std::remove((env->getSettings().path +
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5")
+                  .c_str());
+  std::remove((env->getSettings().path +
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5")
+                  .c_str());
+  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -357,6 +427,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_levelshift_doubleHybrid) {
  * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with levelshift + net population truncation.
  */
 TEST_F(TDEmbeddingTaskTest, unrestricted_hardtruncated_netpopulation_huzinaga) {
+  SystemController__TEST_SUPPLY::cleanUp();
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, true);
   // HF environment
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs, true);
@@ -428,6 +499,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_restar
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(newSys);
   SystemController__TEST_SUPPLY::cleanUp();
 }
+
 /**
  * @test
  * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy with levelshift + net population truncation.
@@ -622,6 +694,99 @@ TEST_F(TDEmbeddingTaskTest, embeddingMode_HuzinagaTruncated_ECPs) {
       env->getSystemPath() + "TestSystem_HI_Def2_SVP_PBE+TestSystem_I2_Def2_SVP_PBE/I_FREE/", "I_FREE");
   std::string name = "TestSystem_HI_Def2_SVP_PBE+TestSystem_I2_Def2_SVP_PBE";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy for double hybrid embedding
+ *        in active and environment system.
+ */
+TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybridinDoubleHybrid_Levelshift) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP);
+  Settings settings = act->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  settings.basis.label = "DEF2-SVP";
+  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, settings);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP);
+  settings = env->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  settings.basis.label = "DEF2-SVP";
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, settings);
+  auto task = TDEmbeddingTask<RESTRICTED>(act, env);
+  task.settings.mp2Type = Options::MP2_TYPES::LOCAL;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  task.settings.embedding.fullMP2Coupling = true;
+  task.run();
+
+  Settings supersystemSettings = env->getSettings();
+  supersystemSettings.name = act->getSystemName() + "+" + env->getSystemName();
+  supersystemSettings.charge = 0;
+  supersystemSettings.spin = 0;
+  auto supersystem = std::make_shared<SystemController>(std::make_shared<Geometry>(), supersystemSettings);
+  SystemAdditionTask<RESTRICTED> additionTask(supersystem, {act, env});
+  additionTask.settings.addOccupiedOrbitals = true;
+  additionTask.run();
+
+  ScfTask<RESTRICTED> supersystemSCF(supersystem);
+  supersystemSCF.settings.mp2Type = Options::MP2_TYPES::LOCAL;
+  supersystemSCF.run();
+
+  EXPECT_NEAR(supersystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),
+              act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 5e-5);
+
+  std::string name = "TestSystem_WaterMonOne_Def2_SVP_B2PLYP+TestSystem_WaterMonTwo_Def2_SVP";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act->getSystemPath() + "TMP_Active/", "TMP_Active");
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy for double hybrid embedding
+ *        in active and environment system.
+ */
+TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybridinDoubleHybrid_Huzinaga) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP);
+  Settings settings = act->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  settings.basis.label = "DEF2-SVP";
+  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, settings);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP);
+  settings = env->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  settings.basis.label = "DEF2-SVP";
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, settings);
+  auto task = TDEmbeddingTask<RESTRICTED>(act, env);
+  task.settings.mp2Type = Options::MP2_TYPES::LOCAL;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.settings.embedding.fullMP2Coupling = true;
+  task.settings.useFermiLevel = false;
+  task.run();
+
+  Settings supersystemSettings = env->getSettings();
+  supersystemSettings.name = act->getSystemName() + "+" + env->getSystemName();
+  supersystemSettings.charge = 0;
+  supersystemSettings.spin = 0;
+  auto supersystem = std::make_shared<SystemController>(std::make_shared<Geometry>(), supersystemSettings);
+  SystemAdditionTask<RESTRICTED> additionTask(supersystem, {act, env});
+  additionTask.settings.addOccupiedOrbitals = true;
+  additionTask.run();
+
+  ScfTask<RESTRICTED> supersystemSCF(supersystem);
+  supersystemSCF.settings.mp2Type = Options::MP2_TYPES::LOCAL;
+  supersystemSCF.run();
+
+  EXPECT_NEAR(supersystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),
+              act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 5e-5);
+
+  std::string name = "TestSystem_WaterMonOne_Def2_SVP_B2PLYP+TestSystem_WaterMonTwo_Def2_SVP";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act->getSystemPath() + "TMP_Active/", "TMP_Active");
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

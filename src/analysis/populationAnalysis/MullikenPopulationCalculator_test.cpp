@@ -29,7 +29,6 @@
 #include <memory>
 
 namespace Serenity {
-using namespace std;
 
 class MullikenPopulationCalculatorTest : public ::testing::Test {
  protected:

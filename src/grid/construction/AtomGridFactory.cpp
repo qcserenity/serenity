@@ -33,8 +33,6 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
-using namespace Options;
 /*
  * Initialize static members
  */
@@ -66,8 +64,9 @@ const std::array<double, N_ELEMENTS_IN_PERIODIC_TABLE + 1> AtomGridFactory::_cle
 
 std::unique_ptr<AtomGridFactory> AtomGridFactory::_instance;
 
-shared_ptr<const AtomGrid> AtomGridFactory::produce(Options::RADIAL_GRID_TYPES radType, Options::SPHERICAL_GRID_TYPES sphType,
-                                                    const shared_ptr<const AtomType> atomType, unsigned int acc) {
+std::shared_ptr<const AtomGrid> AtomGridFactory::produce(Options::RADIAL_GRID_TYPES radType,
+                                                         Options::SPHERICAL_GRID_TYPES sphType,
+                                                         const std::shared_ptr<const AtomType> atomType, unsigned int acc) {
   if (!_instance)
     _instance.reset(new AtomGridFactory());
   return _instance->getOrProduce(radType, sphType, atomType, acc);
@@ -89,10 +88,10 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
   const unsigned int nRadial = (unsigned int)(5.0 * (radAcc[acc - 1] + atomType->getRow() - 8));
 
   double alpha = 0.0;
-  vector<double> points;
-  vector<double> weights;
+  std::vector<double> points;
+  std::vector<double> weights;
   switch (radialType) {
-    case RADIAL_GRID_TYPES::BECKE:
+    case Options::RADIAL_GRID_TYPES::BECKE:
       // Becke uses Bragg-Slater radii as
       //   parameter to optimize radial integration
       if (atomType->getElementSymbol() == "H") {
@@ -102,7 +101,7 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
         alpha = 0.5 * atomType->getBraggSlaterRadius();
       }
       break;
-    case RADIAL_GRID_TYPES::HANDY:
+    case Options::RADIAL_GRID_TYPES::HANDY:
       /*
        *  We will use the scheme Handy describes.
        *  Because of reasons stated at the declaration of
@@ -117,11 +116,11 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
         alpha = 0.5 * atomType->getBraggSlaterRadius();
       }
       break;
-    case RADIAL_GRID_TYPES::AHLRICHS:
+    case Options::RADIAL_GRID_TYPES::AHLRICHS:
       alpha = _ahlrichsAlphaValues[atomType->getPSEPosition()];
       assert(alpha > 0.0);
       break;
-    case RADIAL_GRID_TYPES::KNOWLES:
+    case Options::RADIAL_GRID_TYPES::KNOWLES:
       if (atomType->getElementSymbol() == "H" or atomType->getElementSymbol() == "He" or
           atomType->getElementSymbol() == "Li" or atomType->getElementSymbol() == "Be" or
           atomType->getElementSymbol() == "Na" or atomType->getElementSymbol() == "Mg" or
@@ -132,7 +131,7 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
         alpha = 7.0;
       }
       break;
-    case RADIAL_GRID_TYPES::EQUI:
+    case Options::RADIAL_GRID_TYPES::EQUI:
       // No alpha needed
       alpha = 0.0;
       break;
@@ -140,8 +139,8 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
   }
   // Call radial grid function
   // type will be determined internally
-  vector<double> radPoints(nRadial);
-  vector<double> radWeights(nRadial);
+  std::vector<double> radPoints(nRadial);
+  std::vector<double> radWeights(nRadial);
   _radialGrid(alpha, nRadial, radPoints, radWeights, radialType);
 
   /*================
@@ -150,7 +149,7 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
   switch (sphericalType) {
     // For now the only one we have
     // Lebedev
-    case SPHERICAL_GRID_TYPES::LEBEDEV:
+    case Options::SPHERICAL_GRID_TYPES::LEBEDEV:
 
       // Lebedev rules according to accuracy,
       //  following the data in the ORCA manual (4.0) p291 ff.
@@ -178,10 +177,10 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
       }
       for (unsigned int i = 0; i < nRadial; ++i) {
         unsigned int sphN;
-        vector<double> sphX;
-        vector<double> sphY;
-        vector<double> sphZ;
-        vector<double> sphW;
+        std::vector<double> sphX;
+        std::vector<double> sphY;
+        std::vector<double> sphZ;
+        std::vector<double> sphW;
         if (sphericalAcc < 4)
           if (radPoints[i] > r[sphericalAcc])
             ++sphericalAcc;
@@ -198,7 +197,7 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
   }
   Eigen::VectorXd weights_e = Eigen::VectorXd::Map(weights.data(), weights.size());
   Eigen::Matrix3Xd points_e = Eigen::MatrixXd::Map(points.data(), 3, int(points.size() / 3));
-  return unique_ptr<AtomGrid>(new AtomGrid(points_e, weights_e));
+  return std::unique_ptr<AtomGrid>(new AtomGrid(points_e, weights_e));
 }
 
 #pragma GCC diagnostic pop // -Wswitch
@@ -206,13 +205,13 @@ std::unique_ptr<const AtomGrid> AtomGridFactory::produceNew(const Options::RADIA
 /*
  * Function for the creation of a radial grid
  */
-void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<double>& radPoints,
-                                  vector<double>& radWeights, const RADIAL_GRID_TYPES& radType) {
+void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, std::vector<double>& radPoints,
+                                  std::vector<double>& radWeights, const Options::RADIAL_GRID_TYPES& radType) {
   assert(radPoints.size() == nRadial);
   assert(radWeights.size() == nRadial);
 
   switch (radType) {
-    case RADIAL_GRID_TYPES::BECKE:
+    case Options::RADIAL_GRID_TYPES::BECKE:
       /*
        * BECKE gird with Chebyshev quadrature of the second kind according to
        *     ref.: J. Comp. Chem. (2003) 24 p732-740
@@ -226,7 +225,7 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<dou
       }
       break;
 
-    case RADIAL_GRID_TYPES::HANDY:
+    case Options::RADIAL_GRID_TYPES::HANDY:
       /*
        *  HANDY grid accordning to
        *     ref.: J. Comp. Chem. (2003) 24 p732-740
@@ -238,7 +237,7 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<dou
       }
       break;
 
-    case RADIAL_GRID_TYPES::AHLRICHS:
+    case Options::RADIAL_GRID_TYPES::AHLRICHS:
       /*
        * AHLRICHS gird with Chebyshev quadrature of the second kind according to
        *     ref.: J. Chem. Phys. (1998) 108, 3226
@@ -261,7 +260,7 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<dou
       }
       break;
 
-    case RADIAL_GRID_TYPES::KNOWLES:
+    case Options::RADIAL_GRID_TYPES::KNOWLES:
       /*
        * KNOWLES gird according to
        *     ref.: J. Comp. Chem. (2003) 24 p732-740
@@ -275,7 +274,7 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<dou
       }
       break;
 
-    case RADIAL_GRID_TYPES::EQUI:
+    case Options::RADIAL_GRID_TYPES::EQUI:
       /*
        * EQUIDISTANT grid
        *     for test purposes.
@@ -290,8 +289,8 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, vector<dou
 }
 
 // function for spherical grid
-void AtomGridFactory::_lebedevSphericalGrid(unsigned int i, unsigned int& sphN, vector<double>& sphX,
-                                            vector<double>& sphY, vector<double>& sphZ, vector<double>& sphW) {
+void AtomGridFactory::_lebedevSphericalGrid(unsigned int i, unsigned int& sphN, std::vector<double>& sphX,
+                                            std::vector<double>& sphY, std::vector<double>& sphZ, std::vector<double>& sphW) {
   switch (i) {
     case 0:
       sphN = 6;

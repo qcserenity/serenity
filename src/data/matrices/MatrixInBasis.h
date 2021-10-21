@@ -118,6 +118,11 @@ class MatrixInBasis<Options::SCF_MODES::RESTRICTED> : public SPMatrix<Options::S
     ret.setZero();
     return ret;
   }
+  /**
+   * @brief Calculate the absolute max. coefficient for each shell-wise block and return the shell-wise matrix.
+   * @return The shell-wise matrix.
+   */
+  SPMatrix<RESTRICTED> shellWiseAbsMax() const;
 
  private:
   /**
@@ -328,6 +333,11 @@ class MatrixInBasis<Options::SCF_MODES::UNRESTRICTED> : public SPMatrix<Options:
     ret = this->alpha + this->beta;
     return ret;
   }
+  /**
+   * @brief Calculate the absolute max. coefficient for each shell-wise block and return the shell-wise matrix.
+   * @return The shell-wise matrix.
+   */
+  SPMatrix<UNRESTRICTED> shellWiseAbsMax() const;
   /**
    * @brief Difference between alpha and beta.
    * @return Returns the difference of between alpha and beta (alpha-beta).

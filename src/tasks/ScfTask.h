@@ -44,12 +44,13 @@ struct ScfTaskSettings {
       maxResidual(1e-5),
       maxCycles(100),
       fractionalDegeneracy(false),
-      skipSCF(false) {
+      skipSCF(false),
+      allowNotConverged(false) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
-    lcSettings.method = PNO_METHOD::DLPNO_MP2;
+    lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((bool)restart, (Options::MP2_TYPES)mp2Type, (double)maxResidual, (int)maxCycles,
-              (bool)fractionalDegeneracy, (bool)skipSCF)
+              (bool)fractionalDegeneracy, (bool)skipSCF, (bool)allowNotConverged)
  public:
   LocalCorrelationSettings lcSettings;
 };
@@ -81,6 +82,8 @@ class ScfTask : public Task {
    *        -fractionalDegeneracy:  Allows fractional occupations for degenerate orbitals in order
    *                                to achieve spherical symmetry in atom-SCFs.
    *        -skipSCF:               Skip the SCF procedure and calculate only the energy.
+   *        -allowNotConverged:     If the maximum number of SCF cycles is reached Serenity will continue
+   *                                even with non-converged orbitals.
    *        -lcSettings:            Local correlation settings for local MP2.
    */
   ScfTaskSettings settings;
@@ -101,7 +104,7 @@ class ScfTask : public Task {
       visit_each(c, v);
     }
     else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown settings block in ScfTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown settings block in ScfTaskSettings: " + blockname);
     }
   }
 

@@ -21,6 +21,8 @@
 /* Include Serenity Internal Headers */
 #include "data/OrbitalController.h"
 #include "data/ElectronicStructure.h"
+#include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/ScfTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -49,7 +51,11 @@ class OrbitalControllerTest : public ::testing::Test {
  */
 TEST_F(OrbitalControllerTest, SCF_WithLinearDependendBasisSet) {
   const auto SPIN = Options::SCF_MODES::RESTRICTED;
-  auto H2Linear = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LINEARDEPENDENT);
+  auto H2Linear = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LINEARDEPENDENT, true);
+  Settings settings = H2Linear->getSettings();
+  settings.basis.label = "AUG-CC-PVQZ";
+  settings.scf.canOrthThreshold = 5e-4;
+  H2Linear = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LINEARDEPENDENT, settings);
 
   ScfTask<SPIN> task(H2Linear);
   task.run();
@@ -57,8 +63,31 @@ TEST_F(OrbitalControllerTest, SCF_WithLinearDependendBasisSet) {
   auto orbs = H2Linear->getElectronicStructure<SPIN>()->getMolecularOrbitals()->getCoefficients();
   auto eps = H2Linear->getElectronicStructure<SPIN>()->getMolecularOrbitals()->getEigenvalues();
 
-  EXPECT_NEAR(orbs.col(2).sum(), 0.0, 1e-17);
-  EXPECT_TRUE(eps(2) > 1.0e10);
+  // Three columns should be removed from the calculation.
+  // Accordingly the columns should have been set to zero and the eigenvalues should be inf.
+  EXPECT_EQ(orbs.rightCols(3).sum(), 0.0);
+  EXPECT_TRUE(eps.tail(3).sum() > 1e+20);
+}
+
+/**
+ * @test
+ * @brief Tests setting and resetting core orbitals (includes ECPs.).
+ */
+TEST_F(OrbitalControllerTest, setCoreOrbitals) {
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  auto orbitalController = system->getActiveOrbitalController<RESTRICTED>();
+  unsigned int nCore_1 = system->getNCoreElectrons();
+  orbitalController->setCoreOrbitalsByEnergyCutOff(-5);
+  unsigned int nCore_2 = orbitalController->getCoreOrbitals().sum();
+  EXPECT_EQ(nCore_1, 82); // This is just by chance two times the number of core orbitals from the energy-wise selection.
+  EXPECT_EQ(nCore_2, 41);
+  orbitalController->setCoreOrbitalsByEnergyCutOff(-10);
+  unsigned int nCore_3 = orbitalController->getCoreOrbitals().sum();
+  EXPECT_EQ(nCore_3, 29);
+  unsigned int nCoreSet = 40;
+  orbitalController->setCoreOrbitalsByNumber(nCoreSet);
+  unsigned int nCore_4 = orbitalController->getCoreOrbitals().sum();
+  EXPECT_EQ(nCoreSet, nCore_4);
 }
 
 } /*namespace Serenity*/

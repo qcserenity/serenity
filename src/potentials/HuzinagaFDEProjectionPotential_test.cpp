@@ -24,6 +24,7 @@
 #include "potentials/NAddFuncPotential.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -62,27 +63,26 @@ TEST_F(HuzinagaFDEProjectionPotentialTest, restricted_huzinaga) {
   EXPECT_NEAR(0.11198231040394366, f(1, 0), 1e-7);
   EXPECT_NEAR(0.22587526848483189, f(1, 1), 1e-7);
 
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+                                      "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
                   .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-                                         "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+                                      "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.unres")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.unres.h5")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.unres.h5")
                   .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -107,27 +107,26 @@ TEST_F(HuzinagaFDEProjectionPotentialTest, unrestricted_huzinaga) {
   EXPECT_NEAR(0.10986760211800925, f.beta(0, 1), 1e-7);
   EXPECT_NEAR(0.10986760211800925, f.beta(1, 0), 1e-7);
   EXPECT_NEAR(0.21856343934609146, f.beta(1, 1), 1e-7);
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+                                      "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
                   .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-                                         "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
+                                      "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.unres")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.unres.h5")
                   .c_str());
-  std::remove((env->getSettings().path +
+  std::remove((env->getSystemPath() +
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
                "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.unres.h5")
                   .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
+  std::remove((env->getSystemPath() + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

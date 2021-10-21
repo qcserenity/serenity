@@ -37,6 +37,13 @@ template<>
 void resolve<CompositeFunctionals::XCFUNCTIONALS>(std::string& value, CompositeFunctionals::XCFUNCTIONALS& field);
 template<>
 void resolve<CompositeFunctionals::KINFUNCTIONALS>(std::string& value, CompositeFunctionals::KINFUNCTIONALS& field);
+// Resolves the list inputs for XC, Kin functionals and embedding modes
+template<>
+void resolve<std::vector<CompositeFunctionals::XCFUNCTIONALS>>(std::string& value,
+                                                               std::vector<CompositeFunctionals::XCFUNCTIONALS>& field);
+template<>
+void resolve<std::vector<CompositeFunctionals::KINFUNCTIONALS>>(std::string& value,
+                                                                std::vector<CompositeFunctionals::KINFUNCTIONALS>& field);
 
 /**************************************************************************************************/
 /*                                         Dispersion                                             */

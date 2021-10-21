@@ -24,6 +24,7 @@
 #include "data/matrices/DensityMatrixController.h"    //Density matrix construction and check for number of electrons.
 #include "integrals/OneElectronIntegralController.h"  //Overlap integrals.
 #include "settings/Settings.h"                        //Get system with altered settings.
+#include "system/SystemController.h"                  //Test systems.
 #include "tasks/ScfTask.h"                            //Run SCF.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Test resources.
 //#include "tasks/CubeFileTask.h"

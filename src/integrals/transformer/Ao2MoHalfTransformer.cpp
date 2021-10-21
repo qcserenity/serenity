@@ -43,7 +43,7 @@ void Ao2MoHalfTransformer::transformTwoElectronIntegrals(Eigen::MatrixXd& result
   std::vector<Eigen::MatrixXd> eriContr(1, Eigen::MatrixXd(nBasisB, nBasisB));
   eriContr[0].setZero();
 #endif
-  ExchangeInteractionIntLooper excLooper(libint2::Operator::coulomb, 0, _basisControllerB, _basisControllerA, 1E-10);
+  ExchangeInteractionIntLooper excLooper(LIBINT_OPERATOR::coulomb, 0, _basisControllerB, _basisControllerA, 1E-10);
 
   auto const excLooperFunction = [&](const unsigned int& r, const unsigned int& i, const unsigned int& s,
                                      const unsigned int& j, double intValues, const unsigned int& threadID) {

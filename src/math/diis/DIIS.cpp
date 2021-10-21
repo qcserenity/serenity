@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "io/FormattedOutputStream.h"
 #include "math/Matrix.h"
+#include "math/linearAlgebra/MatrixFunctions.h"
 /* Include Std and External Headers */
 #include <algorithm>
 #include <cmath>
@@ -102,6 +103,7 @@ void DIIS::optimize(Eigen::Ref<Eigen::VectorXd> targetVector, const Eigen::Ref<c
   // solve linear system
   Eigen::VectorXd rhs = Eigen::VectorXd::Zero(_B.rows());
   rhs(0) = -1.0;
+
   Eigen::VectorXd coefficients = _B.colPivHouseholderQr().solve(rhs);
 
   // extrapolate target vector

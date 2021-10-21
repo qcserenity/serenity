@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "basis/ABShellPairCalculator.h"
+#include "basis/Basis.h"
 #include "basis/BasisController.h"
 #include "integrals/wrappers/Libint.h"
 /* Include Std and External Headers */
@@ -45,16 +46,18 @@ class ABTwoElecThreeCenterIntLooper {
    * @param prescreeningThreshold The prescreening threshold.
    * @param kRange The evaluation range for the auxiallary functions.
    */
-  ABTwoElecThreeCenterIntLooper(libint2::Operator op, const unsigned deriv, std::shared_ptr<BasisController> basisA,
+  ABTwoElecThreeCenterIntLooper(LIBINT_OPERATOR op, const unsigned deriv, std::shared_ptr<BasisController> basisA,
                                 std::shared_ptr<BasisController> basisB, std::shared_ptr<BasisController> auxbasis,
-                                double prescreeningThreshold, std::pair<unsigned int, unsigned int> kRange = {0, 0})
+                                double prescreeningThreshold, std::pair<unsigned int, unsigned int> kRange = {0, 0},
+                                double mu = 0.0)
     : _op(op),
       _deriv(deriv),
       _basisControllerA(basisA),
       _basisControllerB(basisB),
       _auxbasis(auxbasis),
       _prescreeningThreshold(prescreeningThreshold),
-      _kRange(kRange) {
+      _kRange(kRange),
+      _mu(mu) {
     assert(_basisControllerA);
     assert(_basisControllerB);
     assert(_auxbasis);
@@ -67,13 +70,18 @@ class ABTwoElecThreeCenterIntLooper {
    * @brief Performs the loop.
    * @param loopEvalFunction The evaluation function for the looper.
    *        For examples and more information see TwoElecThreeCenterIntLooper.h
+   * @param maxD  Maximum coefficient to be contracted with the integrals. Used to adjust
+   *             the integral precision in case of absurdly large coefficients.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loop(Func distribute) {
+  __attribute__((always_inline)) inline void loop(Func distribute, double maxD = 1) {
     const auto& shellPairsAB = ABShellPairCalculator::calculateShellPairData_AB(_basisControllerA, _basisControllerB);
     // intialize libint
     auto& libint = Libint::getInstance();
-    libint.initialize(_op, _deriv, 3);
+    libint.initialize(
+        _op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), 0.0, std::numeric_limits<double>::epsilon(), maxD,
+        std::max(_basisControllerB->getMaxNumberOfPrimitives(),
+                 std::max(_basisControllerA->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives())));
     auto& basisA = _basisControllerA->getBasis();
     auto& basisB = _basisControllerB->getBasis();
     auto& auxbasis = _auxbasis->getBasis();
@@ -146,13 +154,18 @@ class ABTwoElecThreeCenterIntLooper {
    *
    * @param loopEvalFunction The evaluation function for the looper.
    *        For examples and more information see TwoElecThreeCenterIntLooper.h
+   * @param maxD  Maximum coefficient to be contracted with the integrals. Used to adjust
+   *             the integral precision in case of absurdly large coefficients.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute) {
+  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, double maxD = 1) {
     const auto& shellPairsAB = ABShellPairCalculator::calculateShellPairData_AB(_basisControllerA, _basisControllerB);
     // intialize libint
     auto& libint = Libint::getInstance();
-    libint.initialize(_op, 0, 3);
+    libint.initialize(
+        _op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), 0.0, std::numeric_limits<double>::epsilon(), maxD,
+        std::max(_basisControllerB->getMaxNumberOfPrimitives(),
+                 std::max(_basisControllerA->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives())));
     auto& basisA = _basisControllerA->getBasis();
     auto& basisB = _basisControllerB->getBasis();
     auto& auxbasis = _auxbasis->getBasis();
@@ -221,7 +234,7 @@ class ABTwoElecThreeCenterIntLooper {
 
  private:
   /// @brief The kernel/operator as libint enum.
-  libint2::Operator _op;
+  LIBINT_OPERATOR _op;
   /// @brief The derivative level.
   const unsigned int _deriv;
   /// @brief The basis.
@@ -234,6 +247,8 @@ class ABTwoElecThreeCenterIntLooper {
   double _prescreeningThreshold;
   /// @brief The range for the K shells.
   std::pair<unsigned int, unsigned int> _kRange;
+  /// @brief Range separation parameter mu
+  double _mu;
 };
 
 } /* namespace Serenity */

@@ -289,4 +289,15 @@ TEST(GeometryTest, AddAndDeleteGhosts) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+/**
+ * @test
+ * @brief Tests Geometry.h: add and remove ghost/dummy atoms.
+ */
+TEST(GeometryTest, CoreElectrons) {
+  Settings settings;
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS);
+  EXPECT_EQ(60 * 2, systemController->getNCoreElectrons());
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } // namespace Serenity

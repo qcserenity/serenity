@@ -21,6 +21,7 @@
 #ifndef SETTINGS_MISCOPTIONS_H_
 #define SETTINGS_MISCOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {

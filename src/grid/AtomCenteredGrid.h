@@ -55,7 +55,7 @@ class AtomCenteredGrid : public Grid {
 
   virtual ~AtomCenteredGrid() = default;
 
-  const std::vector<std::pair<unsigned int, unsigned int>>& getGridIndicesOfAtoms() {
+  const std::vector<std::pair<unsigned int, unsigned int>>& getGridIndicesOfAtoms() const {
     assert(!_sorted);
     return _gridIndicesOfAtoms;
   }

@@ -18,18 +18,20 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/LRSCFOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
 namespace Options {
 
 template<>
-void resolve<RESPONSE_PROBLEM>(std::string& value, RESPONSE_PROBLEM& field) {
-  static const std::map<std::string, RESPONSE_PROBLEM> m = {
-      {"TDA", RESPONSE_PROBLEM::TDA},
-      {"TDDFT", RESPONSE_PROBLEM::TDDFT},
-      {"RPA", RESPONSE_PROBLEM::RPA},
+void resolve<RESPONSE_ALGORITHM>(std::string& value, RESPONSE_ALGORITHM& field) {
+  static const std::map<std::string, RESPONSE_ALGORITHM> m = {
+      {"SYMMETRIC", RESPONSE_ALGORITHM::SYMMETRIC},
+      {"SYMMETRIZED", RESPONSE_ALGORITHM::SYMMETRIZED},
+      {"SYMPLECTIC", RESPONSE_ALGORITHM::SYMPLECTIC},
   };
   check(m, value, field);
 }
@@ -57,10 +59,11 @@ void resolve<GAUGE>(std::string& value, GAUGE& field) {
 }
 
 template<>
-void resolve<MULTIPLICITY>(std::string& value, MULTIPLICITY& field) {
-  static const std::map<std::string, MULTIPLICITY> m = {{"SINGLET", MULTIPLICITY::SINGLET}, {"TRIPLET", MULTIPLICITY::TRIPLET}};
+void resolve<LR_METHOD>(std::string& value, LR_METHOD& field) {
+  static const std::map<std::string, LR_METHOD> m = {{"TDA", LR_METHOD::TDA},   {"TDDFT", LR_METHOD::TDDFT},
+                                                     {"CC2", LR_METHOD::CC2},   {"CISDINF", LR_METHOD::CISDINF},
+                                                     {"CISD", LR_METHOD::CISD}, {"ADC2", LR_METHOD::ADC2}};
   check(m, value, field);
 }
-
 } /* namespace Options */
 } /* namespace Serenity */

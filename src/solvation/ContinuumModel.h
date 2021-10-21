@@ -52,10 +52,9 @@ class ContinuumModel : public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
   /**
    * @brief Constructor. Creates the input for PCMSolver.
    * @param pcmSettings                      The settings associated with the PCM.
-   * @param geometry                         The geometry of the active system.
-   * @param activeDensityMatrixController    The density matrix controller of the active system.
-   * @param densityMatrixControllers         The density matrix controllers of the environment systems.
-   * @param environmentGeometries            The geometries of the environment.
+   * @param molecularSurface                 The molecular surface.
+   * @param activePotential                  The electrostatic potential controller of the active system.
+   * @param environmentPotentials            The elecstrostatic potentials of the environment systems.
    */
   ContinuumModel(const PCMSettings& pcmSettings, std::shared_ptr<MolecularSurfaceController> molecularSurface,
                  std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>> activePotential,
@@ -84,6 +83,18 @@ class ContinuumModel : public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
   void notify() override final {
     _pcmCharges = nullptr;
   };
+  /**
+   * @brief Getter for the underlying PCMSettings.
+   */
+  const PCMSettings& getPCMSettings();
+  /**
+   * @brief Getter for the molecular surface controller.
+   */
+  std::shared_ptr<MolecularSurfaceController> getMolecularSurfaceController();
+  /**
+   * @brief Getter for the CPCM scaling factor.
+   */
+  double getCPCMScaling();
 
  private:
   // The PCMSettings.

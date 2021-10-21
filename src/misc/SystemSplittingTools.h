@@ -81,13 +81,15 @@ class SystemSplittingTools {
    *        Atoms with a total population of active orbitals larger than the given threshold are
    *        assigned to the active system.
    * @param system The system which will be split.
-   * @param activeES The electronic structure of the selected environment system.
-   * @param localizationThreshold The threshold for the atom assignment.
-   * @return Geometries of the active and environment system (act : env)
+   * @param assignment The orbital assignments.
+   * @param prioFirst Priorize the first system in the atom assignment.
+   * @param locThreshold The threshold for the atom assignment.
+   * @param nFrag        Number of fragments to partition the geometry in.
+   * @return The subsystem geometries.
    */
-  static std::pair<std::shared_ptr<Geometry>, std::shared_ptr<Geometry>>
-  splitGeometry(std::shared_ptr<SystemController> system, std::shared_ptr<ElectronicStructure<SCFMode>> activeES,
-                double localizationThreshold);
+  static std::vector<std::shared_ptr<Geometry>> splitGeometry(std::shared_ptr<SystemController> system,
+                                                              const SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment,
+                                                              bool prioFirst, double locThreshold, unsigned int nFrag);
 
   /// @brief Produce a new dummy atom from a non-ghost atom.
   /// @param atom The atom.
@@ -212,11 +214,22 @@ class SystemSplittingTools {
    * @param f_AO The matrix in AO basis.
    * @param paoOrthogonalizationThreshold The threshold for the canonical orthogonalization.
    * @param eigenvalues The matrix eigenvalues.
-   * @param transformation The transformation to the non-linear dependet basis.
+   * @param transformation The transformation to the non-linear dependent basis.
    */
   static void diagonalizationInNonRedundantPAOBasis(const Eigen::MatrixXd& R_ij, const Eigen::MatrixXd& s_AO,
                                                     const Eigen::MatrixXd& f_AO, double paoOrthogonalizationThreshold,
                                                     Eigen::VectorXd& eigenvalues, Eigen::MatrixXd& transformation);
+  /**
+   * @brief  Diagonalize a matrix in a linear-dependent basis.
+   * @param s_PAO                            The overlap matrix in the original basis.
+   * @param f_PAO                            The Fock matrix in the original basis.
+   * @param paoOrthogonalizationThreshold    The threshold for the canonical orthogonalization.
+   * @param eigenvalues                      The matrix eigenvalues.
+   * @param transformation                   The transformation to the non-linear dependent basis.
+   */
+  static void diagonalizationInNonRedundantPAOBasis(const Eigen::MatrixXd& s_PAO, const Eigen::MatrixXd& f_PAO,
+                                                    double paoOrthogonalizationThreshold, Eigen::VectorXd& eigenvalues,
+                                                    Eigen::MatrixXd& transformation);
   /**
    * @brief The matrix is squared and checked for values larger than the threshold.
    *        A sparse map is constructed that contains only elements that fullfill this
@@ -247,6 +260,16 @@ class SystemSplittingTools {
    */
   static std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>>
   getEnvironmentDensityControllers(std::vector<std::shared_ptr<SystemController>> environmentSystems, bool topDown = false);
+  /**
+   * @brief Partition the set of supersystem orbitals represented by the supersystem into subsystem orbital-sets based
+   *        on the orbital assignments.
+   * @param supersystem      The supersystem.
+   * @param fragments        The subsystems.
+   * @param assignment       The orbital partitioning/assignments.
+   */
+  static void splitSupersystemBasedOnAssignment(std::shared_ptr<SystemController> supersystem,
+                                                std::vector<std::shared_ptr<SystemController>> fragments,
+                                                const SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment);
 };
 
 } /* namespace Serenity */

@@ -131,7 +131,7 @@ FunctionalData<T> XCFun<T>::calcData(FUNCTIONAL_DATA_TYPE type, const Functional
     const unsigned int blockSize = determineBlockSize(iBlock, nPoints, nBlocks);
     bool skip = true;
     for_spin(density) {
-      skip *= (density_spin.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
+      skip = skip && (density_spin.segment(firstIndex, blockSize).array().abs().sum() < blockSize * 1e-12);
     };
     if (skip)
       continue;

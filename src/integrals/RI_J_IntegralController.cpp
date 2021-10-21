@@ -31,14 +31,16 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 RI_J_IntegralController::RI_J_IntegralController(std::shared_ptr<BasisController> basisControllerA,
                                                  std::shared_ptr<BasisController> auxBasisController,
-                                                 std::shared_ptr<BasisController> basisControllerB)
+                                                 std::shared_ptr<BasisController> basisControllerB, LIBINT_OPERATOR op,
+                                                 double mu)
   : _basisControllerA(basisControllerA),
     _basisControllerB(basisControllerB),
     _auxBasisController(auxBasisController),
+    _op(op),
+    _mu(mu),
     _nBasisFunctions(basisControllerA->getNBasisFunctions()),
     _nAuxFunctions(auxBasisController->getNBasisFunctions()),
     _nAuxFunctionsRed(auxBasisController->getReducedNBasisFunctions()),
@@ -107,7 +109,7 @@ void RI_J_IntegralController::calculate2CenterIntegrals() {
      * Calculate Coulomb metric of aux _basis (P|1/r|Q) (-> eq. [1].(3) )
      */
     _M = std::make_shared<Eigen::MatrixXd>();
-    *_M = _libint->compute1eInts(libint2::Operator::coulomb, _auxBasisController, _auxBasisController);
+    *_M = _libint->compute1eInts(_op, _auxBasisController, _auxBasisController, std::vector<std::shared_ptr<Atom>>(0), _mu);
     timeTaken(3, "Calc 2-center ints");
   }
 }
@@ -129,8 +131,8 @@ void RI_J_IntegralController::cache3CInts() {
   long long memPerBlock = (!twoBasisMode) ? nBFs_A * (nBFs_A + 1) / 2 * sizeof(double)
                                           : nBFs_A * _basisControllerB->getNBasisFunctions() * sizeof(double);
   long long freeMem = memManager->getAvailableSystemMemory();
-  unsigned long long nBlocks = 0.85 * freeMem / memPerBlock; // keep 15% of memory here for other things that will be
-                                                             // cached
+  unsigned long long nBlocks = 0.5 * freeMem / memPerBlock; // keep 50 % of memory here for other things that will be
+                                                            // cached
   // return if there was nothing to store
   if (freeMem < 0)
     nBlocks = 0;
@@ -155,13 +157,17 @@ void RI_J_IntegralController::cache3CInts() {
     cache[(unsigned long long)K + ijIndex] = integral;
   };
   if (!twoBasisMode) {
-    TwoElecThreeCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisControllerA, _auxBasisController, 1E-10,
-                                       std::pair<unsigned, unsigned>(0, _cache->rows()));
+    TwoElecThreeCenterIntLooper looper(_op, 0, _basisControllerA, _auxBasisController,
+                                       _basisControllerA->getPrescreeningThreshold(),
+                                       std::pair<unsigned int, unsigned int>(0, _cache->rows()), _mu);
     looper.loopNoDerivative(distribute);
   }
   else {
-    ABTwoElecThreeCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisControllerA, _basisControllerB,
-                                         _auxBasisController, 1E-10, std::pair<unsigned, unsigned>(0, _cache->rows()));
+    double prescreeningThresholdA = _basisControllerA->getPrescreeningThreshold();
+    double prescreeningThresholdB = _basisControllerB->getPrescreeningThreshold();
+    double prescreeningThreshold = std::min(prescreeningThresholdA, prescreeningThresholdB);
+    ABTwoElecThreeCenterIntLooper looper(_op, 0, _basisControllerA, _basisControllerB, _auxBasisController,
+                                         prescreeningThreshold, std::pair<unsigned int, unsigned int>(0, _cache->rows()), _mu);
     looper.loopNoDerivative(distribute);
   }
 }

@@ -29,46 +29,57 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
 void setOutputOptions(const unsigned int digits) {
-  cout.precision(digits);
+  std::cout.precision(digits);
   /**
    * TODO maybe add some cases here
    */
-  cout << scientific;
+  std::cout << std::scientific;
 }
 
 void printProgramHead() {
-  cout << endl;
-  cout << "#==============================================================================#" << endl;
-  cout << "#" << setw(78) << " "
-       << "#" << endl;
-  cout << "#" << setw(78) << "   SSSSS                                                    #########         #" << endl;
-  cout << "#" << setw(78) << "   SS    EEEE RRR  EEEE N   N II TTTTTT YY  YY          ####################  #" << endl;
-  cout << "#" << setw(78) << "   SS    E    R  R E    NN  N II   TT    YYYY        ######################## #" << endl;
-  cout << "#" << setw(78) << "   SSSSS EEEE RRR  EEEE N N N II   TT     YY      #########             ##### #" << endl;
-  cout << "#" << setw(78) << "      SS E    R R  E    N  NN II   TT     YY   #######       OOOOOOOO         #" << endl;
-  cout << "#" << setw(78) << "      SS EEEE R  R EEEE N   N II   TT     YY ########      OOOOOOOOOOOO       #" << endl;
-  cout << "#" << setw(78) << "   SSSSS                                  ########        OOOOOOOOOOOOOO      #" << endl;
-  cout << "#" << setw(78) << "                                     ###########   OOO    OOOOOOOOOOOOOO      #" << endl;
-  cout << "#" << setw(78) << " #########                   ###############      OOOOO   OOOOOOOOOOOOOO      #" << endl;
-  cout << "#" << setw(78) << " ######################################      OO   OOOOO    OOOOOOOOOOOO       #" << endl;
-  cout << "#" << setw(78) << "       #########################         O   OO    OOO       OOOOOOOO         #" << endl;
-  cout << "#" << setw(78) << " "
-       << "#" << endl;
-  cout << "#" << setw(78) << " "
-       << "#" << endl;
-  cout << "#" << setw(78) << left << centerHeadlines("Serenity") << "#" << endl;
-  cout << "#" << setw(78) << " "
-       << "#" << endl;
-  cout << "#" << setw(78) << left << centerHeadlines("A quantum chemistry code") << "#" << endl;
-  cout << "#" << setw(78) << left << centerHeadlines("developed in the group of Johannes Neugebauer") << "#" << endl;
-  cout << "#" << setw(78) << left << centerHeadlines("at the WWU Münster.") << " #" << endl;
-  cout << "#" << setw(78) << " "
-       << "#" << endl;
-  cout << "#==============================================================================#" << endl;
-  cout << endl;
+  std::cout << std::endl;
+  std::cout << "#==============================================================================#" << std::endl;
+  std::cout << "#" << std::setw(78) << " "
+            << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << "   SSSSS                                                    #########         #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "   SS    EEEE RRR  EEEE N   N II TTTTTT YY  YY          ####################  #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "   SS    E    R  R E    NN  N II   TT    YYYY        ######################## #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "   SSSSS EEEE RRR  EEEE N N N II   TT     YY      #########             ##### #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "      SS E    R R  E    N  NN II   TT     YY   #######       OOOOOOOO         #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "      SS EEEE R  R EEEE N   N II   TT     YY ########      OOOOOOOOOOOO       #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "   SSSSS                                  ########        OOOOOOOOOOOOOO      #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "                                     ###########   OOO    OOOOOOOOOOOOOO      #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << " #########                   ###############      OOOOO   OOOOOOOOOOOOOO      #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << " ######################################      OO   OOOOO    OOOOOOOOOOOO       #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << "       #########################         O   OO    OOO       OOOOOOOO         #"
+            << std::endl;
+  std::cout << "#" << std::setw(78) << " "
+            << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << " "
+            << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("Serenity") << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << " "
+            << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("A quantum chemistry code") << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("developed in the group of Johannes Neugebauer")
+            << "#" << std::endl;
+  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("at the WWU Münster.") << " #" << std::endl;
+  std::cout << "#" << std::setw(78) << " "
+            << "#" << std::endl;
+  std::cout << "#==============================================================================#" << std::endl;
+  std::cout << std::endl;
 }
 
 void printRunStartInfo() {
@@ -86,31 +97,33 @@ void printRunStartInfo() {
    * FIXME works only for Linux
    */
   printSmallCaption("Program started");
-  cout << endl;
-  cout << "    "
-       << "Time:   " << dateAndTime << endl;
+  std::cout << std::endl;
+  std::cout << "    "
+            << "Time:   " << dateAndTime << std::endl;
+  std::cout << "    "
+            << "Version:           1.4.0" << std::endl;
   {
-    string hostName;
+    std::string hostName;
     if (getenv("HOSTNAME") != NULL) {
       hostName = getenv("HOSTNAME");
     }
     else {
       hostName = "HOSTNAME UNKNOWN";
     }
-    cout << "    "
-         << "On:                " << hostName << endl;
+    std::cout << "    "
+              << "On:                " << hostName << std::endl;
   }
 
 #ifdef _OPENMP
-  cout << "    "
-       << "Cores:             " << omp_get_max_threads() << endl;
+  std::cout << "    "
+            << "Cores:             " << omp_get_max_threads() << std::endl;
 #endif
-  cout << "    "
-       << "Soft Memory Limit: " << MemoryManager::getInstance()->getAvailableSystemMemory() / (1024 * 1024)
-       << " MB for dynamically stored data." << endl;
-  cout << "    "
-       << "By:                " << getenv("USER") << endl;
-  cout << endl;
+  std::cout << "    "
+            << "Soft Memory Limit: " << MemoryManager::getInstance()->getAvailableSystemMemory() / (1024 * 1024)
+            << " MB for dynamically stored data." << std::endl;
+  std::cout << "    "
+            << "By:                " << getenv("USER") << std::endl;
+  std::cout << std::endl;
 }
 
 void printRunEndInfo() {
@@ -121,83 +134,83 @@ void printRunEndInfo() {
   tstruct = *localtime(&now);
   strftime(dateAndTime, sizeof(dateAndTime), "%Y-%m-%d %X", &tstruct);
 
-  cout << endl;
+  std::cout << std::endl;
   printSmallCaption("Final Timings");
   Timings::printTimes();
-  cout << endl;
+  std::cout << std::endl;
   printSmallCaption("Program ended");
-  cout << "    "
-       << "Time:  " << dateAndTime << endl;
+  std::cout << "    "
+            << "Time:  " << dateAndTime << std::endl;
   {
-    string hostName;
+    std::string hostName;
     if (getenv("HOSTNAME") != NULL) {
       hostName = getenv("HOSTNAME");
     }
     else {
       hostName = "HOSTNAME UNKNOWN";
     }
-    cout << "    "
-         << "On:    " << hostName << endl;
+    std::cout << "    "
+              << "On:    " << hostName << std::endl;
   }
   timeTaken(0, "the entire run");
-  cout << endl;
+  std::cout << std::endl;
 }
 
-void printSectionTitle(const string text) {
-  cout << endl;
-  cout << "o------------------------------------------------------------------------------o" << endl;
-  cout << "|" << centerHeadlines(text) << "|" << endl;
-  cout << "o------------------------------------------------------------------------------o" << endl;
-  cout << endl;
+void printSectionTitle(const std::string text) {
+  std::cout << std::endl;
+  std::cout << "o------------------------------------------------------------------------------o" << std::endl;
+  std::cout << "|" << centerHeadlines(text) << "|" << std::endl;
+  std::cout << "o------------------------------------------------------------------------------o" << std::endl;
+  std::cout << std::endl;
 }
 
-void printSubSectionTitle(const string text) {
-  cout << endl;
-  cout << center("------------------------------------------------------------") << endl;
-  cout << center(text) << endl;
-  cout << center("------------------------------------------------------------") << endl;
-  cout << endl;
+void printSubSectionTitle(const std::string text) {
+  std::cout << std::endl;
+  std::cout << center("------------------------------------------------------------") << std::endl;
+  std::cout << center(text) << std::endl;
+  std::cout << center("------------------------------------------------------------") << std::endl;
+  std::cout << std::endl;
 }
 
-void printSmallCaption(const string text) {
-  cout << "  " << text << ":" << endl;
-  cout << " ";
+void printSmallCaption(const std::string text) {
+  std::cout << "  " << text << ":" << std::endl;
+  std::cout << " ";
   for (unsigned int i = 0; i < text.length() + 3; ++i) {
-    cout << "-";
+    std::cout << "-";
   }
-  cout << endl;
+  std::cout << std::endl;
 }
 
-void printTableHead(const string text) {
-  cout << "  " << text << endl;
-  cout << " ";
+void printTableHead(const std::string text) {
+  std::cout << "  " << text << std::endl;
+  std::cout << " ";
   for (unsigned int i = 0; i < text.length() + 3; ++i) {
-    cout << "-";
+    std::cout << "-";
   }
-  cout << endl;
+  std::cout << std::endl;
 }
 
-void printBigCaption(const string text) {
-  cout << " o";
+void printBigCaption(const std::string text) {
+  std::cout << " o";
   for (unsigned int i = 0; i < text.length() + 3; ++i) {
-    cout << "-";
+    std::cout << "-";
   }
-  cout << "o" << endl;
-  cout << " | " << text << ": |" << endl;
-  cout << " o";
+  std::cout << "o" << std::endl;
+  std::cout << " | " << text << ": |" << std::endl;
+  std::cout << " o";
   for (unsigned int i = 0; i < text.length() + 3; ++i) {
-    cout << "-";
+    std::cout << "-";
   }
-  cout << "o" << endl;
-  cout << endl;
+  std::cout << "o" << std::endl;
+  std::cout << std::endl;
 }
 
-void print(const string text) {
-  cout << "    " << text << endl;
+void print(const std::string text) {
+  std::cout << "    " << text << std::endl;
 }
 
-string centerHeadlines(const string s) {
-  string outpt;
+std::string centerHeadlines(const std::string s) {
+  std::string outpt;
   int l = s.length();
   int pos = (int)((78 - l) / 2);
   for (int i = 0; i < pos; ++i)
@@ -208,8 +221,8 @@ string centerHeadlines(const string s) {
   return outpt;
 }
 
-string center(const string s) {
-  string outpt;
+std::string center(const std::string s) {
+  std::string outpt;
   int l = s.length();
   int pos = (int)((80 - l) / 2);
   for (int i = 0; i < pos; ++i)

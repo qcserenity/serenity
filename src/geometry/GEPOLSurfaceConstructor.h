@@ -31,6 +31,7 @@ class Triangle;
 class Atom;
 class Point;
 class GridController;
+class MolecularSurface;
 struct PCMSettings;
 namespace Options {
 enum class PCM_ATOMIC_RADII_TYPES;
@@ -59,43 +60,24 @@ class GEPOLSurfaceConstructor {
    */
   virtual ~GEPOLSurfaceConstructor();
   /**
-   * @brief Getter for the underlying triangles.
-   * @return The triangles.
+   * @brief Getter for the final molecular surface
+   * @return The molecular surface.
    */
-  const std::vector<Triangle>& getTriangles();
-  /**
-   * @brief Getter for the underlying sphere centers.
-   * @return The sphere centers.
-   */
-  const std::vector<Point>& getSphereCenters();
-  /**
-   * @brief Getter for the underlying spheres.
-   * @return The spheres.
-   */
-  const std::vector<Sphere>& getSpheres();
-  /**
-   * @brief Getter for the surface grid controller.
-   * @return The surface grid controller.
-   */
-  std::shared_ptr<GridController> getSurfaceGrid();
-  /**
-   * @brief Getter for the normal vectors on each grid point.
-   *        The vectors are orthogonal to the surface and normalized.
-   * @return The normal vectors.
-   */
-  const Eigen::Matrix3Xd& getNormVectors();
+  std::unique_ptr<MolecularSurface> getMolecularSurface();
 
  private:
   // Construct the surface from spheres.
-  void buildSurface();
+  void buildSurface(const std::vector<Sphere>& spheres);
   // Initialize the surface.
   void initializeSurface();
   // Construct all spheres.
-  void addSpheres(bool coarse);
+  void addSpheres(bool coarse, std::vector<Sphere>& spheres);
   // Search for overlapping triangles and covered triangle centers.
-  void checkTriangleCenter(bool& withinSurface, bool& intersected, const Triangle& triangle, const double& effSolvRad);
+  void checkTriangleCenter(bool& withinSurface, bool& intersected, const Triangle& triangle, const double& effSolvRad,
+                           const std::vector<Sphere>& spheres);
   // Increase the resolution at an intersection.
-  std::vector<Triangle> patchIntersection(const Triangle& triangle, double effSolvRad, int patchLevel);
+  std::vector<Triangle> patchIntersection(const Triangle& triangle, double effSolvRad, int patchLevel,
+                                          const std::vector<Sphere>& spheres);
   // If true, the surface is available.
   bool _initialized;
   // Flag for solvent accessible surface (SAS).
@@ -114,10 +96,8 @@ class GEPOLSurfaceConstructor {
   std::vector<Sphere> _spheres;
   // The triangles.
   std::vector<Triangle> _molecularSurface;
-  // The surface grid controller.
-  std::shared_ptr<GridController> _surfaceGrid;
-  // The normal vectors.
-  std::unique_ptr<Eigen::Matrix3Xd> _normalVectors;
+  // The molecular surface..
+  std::unique_ptr<MolecularSurface> _surface;
 };
 
 } /* namespace Serenity */

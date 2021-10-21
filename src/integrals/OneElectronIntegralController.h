@@ -61,8 +61,10 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   void notify() override final {
     this->clearOneInts();
   }
+
   /* Getters */
   /**
+   *
    * @brief If not yet present, the necessary integrals are calculated on call.
    *
    * @returns the matrix typically denoted with h. Sum of kinetic and potential (nuclei-electron
@@ -70,10 +72,11 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
    */
   const MatrixInBasis<RESTRICTED>& getOneElectronIntegrals() {
     if (!_oneElectronIntegralsTotal) {
-      calcHCoreIntegrals();
+      this->calcHCoreIntegrals();
     }
     return *_oneElectronIntegralsTotal;
   }
+
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    *
@@ -81,10 +84,11 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
    */
   const MatrixInBasis<RESTRICTED>& getOverlapIntegrals() {
     if (!_overlapIntegrals) {
-      calcOverlapIntegrals();
+      this->calcOverlapIntegrals();
     }
     return *_overlapIntegrals;
   }
+
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    *
@@ -92,10 +96,11 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
    */
   const MatrixInBasis<RESTRICTED>& getECPIntegrals() {
     if (!_ecpIntegrals) {
-      calcHCoreIntegrals();
+      this->calcECPIntegrals();
     }
     return *_ecpIntegrals;
   }
+
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    *
@@ -110,13 +115,40 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
 
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
+   *
+   * @return Returns the kinetic integrals.
+   */
+  const MatrixInBasis<RESTRICTED>& getKinIntegrals() {
+    if (!_kinIntegrals) {
+      calcKinIntegrals();
+    }
+    return *_kinIntegrals;
+  }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
+   *
+   * @return Returns the kinetic integrals.
+   */
+  const MatrixInBasis<RESTRICTED>& getNucIntegrals() {
+    if (!_nucIntegrals) {
+      calcNucIntegrals();
+    }
+    return *_nucIntegrals;
+  }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
    * @return Returns the electric dipole integrals in length representation of the form <mu|-r|nu>
-   *         for a given set of basis functions mu and nu.
+   *         for a given set of basis functions mu and nu.\n
    *         Note that the negative sign is included to be consistent with response theory.
    */
   const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleLengths(Point gaugeOrigin = Point(0, 0, 0)) {
-    if (!_diplen) {
+    if (!_diplen || !gaugeOrigin.isSamePoint(_gaugeOrigin, 1e-6)) {
       this->calcDipoleLengths(gaugeOrigin);
+      this->calcDipoleVelocities(gaugeOrigin);
+      this->calcDipoleMagnetics(gaugeOrigin);
+      _gaugeOrigin = gaugeOrigin;
     }
     return *_diplen;
   }
@@ -124,12 +156,14 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    * @return Returns the dipole integrals in velocity representation of the form <mu|-p|nu>
-   *         for a given set of basis functions mu and nu.
-   *         Note that the negative sign is included to be consistent with response theory.
+   *         for a given set of basis functions mu and nu.\n
    */
   const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleVelocities(Point gaugeOrigin = Point(0, 0, 0)) {
-    if (!_dipvel) {
+    if (!_dipvel || !gaugeOrigin.isSamePoint(_gaugeOrigin, 1e-6)) {
+      this->calcDipoleLengths(gaugeOrigin);
       this->calcDipoleVelocities(gaugeOrigin);
+      this->calcDipoleMagnetics(gaugeOrigin);
+      _gaugeOrigin = gaugeOrigin;
     }
     return *_dipvel;
   }
@@ -137,12 +171,15 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    * @return Returns the angular momentum integrals of the form 0.5 <mu|L|nu>
-   *         for a given set of basis functions mu and nu.
+   *         for a given set of basis functions mu and nu.\n
    *         Note that the factor of 0.5 is included to be consistent with response theory.
    */
   const std::vector<MatrixInBasis<RESTRICTED>>& getDipoleMagnetics(Point gaugeOrigin = Point(0, 0, 0)) {
-    if (!_angmom) {
+    if (!_angmom || !gaugeOrigin.isSamePoint(_gaugeOrigin, 1e-6)) {
+      this->calcDipoleLengths(gaugeOrigin);
+      this->calcDipoleVelocities(gaugeOrigin);
       this->calcDipoleMagnetics(gaugeOrigin);
+      _gaugeOrigin = gaugeOrigin;
     }
     return *_angmom;
   }
@@ -157,10 +194,13 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
  private:
   const std::shared_ptr<BasisController> _basisController;
   const std::shared_ptr<const Geometry> _geometry;
+  Point _gaugeOrigin = Point(0, 0, 0);
 
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _overlapIntegrals;
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _oneElectronIntegrals;
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _oneElectronIntegralsTotal;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _kinIntegrals;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _nucIntegrals;
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _ecpIntegrals;
 
   std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _diplen;
@@ -170,8 +210,10 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   bool _calcECPs;
 
   void calcHCoreIntegrals();
+  void calcKinIntegrals();
+  void calcNucIntegrals();
+  void calcECPIntegrals();
   void calcOverlapIntegrals();
-  void cleanMem();
 
   void calcDipoleLengths(Point gaugeOrigin);
   void calcDipoleVelocities(Point gaugeOrigin);

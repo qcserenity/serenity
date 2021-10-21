@@ -22,8 +22,18 @@
 #define COULOMBINTERACTIONINTLOOPER_H_
 
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"
 #include "basis/BasisController.h"
 #include "integrals/wrappers/Libint.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <libint2/engine.h>
+#pragma GCC diagnostic pop
 
 namespace Serenity {
 /**
@@ -39,7 +49,7 @@ class CoulombInteractionIntLooper {
    * @param basisOne The basis of one system.
    * @param basisTwo The basis of the second interacting system.
    */
-  CoulombInteractionIntLooper(libint2::Operator op, const unsigned deriv, std::shared_ptr<BasisController> basisOne,
+  CoulombInteractionIntLooper(LIBINT_OPERATOR op, const unsigned deriv, std::shared_ptr<BasisController> basisOne,
                               std::shared_ptr<BasisController> basisTwo, double prescreeningThreshold)
     : _op(op), _deriv(deriv), _basisOne(basisOne), _basisTwo(basisTwo), _prescreeningThreshold(prescreeningThreshold) {
   }
@@ -100,8 +110,7 @@ class CoulombInteractionIntLooper {
    */
   template<class Func>
   __attribute__((always_inline)) inline void loop(Func loopEvalFunction) {
-    loop(loopEvalFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
-                              unsigned int, unsigned int, double) { return false; });
+    loop(loopEvalFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; });
   }
 
   template<class Func, class PrescreenFunc>
@@ -141,8 +150,6 @@ class CoulombInteractionIntLooper {
       const unsigned int j = p.bf2;
       const auto& basI = *basis1[i];
       const auto& basJ = *basis1[j];
-      const unsigned int nI = basis1[i]->getNContracted();
-      const unsigned int nJ = basis1[j]->getNContracted();
       const unsigned int firstI = _basisOne->extendedIndex(i);
       const unsigned int firstJ = _basisOne->extendedIndex(j);
 
@@ -159,12 +166,10 @@ class CoulombInteractionIntLooper {
         const auto& basB = *basis2[b];
         const unsigned int firstA = _basisTwo->extendedIndex(a);
         const unsigned int firstB = _basisTwo->extendedIndex(b);
-        const unsigned int nA = basis2[a]->getNContracted();
-        const unsigned int nB = basis2[b]->getNContracted();
         /*
          * Optional advanced prescreening
          */
-        if (prescreenFunc(firstI, firstJ, firstA, firstB, nI, nJ, nA, nB, p.factor * q.factor))
+        if (prescreenFunc(i, j, a, b, p.factor * q.factor))
           continue;
         if (firstJ > firstI || firstB > firstA)
           continue;
@@ -250,8 +255,7 @@ class CoulombInteractionIntLooper {
    */
   template<class Func>
   __attribute__((always_inline)) inline void loopNoDerivative(Func distribute) {
-    loopNoDerivative(distribute, [](unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
-                                    unsigned int, unsigned int, double) { return false; });
+    loopNoDerivative(distribute, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; });
   }
 
   template<class Func, class PrescreenFunc>
@@ -315,7 +319,7 @@ class CoulombInteractionIntLooper {
         /*
          * Optional advanced prescreening
          */
-        if (prescreenFunc(firstI, firstJ, firstA, firstB, nI, nJ, nA, nB, p.factor * q.factor))
+        if (prescreenFunc(i, j, a, b, p.factor * q.factor))
           continue;
         if (firstJ > firstI || firstB > firstA)
           continue;
@@ -353,7 +357,7 @@ class CoulombInteractionIntLooper {
 
  private:
   /// @brief The kernel/operator as libint enum.
-  libint2::Operator _op;
+  LIBINT_OPERATOR _op;
   /// @brief The derivative level.
   const unsigned int _deriv;
   /// @brief The basis.

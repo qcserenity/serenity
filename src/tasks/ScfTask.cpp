@@ -42,10 +42,10 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
-ScfTask<SCFMode>::ScfTask(const shared_ptr<SystemController> systemController) : _systemController(systemController) {
+ScfTask<SCFMode>::ScfTask(const std::shared_ptr<SystemController> systemController)
+  : _systemController(systemController) {
   assert(_systemController);
 }
 template<Options::SCF_MODES SCFMode>
@@ -128,8 +128,12 @@ void ScfTask<SCFMode>::finalDFTEnergyEvaluation() {
     static_cast<DFTPotentials<SCFMode>&>(*dftPotentials).replaceFunctionalPotential(Vxc);
     // Update orbitals/Fock matrix.
     auto orbitalController = es->getMolecularOrbitals();
-    orbitalController->updateOrbitals(dftPotentials->getFockMatrix(es->getDensityMatrix(), energyComponentController),
-                                      es->getOneElectronIntegralController());
+    auto f = dftPotentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
+    orbitalController->updateOrbitals(f, es->getOneElectronIntegralController());
+    // Set new Fock matrix of the final energy evaluation
+    es->setFockMatrix(f);
+    // Write everything to HDF5
+    es->toHDF5(systemSettings.path + systemSettings.name, systemSettings.identifier);
   }
   // Double hybrid MP2 contribution.
   calculateMP2Contribution();
@@ -143,17 +147,17 @@ void ScfTask<SCFMode>::loadRestartFiles() {
   if (_systemController->getSettings().load.empty()) {
     throw SerenityError("Option restart in SCFTask only available in combination with option load in system block!");
   }
-  shared_ptr<OrbitalController<SCFMode>> orbitals;
+  std::shared_ptr<OrbitalController<SCFMode>> orbitals;
   try {
     orbitals = std::make_shared<OrbitalController<SCFMode>>(_systemController->getSettings().load + "tmp",
                                                             _systemController->getBasisController(),
-                                                            _systemController->getSettings().identifier);
+                                                            _systemController->getSystemIdentifier());
   }
   catch (...) {
     std::cout << "No temporary orbital files found. Looking for converged orbital files" << std::endl;
     orbitals = std::make_shared<OrbitalController<SCFMode>>(
-        _systemController->getSettings().load + _systemController->getSettings().name,
-        _systemController->getBasisController(), _systemController->getSettings().identifier);
+        _systemController->getSettings().load + _systemController->getSystemName(),
+        _systemController->getBasisController(), _systemController->getSystemIdentifier());
   }
   _systemController->setElectronicStructure(std::make_shared<ElectronicStructure<SCFMode>>(
       orbitals, _systemController->getOneElectronIntegralController(), _systemController->getNOccupiedOrbitals<SCFMode>()));
@@ -163,8 +167,11 @@ void ScfTask<SCFMode>::printHeader() {
   printSubSectionTitle("Main SCF Options");
   const Settings& systemSettings = _systemController->getSettings();
   auto m = systemSettings.method;
-  std::string method;
+  auto s = SCFMode;
+  std::string method, scfmode;
   Options::resolve<Options::ELECTRONIC_STRUCTURE_THEORIES>(method, m);
+  Options::resolve<Options::SCF_MODES>(scfmode, s);
+  printf("%4s SCF Mode:              %15s\n", "", scfmode.c_str());
   printf("%4s Method:                %15s\n", "", method.c_str());
   if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
     std::string functional;
@@ -173,7 +180,7 @@ void ScfTask<SCFMode>::printHeader() {
     printf("%4s Functional:            %15s\n", "", functional.c_str());
     printf("%4s Grid Accuracy:         %13d/%1d\n", "", systemSettings.grid.smallGridAccuracy, systemSettings.grid.accuracy);
     std::string fitting;
-    auto fit = systemSettings.dft.densityFitting;
+    auto fit = systemSettings.basis.densityFitting;
     Options::resolve<Options::DENS_FITS>(fitting, fit);
     printf("%4s Density Fitting:       %15s\n", "", fitting.c_str());
     std::string dispersion;
@@ -184,6 +191,16 @@ void ScfTask<SCFMode>::printHeader() {
   unsigned nb = _systemController->getBasisController()->getNBasisFunctions();
   printf("%4s Basis Set:             %15s\n", "", systemSettings.basis.label.c_str());
   printf("%4s Basis Functions:       %15i\n", "", nb);
+  printf("%4s Caching Threshold:     %15i\n", "", systemSettings.basis.intCondition);
+  std::shared_ptr<BasisController> basis = _systemController->getBasisController();
+  double integralThreshold = systemSettings.basis.integralThreshold;
+  if (integralThreshold == 0) {
+    integralThreshold = basis->getPrescreeningThreshold();
+  }
+  printf("%4s Integral Threshold:    %15.1e\n", "", integralThreshold);
+  printf("\n%4s Energy Threshold:      %15.1e\n", "", systemSettings.scf.energyThreshold);
+  printf("%4s RMSD[D] Threshold:     %15.1e\n", "", systemSettings.scf.rmsdThreshold);
+  printf("%4s DIIS Threshold:        %15.1e\n", "", systemSettings.scf.diisThreshold);
   if (_systemController->getGeometry()->hasAtomsWithECPs()) {
     printf("%4s ECP Start:             %15d\n", "", systemSettings.basis.firstECP);
   }
@@ -214,7 +231,7 @@ void ScfTask<SCFMode>::printResults() {
   }
   // SCF Analysis
   printSmallCaption("Additional Analysis");
-  SCFAnalysis<SCFMode> scfAn(_systemController, es->getOneElectronIntegralController(), energyComponentController);
+  SCFAnalysis<SCFMode> scfAn({_systemController});
   auto s2val = scfAn.S2();
   auto virialRatio = scfAn.VirialRatio();
   printf("\n   -<V>/<T> = %4.3f ", virialRatio);
@@ -230,11 +247,14 @@ void ScfTask<SCFMode>::performSCF(std::shared_ptr<PotentialBundle<SCFMode>> pote
   auto energyComponentController = es->getEnergyComponentController();
   const Settings& systemSettings = _systemController->getSettings();
   if (this->settings.skipSCF) {
-    potentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
+    auto F = potentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
     if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
       calculateMP2Contribution();
       calculateDispersionCorrection();
     }
+    es->setFockMatrix(F);
+    // ToDo: Crashes: EvaluateEnergyTaskTest.restricted_sDFT
+    // es->toHDF5(systemSettings.path + systemSettings.name, systemSettings.identifier);
   }
   else {
     if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
@@ -252,11 +272,7 @@ void ScfTask<SCFMode>::performSCF(std::shared_ptr<PotentialBundle<SCFMode>> pote
       finalDFTEnergyEvaluation();
     }
     else {
-      if (this->settings.skipSCF) {
-      }
-      else {
-        Scf<SCFMode>::perform(systemSettings, es, potentials);
-      }
+      Scf<SCFMode>::perform(systemSettings, es, potentials, settings.allowNotConverged);
     }
   }
 }
@@ -297,6 +313,8 @@ void ScfTask<SCFMode>::run() {
   // Print the final results.
   if (iOOptions.printSCFResults)
     printResults();
+  // Clean up.
+  _systemController->clear4CenterCache();
   return;
 }
 

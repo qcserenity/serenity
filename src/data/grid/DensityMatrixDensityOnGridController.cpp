@@ -1,8 +1,8 @@
 /**
  * @file   DensityMatrixDensityOnGridController.cpp
- * @author Thomas Dresselhaus <t.dresselhaus at wwu.de>
+ * @author Thomas Dresselhaus
  *
- * @date   30. Dezember 2014, 16:05
+ * @date   Dec 30, 2014
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -20,95 +20,96 @@
 /* Include Class Header*/
 #include "data/grid/DensityMatrixDensityOnGridController.h"
 /* Include Serenity Internal Headers */
-#include "data/SpinPolarizedData.h"
 #include "data/grid/BasisFunctionOnGridController.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/matrices/DensityMatrixController.h"
-#include "grid/GridController.h"
-#include "io/FormattedOutput.h"
-#include "io/IOOptions.h"
-#include "math/FloatMaths.h"
 /* Include Std and External Headers */
-#include <cassert>
-#include <stdexcept>
-#include <string>
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-DensityMatrixDensityOnGridController<T>::DensityMatrixDensityOnGridController(
-    std::shared_ptr<DensityOnGridCalculator<T>> densOnGridCalculator,
-    const std::shared_ptr<DensityMatrixController<T>> densityMatrixController)
-  : DensityMatrixDensityOnGridController<T>(densOnGridCalculator, densityMatrixController,
-                                            densOnGridCalculator->getBasisFunctionOnGridController()->getHighestDerivative()) {
+template<Options::SCF_MODES SCFMode>
+DensityMatrixDensityOnGridController<SCFMode>::DensityMatrixDensityOnGridController(
+    std::shared_ptr<DensityOnGridCalculator<SCFMode>> densOnGridCalculator,
+    const std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrixController)
+  : DensityMatrixDensityOnGridController<SCFMode>(
+        densOnGridCalculator, densityMatrixController,
+        densOnGridCalculator->getBasisFunctionOnGridController()->getHighestDerivative()) {
 }
 
-template<Options::SCF_MODES T>
-DensityMatrixDensityOnGridController<T>::DensityMatrixDensityOnGridController(
-    std::shared_ptr<DensityOnGridCalculator<T>> densOnGridCalculator,
-    const std::shared_ptr<DensityMatrixController<T>> densityMatrixController, const unsigned int highestDerivative)
-  : DensityOnGridController<T>(densOnGridCalculator->getGridController(), highestDerivative),
+template<Options::SCF_MODES SCFMode>
+DensityMatrixDensityOnGridController<SCFMode>::DensityMatrixDensityOnGridController(
+    std::shared_ptr<DensityOnGridCalculator<SCFMode>> densOnGridCalculator,
+    const std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrixController, const unsigned int highestDerivative)
+  : DensityOnGridController<SCFMode>(densOnGridCalculator->getGridController(), highestDerivative),
     _densOnGridCalculator(densOnGridCalculator),
     _densityMatrixController(densityMatrixController) {
   assert(_densOnGridCalculator);
-  _densityMatrixController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<T>>::_self);
-  this->_densityOnGrid.reset(new DensityOnGrid<T>(this->getGridController()));
-  if (this->_highestDerivative >= 1)
-    this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<T>>(this->getGridController());
-  if (this->_highestDerivative >= 2)
-    this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<T>>(this->getGridController());
+  _densityMatrixController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  this->_densityOnGrid.reset(new DensityOnGrid<SCFMode>(this->getGridController()));
+  if (this->_highestDerivative >= 1) {
+    this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<SCFMode>>(this->getGridController());
+  }
+  if (this->_highestDerivative >= 2) {
+    this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<SCFMode>>(this->getGridController());
+  }
   assert(this->_highestDerivative <= _densOnGridCalculator->getBasisFunctionOnGridController()->getHighestDerivative());
 }
 
-template<Options::SCF_MODES T>
-const DensityOnGrid<T>& DensityMatrixDensityOnGridController<T>::getDensityOnGrid() {
-  if (!this->_upToDate)
-    calculateData();
+template<Options::SCF_MODES SCFMode>
+const DensityOnGrid<SCFMode>& DensityMatrixDensityOnGridController<SCFMode>::getDensityOnGrid() {
+  if (!this->_upToDate) {
+    this->calculateData();
+  }
   assert(this->_densityOnGrid->isValid());
   return *this->_densityOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Gradient<DensityOnGrid<T>>& DensityMatrixDensityOnGridController<T>::getDensityGradientOnGrid() {
-  //  assert(this->_highestDerivative >= 1);
-  if (this->_highestDerivative < 1)
+template<Options::SCF_MODES SCFMode>
+const Gradient<DensityOnGrid<SCFMode>>& DensityMatrixDensityOnGridController<SCFMode>::getDensityGradientOnGrid() {
+  if (this->_highestDerivative < 1) {
     this->setHighestDerivative(1);
-  if (!this->_upToDate)
-    calculateData();
+  }
+  if (!this->_upToDate) {
+    this->calculateData();
+  }
   for (const auto& component : *this->_densityGradientOnGrid) {
-    if (!component.isValid())
+    if (!component.isValid()) {
       throw SerenityError("A component of the Density stored on the grid is invalid.");
+    }
   }
   return *this->_densityGradientOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Hessian<DensityOnGrid<T>>& DensityMatrixDensityOnGridController<T>::getDensityHessianOnGrid() {
-  if (this->_highestDerivative < 2)
+template<Options::SCF_MODES SCFMode>
+const Hessian<DensityOnGrid<SCFMode>>& DensityMatrixDensityOnGridController<SCFMode>::getDensityHessianOnGrid() {
+  if (this->_highestDerivative < 2) {
     this->setHighestDerivative(2);
-  if (!this->_upToDate)
-    calculateData();
+  }
+  if (!this->_upToDate) {
+    this->calculateData();
+  }
   for (const auto& component : *this->_densityHessianOnGrid) {
-    if (!component.isValid())
+    if (!component.isValid()) {
       throw SerenityError("A component of the Density stored on the grid is invalid.");
+    }
   }
   return *this->_densityHessianOnGrid;
 }
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::notify() {
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::notify() {
   this->_upToDate = false;
   this->notifyObjects();
 }
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::setHighestDerivative(unsigned int newHighestDerivative) {
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::setHighestDerivative(unsigned int newHighestDerivative) {
   assert(newHighestDerivative <= 2);
   if (newHighestDerivative > this->_highestDerivative) {
     if (this->_highestDerivative < 1 && newHighestDerivative >= 1)
-      this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<T>>(this->getGridController());
+      this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<SCFMode>>(this->getGridController());
     if (this->_highestDerivative < 2 && newHighestDerivative >= 2)
-      this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<T>>(this->getGridController());
+      this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<SCFMode>>(this->getGridController());
     if (this->_upToDate)
       std::cout << "Warning! A new highest derivative is set in DensityMatrixDensityOnGridController "
                    "causing that data is thrown away and partly recalculated. This is inefficient "
@@ -118,39 +119,39 @@ void DensityMatrixDensityOnGridController<T>::setHighestDerivative(unsigned int 
     this->notify();
   }
   else if (newHighestDerivative < this->_highestDerivative) {
-    if (newHighestDerivative < 2 && this->_highestDerivative >= 2)
+    if (newHighestDerivative < 2 && this->_highestDerivative >= 2) {
       this->_densityHessianOnGrid.reset();
-    if (newHighestDerivative < 1 && this->_highestDerivative >= 1)
+    }
+    if (newHighestDerivative < 1 && this->_highestDerivative >= 1) {
       this->_densityGradientOnGrid.reset();
+    }
     this->notify();
   }
   this->_highestDerivative = newHighestDerivative;
 }
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::calculateData() {
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::calculateData() {
   auto densityMatrix = _densityMatrixController->getDensityMatrix();
 
-  switch (this->_highestDerivative) {
-    case 0:
-      _densOnGridCalculator->calcDensityOnGrid(densityMatrix, *this->_densityOnGrid);
-      break;
-    case 1:
-      _densOnGridCalculator->calcDensityAndGradientOnGrid(densityMatrix, *this->_densityOnGrid, *this->_densityGradientOnGrid);
-      break;
-    case 2:
-      _densOnGridCalculator->calcDensityAndDerivativesOnGrid(densityMatrix, *this->_densityOnGrid,
-                                                             *this->_densityGradientOnGrid, *this->_densityHessianOnGrid);
-      break;
-    default:
-      throw SerenityError("Derivative of density on grid higher than 2 was requested. Not implemented.");
+  if (this->_highestDerivative == 0) {
+    _densOnGridCalculator->calcDensityOnGrid(densityMatrix, *this->_densityOnGrid);
   }
-  /*
-   * Check for the grid accuracy
-   */
+  else if (this->_highestDerivative == 1) {
+    _densOnGridCalculator->calcDensityAndGradientOnGrid(densityMatrix, *this->_densityOnGrid, *this->_densityGradientOnGrid);
+  }
+  else if (this->_highestDerivative == 2) {
+    _densOnGridCalculator->calcDensityAndDerivativesOnGrid(densityMatrix, *this->_densityOnGrid,
+                                                           *this->_densityGradientOnGrid, *this->_densityHessianOnGrid);
+  }
+  else {
+    throw SerenityError("Derivative of density on grid higher than 2 was requested. Not implemented.");
+  }
+
+  // Check for the grid accuracy
   if (iOOptions.gridAccuracyCheck) {
     const auto& weights = this->getGridController()->getWeights();
-    SpinPolarizedData<T, double> nElectrons(0.0);
+    SpinPolarizedData<SCFMode, double> nElectrons(0.0);
     const auto& dens = *this->_densityOnGrid;
     for_spin(nElectrons, dens) {
       nElectrons_spin += dens_spin.dot(weights);
@@ -160,21 +161,23 @@ void DensityMatrixDensityOnGridController<T>::calculateData() {
   this->_upToDate = true;
 }
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::setDensityOnGrid(std::unique_ptr<DensityOnGrid<T>> densityOnGrid) {
-  this->_densityOnGrid.reset(densityOnGrid.release());
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::setDensityOnGrid(std::unique_ptr<DensityOnGrid<SCFMode>> densityOnGrid) {
+  this->_densityOnGrid = std::move(densityOnGrid);
   this->_upToDate = true;
 };
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::setDensityGradientOnGrid(std::unique_ptr<Gradient<DensityOnGrid<T>>> densityGradientOnGrid) {
-  this->_densityGradientOnGrid.reset(densityGradientOnGrid.release());
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::setDensityGradientOnGrid(
+    std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>> densityGradientOnGrid) {
+  this->_densityGradientOnGrid = std::move(densityGradientOnGrid);
   this->_upToDate = true;
 };
 
-template<Options::SCF_MODES T>
-void DensityMatrixDensityOnGridController<T>::setDensityHessianOnGrid(std::unique_ptr<Hessian<DensityOnGrid<T>>> densityHessianOnGrid) {
-  this->_densityHessianOnGrid.reset(densityHessianOnGrid.release());
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixDensityOnGridController<SCFMode>::setDensityHessianOnGrid(
+    std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>> densityHessianOnGrid) {
+  this->_densityHessianOnGrid = std::move(densityHessianOnGrid);
   this->_upToDate = true;
 };
 

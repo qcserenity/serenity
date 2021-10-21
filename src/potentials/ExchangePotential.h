@@ -35,8 +35,7 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 class ExchangePotential : public Potential<SCFMode>,
                           public ObjectSensitiveClass<Basis>,
-                          public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
-                          public IncrementalFockMatrix<SCFMode> {
+                          public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
  public:
   /**
    * @brief Constructor.
@@ -47,11 +46,16 @@ class ExchangePotential : public Potential<SCFMode>,
    * @param prescreeningIncrementStart The start integrals prescreening thresold for the incremental Fock-matrix build
    * @param prescreeningIncrementEnd The end integrals prescreening thresold for the incremental Fock-matrix build
    * @param incrementSteps The number of steps of an incremental Fock-matrix build until it gets rebuild
+   * @param clear4CenterCache          If true, the 4-center integral cache is deleted upon destruction of the
+   *                                   potential.
    */
   ExchangePotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
                     const double exchangeRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
-                    double prescreeningIncrementEnd, unsigned int incrementSteps);
-  virtual ~ExchangePotential() = default;
+                    double prescreeningIncrementEnd, unsigned int incrementSteps, bool clear4CenterCache = true);
+  /**
+   * @brief Destructor. Clears the 4-center integral cache.
+   */
+  virtual ~ExchangePotential();
 
   /**
    * @brief Getter for the actual potential.
@@ -91,12 +95,6 @@ class ExchangePotential : public Potential<SCFMode>,
   };
 
  private:
-  /**
-   * @brief Matches each basis function to its respective atom center.
-   * @param basis The AtomCenteredBasisController holding tha basis to be mapped.
-   * @return A vector mapping a basis function index to an atom index.
-   */
-  static Eigen::VectorXi createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis);
   ///@brief The underlying systemController
   std::weak_ptr<SystemController> _systemController;
   ///@brief The exchange ratio.
@@ -111,6 +109,10 @@ class ExchangePotential : public Potential<SCFMode>,
   double _screening;
   ///@brief Internal iteration counter
   unsigned int _counter = 0;
+  /// @brief Helper for the incremental fock matrix construction.
+  std::shared_ptr<IncrementalFockMatrix<SCFMode>> _incrementHelper;
+  /// @brief If true, the 4-center integral cache of the system is deleted upon potential destruction.
+  bool _clear4CenterCache;
 };
 
 } /* namespace Serenity */

@@ -20,7 +20,9 @@
 #ifndef BASISCONTROLLER_H
 #define BASISCONTROLLER_H
 /* Include Serenity Internal Headers */
-#include "basis/Basis.h"
+#include "integrals/wrappers/Libint.h"
+#include "notification/NotifyingClass.h"
+#include "notification/ObjectSensitiveClass.h"
 /* Include Std and External Headers */
 #include <Eigen/SparseCore>
 #include <memory>
@@ -29,6 +31,9 @@
 
 namespace Serenity {
 
+/* Forward Declarations */
+class Basis;
+class Shell;
 typedef Eigen::SparseMatrix<int> SparseMap;
 /**
  * @class ShellPairData
@@ -96,11 +101,9 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    * @brief Constructor.
    * @param basisString  The name of the controlled basis.
    */
-  BasisController(const std::string& basisString)
-    : _basis(nullptr), _shellPairList(nullptr), _RIPrescreeningFactors(nullptr), _basisString(basisString) {
-  }
+  BasisController(const std::string& basisString);
 
-  virtual ~BasisController() = default;
+  ~BasisController();
   /**
    * Caution when accessing elements of this vector;
    * A set of functions of the same shell are only one
@@ -151,11 +154,7 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    *          (e.g. one set of p-Functions, so actually three functions only increases this
    *          number by one).
    */
-  inline size_t getReducedNBasisFunctions() {
-    if (!_basis)
-      produceBasis();
-    return _basis->size();
-  }
+  size_t getReducedNBasisFunctions();
   /**
    * @returns the index number of a shell of basis functions to a specific basis function
    *          (e.g. when putting in the index of a p_y function the index of its p-shell is
@@ -228,12 +227,10 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
   }
 
   /**
-   * @brief Getter for Schwartz prescreening parameters.
-   * @return Schwartz prescreening parameters as a matrix.
+   * @brief Getter for Schwarz prescreening parameters.
+   * @return Schwarz prescreening parameters as a matrix.
    */
-  const Eigen::MatrixXd& getSchwartzParams() {
-    return _schwartzParams;
-  }
+  const Eigen::MatrixXd& getSchwarzParams(LIBINT_OPERATOR op, double mu);
 
   /**
    * @brief Getter for the RI-prescreening factors.
@@ -249,6 +246,26 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    * @return The map between shells and functions.
    */
   const SparseMap& getFunctionToShellMap();
+  /**
+   * @brief Getter for the maximum number of primitives occurring in any shell.
+   * @return The maximum number of primitives gaussians.
+   */
+  unsigned int getMaxNumberOfPrimitives();
+  /**
+   * @brief Calculate the shell-wise absolute max. entries of the vector.
+   *        We assume that the vector runs over basis functions.
+   * @param target The target vector.
+   * @return The shell-wise reduced target vector.
+   */
+  Eigen::VectorXd shellWiseAbsMax(const Eigen::VectorXd& target);
+
+  /**
+   * @brief Calculates and returns a prescrening threshold which is
+   *        adaptive to the number of basis functions this controller
+   *        is managing.
+   * @return A prescreening threshold to be used in e.g. 4c loopers.
+   */
+  double getPrescreeningThreshold();
 
  protected:
   void produceBasis();
@@ -283,9 +300,12 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
   bool _pureCartesian;
   bool _pureSpherical;
 
-  Eigen::MatrixXd _schwartzParams;
+  Eigen::MatrixXd _schwarzParams;
+  std::map<long int, Eigen::MatrixXd> _schwarzParamsErf;
 
   std::shared_ptr<SparseMap> _functionToShellMap = nullptr;
+
+  unsigned int _maxPrim;
 };
 
 } /* namespace Serenity */

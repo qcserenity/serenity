@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/ABFockMatrixConstruction/ABFuncPotential.h"
+/* Include Serenity Internal Headers */
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/grid/ExternalDensityOnGridController.h"

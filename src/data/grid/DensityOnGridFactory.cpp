@@ -59,8 +59,7 @@ DensityOnGridFactory<SCFMode>::produceNew(const std::shared_ptr<DensityMatrixCon
       std::make_shared<DensityOnGridCalculator<SCFMode>>(basisFunctionOnGridController, blockAveThreshold);
   auto densOnGrid = std::make_shared<DensityMatrixDensityOnGridController<SCFMode>>(densityOnGridCalculator, density);
 
-  return std::move(std::unique_ptr<DensityOnGridController<SCFMode>>(
-      new DensityMatrixDensityOnGridController<SCFMode>(densityOnGridCalculator, density)));
+  return std::make_unique<DensityMatrixDensityOnGridController<SCFMode>>(densityOnGridCalculator, density);
 }
 
 template class DensityOnGridFactory<Options::SCF_MODES::RESTRICTED>;

@@ -21,14 +21,15 @@
 /* Include Serenity Internal Headers */
 #include "postHF/CC/DLPNO_CCSD.h" //To be tested.
 #include "data/ElectronicStructure.h"
+#include "energies/EnergyContributions.h"
 #include "postHF/CC/CCSD_T.h"                                   //Reference.
 #include "postHF/LocalCorrelation/LocalCorrelationController.h" //Access to local-correlation framework.
 #include "settings/Settings.h"                                  //Test systems.
 #include "system/SystemController.h"                            //Test systems.
 #include "tasks/CoupledClusterTask.h"                           //Test via CC-task.
+#include "tasks/DFTEmbeddedLocalCorrelationTask.h"              //Test for embedded CCSD calculation.
 #include "tasks/LocalizationTask.h"                             //Orbital localization.
 #include "tasks/ScfTask.h"                                      //Clean electronic structures.
-#include "tasks/TDEmbeddingTask.h"                              //Test for embedded CCSD calculation.
 #include "testsupply/SystemController__TEST_SUPPLY.h"           //Test systems.
 
 /* Include Std and External Headers */
@@ -47,7 +48,7 @@ TEST_F(DLPNO_CCSDTest, H2) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
   auto settings = system->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP, settings);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -96,7 +97,7 @@ TEST_F(DLPNO_CCSDTest, H2_RI) {
 TEST_F(DLPNO_CCSDTest, H2Dimer) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2Dimer_Def2_TZVP, true);
   auto settings = system->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2Dimer_Def2_TZVP, settings);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -149,7 +150,7 @@ TEST_F(DLPNO_CCSDTest, WaterFull4Center) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   Settings settings = system->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP, settings);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -176,7 +177,7 @@ TEST_F(DLPNO_CCSDTest, WaterFull4Center) {
 TEST_F(DLPNO_CCSDTest, Water_RI) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   Settings settings = system->getSettings();
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP, settings);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -207,6 +208,7 @@ TEST_F(DLPNO_CCSDTest, Water_RI_Localized_IBO) {
   auto canonicalCCSDEnergy = canonicalCC.calculateElectronicEnergyCorrections().second;
   LocalizationTask locTask(system);
   locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO;
+  locTask.settings.splitValenceAndCore = true;
   locTask.run();
   LocalCorrelationSettings lCSettings;
   lCSettings.pnoThreshold = 3.33e-7;
@@ -232,6 +234,7 @@ TEST_F(DLPNO_CCSDTest, Water_RI_Localized_FB) {
   auto canonicalCCSDEnergy = canonicalCC.calculateElectronicEnergyCorrections().second;
   LocalizationTask locTask(system);
   locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::FOSTER_BOYS;
+  locTask.settings.splitValenceAndCore = true;
   locTask.run();
   LocalCorrelationSettings lCSettings;
   lCSettings.pnoThreshold = 3.33e-7;
@@ -273,6 +276,7 @@ TEST_F(DLPNO_CCSDTest, Ethane) {
 }
 
 TEST_F(DLPNO_CCSDTest, Ethane_Localized) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP, true);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -294,9 +298,36 @@ TEST_F(DLPNO_CCSDTest, Ethane_Localized) {
   std::cout << "Delta E: " << ccsdEnergy - canonicalCCSDEnergy << std::endl;
   EXPECT_NEAR(0.0, ccsdEnergy - canonicalCCSDEnergy, 1e-4);
   SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DLPNO_CCSDTest, Ethane_Localized_linSig) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP, true);
+  ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
+  scf.run();
+  // Canonical reference is taken from Serenity. Calculating the reference on the fly is to slow
+  // for my liking.
+  double canonicalCCSDEnergy = -3.456010942618e-01;
+  LocalizationTask locTask(system);
+  locTask.settings.splitValenceAndCore = true;
+  locTask.run();
+  LocalCorrelationSettings lCSettings;
+  lCSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  lCSettings.dumpIntegrals = false;
+  lCSettings.linearScalingSigmaVector = true;
+  auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
+  DLPNO_CCSD localCCSD(localCorrelationController, 1e-4, 100);
+  double ccsdEnergy = localCCSD.calculateElectronicEnergyCorrections().sum();
+  std::cout << "Canonical CCSD Energy: " << canonicalCCSDEnergy << std::endl;
+  std::cout << "Delta E: " << ccsdEnergy - canonicalCCSDEnergy << std::endl;
+  EXPECT_NEAR(0.0, ccsdEnergy - canonicalCCSDEnergy, 1e-4);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
 TEST_F(DLPNO_CCSDTest, Ethane_Localized_dumpIntegrals) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP, true);
   ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
   scf.run();
@@ -319,37 +350,55 @@ TEST_F(DLPNO_CCSDTest, Ethane_Localized_dumpIntegrals) {
   std::cout << "Delta E: " << ccsdEnergy - canonicalCCSDEnergy << std::endl;
   EXPECT_NEAR(0.0, ccsdEnergy - canonicalCCSDEnergy, 5e-4);
   auto orbitalPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
-  for (auto pair : orbitalPairs)
-    pair->deleteIntegrals();
   SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
 TEST_F(DLPNO_CCSDTest, PhenolEmbedded) {
+  SystemController__TEST_SUPPLY::cleanUp();
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::OHPhenol_Def2_SVP_Act, true);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PhenylPhenol_Def2_SVP_Env, true);
-  TDEmbeddingTask<RESTRICTED> tdTask(act, env);
-  tdTask.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
-  tdTask.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  tdTask.settings.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
-  tdTask.settings.netThreshold = 1e-4;
-  tdTask.run();
-  LocalizationTask locTask(act);
-  locTask.settings.splitValenceAndCore = true;
-  locTask.run();
-  LocalCorrelationSettings lCSettings;
-  // Normal PNO
-  lCSettings.pnoThreshold = 3.33e-7;
-  lCSettings.mullikenThreshold = 1e-3;
-  lCSettings.orbitalToShellThreshold = 1e-3;
-  lCSettings.embeddingSettings = tdTask.settings.embedding;
   std::vector<std::shared_ptr<SystemController>> tmp = {env};
-  auto localCorrelationController = std::make_shared<LocalCorrelationController>(act, lCSettings, tmp);
-  DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100);
-  double ccsdEnergy = localCCSD.calculateElectronicEnergyCorrections().sum();
-  EXPECT_NEAR(ccsdEnergy, -0.21712282021851187, 1e-5);
-  std::string name = "TestSystem_Hydroxy_Def2_SVP_Act+TestSystem_Phenyl_Def2_SVP_Env";
+  DFTEmbeddedLocalCorrelationTask dftEmbeddedLocalCorrelationTask(act, tmp);
+  dftEmbeddedLocalCorrelationTask.settings.fromSupersystem = true;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  dftEmbeddedLocalCorrelationTask.settings.trunc.truncAlgorithm = Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION;
+  dftEmbeddedLocalCorrelationTask.settings.trunc.netThreshold = 1e-4;
+  dftEmbeddedLocalCorrelationTask.settings.normThreshold = 1e-5;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD;
+  dftEmbeddedLocalCorrelationTask.settings.split.systemPartitioning = Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD;
+  dftEmbeddedLocalCorrelationTask.run();
+  double ccsdEnergy = act->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+  EXPECT_NEAR(ccsdEnergy, -0.21755530254232638, 1e-5);
+  std::string name = "TMP_Supersystem";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DLPNO_CCSDTest, PhenolEmbedded_dftOrbitals) {
+  SystemController__TEST_SUPPLY::cleanUp();
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::OHPhenol_Def2_SVP_Act, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PhenylPhenol_Def2_SVP_Env, true);
+  act->setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES::DFT);
+  env->setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES::DFT);
+  std::vector<std::shared_ptr<SystemController>> tmp = {env};
+  DFTEmbeddedLocalCorrelationTask dftEmbeddedLocalCorrelationTask(act, tmp);
+  dftEmbeddedLocalCorrelationTask.settings.fromSupersystem = true;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.enforceHFFockian = true;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  dftEmbeddedLocalCorrelationTask.settings.normThreshold = 1e-5;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD;
+  dftEmbeddedLocalCorrelationTask.settings.split.systemPartitioning = Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD;
+  dftEmbeddedLocalCorrelationTask.run();
+  double ccsdEnergy = act->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+  EXPECT_NEAR(ccsdEnergy, -0.22491401778086129, 1e-5);
+  std::string name = "TMP_Supersystem";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
 TEST_F(DLPNO_CCSDTest, Phenol) {
@@ -361,6 +410,7 @@ TEST_F(DLPNO_CCSDTest, Phenol) {
   // LOOSE PNO
   LocalCorrelationSettings lCSettings;
   lCSettings.pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  lCSettings.linearScalingSigmaVector = false;
 
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
 
@@ -368,14 +418,42 @@ TEST_F(DLPNO_CCSDTest, Phenol) {
   locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::FOSTER_BOYS;
   locTask.settings.splitValenceAndCore = true;
   locTask.run();
-
   CoupledClusterTask ccTask(phenol);
   ccTask.settings.level = Options::CC_LEVEL::DLPNO_CCSD;
   ccTask.settings.lcSettings = lCSettings;
   ccTask.run();
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  // Canonical result ca. -306.3553068128
+  EXPECT_NEAR(phenol->getElectronicStructure<RESTRICTED>()->getEnergy(), -306.36245921105103, 1e-5);
 
-  EXPECT_NEAR(phenol->getElectronicStructure<RESTRICTED>()->getEnergy(), -306.34459788806396, 1e-6);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(phenol);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(DLPNO_CCSDTest, Phenol_linSig) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::OHPhenol_Def2_SVP_Act, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PhenylPhenol_Def2_SVP_Env, true);
+  auto phenol = *act + *env;
+  ScfTask<RESTRICTED> scfTask(phenol);
+  scfTask.run();
+  // LOOSE PNO
+  LocalCorrelationSettings lCSettings;
+  lCSettings.pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  lCSettings.linearScalingSigmaVector = true;
+
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+
+  LocalizationTask locTask(phenol);
+  locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::FOSTER_BOYS;
+  locTask.settings.splitValenceAndCore = true;
+  locTask.run();
+  CoupledClusterTask ccTask(phenol);
+  ccTask.settings.level = Options::CC_LEVEL::DLPNO_CCSD;
+  ccTask.settings.lcSettings = lCSettings;
+  ccTask.run();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  // Canonical result ca. -306.3553068128
+  EXPECT_NEAR(phenol->getElectronicStructure<RESTRICTED>()->getEnergy(), -306.362790, 5e-6);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(phenol);
   SystemController__TEST_SUPPLY::cleanUp();

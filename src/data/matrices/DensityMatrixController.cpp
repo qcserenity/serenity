@@ -25,6 +25,7 @@
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "io/HDF5.h"
+#include "math/linearAlgebra/MatrixFunctions.h"
 
 namespace Serenity {
 
@@ -240,6 +241,8 @@ void DensityMatrixController<SCFMode>::setDensityMatrix(const DensityMatrix<SCFM
 template<Options::SCF_MODES SCFMode>
 void DensityMatrixController<SCFMode>::updateDensityMatrix() {
   assert(_molecularOrbitals);
+  // Ensure that the aufbau occupations have the dimension of the basis.
+  rebuildAufbauOccupations();
   CoefficientMatrix<SCFMode> coefficients = _molecularOrbitals->getCoefficients();
   SpinPolarizedData<SCFMode, Eigen::VectorXd> energies = _molecularOrbitals->getEigenvalues();
   _occupations.reset(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(_aufbauOccupations));
@@ -262,15 +265,17 @@ void DensityMatrixController<SCFMode>::updateDensityMatrix() {
           occupations_spin[k] = sum;
         k -= 1;
       }
-      for (unsigned int k = 0; k < occupations_spin.size(); ++k) {
-      }
     };
   }
   DensityMatrix<SCFMode> dmat(_molecularOrbitals->getBasisController());
   for_spin(dmat, occupations, coefficients) {
-    dmat_spin = coefficients_spin * occupations_spin.asDiagonal() * coefficients_spin.transpose();
+    dmat_spin = symmetrize(coefficients_spin * occupations_spin.asDiagonal() * coefficients_spin.transpose());
   };
-  this->setDensityMatrix(dmat);
+  bool tmp = _diskmode;
+  this->setDiskMode(false, _fBaseName, _id);
+  _densityMatrix.reset(new DensityMatrix<SCFMode>(dmat));
+  _outOfDate = false;
+  this->setDiskMode(tmp, _fBaseName, _id);
 }
 
 template<>
@@ -320,6 +325,11 @@ void DensityMatrixController<Options::SCF_MODES::RESTRICTED>::fromHDF5(std::stri
   HDF5::check_attribute(file, "ID", id);
   HDF5::load(file, "densityMatrix", *_densityMatrix);
   HDF5::load(file, "occupations", *_occupations);
+  *_densityMatrix = symmetrize(*_densityMatrix);
+  unsigned int nBasisFunctions = _basisController->getNBasisFunctions();
+  if (nBasisFunctions != _densityMatrix->cols() || nBasisFunctions != _densityMatrix->rows() ||
+      nBasisFunctions != _occupations->size())
+    throw SerenityError("ERROR: Failed loading a density matrix from disk. The dimensions are incorrect!");
   file.close();
 }
 template<>
@@ -338,7 +348,34 @@ void DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>::fromHDF5(std::st
   HDF5::load(file, "densityMatrix_beta", _densityMatrix->beta);
   HDF5::load(file, "occupations_alpha", _occupations->alpha);
   HDF5::load(file, "occupations_beta", _occupations->beta);
+  unsigned int nBasisFunctions = _basisController->getNBasisFunctions();
+  if (nBasisFunctions != _densityMatrix->alpha.cols() || nBasisFunctions != _densityMatrix->alpha.rows() ||
+      nBasisFunctions != _densityMatrix->beta.cols() || nBasisFunctions != _densityMatrix->beta.rows() ||
+      nBasisFunctions != _occupations->alpha.size() || nBasisFunctions != _occupations->beta.size())
+    throw SerenityError("ERROR: Failed loading a density matrix from disk. The dimensions are incorrect!");
   file.close();
+}
+
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixController<SCFMode>::notify() {
+  _outOfDate = true;
+  _densityMatrix.reset();
+  _occupations.reset();
+  this->notifyObjects();
+}
+
+template<Options::SCF_MODES SCFMode>
+void DensityMatrixController<SCFMode>::rebuildAufbauOccupations() {
+  // Reset the aufbau occupations,since it is not clear
+  // whether a notify was triggered by the basis controller
+  //(via the OrbitalController)
+  const double occ = (SCFMode == RESTRICTED) ? 2.0 : 1.0;
+  const unsigned int nBasisFunctions = _basisController->getNBasisFunctions();
+  for_spin(_aufbauOccupations) {
+    const unsigned int nOcc = _aufbauOccupations_spin.sum() / occ;
+    _aufbauOccupations_spin = Eigen::VectorXd::Zero(nBasisFunctions);
+    _aufbauOccupations_spin.head(nOcc) = Eigen::VectorXd::Constant(nOcc, occ);
+  };
 }
 
 template class DensityMatrixController<Options::SCF_MODES::RESTRICTED>;

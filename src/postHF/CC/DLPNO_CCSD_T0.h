@@ -27,6 +27,8 @@
 namespace Serenity {
 /* Forward Declarations */
 class LocalCorrelationController;
+class OrbitalTriple;
+class OrbitalTripleSet;
 
 /**
  * @class DLPNO_CCSD_T0 DLPNO_CCSD_T0.h

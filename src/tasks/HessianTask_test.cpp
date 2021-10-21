@@ -55,7 +55,7 @@ class HessianTaskTest : public ::testing::Test {
 TEST_F(HessianTaskTest, h2Hf) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "DEF2-SVP";
@@ -65,7 +65,7 @@ TEST_F(HessianTaskTest, h2Hf) {
   auto hessTask = HessianTask(activesystems);
   hessTask.settings.printToFile = false;
   hessTask.run();
-  auto path = systemController->getSettings().path;
+  auto path = systemController->getSystemPath();
 
   HDF5::Filepath name(path + settings.name + ".hess.h5");
   HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -105,7 +105,8 @@ TEST_F(HessianTaskTest, h2Hf) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.energies.res").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -115,7 +116,7 @@ TEST_F(HessianTaskTest, h2Hf) {
 TEST_F(HessianTaskTest, h2FaT) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densityFitting = Options::DENS_FITS::RI;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "STO-3G";
@@ -129,7 +130,7 @@ TEST_F(HessianTaskTest, h2FaT) {
   hessTask.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   hessTask.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   hessTask.run();
-  auto path = activeSystem->getSettings().path;
+  auto path = activeSystem->getSystemPath();
 
   HDF5::Filepath name(path + "SomeTestSystem.hess.h5");
   HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -168,21 +169,22 @@ TEST_F(HessianTaskTest, h2FaT) {
   EXPECT_NEAR(frequencies[0], -10409.978397631383, 1e-1);
   EXPECT_NEAR(frequencies[5], 8669.932458869529, 1e-1);
 
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.hess.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.settings").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.xyz").c_str()));
-  std::remove((activeSystem->getSettings().path).c_str());
-  EXPECT_EQ(0, std::remove((activeSystem2->getSettings().path + "HessianTaskTest_h2FaT_env.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem2->getSettings().path + "HessianTaskTest_h2FaT_env.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem2->getSettings().path + "HessianTaskTest_h2FaT_env.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem2->getSettings().path + "HessianTaskTest_h2FaT_env.settings").c_str()));
-  // EXPECT_EQ(0,std::remove((activeSystem2->getSettings().path+"HessianTaskTest_h2FaT_env.hess.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem2->getSettings().path + "HessianTaskTest_h2FaT_env.xyz").c_str()));
-  std::remove((activeSystem2->getSettings().path).c_str());
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.hess.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.settings").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.xyz").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem2->getSystemPath() + "HessianTaskTest_h2FaT_env.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem2->getSystemPath() + "HessianTaskTest_h2FaT_env.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem2->getSystemPath() + "HessianTaskTest_h2FaT_env.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem2->getSystemPath() + "HessianTaskTest_h2FaT_env.settings").c_str()));
+  // EXPECT_EQ(0,std::remove((activeSystem2->getSystemPath()+"HessianTaskTest_h2FaT_env.hess.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem2->getSystemPath() + "HessianTaskTest_h2FaT_env.xyz").c_str()));
   EXPECT_EQ(0, std::remove(((std::string) "WARNING").c_str()));
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(activeSystem);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(activeSystem2);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -192,7 +194,7 @@ TEST_F(HessianTaskTest, h2FaT) {
 TEST_F(HessianTaskTest, h2actFaT) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densityFitting = Options::DENS_FITS::RI;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "STO-3G";
@@ -206,7 +208,7 @@ TEST_F(HessianTaskTest, h2actFaT) {
   hessTask.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   hessTask.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   hessTask.run();
-  auto path = activeSystem->getSettings().path;
+  auto path = activeSystem->getSystemPath();
 
   HDF5::Filepath name(path + "SomeTestSystem.hess.h5");
   HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -240,20 +242,20 @@ TEST_F(HessianTaskTest, h2actFaT) {
 
   EXPECT_NEAR(frequencies[0], 6919.5972220852491, 1e-0);
 
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.hess.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.settings").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.xyz").c_str()));
-  std::remove((activeSystem->getSettings().path).c_str());
-  EXPECT_EQ(0, std::remove((environmentSystem->getSettings().path + "HessianTaskTest_h2actFaT_env.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((environmentSystem->getSettings().path + "HessianTaskTest_h2actFaT_env.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((environmentSystem->getSettings().path + "HessianTaskTest_h2actFaT_env.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((environmentSystem->getSettings().path + "HessianTaskTest_h2actFaT_env.settings").c_str()));
-  EXPECT_EQ(0, std::remove((environmentSystem->getSettings().path + "HessianTaskTest_h2actFaT_env.xyz").c_str()));
-  std::remove((environmentSystem->getSettings().path).c_str());
-  std::remove("WARNING");
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.hess.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.settings").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.xyz").c_str()));
+  EXPECT_EQ(0, std::remove((environmentSystem->getSystemPath() + "HessianTaskTest_h2actFaT_env.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((environmentSystem->getSystemPath() + "HessianTaskTest_h2actFaT_env.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((environmentSystem->getSystemPath() + "HessianTaskTest_h2actFaT_env.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((environmentSystem->getSystemPath() + "HessianTaskTest_h2actFaT_env.settings").c_str()));
+  EXPECT_EQ(0, std::remove((environmentSystem->getSystemPath() + "HessianTaskTest_h2actFaT_env.xyz").c_str()));
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(activeSystem);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(environmentSystem);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 }; /* NameSpace Serenity */

@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/CorrelatedMethodsOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -43,6 +45,17 @@ template<>
 void resolve<PNO_SETTINGS>(std::string& value, PNO_SETTINGS& field) {
   static const std::map<std::string, PNO_SETTINGS> m = {
       {"LOOSE", PNO_SETTINGS::LOOSE}, {"NORMAL", PNO_SETTINGS::NORMAL}, {"TIGHT", PNO_SETTINGS::TIGHT}};
+  check(m, value, field);
+}
+
+template<>
+void resolve<PNO_METHOD>(std::string& value, PNO_METHOD& field) {
+  static const std::map<std::string, PNO_METHOD> m = {{"DLPNO-MP2", PNO_METHOD::DLPNO_MP2},
+                                                      {"LMP2", PNO_METHOD::DLPNO_MP2},
+                                                      {"DLPNO-CCSD", PNO_METHOD::DLPNO_CCSD},
+                                                      {"DLPNO-CCSD(T0)", PNO_METHOD::DLPNO_CCSD_T0},
+                                                      {"NONE", PNO_METHOD::NONE},
+                                                      {"HF", PNO_METHOD::NONE}};
   check(m, value, field);
 }
 

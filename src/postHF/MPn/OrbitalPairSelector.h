@@ -67,8 +67,7 @@ class OrbitalPairSelector {
   std::pair<std::vector<std::shared_ptr<OrbitalPair>>, std::vector<std::shared_ptr<OrbitalPair>>>
   selectOrbitalPairs(std::vector<std::shared_ptr<OrbitalPair>> initialPairs, double mnpPreThreshold,
                      double paoOrthoThreshold, std::shared_ptr<FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
-                     std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap, double doiThreshold,
-                     double collinearDipolePairThreshold);
+                     std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap, double doiThreshold);
 
  private:
   ///@brief The system controller.
@@ -93,8 +92,7 @@ class OrbitalPairSelector {
    */
   void calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> initialPairs, double paoOrthoThreshold,
                                     std::shared_ptr<FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
-                                    std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap,
-                                    double collinearDipolePairThreshold);
+                                    std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap);
 };
 
 } /* namespace Serenity */

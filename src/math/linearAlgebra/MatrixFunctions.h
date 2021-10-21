@@ -22,6 +22,7 @@
 #define MATH_LINEARALGEBRA_MATRIXFUNCTIONS_H_
 
 /* Include Serenity Internal Headers */
+#include "data/matrices/MatrixInBasis.h"
 #include "misc/SerenityError.h" //Error messages
 /* Include Std and External Headers */
 #include <Eigen/Dense> //Dense matrices and eigenvalue decompositions.
@@ -36,8 +37,7 @@ namespace Serenity {
  */
 inline Eigen::MatrixXd mFunc_Sym(const Eigen::MatrixXd& matrix, std::function<double(const double&)> f) {
   assert(matrix.cols() == matrix.rows());
-  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(matrix); //,
-                                                                      // Eigen::DecompositionOptions::ComputeEigenvectors);
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(matrix);
   Eigen::VectorXd eigenvals = eigensolver.eigenvalues().eval();
   const Eigen::MatrixXd eigenvectors = eigensolver.eigenvectors().eval();
   for (unsigned int col = 0; col < matrix.cols(); ++col) {
@@ -86,5 +86,50 @@ inline Eigen::MatrixXd pseudoInvers_Sym(const Eigen::MatrixXd& matrix, double th
   auto const func = [&](const double& e) { return (std::abs(e) >= threshold) ? 1.0 / e : 0.0; }; // func
   return mFunc_Sym(matrix, func);
 }
+/**
+ * @brief symmetrize the given matrix.
+ * @param matrix The matrix to be symmetrized.
+ * @return the symmetrized matrix.
+ */
+inline Eigen::MatrixXd symmetrize(const Eigen::MatrixXd& matrix) {
+  return 0.5 * (matrix + matrix.transpose()).eval();
+}
+/**
+ * @brief symmetrize the given matrix.
+ * @param matrix The matrix to be symmetrized.
+ * @return the symmetrized matrix.
+ */
+template<Options::SCF_MODES SCFMode>
+inline MatrixInBasis<SCFMode> symmetrize(const MatrixInBasis<SCFMode>& matrix) {
+  MatrixInBasis<SCFMode> sym(matrix.getBasisController());
+  for_spin(sym, matrix) {
+    sym_spin = symmetrize(Eigen::MatrixXd(matrix_spin));
+  };
+  return sym;
+}
+/**
+ * @brief symmetrize the given matrix in place.
+ * @param matrix The matrix to be symmetrized.
+ */
+template<Options::SCF_MODES SCFMode>
+void symInPlace(MatrixInBasis<SCFMode>& matrix) {
+  for_spin(matrix) {
+    matrix_spin = 0.5 * ((Eigen::MatrixXd)matrix_spin + (Eigen::MatrixXd)matrix_spin.transpose()).eval();
+  };
+}
+/**
+ * @brief Orthogonalize the columns of the given matrix with respect to the given metric
+ *        using cholesky decomposition. Note that this implies that mat.transpose() * metric * mat
+ *        is positive definite.
+ * @param mat The matrix to be orthogonalized.
+ * @param metric The metric.
+ * @return The orthogonalized matrix.
+ */
+inline Eigen::MatrixXd orthogonalize_chol(const Eigen::MatrixXd& mat, const Eigen::MatrixXd metric) {
+  Eigen::LLT<Eigen::MatrixXd> llt = (mat.transpose() * metric * mat).llt();
+  const Eigen::MatrixXd l = llt.matrixL();
+  return (mat * (l.inverse()).transpose()).eval();
+}
+
 } /* namespace Serenity */
 #endif /* MATH_LINEARALGEBRA_MATRIXFUNCTIONS_H_ */

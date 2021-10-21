@@ -28,6 +28,44 @@
 
 namespace Serenity {
 
+void removeSystemFiles(std::string path, std::string systemName) {
+  /* TODO
+   * Replace with std::filesystem when c++17 is available
+   */
+  std::string baseName = path + systemName;
+  std::remove((baseName + ".settings").c_str());
+  std::remove((baseName + ".xyz").c_str());
+  std::remove((baseName + ".orbs.res.h5").c_str());
+  std::remove((baseName + ".orbs.unres.h5").c_str());
+  std::remove((baseName + ".FockMatrix.res.h5").c_str());
+  std::remove((baseName + ".FockMatrix.unres.h5").c_str());
+  std::remove((baseName + ".energies.res").c_str());
+  std::remove((baseName + ".energies.unres").c_str());
+  std::remove((baseName + ".dmat.res.h5").c_str());
+  std::remove((baseName + ".dmat.unres.h5").c_str());
+  std::remove((baseName + ".basis.h5").c_str());
+  std::remove((baseName + ".hess.h5").c_str());
+  std::remove((baseName + ".elecPotInts.h5").c_str());
+  std::remove((baseName + "_lrscf.cc2.iso.res.h5").c_str());
+  std::remove((baseName + "_lrscf.cc2.iso.unres.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.iso.res.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.iso.unres.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.fdeu.res.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.fdeu.unres.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.fdec.res.h5").c_str());
+  std::remove((baseName + "_lrscf.tddft.fdec.unres.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.iso.res.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.iso.unres.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.fdeu.res.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.fdeu.unres.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.fdec.res.h5").c_str());
+  std::remove((baseName + "_lrscf_resp.tddft.fdec.unres.h5").c_str());
+  std::remove((baseName + ".exspectrum.txt").c_str());
+  std::remove((baseName + ".transitioncharges.txt").c_str());
+  std::remove((path).c_str());
+  std::remove("WARNING");
+}
+
 bool directoryExists(const std::string& path) {
 #if defined(_WIN32)
   struct _stat info;

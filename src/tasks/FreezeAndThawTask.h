@@ -99,7 +99,7 @@ class FreezeAndThawTask : public Task {
       visit_each(c, v);
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
     }
   }
 
@@ -130,7 +130,6 @@ class FreezeAndThawTask : public Task {
  private:
   std::vector<std::shared_ptr<SystemController>> _activeSystems;
   std::vector<std::shared_ptr<SystemController>> _passiveSystems;
-  std::shared_ptr<DensityMatrix<SCFMode>> _supersystemDenstiyMatrix;
   /**
    * @brief Calculate the non-additive dispersion correction.
    *

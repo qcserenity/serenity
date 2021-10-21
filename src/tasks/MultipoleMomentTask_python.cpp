@@ -32,16 +32,12 @@ void export_MultipoleMomentTask(py::module& spy) {
                                           "@brief Default constructor for Settings all set to their default values.")
       .def_readwrite("highestOrder", &MultipoleMomentTaskSettings::highestOrder)
       .def_readwrite("numerical", &MultipoleMomentTaskSettings::numerical)
-      .def_readwrite("origin", &MultipoleMomentTaskSettings::origin);
+      .def_readwrite("origin", &MultipoleMomentTaskSettings::origin)
+      .def_readwrite("printTotal", &MultipoleMomentTaskSettings::printTotal);
 
-  py::class_<MultipoleMomentTask<Options::SCF_MODES::RESTRICTED>>(spy, "MultipoleMomentTask_R")
-      .def(py::init<std::shared_ptr<SystemController>>())
-      .def("run", &MultipoleMomentTask<Options::SCF_MODES::RESTRICTED>::run)
-      .def_readwrite("settings", &MultipoleMomentTask<Options::SCF_MODES::RESTRICTED>::settings)
-      .def_readwrite("generalSettings", &MultipoleMomentTask<Options::SCF_MODES::RESTRICTED>::generalSettings);
-  py::class_<MultipoleMomentTask<Options::SCF_MODES::UNRESTRICTED>>(spy, "MultipoleMomentTask_U")
-      .def(py::init<std::shared_ptr<SystemController>>())
-      .def("run", &MultipoleMomentTask<Options::SCF_MODES::UNRESTRICTED>::run)
-      .def_readwrite("settings", &MultipoleMomentTask<Options::SCF_MODES::UNRESTRICTED>::settings)
-      .def_readwrite("generalSettings", &MultipoleMomentTask<Options::SCF_MODES::UNRESTRICTED>::generalSettings);
+  py::class_<MultipoleMomentTask>(spy, "MultipoleMomentTask")
+      .def(py::init<std::vector<std::shared_ptr<SystemController>>>())
+      .def("run", &MultipoleMomentTask::run)
+      .def_readwrite("settings", &MultipoleMomentTask::settings)
+      .def_readwrite("generalSettings", &MultipoleMomentTask::generalSettings);
 }

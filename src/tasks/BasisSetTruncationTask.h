@@ -43,6 +43,20 @@ struct BasisSetTruncationTaskSettings {
     : truncAlgorithm(Options::BASIS_SET_TRUNCATION_ALGORITHMS::NET_POPULATION), netThreshold(1.0e-4), truncationFactor(0.0) {
   }
   REFLECTABLE((Options::BASIS_SET_TRUNCATION_ALGORITHMS)truncAlgorithm, (double)netThreshold, (double)truncationFactor)
+ public:
+  /**
+   * @brief Parse the settings from the input an instance of this class.
+   * @param c The settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("TRUNC")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
 };
 
 /**

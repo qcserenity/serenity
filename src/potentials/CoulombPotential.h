@@ -22,7 +22,6 @@
 #define POTENTIALS_COULOMBPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "integrals/wrappers/Libint.h"
 #include "misc/WarningTracker.h"
 #include "potentials/IncrementalFockMatrix.h"
 #include "potentials/Potential.h"
@@ -52,8 +51,7 @@ class DensityMatrixController;
 template<Options::SCF_MODES SCFMode>
 class CoulombPotential : public Potential<SCFMode>,
                          public ObjectSensitiveClass<Basis>,
-                         public ObjectSensitiveClass<DensityMatrix<SCFMode>>,
-                         public IncrementalFockMatrix<SCFMode> {
+                         public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
  public:
   /**
    * @brief Constructor
@@ -67,24 +65,7 @@ class CoulombPotential : public Potential<SCFMode>,
    */
   CoulombPotential(std::shared_ptr<SystemController> actSystem, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
                    std::shared_ptr<RI_J_IntegralController> ri_j_IntController, const double prescreeningThreshold,
-                   double prescreeningIncrementStart, double prescreeningIncrementEnd, unsigned int incrementSteps)
-    : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
-      IncrementalFockMatrix<SCFMode>(dMat, prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd,
-                                     incrementSteps, "RI-J Coulomb"),
-      _actSystem(actSystem),
-      _dMatController(dMat),
-      _ri_j_IntController(ri_j_IntController),
-      _fullpotential(nullptr),
-      _outOfDate(true) {
-    this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
-    this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
-    _fullpotential = std::make_shared<FockMatrix<SCFMode>>(FockMatrix<SCFMode>(this->_basis));
-    auto& temp = *_fullpotential;
-    for_spin(temp) {
-      temp_spin.setZero();
-    };
-    _screening = prescreeningIncrementStart;
-  };
+                   double prescreeningIncrementStart, double prescreeningIncrementEnd, unsigned int incrementSteps);
   /// @brief Default destructor.
   virtual ~CoulombPotential() = default;
   /**
@@ -126,16 +107,6 @@ class CoulombPotential : public Potential<SCFMode>,
   Eigen::MatrixXd getGeomGradients() override final;
 
   /**
-   * @brief Matches each basis function shell to its respective atom center.
-   *
-   * @param basisIndicesRed see AtomCenteredBasisController
-   * @param nBasisFunctionRed the (reduced) number of basis functions
-   */
-  static std::vector<unsigned int>
-  createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
-                                unsigned int nBasisFunctionsRed);
-
-  /**
    * @brief Potential is linked to the basis it is defines in.
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
@@ -149,8 +120,6 @@ class CoulombPotential : public Potential<SCFMode>,
   std::weak_ptr<SystemController> _actSystem;
   ///@brief The basis this potential is defined in.
   std::shared_ptr<DensityMatrixController<SCFMode>> _dMatController;
-  ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
   ///@brief The controller for ri integrals
   const std::shared_ptr<RI_J_IntegralController> _ri_j_IntController;
   ///@brief The entire potential
@@ -161,6 +130,8 @@ class CoulombPotential : public Potential<SCFMode>,
   double _screening;
   ///@brief Internal iteration counter
   unsigned int _counter = 0;
+  // Helper for the incremental fock matrix construction.
+  std::shared_ptr<IncrementalFockMatrix<SCFMode>> _incrementHelper;
 };
 
 } /* namespace Serenity */

@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/TDReconstructionPotential.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
@@ -39,6 +40,7 @@
 #include "grid/GridController.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/OneIntControllerFactory.h"
+#include "integrals/wrappers/Libint.h"
 #include "potentials/ECPInteractionPotential.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/NAddFuncPotential.h"
@@ -133,7 +135,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
   /*
    * Calculate energy from supersystem orbitals
    */
-  auto supKin = libint.compute1eInts(libint2::Operator::kinetic, supSysBasisController);
+  auto supKin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, supSysBasisController);
   _supEnergy = 0.0;
   for_spin(supSysDensMat) {
     _supEnergy += supSysDensMat_spin.cwiseProduct(supKin).sum();
@@ -332,7 +334,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
     for (auto e : _envSystems)
       envSystems.push_back(e.lock());
     std::shared_ptr<PotentialBundle<SCFMode>> esiPot;
-    if (superSystem->getSettings().dft.densityFitting != Options::DENS_FITS::RI) {
+    if (superSystem->getSettings().basis.densityFitting != Options::DENS_FITS::RI) {
       esiPot = std::shared_ptr<PotentialBundle<SCFMode>>(new ESIPotentials<SCFMode>(
           activeSystem, {envSystems}, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
           activeSystem->getGeometry(),
@@ -363,6 +365,9 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
     std::shared_ptr<Potential<SCFMode>> pcm(new PCMPotential<SCFMode>(
         activeSystem->getSettings().pcm, activeSystem->getBasisController(), activeSystem->getGeometry(),
         (usesPCM) ? activeSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::FDE) : nullptr,
+        (usesPCM && activeSystem->getSettings().pcm.cavityFormation)
+            ? activeSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW)
+            : nullptr,
         (usesPCM) ? activeSystem->template getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)
                   : nullptr,
         envElecPots));
@@ -387,7 +392,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
     /*
      * Subtract kinetic part
      */
-    auto actKin = libint.compute1eInts(libint2::Operator::kinetic, actSysBasisController);
+    auto actKin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, actSysBasisController);
     for_spin(initialGuessMat) {
       initialGuessMat_spin -= actKin;
     };
@@ -426,7 +431,7 @@ double TDReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
   double energy = _supEnergy;
   auto& libint = Libint::getInstance();
   auto activeSystem = _actSys.lock();
-  auto kin = libint.compute1eInts(libint2::Operator::kinetic, activeSystem->getBasisController());
+  auto kin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, activeSystem->getBasisController());
   for_spin(P) {
     double kinE = P_spin.cwiseProduct(kin).sum();
     energy -= kinE;
@@ -434,7 +439,7 @@ double TDReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
 
   for (auto weak : this->_envSystems) {
     auto sys = weak.lock();
-    auto kin = libint.compute1eInts(libint2::Operator::kinetic, sys->getBasisController());
+    auto kin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, sys->getBasisController());
     auto mat = sys->template getElectronicStructure<SCFMode>()->getDensityMatrix();
     for_spin(mat) {
       double kinE = mat_spin.cwiseProduct(kin).sum();
@@ -460,7 +465,7 @@ double TDReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
 
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd TDReconstructionPotential<SCFMode>::getGeomGradients() {
-  throw SerenityError((string) "Geometrical gradients not available for potential reconstruction methods!");
+  throw SerenityError((std::string) "Geometrical gradients not available for potential reconstruction methods!");
 
   Eigen::MatrixXd gradientContr(1, 3);
   gradientContr.setZero();

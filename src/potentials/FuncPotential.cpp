@@ -77,11 +77,7 @@ FockMatrix<SCFMode>& FuncPotential<SCFMode>::getMatrix() {
       auto system = _system.lock();
       SAOPPotential<SCFMode> saopCalc(this->_basis, system, _densOnGridController);
       _potential.reset(new FockMatrix<SCFMode>(this->_basis));
-      auto& pot = *_potential;
-      for_spin(pot) {
-        pot_spin.setZero();
-      };
-      pot = saopCalc.getMatrix();
+      *_potential = saopCalc.getMatrix();
       _energy = saopCalc.getEnergy(_dMatController->getDensityMatrix());
     }
     else {

@@ -23,7 +23,6 @@
 /* Further includes */
 
 namespace Serenity {
-using namespace std;
 
 GridController::GridController(std::unique_ptr<Grid> grid) : _grid(std::move(grid)) {
   assert(_grid);

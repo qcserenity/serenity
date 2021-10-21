@@ -26,7 +26,7 @@
 #include "data/OrbitalController.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/DensityMatrix.h"
-#include "integrals/wrappers/Libint.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "math/Matrix.h"
 #include "math/linearAlgebra/JacobiRotation.h"
 #include "system/SystemController.h"
@@ -103,7 +103,7 @@ void FosterBoysLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode
       JacobiRotation::rotate(coefficients_spin.col(rowOfMax), coefficients_spin.col(colOfMax), maxAngle);
 
       // Rotate other pairs of orbitals which were untouched so far
-      vector<bool> wasRotated(nOccOrbs_spin, false);
+      std::vector<bool> wasRotated(nOccOrbs_spin, false);
       wasRotated[rowOfMax] = true;
       wasRotated[colOfMax] = true;
       for (unsigned int iOrb = 0; iOrb < orbitalRange_spin.size(); ++iOrb) {

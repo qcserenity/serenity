@@ -27,7 +27,6 @@
 #include <cmath>
 
 namespace Serenity {
-using namespace std;
 
 /**
  * @class AtomGridFactoryTest
@@ -45,7 +44,7 @@ class AtomGridFactoryTest : public ::testing::Test {};
  * Tested are different alphas and grid sized (nPoints)
  */
 TEST_F(AtomGridFactoryTest, CheckRadialPointsByIntegration) {
-  vector<Options::RADIAL_GRID_TYPES> radTypes = {
+  std::vector<Options::RADIAL_GRID_TYPES> radTypes = {
       Options::RADIAL_GRID_TYPES::AHLRICHS //,
                                            //    RADIAL_GRID_TYPES::BECKE//,
                                            //    RADIAL_GRID_TYPES::HANDY,
@@ -54,8 +53,8 @@ TEST_F(AtomGridFactoryTest, CheckRadialPointsByIntegration) {
   for (unsigned int radI = 0; radI < radTypes.size(); ++radI) {
     for (double c = 5; c > 0.1; c *= 0.2) {
       for (unsigned int nRad = 3000; nRad <= 100000; nRad *= 6.37) {
-        vector<double> radPoints(nRad);
-        vector<double> radWeights(nRad);
+        std::vector<double> radPoints(nRad);
+        std::vector<double> radWeights(nRad);
         for (double alpha = 0.8; alpha <= 2.6; alpha += 0.8) {
           AtomGridFactory::_radialGrid(alpha, nRad, radPoints, radWeights, radTypes[radI]);
           double integral = 0;
@@ -78,10 +77,10 @@ TEST_F(AtomGridFactoryTest, CheckRadialPointsByIntegration) {
 TEST_F(AtomGridFactoryTest, CheckSphericalPointsByIntegration) {
   for (double i = 0; i < 20; i++) {
     unsigned int nPoints;
-    vector<double> x;
-    vector<double> y;
-    vector<double> z;
-    vector<double> weights;
+    std::vector<double> x;
+    std::vector<double> y;
+    std::vector<double> z;
+    std::vector<double> weights;
     AtomGridFactory::_lebedevSphericalGrid(i, nPoints, x, y, z, weights);
     ASSERT_EQ(nPoints, x.size());
     ASSERT_EQ(nPoints, y.size());

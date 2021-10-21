@@ -28,33 +28,32 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
 /*
  * Initialize static pointer for the singleton instance.
  */
 std::unique_ptr<BasisFunctionOnGridControllerFactory> BasisFunctionOnGridControllerFactory::_instance;
 
-shared_ptr<BasisFunctionOnGridController>
+std::shared_ptr<BasisFunctionOnGridController>
 BasisFunctionOnGridControllerFactory::produce(unsigned int maxBlockSize, double radialThreshold,
-                                              unsigned int highestDerivative, shared_ptr<BasisController> basisController,
-                                              shared_ptr<GridController> gridController) {
+                                              unsigned int highestDerivative, std::shared_ptr<BasisController> basisController,
+                                              std::shared_ptr<GridController> gridController) {
   if (!_instance)
     _instance.reset(new BasisFunctionOnGridControllerFactory());
   return _instance->getOrProduce(basisController, gridController, maxBlockSize, radialThreshold, highestDerivative);
 }
 
-shared_ptr<BasisFunctionOnGridController>
-BasisFunctionOnGridControllerFactory::produce(const Settings& settings, shared_ptr<BasisController> basisController,
-                                              shared_ptr<GridController> gridController, unsigned int highestDerivative) {
+std::shared_ptr<BasisFunctionOnGridController>
+BasisFunctionOnGridControllerFactory::produce(const Settings& settings, std::shared_ptr<BasisController> basisController,
+                                              std::shared_ptr<GridController> gridController, unsigned int highestDerivative) {
   return produce(settings.grid.blocksize, settings.grid.basFuncRadialThreshold, highestDerivative, basisController,
                  gridController);
 }
 
-unique_ptr<BasisFunctionOnGridController> BasisFunctionOnGridControllerFactory::produceNew(
+std::unique_ptr<BasisFunctionOnGridController> BasisFunctionOnGridControllerFactory::produceNew(
     const std::shared_ptr<BasisController> basisController, const std::shared_ptr<GridController> gridController,
     const unsigned int maxBlockSize, const double radialThreshold, const unsigned int highestDerivative) {
-  return unique_ptr<BasisFunctionOnGridController>(
+  return std::unique_ptr<BasisFunctionOnGridController>(
       new BasisFunctionOnGridController(basisController, gridController, maxBlockSize, radialThreshold, highestDerivative));
 }
 

@@ -22,7 +22,6 @@
 #define POTENTIALS_EDAPOTENTIALS_H_
 
 /* Include Serenity Internal Headers */
-#include "geometry/Geometry.h"
 #include "potentials/bundles/PotentialBundle.h"
 /* Include Std and External Headers */
 #include <memory>

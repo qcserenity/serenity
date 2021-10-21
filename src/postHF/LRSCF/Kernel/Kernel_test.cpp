@@ -20,8 +20,11 @@
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Kernel/Kernel.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
+#include "tasks/LRSCFTask.h"
 #include "testsupply/GridController__TEST_SUPPLY.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
+
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 
@@ -51,14 +54,19 @@ TEST(KernelTest, KERNEL) {
   std::vector<std::shared_ptr<SystemController>> systems(2);
   systems[0] = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE);
   systems[1] = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT);
+  LRSCFTaskSettings settings;
+  settings.func = CompositeFunctionals::XCFUNCTIONALS::PW91;
+  settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
+  settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
 
   // Setup kernel
-  auto kernel = std::make_shared<Kernel<Options::SCF_MODES::RESTRICTED>>(
-      systems, systems, true, CompositeFunctionals::KINFUNCTIONALS::PW91K, CompositeFunctionals::XCFUNCTIONALS::PW91,
-      CompositeFunctionals::XCFUNCTIONALS::PW91);
+  auto kernel = std::make_shared<Kernel<Options::SCF_MODES::RESTRICTED>>(systems, systems, settings);
   EXPECT_NO_FATAL_FAILURE(auto pp = kernel->getPP(0, 1, systems[0]->getSettings().grid.blocksize, 0);
                           auto pg = kernel->getPG(0, 1, systems[0]->getSettings().grid.blocksize, 0);
                           auto gg = kernel->getGG(0, 1, systems[0]->getSettings().grid.blocksize, 0););
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systems[0]);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systems[1]);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } // namespace Serenity

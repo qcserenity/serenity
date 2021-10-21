@@ -24,6 +24,7 @@
 #include "data/ElectronicStructure.h"                               //Access to orbital coefficients.
 #include "data/OrbitalController.h"                                 //Access to orbital coefficients.
 #include "data/OrbitalPair.h"                                       //Integrals are transformed pair-wise.
+#include "data/OrbitalPairSet.h"                                    //OrbitalPairSet definition.
 #include "data/PAOController.h"                                     //AO-PNO coefficients for reference transformation.
 #include "integrals/looper/TwoElecFourCenterIntLooper.h"            //References.
 #include "integrals/transformer/Ao2MoTransformer.h"                 //References.
@@ -35,8 +36,9 @@
 #include "tasks/LocalizationTask.h"                                 //Orbital localization.
 #include "tasks/ScfTask.h"                                          //Clean electronic structures.
 #include "testsupply/SystemController__TEST_SUPPLY.h"               //Test systems.
-                                                                    /* Include Std and External Headers */
-#include <gtest/gtest.h>                                            //Testing framework.
+
+/* Include Std and External Headers */
+#include <gtest/gtest.h> //Testing framework.
 
 namespace Serenity {
 /**
@@ -56,7 +58,7 @@ class Ao2MoExchangeIntegralTransformerTest : public ::testing::Test {
                               RegularRankFourTensor<double>& result) {
     // Calculte fully transformed integrals
     const unsigned int nBasisFunc = aoBasis->getNBasisFunctions();
-    TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, aoBasis, 1E-10);
+    TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, aoBasis, 1E-10);
     RegularRankFourTensor<double> eris(nBasisFunc);
     Ao2MoTransformer aoToMo(aoBasis);
     auto const storeERIS = [&eris](const unsigned int& a, const unsigned int& b, const unsigned int& i,
@@ -77,6 +79,7 @@ class Ao2MoExchangeIntegralTransformerTest : public ::testing::Test {
 };
 
 TEST_F(Ao2MoExchangeIntegralTransformerTest, H2_RIvsAO_allIntegrals) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   // Build reference
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
   auto basisController = system->getBasisController();
@@ -88,9 +91,9 @@ TEST_F(Ao2MoExchangeIntegralTransformerTest, H2_RIvsAO_allIntegrals) {
   lCSettings.doiPAOThreshold = 1e-14;
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
   auto pnoConstructor = localCorrelationController->producePNOConstructor();
+  localCorrelationController->initializeSingles();
   std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs =
       localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
-  localCorrelationController->initializeSingles();
   Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
       system->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
       localCorrelationController->getMO3CenterIntegralController(), orbitalPairs, pnoConstructor);
@@ -98,9 +101,10 @@ TEST_F(Ao2MoExchangeIntegralTransformerTest, H2_RIvsAO_allIntegrals) {
   localCorrelationController->buildOrbitalPairCouplingMap();
   localCorrelationController->buildKLOrbitalPairs();
 
+  localCorrelationController->getCloseOrbitalPairSets();
   Ao2MoExchangeIntegralTransformer::transformAllIntegrals(system->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
                                                           localCorrelationController->getMO3CenterIntegralController(),
-                                                          orbitalPairs);
+                                                          orbitalPairs, false);
 
   auto pair = orbitalPairs[0];
   Eigen::MatrixXd R_00 = localCorrelationController->getPAOController()->getAllPAOs();
@@ -111,16 +115,7 @@ TEST_F(Ao2MoExchangeIntegralTransformerTest, H2_RIvsAO_allIntegrals) {
   coeffs.block(0, 1, 12, 11) = pnoCoefficients;
   RegularRankFourTensor<double> result(nBasisFunc, 0.0);
   calculate4CenterMOInts(basisController, coeffs, result);
-
-  // (ac|bd)
   unsigned int nPNOs = pair->ac_bd->rows();
-  // Check symmetry of the integrals and compare to AO integrals if possible.
-  for (unsigned int a = 0; a < nPNOs; ++a) {
-    for (unsigned int b = 0; b <= a; ++b) {
-      double diff = ((*pair->ac_bd)(a, b) - (*pair->ac_bd)(b, a).transpose()).array().abs().sum();
-      EXPECT_NEAR(diff, 0.0, 1e-12);
-    } // for b
-  }   // for a
 
   //(ia|jb)
   for (unsigned int a = 0; a < nPNOs; ++a) {
@@ -151,6 +146,7 @@ TEST_F(Ao2MoExchangeIntegralTransformerTest, H2_RIvsAO_allIntegrals) {
     }   // for b
   }     // for a
   SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 };
 
 } /* namespace Serenity */

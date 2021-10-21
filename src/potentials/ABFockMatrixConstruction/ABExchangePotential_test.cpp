@@ -25,6 +25,7 @@
 #include "potentials/ABFockMatrixConstruction/ABCoulombInteractionPotential.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/ExchangeInteractionPotential.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

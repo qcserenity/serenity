@@ -68,7 +68,7 @@ TEST_F(ResponseSolverTest, Undamped) {
 
   // Build response solver
   auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator, nullptr);
+                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();
@@ -137,7 +137,7 @@ TEST_F(ResponseSolverTest, Undamped_Multifreq) {
 
   // Build response solver
   auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator, nullptr);
+                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();
@@ -207,7 +207,7 @@ TEST_F(ResponseSolverTest, Damped) {
 
   // Build response solver
   auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator, nullptr);
+                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();

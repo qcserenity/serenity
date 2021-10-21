@@ -18,11 +18,19 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/ElectronicStructureOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
 namespace Options {
+template<>
+void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field) {
+  static const std::map<std::string, ORBITAL_FILE_TYPES> m = {{"SERENITY", ORBITAL_FILE_TYPES::SERENITY},
+                                                              {"TURBOMOLE", ORBITAL_FILE_TYPES::TURBOMOLE}};
+  check(m, value, field);
+}
 
 template<>
 void resolve<SCF_MODES>(std::string& value, SCF_MODES& field) {
@@ -41,10 +49,11 @@ void resolve<ELECTRONIC_STRUCTURE_THEORIES>(std::string& value, ELECTRONIC_STRUC
 template<>
 void resolve<GLOBAL_PRINT_LEVELS>(std::string& value, GLOBAL_PRINT_LEVELS& field) {
   static const std::map<std::string, GLOBAL_PRINT_LEVELS> m = {
-      {"MINIMUM", GLOBAL_PRINT_LEVELS::MINIMUM}, {"0", GLOBAL_PRINT_LEVELS::MINIMUM},
-      {"NORMAL", GLOBAL_PRINT_LEVELS::NORMAL},   {"1", GLOBAL_PRINT_LEVELS::NORMAL},
-      {"VERBOSE", GLOBAL_PRINT_LEVELS::VERBOSE}, {"2", GLOBAL_PRINT_LEVELS::VERBOSE},
-      {"DEBUG", GLOBAL_PRINT_LEVELS::DEBUGGING}, {"3", GLOBAL_PRINT_LEVELS::DEBUGGING}};
+      {"MINIMUM", GLOBAL_PRINT_LEVELS::MINIMUM},     {"0", GLOBAL_PRINT_LEVELS::MINIMUM},
+      {"NORMAL", GLOBAL_PRINT_LEVELS::NORMAL},       {"1", GLOBAL_PRINT_LEVELS::NORMAL},
+      {"VERBOSE", GLOBAL_PRINT_LEVELS::VERBOSE},     {"2", GLOBAL_PRINT_LEVELS::VERBOSE},
+      {"DEBUG", GLOBAL_PRINT_LEVELS::DEBUGGING},     {"3", GLOBAL_PRINT_LEVELS::DEBUGGING},
+      {"DEBUGGING", GLOBAL_PRINT_LEVELS::DEBUGGING}, {"3", GLOBAL_PRINT_LEVELS::DEBUGGING}};
   check(m, value, field);
 }
 

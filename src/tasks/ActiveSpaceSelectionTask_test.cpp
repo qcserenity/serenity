@@ -159,7 +159,6 @@ TEST_F(ActiveSpaceSelectionTest, restricted_EthaneMulliken) {
   asTask.settings.similarityKinEnergyThreshold = 5e-2;
   asTask.settings.similarityLocThreshold = 5e-2;
   asTask.settings.populationAlgorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN;
-  asTask.settings.noIsolatedMOs = true;
   asTask.run();
 
   auto act1 = asTask.getSystemPairs()[0].first;
@@ -279,16 +278,26 @@ TEST_F(ActiveSpaceSelectionTest, testThrows) {
   ActiveSpaceSelectionTask<SPIN> asTask2({A, B}, {}, {});
   asTask2.settings.populationAlgorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::HIRSHFELD;
   EXPECT_THROW(asTask2.run(), SerenityError);
-  EXPECT_THROW(ActiveSpaceSelectionTask<SPIN> asTask({A, C}, {}, {}), SerenityError);
+  ActiveSpaceSelectionTask<SPIN> asTask3({A, C}, {}, {});
+  EXPECT_THROW(asTask3.run(), SerenityError);
   settingsB.charge = 0;
   settingsB.basis.label = "DEF2-TZVP";
   auto D = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, settingsB);
   // Wrong supersystem II basis label.
-  EXPECT_THROW(ActiveSpaceSelectionTask<SPIN> asTask({A, D}, {}, {}), SerenityError);
-  // Wrong active system basis label.
-  EXPECT_THROW(ActiveSpaceSelectionTask<SPIN> asTask({A, B}, {D}, {}), SerenityError);
-  // Wrong environment basis label.
-  EXPECT_THROW(ActiveSpaceSelectionTask<SPIN> asTask({A, B}, {}, {D}), SerenityError);
+  ActiveSpaceSelectionTask<SPIN> asTask4({A, D}, {}, {});
+  EXPECT_THROW(asTask4.run(), SerenityError);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_EthaneA_Def2_SVP_BP86_Act/",
+                                                        "TestSystem_EthaneA_Def2_SVP_BP86_Act");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_EthaneA_Def2_SVP_BP86_Env/",
+                                                        "TestSystem_EthaneA_Def2_SVP_BP86_Env");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_EthaneB_Def2_SVP_BP86_Act/",
+                                                        "TestSystem_EthaneB_Def2_SVP_BP86_Act");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_EthaneB_Def2_SVP_BP86_Env/",
+                                                        "TestSystem_EthaneB_Def2_SVP_BP86_Env");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_WaterMonOne_Def2_SVP_Act/",
+                                                        "TestSystem_WaterMonOne_Def2_SVP_Act");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("TestSystem_WaterMonOne_Def2_SVP_Env/",
+                                                        "TestSystem_WaterMonOne_Def2_SVP_Env");
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

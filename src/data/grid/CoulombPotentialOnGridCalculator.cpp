@@ -50,7 +50,7 @@ void CoulombPotentialOnGridCalculator::calculateElectronElectron(GridPotential<R
   const auto& gridPoints = gridController->getGridPoints();
 
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::nuclear, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::nuclear, 0, 2);
   Eigen::setNbThreads(1);
   // go through grid blockwise
 #pragma omp for schedule(dynamic)
@@ -68,7 +68,7 @@ void CoulombPotentialOnGridCalculator::calculateElectronElectron(GridPotential<R
       std::vector<std::pair<double, std::array<double, 3>>> point = {
           {-1.0, {{gridPoints(0, gridpoint), gridPoints(1, gridpoint), gridPoints(2, gridpoint)}}}};
 
-      Eigen::MatrixXd ints = libint.compute1eInts(libint2::Operator::nuclear, basisController, point);
+      Eigen::MatrixXd ints = libint.compute1eInts(LIBINT_OPERATOR::nuclear, basisController, point);
 
       double pot = totalDensity.cwiseProduct(ints).sum();
       //... and store in the GridPotential

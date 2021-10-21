@@ -52,7 +52,7 @@ TEST_F(SEDDTest, SEDD_restricted) {
   SEDD<Options::SCF_MODES::RESTRICTED> sedd;
   auto lambda = sedd.getSEDDLambda(systemController);
   auto result = lambda(grid);
-  EXPECT_NEAR(result.sum(), 55642.7514261, 1e-6);
+  EXPECT_NEAR(result.sum(), 55642.7514261, 5e-6);
 }
 /**
  * @test
@@ -62,7 +62,7 @@ TEST_F(SEDDTest, SEDD_unrestricted) {
   SEDD<Options::SCF_MODES::UNRESTRICTED> sedd;
   auto lambda = sedd.getSEDDLambda(systemController);
   auto result = lambda(grid);
-  EXPECT_NEAR(result.sum(), 55642.7514261, 1e-6);
+  EXPECT_NEAR(result.sum(), 55642.7514261, 5e-6);
 }
 /**
  * @test
@@ -73,7 +73,7 @@ TEST_F(SEDDTest, DORI_restricted) {
   auto lambda = dori.getDORILambda(systemController);
   auto result = lambda(grid);
   EXPECT_TRUE(result.minCoeff() >= 0.0);
-  EXPECT_NEAR(result.sum(), 1428.4446333128767, 1e-6);
+  EXPECT_NEAR(result.sum(), 1428.4446333128767, 5e-6);
 }
 /**
  * @test
@@ -84,7 +84,7 @@ TEST_F(SEDDTest, DORI_unrestricted) {
   auto lambda = dori.getDORILambda(systemController);
   auto result = lambda(grid);
   EXPECT_TRUE(result.minCoeff() >= 0.0);
-  EXPECT_NEAR(result.sum(), 1428.4446333128767, 1e-6);
+  EXPECT_NEAR(result.sum(), 1428.4446333128767, 5e-6);
 }
 /**
  * @test
@@ -94,7 +94,7 @@ TEST_F(SEDDTest, SignedDensity_restricted) {
   SEDD<Options::SCF_MODES::RESTRICTED> dori;
   auto lambda = dori.getSignedDensityLambda(systemController);
   auto result = lambda(grid);
-  EXPECT_NEAR(result.sum(), -106849.88204633593, 1e-6);
+  EXPECT_NEAR(result.sum(), -106849.88204633593, 5e-6);
 }
 /**
  * @test
@@ -104,7 +104,7 @@ TEST_F(SEDDTest, SignedDensity_unrestricted) {
   SEDD<Options::SCF_MODES::UNRESTRICTED> dori;
   auto lambda = dori.getSignedDensityLambda(systemController);
   auto result = lambda(grid);
-  EXPECT_NEAR(result.sum(), -106849.88204633593, 1e-6);
+  EXPECT_NEAR(result.sum(), -106849.88204633593, 5e-6);
 }
 
 } // namespace Serenity

@@ -1,7 +1,7 @@
 /**
  * @file   OrbitalController.cpp
  *
- * @date   last rework Jan 16. 2017
+ * @date   Jan 16. 2017
  * @author Thomas Dresselhaus, Jan Unsleber
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
@@ -27,22 +27,23 @@
 #include "data/matrices/MatrixInBasis.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutput.h"
+#include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
-#include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
 
 namespace Serenity {
-using namespace std;
 
-template<Options::SCF_MODES T>
-OrbitalController<T>::OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients,
-                                        std::shared_ptr<BasisController> basisController,
-                                        std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues)
-  : NotifyingClass<OrbitalController<T>>(),
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::OrbitalController(std::unique_ptr<CoefficientMatrix<SCFMode>> coefficients,
+                                              std::shared_ptr<BasisController> basisController,
+                                              std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> eigenvalues,
+                                              std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXi>> isCoreOrbital)
+  : NotifyingClass<OrbitalController<SCFMode>>(),
     _coefficients(move(coefficients)),
     _basisController(basisController),
     _eigenvalues(move(eigenvalues)),
+    _isCoreOrbital(move(isCoreOrbital)),
     _canOrthTh(1.0e-7),
     _linearDependent(false),
     _nZero(0) {
@@ -56,12 +57,23 @@ OrbitalController<T>::OrbitalController(std::unique_ptr<CoefficientMatrix<T>> co
   _basisController->addSensitiveObject(this->_self);
 }
 
-template<Options::SCF_MODES T>
-OrbitalController<T>::OrbitalController(std::shared_ptr<BasisController> basisController)
-  : NotifyingClass<OrbitalController<T>>(),
-    _coefficients(new CoefficientMatrix<T>(basisController)),
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::OrbitalController(std::unique_ptr<CoefficientMatrix<SCFMode>> coefficients,
+                                              std::shared_ptr<BasisController> basisController,
+                                              std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> eigenvalues,
+                                              unsigned int nCoreElectrons)
+  : OrbitalController(move(coefficients), basisController, move(eigenvalues),
+                      std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(
+                          getCoreOrbitalsByEigenvalue(nCoreElectrons, *eigenvalues))) {
+}
+
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::OrbitalController(std::shared_ptr<BasisController> basisController)
+  : NotifyingClass<OrbitalController<SCFMode>>(),
+    _coefficients(new CoefficientMatrix<SCFMode>(basisController)),
     _basisController(basisController),
-    _eigenvalues(new SpinPolarizedData<T, Eigen::VectorXd>(basisController->getNBasisFunctions())),
+    _eigenvalues(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(basisController->getNBasisFunctions())),
+    _isCoreOrbital(new SpinPolarizedData<SCFMode, Eigen::VectorXi>(basisController->getNBasisFunctions())),
     _canOrthTh(1.0e-7),
     _linearDependent(false),
     _nZero(0) {
@@ -69,23 +81,26 @@ OrbitalController<T>::OrbitalController(std::shared_ptr<BasisController> basisCo
   _basisController->addSensitiveObject(this->_self);
 }
 
-template<Options::SCF_MODES T>
-OrbitalController<T>::OrbitalController(const OrbitalController<T>& orig)
-  : NotifyingClass<OrbitalController<T>>(),
-    _coefficients(new CoefficientMatrix<T>(*orig._coefficients)),
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::OrbitalController(const OrbitalController<SCFMode>& orig)
+  : NotifyingClass<OrbitalController<SCFMode>>(),
+    _coefficients(new CoefficientMatrix<SCFMode>(*orig._coefficients)),
     _basisController(orig._basisController),
-    _eigenvalues(new SpinPolarizedData<T, Eigen::VectorXd>(*orig._eigenvalues)),
+    _eigenvalues(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(*orig._eigenvalues)),
+    _isCoreOrbital(new SpinPolarizedData<SCFMode, Eigen::VectorXi>(*orig._isCoreOrbital)),
     _canOrthTh(orig._canOrthTh),
     _nZero(0) {
   assert(isDefinedInSameBasis(orig, *this));
   _basisController->addSensitiveObject(this->_self);
 }
 
-template<Options::SCF_MODES T>
-OrbitalController<T>::OrbitalController(std::string filePath, std::shared_ptr<BasisController> basisController, std::string id)
-  : _coefficients(new CoefficientMatrix<T>(basisController)),
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::OrbitalController(std::string filePath, std::shared_ptr<BasisController> basisController,
+                                              std::string id)
+  : _coefficients(new CoefficientMatrix<SCFMode>(basisController)),
     _basisController(basisController),
-    _eigenvalues(new SpinPolarizedData<T, Eigen::VectorXd>(basisController->getNBasisFunctions())),
+    _eigenvalues(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(basisController->getNBasisFunctions())),
+    _isCoreOrbital(new SpinPolarizedData<SCFMode, Eigen::VectorXi>(basisController->getNBasisFunctions())),
     _canOrthTh(1.0e-7),
     _linearDependent(false),
     _nZero(0),
@@ -94,20 +109,21 @@ OrbitalController<T>::OrbitalController(std::string filePath, std::shared_ptr<Ba
   fromHDF5(filePath, id);
   _basisController->addSensitiveObject(this->_self);
 }
-template<Options::SCF_MODES T>
-OrbitalController<T>::~OrbitalController() {
+template<Options::SCF_MODES SCFMode>
+OrbitalController<SCFMode>::~OrbitalController() {
 }
 
-template<Options::SCF_MODES T>
-unsigned int OrbitalController<T>::getNOrbitals() const {
+template<Options::SCF_MODES SCFMode>
+unsigned int OrbitalController<SCFMode>::getNOrbitals() const {
   return _basisController->getNBasisFunctions();
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController) {
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController) {
   if (_X.cols() > 0)
     return;
   // Calculate canonical orthogonalization matrix
+  // Note symmetrization is already done in the oneElectronIntegralController
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(oneIntController->getOverlapIntegrals());
   auto U = es.eigenvectors();
   auto s = es.eigenvalues();
@@ -141,18 +157,18 @@ void OrbitalController<T>::calculateTransformationX(std::shared_ptr<OneElectronI
   }
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::updateOrbitals(const FockMatrix<T>& fockMatrix,
-                                          std::shared_ptr<OneElectronIntegralController> oneIntController) {
-  auto shift = std::make_pair<Eigen::VectorXd, SpinPolarizedData<T, Eigen::VectorXd>>(
-      Eigen::VectorXd(Eigen::VectorXd::Zero(2)), SpinPolarizedData<T, Eigen::VectorXd>(Eigen::VectorXd(0)));
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::updateOrbitals(const FockMatrix<SCFMode>& fockMatrix,
+                                                std::shared_ptr<OneElectronIntegralController> oneIntController) {
+  auto shift = std::make_pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
+      Eigen::VectorXd(Eigen::VectorXd::Zero(2)), SpinPolarizedData<SCFMode, Eigen::VectorXd>(Eigen::VectorXd(0)));
   this->updateOrbitals(shift, fockMatrix, oneIntController);
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::updateOrbitals(const std::pair<Eigen::VectorXd, SpinPolarizedData<T, Eigen::VectorXd>> levelshift,
-                                          const FockMatrix<T>& fockMatrix,
-                                          std::shared_ptr<OneElectronIntegralController> oneIntController) {
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::updateOrbitals(const std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> levelshift,
+                                                const FockMatrix<SCFMode>& fockMatrix,
+                                                std::shared_ptr<OneElectronIntegralController> oneIntController) {
   Timings::takeTime("Tech. -    Fock Matrix Solving");
 
   auto& occupation = levelshift.second;
@@ -213,7 +229,7 @@ void OrbitalController<T>::updateOrbitals(const std::pair<Eigen::VectorXd, SpinP
           newCoeffs.col(i) *= -1.0;
       }
       c_spin.leftCols(newCoeffs.cols()) = newCoeffs;
-      eps_spin = Eigen::VectorXd::Constant(_basisController->getNBasisFunctions(), numeric_limits<double>::infinity());
+      eps_spin = Eigen::VectorXd::Constant(_basisController->getNBasisFunctions(), std::numeric_limits<double>::infinity());
       Eigen::VectorXd newEigenvalues = es.eigenvalues();
       eps_spin.segment(0, newEigenvalues.size()) = newEigenvalues;
     };
@@ -223,18 +239,21 @@ void OrbitalController<T>::updateOrbitals(const std::pair<Eigen::VectorXd, SpinP
   Timings::timeTaken("Tech. -    Fock Matrix Solving");
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::setDiskMode(bool diskmode, std::string fBaseName, std::string id) {
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::setDiskMode(bool diskmode, std::string fBaseName, std::string id) {
   if (diskmode) {
     _fBaseName = fBaseName;
     _id = id;
-    assert(!_fBaseName.empty() && "Need to set file path when setting OrbitalController to disk mode.");
-    assert(!_id.empty() && "Need to set file ID when setting OrbitalController to disk mode.");
+    if (_fBaseName.empty())
+      throw SerenityError("Need to set file path when setting OrbitalController to disk mode.");
+    if (_id.empty())
+      throw SerenityError("Need to set file ID when setting OrbitalController to disk mode.");
   }
   if (diskmode and _keepInMemory) {
     this->toHDF5(_fBaseName, _id);
     _coefficients.reset();
     _eigenvalues.reset();
+    _isCoreOrbital.reset();
   }
   else if (!diskmode and !_keepInMemory) {
     fromHDF5(_fBaseName, _id);
@@ -243,64 +262,100 @@ void OrbitalController<T>::setDiskMode(bool diskmode, std::string fBaseName, std
 }
 
 /// @returns the coefficients determining the orbitals in connection with the basis.
-template<Options::SCF_MODES T>
-CoefficientMatrix<T> OrbitalController<T>::getCoefficients() {
+template<Options::SCF_MODES SCFMode>
+CoefficientMatrix<SCFMode> OrbitalController<SCFMode>::getCoefficients() {
   if (!_keepInMemory && (_coefficients == nullptr)) {
     assert(!_fBaseName.empty());
     assert(!_id.empty());
     this->coefficientsfromHDF5(_fBaseName, _id);
-    CoefficientMatrix<T> coefficients(*_coefficients);
+    CoefficientMatrix<SCFMode> coefficients(*_coefficients);
     _coefficients.reset();
     return coefficients;
   }
   else {
-    return (CoefficientMatrix<T>)*_coefficients;
+    return (CoefficientMatrix<SCFMode>)*_coefficients;
   }
 }
 
 /// @returns the orbital energies.
-template<Options::SCF_MODES T>
-SpinPolarizedData<T, Eigen::VectorXd> OrbitalController<T>::getEigenvalues() {
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, Eigen::VectorXd> OrbitalController<SCFMode>::getEigenvalues() {
   if (!_keepInMemory && (_eigenvalues == nullptr)) {
     assert(!_fBaseName.empty());
     assert(!_id.empty());
     this->eigenvaluesfromHDF5(_fBaseName, _id);
-    SpinPolarizedData<T, Eigen::VectorXd> eigenvalues(*_eigenvalues);
+    SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvalues(*_eigenvalues);
     _eigenvalues.reset();
     return eigenvalues;
   }
   else {
-    return (SpinPolarizedData<T, Eigen::VectorXd>)*_eigenvalues;
+    return (SpinPolarizedData<SCFMode, Eigen::VectorXd>)*_eigenvalues;
+  }
+}
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, Eigen::VectorXi> OrbitalController<SCFMode>::getCoreOrbitals() {
+  if (!_keepInMemory && (_isCoreOrbital == nullptr)) {
+    assert(!_fBaseName.empty());
+    assert(!_id.empty());
+    this->coreOrbitalsfromHDF5(_fBaseName, _id);
+    SpinPolarizedData<SCFMode, Eigen::VectorXi> isCoreOrbital(*_isCoreOrbital);
+    _isCoreOrbital.reset();
+    return isCoreOrbital;
+  }
+  else {
+    return (SpinPolarizedData<SCFMode, Eigen::VectorXi>)*_isCoreOrbital;
   }
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::updateOrbitals(const CoefficientMatrix<T>& updatedCoefficients,
-                                          const SpinPolarizedData<T, Eigen::VectorXd>& updatedEigenvalues) {
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::updateOrbitals(const CoefficientMatrix<SCFMode>& updatedCoefficients,
+                                                const SpinPolarizedData<SCFMode, Eigen::VectorXd>& updatedEigenvalues,
+                                                SpinPolarizedData<SCFMode, Eigen::VectorXi> coreOrbitals) {
   assert(updatedCoefficients.getBasisController() == _basisController);
   bool keeptmp = _keepInMemory;
   if (!_keepInMemory) {
     assert(!_fBaseName.empty());
     assert(!_id.empty());
-    _eigenvalues.reset(new SpinPolarizedData<T, Eigen::VectorXd>(_basisController->getNBasisFunctions()));
-    _coefficients.reset(new CoefficientMatrix<T>(_basisController));
+    _eigenvalues.reset(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(_basisController->getNBasisFunctions()));
+    _coefficients.reset(new CoefficientMatrix<SCFMode>(_basisController));
+    _isCoreOrbital = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(
+        Eigen::VectorXi::Zero(_basisController->getNBasisFunctions()));
     _keepInMemory = true;
   }
   *_eigenvalues = updatedEigenvalues;
   *_coefficients = updatedCoefficients;
+  *_isCoreOrbital = coreOrbitals;
+  //  auto& isCoreOrbital = *_isCoreOrbital;
+  //  for_spin(coreOrbitals,isCoreOrbital) {
+  //    if(coreOrbitals_spin.size() > 0) {
+  //      if(coreOrbitals_spin.size() != _basisController->getNBasisFunctions()) {
+  //        throw SerenityError("ERROR: Incorrect dimensions in the orbital controller for the core orbital
+  //        assignment.");
+  //      }
+  //      isCoreOrbital_spin = coreOrbitals_spin;
+  //    }
+  //  };
   this->notifyObjects();
 
   _keepInMemory = keeptmp;
   if (!_keepInMemory) {
     this->toHDF5(_fBaseName, _id);
     _eigenvalues.reset();
+    _isCoreOrbital.reset();
   }
 }
 
-template<Options::SCF_MODES T>
-void OrbitalController<T>::fromHDF5(std::string fBaseName, std::string id) {
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::updateOrbitals(const CoefficientMatrix<SCFMode>& updatedCoefficients,
+                                                const SpinPolarizedData<SCFMode, Eigen::VectorXd>& updatedEigenvalues) {
+  this->updateOrbitals(updatedCoefficients, updatedEigenvalues, this->getCoreOrbitals());
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::fromHDF5(std::string fBaseName, std::string id) {
   this->coefficientsfromHDF5(fBaseName, id);
   this->eigenvaluesfromHDF5(fBaseName, id);
+  this->coreOrbitalsfromHDF5(fBaseName, id);
   _firstIteration = false;
 }
 
@@ -335,6 +390,7 @@ void OrbitalController<Options::SCF_MODES::RESTRICTED>::toHDF5(std::string fBase
   HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
   HDF5::save(file, "eigenvalues", *_eigenvalues);
   HDF5::save(file, "coefficients", *_coefficients);
+  HDF5::save(file, "coreOrbitals", *_isCoreOrbital);
   HDF5::save_scalar_attribute(file, "ID", id);
   file.close();
 }
@@ -346,6 +402,8 @@ void OrbitalController<Options::SCF_MODES::UNRESTRICTED>::toHDF5(std::string fBa
   HDF5::save(file, "eigenvalues_beta", _eigenvalues->beta);
   HDF5::save(file, "coefficients_alpha", _coefficients->alpha);
   HDF5::save(file, "coefficients_beta", _coefficients->beta);
+  HDF5::save(file, "coreOrbitals_alpha", _isCoreOrbital->alpha);
+  HDF5::save(file, "coreOrbitals_beta", _isCoreOrbital->beta);
   HDF5::save_scalar_attribute(file, "ID", id);
   file.close();
 }
@@ -374,6 +432,120 @@ void OrbitalController<Options::SCF_MODES::UNRESTRICTED>::eigenvaluesfromHDF5(st
   HDF5::load(file, "eigenvalues_alpha", _eigenvalues->alpha);
   HDF5::load(file, "eigenvalues_beta", _eigenvalues->beta);
   file.close();
+}
+template<>
+void OrbitalController<Options::SCF_MODES::RESTRICTED>::coreOrbitalsfromHDF5(std::string fBaseName, std::string id) {
+  _isCoreOrbital = std::make_unique<SpinPolarizedData<Options::SCF_MODES::RESTRICTED, Eigen::VectorXi>>(
+      Eigen::VectorXi::Zero(_basisController->getNBasisFunctions()));
+  try {
+    HDF5::Filepath name(fBaseName + ".orbs.res.h5");
+    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::dataset_exists(file, "coreOrbitals");
+    HDF5::attribute_exists(file, "ID");
+    HDF5::check_attribute(file, "ID", id);
+    HDF5::load(file, "coreOrbitals", *_isCoreOrbital);
+    file.close();
+  }
+  catch (...) {
+    OutputControl::dOut
+        << "Small Warning: Old orbital file format detected! Information about core orbitals will not be loaded!"
+        << std::endl;
+    OutputControl::dOut << "               An energy cut-off of -5 Eh will be used instead." << std::endl;
+    this->setCoreOrbitalsByEnergyCutOff(-5);
+  }
+}
+template<>
+void OrbitalController<Options::SCF_MODES::UNRESTRICTED>::coreOrbitalsfromHDF5(std::string fBaseName, std::string id) {
+  _isCoreOrbital = std::make_unique<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXi>>(
+      Eigen::VectorXi::Zero(_basisController->getNBasisFunctions()));
+  try {
+    HDF5::Filepath name(fBaseName + ".orbs.unres.h5");
+    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::dataset_exists(file, "coreOrbitals_alpha");
+    HDF5::dataset_exists(file, "coreOrbitals_beta");
+    HDF5::attribute_exists(file, "ID");
+    HDF5::check_attribute(file, "ID", id);
+    HDF5::load(file, "coreOrbitals_alpha", _isCoreOrbital->alpha);
+    HDF5::load(file, "coreOrbitals_beta", _isCoreOrbital->beta);
+    file.close();
+  }
+  catch (...) {
+    OutputControl::dOut
+        << "Small Warning: Old orbital file format detected! Information about core orbitals will not be loaded!"
+        << std::endl;
+    OutputControl::dOut << "               An energy cut-off of -5 Eh will be used instead." << std::endl;
+    this->setCoreOrbitalsByEnergyCutOff(-5);
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::notify() {
+  _X.resize(0, 0);
+  _firstIteration = true;
+  this->notifyObjects();
+}
+
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, Eigen::VectorXi>
+OrbitalController<SCFMode>::getCoreOrbitalsByEigenvalue(unsigned int nCoreElectrons,
+                                                        const SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
+  unsigned int nCoreOrbitals = nCoreElectrons / 2;
+  SpinPolarizedData<SCFMode, Eigen::VectorXi> isCoreOrbital;
+  for_spin(isCoreOrbital, eigenvalues) {
+    Eigen::VectorXd eps = eigenvalues_spin;
+    isCoreOrbital_spin = Eigen::VectorXi::Zero(eps.size());
+    for (unsigned int iCore = 0; iCore < nCoreOrbitals; ++iCore) {
+      int minIndex;
+      eps.minCoeff(&minIndex);
+      eps[minIndex] = std::numeric_limits<double>::infinity();
+      isCoreOrbital_spin[minIndex] = 1;
+    } // for iCore
+  };
+  return isCoreOrbital;
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::setCoreOrbitalsByNumber(unsigned int nCoreOrbitals) {
+  if (!_isCoreOrbital)
+    _isCoreOrbital = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(
+        Eigen::VectorXi::Zero(_basisController->getNBasisFunctions()));
+  *_isCoreOrbital = getCoreOrbitalsByEigenvalue(nCoreOrbitals * 2, this->getEigenvalues());
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::setCoreOrbitalsByEnergyCutOff(double energyCutOff) {
+  const auto& eigenvalues = this->getEigenvalues();
+  if (!_isCoreOrbital)
+    _isCoreOrbital = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(
+        Eigen::VectorXi::Zero(_basisController->getNBasisFunctions()));
+  auto& isCoreOrbital = *_isCoreOrbital;
+  for_spin(eigenvalues, isCoreOrbital) {
+    isCoreOrbital_spin.setZero();
+    for (unsigned int iOrb = 0; iOrb < eigenvalues_spin.size(); ++iOrb) {
+      if (eigenvalues_spin(iOrb) < energyCutOff) {
+        isCoreOrbital_spin(iOrb) = 1;
+      }
+    }
+  }; // for spin
+}
+
+template<Options::SCF_MODES SCFMode>
+std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
+OrbitalController<SCFMode>::getValenceOrbitalIndices(SpinPolarizedData<SCFMode, unsigned int> nOcc) {
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>> valenceRange;
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>> coreRange;
+  const auto& coreOrbitals = this->getCoreOrbitals();
+  for_spin(nOcc, valenceRange, coreRange, coreOrbitals) {
+    for (unsigned int iOcc = 0; iOcc < nOcc_spin; ++iOcc) {
+      if (!coreOrbitals_spin[iOcc]) {
+        valenceRange_spin.push_back(iOcc);
+      }
+      else {
+        coreRange_spin.push_back(iOcc);
+      }
+    } // for iOcc
+  };  // for spin
+  return std::make_pair(valenceRange, coreRange);
 }
 
 template class OrbitalController<Options::SCF_MODES::RESTRICTED>;

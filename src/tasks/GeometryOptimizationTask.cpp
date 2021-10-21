@@ -44,7 +44,6 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SCFMode>
 GeometryOptimizationTask<SCFMode>::GeometryOptimizationTask(const std::vector<std::shared_ptr<SystemController>>& activeSystems,
@@ -61,24 +60,18 @@ void GeometryOptimizationTask<SCFMode>::run() {
   bool info(iOOptions.printSCFCycleInfo);
   bool results(iOOptions.printSCFResults);
   bool gridAcc(iOOptions.gridAccuracyCheck);
-  int timings(iOOptions.timingsPrintLevel);
-  switch (settings.printLevel) {
-    case 0:
+  switch (GLOBAL_PRINT_LEVEL) {
+    case Options::GLOBAL_PRINT_LEVELS::MINIMUM:
       iOOptions.printSCFCycleInfo = false;
       iOOptions.printSCFResults = false;
       iOOptions.printGridInfo = false;
       break;
-    case 1:
-      iOOptions.printSCFCycleInfo = false;
-      iOOptions.printSCFResults = true;
-      break;
-    case 2:
+    default:
       iOOptions.printSCFCycleInfo = true;
       iOOptions.printSCFResults = true;
       break;
   }
   iOOptions.gridAccuracyCheck = false;
-  iOOptions.timingsPrintLevel = 1;
 
   if (_passiveSystems.size() == 0 and _activeSystems.size() == 1) {
     auto nAtoms = _activeSystems[0]->getGeometry()->getNAtoms();
@@ -140,7 +133,7 @@ void GeometryOptimizationTask<SCFMode>::run() {
       printf("%4s Max Step      %15.10f\n\n", "", step.array().abs().maxCoeff());
       _activeSystems[0]->getGeometry()->print();
       _activeSystems[0]->getGeometry()->printToFile(_activeSystems[0]->getHDF5BaseName(),
-                                                    _activeSystems[0]->getSettings().identifier);
+                                                    _activeSystems[0]->getSystemIdentifier());
       _activeSystems[0]->getGeometry()->updateTrajFile(_activeSystems[0]->getHDF5BaseName(), value, gradNorm);
 
       /*
@@ -182,16 +175,12 @@ void GeometryOptimizationTask<SCFMode>::run() {
     /*
      * Initial FaT
      */
-
     FreezeAndThawTask<SCFMode> task(_activeSystems, _passiveSystems);
-    task.settings.embedding.naddKinFunc = settings.embedding.naddKinFunc;
-    task.settings.embedding.naddXCFunc = settings.embedding.naddXCFunc;
+    task.settings.embedding = settings.embedding;
     if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
       throw SerenityError("Only non-additive kinetic embedding is supported for embedded Gradients!");
     }
     task.settings.gridCutOff = settings.FaTgridCutOff;
-    task.generalSettings.printLevel = generalSettings.printLevel;
-    task.settings.embedding.dispersion = settings.dispersion;
     task.run();
 
     Geometry SupersystemGeometry;
@@ -230,21 +219,16 @@ void GeometryOptimizationTask<SCFMode>::run() {
 
       GradientTask<SCFMode> task(_activeSystems, _passiveSystems);
       task.settings.gradType = settings.gradType;
-      task.settings.embedding.naddKinFunc = settings.embedding.naddKinFunc;
-      task.settings.embedding.naddXCFunc = settings.embedding.naddXCFunc;
+      task.settings.embedding = settings.embedding;
       if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
         throw SerenityError("Only non-additive kinetic embedding is supported for embedded Gradients!");
       }
-      task.settings.embedding.embeddingMode = settings.embedding.embeddingMode;
       task.settings.FDEgridCutOff = settings.FaTgridCutOff;
-      task.settings.dispersion = settings.dispersion;
       task.settings.transInvar = settings.transInvar;
       task.settings.numGradStepSize = settings.numGradStepSize;
       task.run();
 
       /* Variables for optimization. */
-      assert(_activeSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT &&
-             "Check logic in this task for its compatibility with HF.");
       value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
           ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
 
@@ -271,6 +255,9 @@ void GeometryOptimizationTask<SCFMode>::run() {
       SupersystemGeometry.print();
       SupersystemGeometry.printToFile("./opt", "");
       SupersystemGeometry.updateTrajFile("./opt", value, gradNorm);
+      for (auto sys : _activeSystems) {
+        sys->getGeometry()->printToFile(sys->getHDF5BaseName(), sys->getSystemIdentifier());
+      }
 
       /*
        * Convergence check
@@ -310,7 +297,6 @@ void GeometryOptimizationTask<SCFMode>::run() {
   iOOptions.printSCFCycleInfo = info;
   iOOptions.printSCFResults = results;
   iOOptions.gridAccuracyCheck = gridAcc;
-  iOOptions.timingsPrintLevel = timings;
 }
 
 template class GeometryOptimizationTask<Options::SCF_MODES::RESTRICTED>;

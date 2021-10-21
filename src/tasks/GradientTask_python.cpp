@@ -35,7 +35,6 @@ void export_GradientTask(py::module& spy) {
       .def_readwrite("gradType", &GradientTaskSettings::gradType)
       .def_readwrite("numGradStepSize", &GradientTaskSettings::numGradStepSize)
       .def_readwrite("transInvar", &GradientTaskSettings::transInvar)
-      .def_readwrite("dispersion", &GradientTaskSettings::dispersion)
       .def_readwrite("fatMaxCycles", &GradientTaskSettings::FaTmaxCycles)
       .def_readwrite("fatEnergyConvThresh", &GradientTaskSettings::FaTenergyConvThresh)
       .def_readwrite("fdeGridCutOff", &GradientTaskSettings::FDEgridCutOff)

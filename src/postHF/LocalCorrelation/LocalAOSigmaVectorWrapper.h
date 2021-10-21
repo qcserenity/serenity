@@ -46,7 +46,7 @@ class LocalAOSigmaVectorWrapper {
   LocalAOSigmaVectorWrapper() = default;
   virtual ~LocalAOSigmaVectorWrapper() = default;
   /**
-   * @brief Calculates the perturbed density matrix.
+   * @brief Calculated the perturbed density matrix.
    * @param system The system controller.
    * @param singles The singles.
    * @param paoController The PAO controller.

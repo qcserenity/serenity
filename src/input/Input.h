@@ -24,32 +24,46 @@
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
 #include "settings/Reflection.h"
-#include "settings/Settings.h"
 #include "tasks/ActiveSpaceSelectionTask.h"
 #include "tasks/BasisSetTruncationTask.h"
+#include "tasks/BrokenSymmetryTask.h"
 #include "tasks/CoupledClusterTask.h"
+#include "tasks/DFTEmbeddedLocalCorrelationTask.h"
+#include "tasks/DOSCCTask.h"
 #include "tasks/DispersionCorrectionTask.h"
 #include "tasks/DummyTask.h"
 #include "tasks/EDATask.h"
 #include "tasks/ElectronicStructureCopyTask.h"
 #include "tasks/EvaluateEnergyTask.h"
 #include "tasks/ExportGridTask.h"
+#include "tasks/FDEETTask.h"
 #include "tasks/FDETask.h"
+#include "tasks/FXDTask.h"
+#include "tasks/FiniteFieldTask.h"
 #include "tasks/FreezeAndThawTask.h"
+#include "tasks/GWTask.h"
+#include "tasks/GeneralizedDOSTask.h"
 #include "tasks/GeometryOptimizationTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/HessianTask.h"
 #include "tasks/LRSCFTask.h"
+#include "tasks/LocalCorrelationTask.h"
 #include "tasks/LocalizationTask.h"
 #include "tasks/MP2Task.h"
 #include "tasks/MultipoleMomentTask.h"
+#include "tasks/OrthogonalizationTask.h"
+#include "tasks/PCMInteractionEnergyTask.h"
 #include "tasks/PlotTask.h"
 #include "tasks/PopAnalysisTask.h"
+#include "tasks/QuasiRestrictedOrbitalsTask.h"
+#include "tasks/ReadOrbitalsTask.h"
 #include "tasks/ScfTask.h"
 #include "tasks/SystemAdditionTask.h"
 #include "tasks/SystemSplittingTask.h"
 #include "tasks/TDEmbeddingTask.h"
 #include "tasks/TSTask.h"
+#include "tasks/VirtualOrbitalSpaceSelectionTask.h"
+#include "tasks/WavefunctionEmbeddingTask.h"
 /* Include Std and External Headers */
 #include <sstream>
 
@@ -169,8 +183,8 @@ class Input {
           }
           value = word;
           while (iss2 >> word) {
-            value += word;
             value += " ";
+            value += word;
           }
 
           // set the corresponding fields for the reflection (see Reflection.h)
@@ -300,8 +314,14 @@ class Input {
         }
         // ...create task using the systems...
         // ...then parse and adjust them ...
-        if (!copy.compare("BASISSETTASK") or !copy.compare("BST")) {
-          createTaskA(BasisSetTruncationTask, activeSystem[0]->getSettings().scfMode, activeSystem[0]);
+        if (!copy.compare("BROKENSYMMETRYTASK") or !copy.compare("BS")) {
+          auto taskptr = new BrokenSymmetryTask(activeSystem, environmentSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("BASISSETTASK") or !copy.compare("BST")) {
+          createTaskA(BasisSetTruncationTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
         }
         else if (!copy.compare("COUPLEDCLUSTERTASK") or !copy.compare("CC")) {
           auto taskptr = new CoupledClusterTask(activeSystem[0], environmentSystem);
@@ -311,10 +331,23 @@ class Input {
         }
         else if (!copy.compare("PLOTTASK") or !copy.compare("PLOT") or !copy.compare("CUBEFILETASK") or
                  !copy.compare("CUBEFILE") or !copy.compare("CUBE")) {
-          createTaskAE(PlotTask, activeSystem[0]->getSettings().scfMode, activeSystem, environmentSystem);
+          createTaskAE(PlotTask, activeSystem[0]->getSCFMode(), activeSystem, environmentSystem);
         }
         else if (!copy.compare("DISPERSIONCORRECTIONTASK") or !copy.compare("DISPERSION") or !copy.compare("DISP")) {
           auto taskptr = new DispersionCorrectionTask(activeSystem[0]);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("DFTEMB") or !copy.compare("DFTEMBEDDING") or !copy.compare("DFTEMBLC")) {
+          auto taskptr = new DFTEmbeddedLocalCorrelationTask(activeSystem[0], environmentSystem,
+                                                             (supersystem.size() < 1) ? nullptr : supersystem[0]);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("DOSCC")) {
+          auto taskptr = new DOSCCTask(activeSystem);
           if (!defaultSettings)
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);
@@ -325,6 +358,9 @@ class Input {
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);
         }
+        else if (!copy.compare("ENERGYTASK") or !copy.compare("ENERGY") or !copy.compare("E")) {
+          createTaskA(EvaluateEnergyTask, activeSystem[0]->getSCFMode(), activeSystem);
+        }
         else if (!copy.compare("EXPORTGRIDTASK") or !copy.compare("GRIDTASK") or !copy.compare("GRID")) {
           auto taskptr = new ExportGridTask(activeSystem[0]);
           if (!defaultSettings)
@@ -334,26 +370,49 @@ class Input {
         else if (!copy.compare("EDATASK") or !copy.compare("EDA")) {
           Options::SCF_MODES scfMode = RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == UNRESTRICTED)
+            if (system->getSCFMode() == UNRESTRICTED)
               scfMode = UNRESTRICTED;
           }
           createTaskA(EDATask, scfMode, activeSystem);
         }
         else if (!copy.compare("FDETASK") or !copy.compare("FDE")) {
-          createTaskAE(FDETask, activeSystem[0]->getSettings().scfMode, activeSystem[0], environmentSystem);
+          createTaskAE(FDETask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
+        }
+        else if (!copy.compare("FDEETTASK") or !copy.compare("FDEET")) {
+          auto taskptr = new FDEETTask(activeSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("FXDTASK") or !copy.compare("FXD")) {
+          createTaskA(FXDTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
+        }
+        else if (!copy.compare("FINITEFIELD") or !copy.compare("FF")) {
+          auto taskptr = new FiniteFieldTask(activeSystem[0], environmentSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
         }
         else if (!copy.compare("FREEZEANDTHAWTASK") or !copy.compare("FAT")) {
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           createTaskAE(FreezeAndThawTask, scfMode, activeSystem, environmentSystem);
         }
+        else if (!copy.compare("GDOS") or !copy.compare("GENERALIZEDDOS")) {
+          Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
+          for (auto system : activeSystem) {
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
+              scfMode = Options::SCF_MODES::UNRESTRICTED;
+          }
+          createTaskAE(GeneralizedDOSTask, scfMode, activeSystem, environmentSystem);
+        }
         else if (!copy.compare("GEOMETRYOPTIMIZATIONTASK") or !copy.compare("GEOOPT") or !copy.compare("OPT")) {
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           createTaskAE(GeometryOptimizationTask, scfMode, activeSystem, environmentSystem);
@@ -361,7 +420,7 @@ class Input {
         else if (!copy.compare("GRADIENTTASK") or !copy.compare("GRADIENT") or !copy.compare("GRAD")) {
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           if (scfMode == Options::SCF_MODES::UNRESTRICTED) {
@@ -381,67 +440,117 @@ class Input {
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);
         }
+        else if (!copy.compare("LOCALCORRELATIONTASK") or !copy.compare("LC")) {
+          auto taskptr = new LocalCorrelationTask(activeSystem[0], environmentSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
         else if (!copy.compare("LOCALIZATIONTASK") or !copy.compare("LOCALIZATION") or !copy.compare("LOC")) {
           auto taskptr = new LocalizationTask(activeSystem[0], environmentSystem);
           if (!defaultSettings)
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);
         }
-        else if (!copy.compare("LRSCFTASK") or !copy.compare("LRSCF")) {
+        else if (!copy.compare("LRSCFTASK") or !copy.compare("LRSCF") or !copy.compare("RICC2")) {
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           createTaskAE(LRSCFTask, scfMode, activeSystem, environmentSystem);
         }
+        else if (!copy.compare("GWTASK") or !copy.compare("GW")) {
+          Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
+          for (auto system : activeSystem) {
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
+              scfMode = Options::SCF_MODES::UNRESTRICTED;
+          }
+          createTaskAE(GWTask, scfMode, activeSystem, environmentSystem);
+        }
         else if (!copy.compare("MP2TASK") or !copy.compare("MP2")) {
-          createTaskAE(MP2Task, activeSystem[0]->getSettings().scfMode, activeSystem[0], environmentSystem);
+          createTaskAE(MP2Task, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
         else if (!copy.compare("MULTIPOLEMOMENTTASK") or !copy.compare("MULTI")) {
-          createTaskA(MultipoleMomentTask, activeSystem[0]->getSettings().scfMode, activeSystem[0]);
+          auto taskptr = new MultipoleMomentTask(activeSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
         }
         else if (!copy.compare("POPULATIONANALYSISTASK") or !copy.compare("POPULATION") or !copy.compare("POP")) {
-          createTaskA(PopAnalysisTask, activeSystem[0]->getSettings().scfMode, activeSystem[0]);
+          createTaskA(PopAnalysisTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
+        }
+        else if (!copy.compare("PCMINTERACTIONENERGYTASK") or !copy.compare("PCM")) {
+          auto taskptr = new PCMInteractionEnergyTask(activeSystem[0]);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
         }
         else if (!copy.compare("PROJECTIONBASEDEMBTASK") or !copy.compare("PBE") or !copy.compare("TDEMBEDDINGTASK") or
                  !copy.compare("TD")) {
+          if (environmentSystem.size() < 1)
+            throw SerenityError("ERROR: At least one environment system is needed!");
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : activeSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           for (auto system : environmentSystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           createTaskAE(TDEmbeddingTask, scfMode, activeSystem[0], environmentSystem[0]);
         }
-        else if (!copy.compare("SCFTASK") or !copy.compare("SCF")) {
-          createTaskA(ScfTask, activeSystem[0]->getSettings().scfMode, activeSystem[0]);
+        else if (!copy.compare("QRO") or !copy.compare("QUASIRESTRICTEDORBITALS")) {
+          createTaskAE(QuasiRestrictedOrbitalsTask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
-        else if (!copy.compare("ENERGYTASK") or !copy.compare("ENERGY") or !copy.compare("E")) {
-          createTaskA(EvaluateEnergyTask, activeSystem[0]->getSettings().scfMode, activeSystem[0]);
+        else if (!copy.compare("READORBS") or !copy.compare("READ")) {
+          createTaskA(ReadOrbitalsTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
+        }
+        else if (!copy.compare("SCFTASK") or !copy.compare("SCF")) {
+          createTaskA(ScfTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
+        }
+        else if (!copy.compare("ORTHOGONALIZATIONTASK") or !copy.compare("ORTHO")) {
+          if (supersystem.size() > 0) {
+            createTaskAE(OrthogonalizationTask, activeSystem[0]->getSCFMode(), activeSystem, supersystem[0]);
+          }
+          else {
+            createTaskAE(OrthogonalizationTask, activeSystem[0]->getSCFMode(), activeSystem, nullptr);
+          }
         }
         else if (!copy.compare("ACTIVESPACETASK") or !copy.compare("AS")) {
           Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
           for (auto system : supersystem) {
-            if (system->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED)
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
               scfMode = Options::SCF_MODES::UNRESTRICTED;
           }
           createTaskSAE(ActiveSpaceSelectionTask, scfMode, supersystem, activeSystem, environmentSystem);
         }
+        else if (!copy.compare("VIRTUALORBITALSPACESELECTIONTASK") or !copy.compare("VOSSTASK") or !copy.compare("VOSS")) {
+          Options::SCF_MODES scfMode = Options::SCF_MODES::RESTRICTED;
+          for (auto system : activeSystem) {
+            if (system->getSCFMode() == Options::SCF_MODES::UNRESTRICTED)
+              scfMode = Options::SCF_MODES::UNRESTRICTED;
+          }
+          createTaskAE(VirtualOrbitalSpaceSelectionTask, scfMode, activeSystem, environmentSystem);
+        }
         else if (!copy.compare("SPLIT") or !copy.compare("SPLITTINGTASK")) {
-          createTaskAE(SystemSplittingTask, activeSystem[0]->getSettings().scfMode, activeSystem[0], environmentSystem);
+          createTaskAE(SystemSplittingTask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
         else if (!copy.compare("ADD") or !copy.compare("ADDITIONTASK")) {
-          createTaskAE(SystemAdditionTask, activeSystem[0]->getSettings().scfMode, activeSystem[0], environmentSystem);
+          createTaskAE(SystemAdditionTask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
         else if (!copy.compare("COPY") or !copy.compare("ESC")) {
-          createTaskAE(ElectronicStructureCopyTask, activeSystem[0]->getSettings().scfMode, activeSystem[0], environmentSystem);
+          createTaskAE(ElectronicStructureCopyTask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
         else if (!copy.compare("TS") or !copy.compare("TSOPT") or !copy.compare("TSTASK")) {
           auto taskptr = new TSTask(activeSystem[0], environmentSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("WFEMB") or !copy.compare("WAVEFUNCTIONEMBEDDING")) {
+          auto taskptr = new WavefunctionEmbeddingTask(activeSystem[0], environmentSystem);
           if (!defaultSettings)
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);
@@ -457,37 +566,31 @@ class Input {
         // Save in stringstream for parseTaskSettings function
         settingsStream << word << ' ';
 
-        std::string value;
+        std::string value, valueCopy;
         iss >> value;
         /*
          * If first character is "{", where dealing with a vector:
          * Save everything until "}" in value
          */
-        if (value[0] == '{') {
-          value.erase(0, 1);
-          /*
-           * Handle "keyword {val}" case
-           */
-          if (value.back() == '}') {
-            value.pop_back();
-            /*
-             * Every other case is covered by this loop
-             */
+        if (value[0] == '{') { // This checks and reads input in the form of '{val1 val2 val3}'
+          std::string vector;  // Create temporary string to validate the vector input
+          vector.append(value);
+          while (iss >> value) {
+            vector.append(" " + value); // Get the remaining part of the line
           }
-          else {
+          if (vector.back() != '}') // Check for closing bracket
+            throw SerenityError("Missing closing bracket in the input. The line is: " + line);
+          else
+            vector.pop_back();                                                                // Remove closing bracket
+          vector.erase(0, 1);                                                                 // Remove leading bracket
+          if (vector.find('}') != std::string::npos or vector.find('{') != std::string::npos) // Check for additional
+                                                                                              // brackets in the line
+            throw SerenityError("Wrong bracket in the input. The line is: " + line);
+          std::istringstream local_iss(vector); // Create istreamstring to pass the vector to the settingsstream
+          while (local_iss >> value) {
             settingsStream << value << ' ';
-            while (true) {
-              iss >> value;
-              if (value.back() == '}')
-                break;
-              settingsStream << value << ' ';
-            }
-            value.pop_back();
           }
-          settingsStream << value << std::endl;
-          /*
-           * Else, fill single value into settingsStream
-           */
+          settingsStream << std::endl;
         }
         else {
           settingsStream << value << std::endl;

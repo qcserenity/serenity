@@ -22,10 +22,12 @@
 /* Include Serenity Internal Headers */
 #include "geometry/Ellipse.h"                  //Ellipse definition.
 #include "geometry/Line.h"                     //Line definition.
+#include "geometry/MolecularSurface.h"         //The final result: The molecular surface.
 #include "geometry/Plane.h"                    //Plane definition.
 #include "geometry/Sphere.h"                   //Sphere definition.
 #include "grid/GridController.h"               //Surface grid controller.
 #include "grid/construction/AtomGridFactory.h" //Lebedev spherical grid.
+#include "math/FloatMaths.h"                   //isEqual();
 #include "misc/SerenityError.h"                //throw errors
 #include "misc/Timing.h"                       //Timings.
 /* Include Std and External Headers */
@@ -62,7 +64,7 @@ Plane DelleySurfaceConstructor::getSphereSphereTouchingPlane(const Sphere& spher
   return Plane(weightedCenter, normalVector);
 }
 
-void DelleySurfaceConstructor::buildSurface() {
+std::unique_ptr<MolecularSurface> DelleySurfaceConstructor::getMolecularSurface() {
   /*
    * The surface construction is done sphere-wise.
    * For every sphere the points are projected from the unit-sphere
@@ -80,6 +82,7 @@ void DelleySurfaceConstructor::buildSurface() {
   std::vector<std::vector<Eigen::Vector3d>> allFinalCoordinates;
   std::vector<std::vector<Eigen::Vector3d>> allFinalNorms;
   std::vector<std::vector<double>> allFinalWeights;
+  std::vector<std::vector<unsigned int>> allSphereIndices;
   Eigen::setNbThreads(1);
   unsigned int nThreads = 1;
 #ifdef _OPENMP
@@ -88,9 +91,11 @@ void DelleySurfaceConstructor::buildSurface() {
   for (unsigned int iThread = 0; iThread < nThreads; ++iThread) {
     std::vector<Eigen::Vector3d> newCoordVector = {};
     std::vector<double> newWeightVector = {};
+    std::vector<unsigned int> newIndexVector = {};
     allFinalCoordinates.push_back(newCoordVector);
     allFinalNorms.push_back(newCoordVector);
     allFinalWeights.push_back(newWeightVector);
+    allSphereIndices.push_back(newIndexVector);
   }
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int iSphere = 0; iSphere < _spheres.size(); ++iSphere) {
@@ -101,6 +106,7 @@ void DelleySurfaceConstructor::buildSurface() {
     auto& finalCoordinates = allFinalCoordinates[threadId];
     auto& finalNorms = allFinalNorms[threadId];
     auto& finalWeights = allFinalWeights[threadId];
+    auto& finalSphereIndices = allSphereIndices[threadId];
 
     const Sphere& sphere = _spheres[iSphere];
     const UnitSphere& unitSphere = getUnitSphere(sphere.getAngularMomentum());
@@ -218,28 +224,90 @@ void DelleySurfaceConstructor::buildSurface() {
         finalCoordinates.push_back(r);
         finalNorms.push_back(grad);
         finalWeights.push_back(weight);
+        finalSphereIndices.push_back(iSphere);
       } // if weight > 1e-9
     }   // for i
   }     // for sphere
-
   // Gather the points from each thread and check if they are to close to another.
   std::vector<Eigen::Vector3d> coords;
   std::vector<Eigen::Vector3d> norms;
   std::vector<double> weights;
-  for (unsigned int threadId = 0; threadId < allFinalCoordinates.size(); ++threadId) {
-    const unsigned int nPointsThread = allFinalCoordinates[threadId].size();
+  std::vector<unsigned int> sphereIndices;
+  mergeGridPoints(allFinalCoordinates, allFinalNorms, allFinalWeights, allSphereIndices, coords, norms, weights,
+                  sphereIndices, _spheres);
+
+  if (_oneCavity)
+    groupPoints(coords, norms, weights, sphereIndices);
+  // Build grid controller and norm vectors.
+  const unsigned int nCavityPoints = coords.size();
+  std::unique_ptr<Eigen::Matrix3Xd> gridCoods = std::make_unique<Eigen::Matrix3Xd>(3, nCavityPoints);
+  auto normVectors = std::make_unique<Eigen::Matrix3Xd>(3, nCavityPoints);
+  std::unique_ptr<Eigen::VectorXd> gridWeights = std::make_unique<Eigen::VectorXd>(nCavityPoints);
+  auto sphereIndexPairs = collectSphereIndices(sphereIndices, _spheres.size());
+  for (unsigned int i = 0; i < nCavityPoints; ++i) {
+    gridCoods->col(i) = coords[i];
+    (*gridWeights)[i] = weights[i];
+    normVectors->col(i) = norms[i];
+  } // for i
+  Eigen::setNbThreads(0);
+  return std::make_unique<MolecularSurface>(std::move(gridCoods), std::move(gridWeights), std::move(normVectors),
+                                            "DELLEY", sphereIndexPairs, sphereIndices, _r_s, _spheres);
+}
+
+void DelleySurfaceConstructor::mergeGridPoints(const std::vector<std::vector<Eigen::Vector3d>>& allCoordinates,
+                                               const std::vector<std::vector<Eigen::Vector3d>>& allNorms,
+                                               const std::vector<std::vector<double>>& allWeights,
+                                               const std::vector<std::vector<unsigned int>>& allSphereIndices,
+                                               std::vector<Eigen::Vector3d>& coords, std::vector<Eigen::Vector3d>& norms,
+                                               std::vector<double>& weights, std::vector<unsigned int>& sphereIndices,
+                                               const std::vector<Sphere>& spheres) {
+  for (unsigned int threadId = 0; threadId < allCoordinates.size(); ++threadId) {
+    const unsigned int nPointsThread = allCoordinates[threadId].size();
     for (unsigned int i = 0; i < nPointsThread; ++i) {
       bool skip = false;
-      const Eigen::Vector3d& r_i = allFinalCoordinates[threadId][i];
-      if (!skip) {
+      const Eigen::Vector3d& r_i = allCoordinates[threadId][i];
+      if (!skip && _minimalDistance > 0.0) {
         for (unsigned int j = 0; j < coords.size(); ++j) {
           const double distance = (r_i - coords[j]).norm();
           if (distance < _minimalDistance) {
             skip = true;
-            weights[j] += allFinalWeights[threadId][i];
-            coords[j] = 0.5 * (coords[j] + r_i);
-            norms[j] = 0.5 * (norms[j] + allFinalNorms[threadId][i]);
-            norms[j] /= norms[j].norm();
+            const Eigen::Vector3d newCoord = 0.5 * (coords[j] + r_i);
+            const double newWeight = allWeights[threadId][i] + weights[j];
+            Eigen::Vector3d newNorm = 0.5 * (norms[j] + allNorms[threadId][i]);
+            newNorm /= newNorm.norm();
+            unsigned int newIndex = sphereIndices[j];
+            // Chose the index as the closest sphere center.
+            // Note that this makes it necessary to shuffle the points a little bit
+            // to insure that all points of a sphere are in consecutive order.
+            const Eigen::Vector3d& center_i = spheres[allSphereIndices[threadId][i]].getCenterCoords();
+            const Eigen::Vector3d& center_j = spheres[sphereIndices[j]].getCenterCoords();
+            const double distToRi = (newCoord - center_i).norm();
+            const double distToRj = (newCoord - center_j).norm();
+            bool equalDistance = isEqual(distToRi, distToRj, NORMAL_D);
+            if (equalDistance) {
+              newIndex = std::min(newIndex, allSphereIndices[threadId][i]);
+            }
+            else if (distToRi < distToRj) {
+              newIndex = allSphereIndices[threadId][i];
+            }
+            if (newIndex == sphereIndices[j]) {
+              // Set the new values.
+              coords[j] = newCoord;
+              weights[j] = newWeight;
+              norms[j] = newNorm;
+            }
+            else {
+              // Append the new point and remove point i.
+              coords.push_back(newCoord);
+              norms.push_back(newNorm);
+              weights.push_back(newWeight);
+              sphereIndices.push_back(newIndex);
+              // Remove the former point i.
+              coords.erase(coords.begin() + j);
+              norms.erase(norms.begin() + j);
+              weights.erase(weights.begin() + j);
+              sphereIndices.erase(sphereIndices.begin() + j);
+            }
             break;
           } // if distance < _minimalDistance
         }   // for j
@@ -247,40 +315,12 @@ void DelleySurfaceConstructor::buildSurface() {
 
       if (not skip) {
         coords.push_back(r_i);
-        norms.push_back(allFinalNorms[threadId][i]);
-        weights.push_back(allFinalWeights[threadId][i]);
+        norms.push_back(allNorms[threadId][i]);
+        weights.push_back(allWeights[threadId][i]);
+        sphereIndices.push_back(allSphereIndices[threadId][i]);
       }
     } // for i
   }   // for threadId
-
-  Eigen::SparseMatrix<int> clusterMatrix(coords.size(), coords.size());
-  std::vector<Eigen::Triplet<int>> clusterIndices;
-  for (unsigned int i = 0; i < coords.size(); ++i) {
-    const auto& r_i = coords[i];
-    for (unsigned int j = 0; j <= i; ++j) {
-      const double distance = (r_i - coords[j]).norm();
-      if (distance < 1) {
-        clusterIndices.push_back(Eigen::Triplet<int>(i, j, 1));
-        clusterIndices.push_back(Eigen::Triplet<int>(j, i, 1));
-      }
-    } // for j
-  }   // for i
-
-  if (_oneCavity)
-    groupPoints(coords, norms, weights);
-  // Build grid controller and norm vectors.
-  const unsigned int nCavityPoints = coords.size();
-  std::unique_ptr<Eigen::Matrix3Xd> gridCoods = std::make_unique<Eigen::Matrix3Xd>(3, nCavityPoints);
-  _normVectors = std::make_unique<Eigen::Matrix3Xd>(3, nCavityPoints);
-  std::unique_ptr<Eigen::VectorXd> gridWeights = std::make_unique<Eigen::VectorXd>(nCavityPoints);
-  for (unsigned int i = 0; i < nCavityPoints; ++i) {
-    gridCoods->col(i) = coords[i];
-    (*gridWeights)[i] = weights[i];
-    _normVectors->col(i) = norms[i];
-  } // for i
-  _gridController =
-      std::make_shared<GridController>(std::unique_ptr<Grid>(new Grid(std::move(gridCoods), std::move(gridWeights))));
-  Eigen::setNbThreads(0);
 }
 
 std::shared_ptr<Ellipse> DelleySurfaceConstructor::projectCircleOntoSurface(const Eigen::Vector3d& centerOnUnit,
@@ -333,17 +373,6 @@ std::shared_ptr<Ellipse> DelleySurfaceConstructor::projectCircleOntoSurface(cons
     r2 *= 1.0 / r2.norm() * circleRadius;
   }
   return std::make_shared<Ellipse>(centerOnSurface, r1, r2);
-}
-
-std::shared_ptr<GridController> DelleySurfaceConstructor::getGridController() {
-  if (!_gridController)
-    buildSurface();
-  return _gridController;
-}
-const Eigen::Matrix3Xd& DelleySurfaceConstructor::getNormVectors() {
-  if (!_normVectors)
-    buildSurface();
-  return *_normVectors;
 }
 
 bool DelleySurfaceConstructor::projectCenterOntoSurface(const Eigen::Vector3d& center, const Eigen::Vector3d& unitPoint,
@@ -594,7 +623,7 @@ void DelleySurfaceConstructor::calculateCylinderRadiiAndParameters() {
 }
 
 void DelleySurfaceConstructor::groupPoints(std::vector<Eigen::Vector3d>& coords, std::vector<Eigen::Vector3d>& norms,
-                                           std::vector<double>& weights) {
+                                           std::vector<double>& weights, std::vector<unsigned int>& sphereIndices) {
   unsigned int nGridPoints = coords.size();
   unsigned int extremeIndex = nGridPoints + 1;
   unsigned int extremeCoordinate = 0;
@@ -626,17 +655,28 @@ void DelleySurfaceConstructor::groupPoints(std::vector<Eigen::Vector3d>& coords,
   spareConnections.setFromTriplets(triplets.begin(), triplets.end());
   std::vector<unsigned int> pointCloud = buildPointCloud(spareConnections, extremeIndex);
 
-  std::vector<Eigen::Vector3d> newCoords;
-  std::vector<Eigen::Vector3d> newNorms;
-  std::vector<double> newWeights;
+  unsigned int nSpheres = _spheres.size();
+  std::vector<std::vector<Eigen::Vector3d>> newCoords(nSpheres);
+  std::vector<std::vector<Eigen::Vector3d>> newNorms(nSpheres);
+  std::vector<std::vector<double>> newWeights(nSpheres);
   for (auto point : pointCloud) {
-    newCoords.push_back(coords[point]);
-    newNorms.push_back(norms[point]);
-    newWeights.push_back(weights[point]);
+    const unsigned int index = sphereIndices[point];
+    newCoords[index].push_back(coords[point]);
+    newNorms[index].push_back(norms[point]);
+    newWeights[index].push_back(weights[point]);
   }
-  coords = newCoords;
-  norms = newNorms;
-  weights = newWeights;
+  // Resort the points.
+  coords.clear();
+  norms.clear();
+  weights.clear();
+  sphereIndices.clear();
+  for (unsigned int iSphere = 0; iSphere < nSpheres; ++iSphere) {
+    coords.insert(coords.end(), newCoords[iSphere].begin(), newCoords[iSphere].end());
+    norms.insert(norms.end(), newNorms[iSphere].begin(), newNorms[iSphere].end());
+    weights.insert(weights.end(), newWeights[iSphere].begin(), newWeights[iSphere].end());
+    std::vector<unsigned int> dummyIndices(newCoords[iSphere].size(), iSphere);
+    sphereIndices.insert(sphereIndices.end(), dummyIndices.begin(), dummyIndices.end());
+  }
 }
 
 std::vector<unsigned int> DelleySurfaceConstructor::buildPointCloud(Eigen::SparseMatrix<int>& connections, unsigned int seed) {
@@ -661,6 +701,28 @@ std::vector<unsigned int> DelleySurfaceConstructor::buildPointCloud(Eigen::Spars
     nPoints = pointSet.size();
   } // while i
   return pointSet;
+}
+
+std::vector<std::pair<unsigned int, unsigned int>>
+DelleySurfaceConstructor::collectSphereIndices(std::vector<unsigned int> sphereIndices, unsigned int nSpheres) {
+  unsigned int nPoints = sphereIndices.size();
+  std::vector<std::pair<unsigned int, unsigned int>> indexPairs(nSpheres, {nPoints + 1, nPoints});
+  for (unsigned int iPoint = 0; iPoint < nPoints;) {
+    const unsigned int sphereIndex = sphereIndices[iPoint];
+    if (indexPairs[sphereIndex].first <= indexPairs[sphereIndex].second) {
+      throw SerenityError("ERROR: This sphere has already points assigned to it."
+                          " The initial point list was not ordered as expected.");
+    }
+    const unsigned int firstPoint = iPoint;
+    ++iPoint;
+    // Loop until we get to the next sphere index.
+    while (iPoint < nPoints && sphereIndex == sphereIndices[iPoint])
+      ++iPoint;
+    // The second index will always be larger than the first!
+    indexPairs[sphereIndex].first = firstPoint;
+    indexPairs[sphereIndex].second = iPoint;
+  } // for iPoint
+  return indexPairs;
 }
 
 std::map<unsigned int, std::shared_ptr<UnitSphere>> DelleySurfaceConstructor::_unitSpheres = {

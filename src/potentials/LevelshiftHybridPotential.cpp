@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Class Header*/
-#include "LevelshiftHybridPotential.h"
+#include "potentials/LevelshiftHybridPotential.h"
 /* Include Serenity Internal Headers */
 #include "analysis/populationAnalysis/MullikenPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
@@ -29,10 +29,10 @@
 #include "data/matrices/SPMatrix.h"
 #include "energies/EnergyComponentController.h"
 #include "geometry/Geometry.h"
+#include "integrals/OneElectronIntegralController.h" //Overlap integrals
 #include "misc/SystemSplittingTools.h"
 #include "potentials/LevelshiftPotential.h"
 #include "potentials/NAddFuncPotential.h"
-#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
 

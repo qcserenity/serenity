@@ -47,7 +47,7 @@ TEST_F(EdmistonRuedenbergTest, testLocalizationRestricted) {
   // Perform SCF
   system->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   // Create a copy of the SCF orbitals
-  auto orbitals = make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
+  auto orbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
       *system->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>());
   auto coefficients = orbitals->getCoefficients();
 
@@ -127,7 +127,7 @@ TEST_F(EdmistonRuedenbergTest, testLocalizationUnrestricted) {
   // Perform SCF
   system->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
   // Create a copy of the SCF orbitals
-  auto orbitals = make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(
+  auto orbitals = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(
       *system->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>());
   auto coefficients = orbitals->getCoefficients();
 

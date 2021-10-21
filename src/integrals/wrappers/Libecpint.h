@@ -21,14 +21,18 @@
 #define LIBECPINT_H_
 
 // Serenity includes
-#include "settings/ElectronicStructureOptions.h" //RESTRICTED/UNRESTRICTED
+#include "settings/ElectronicStructureOptions.h" // RESTRICTED/UNRESTRICTED
 
 // Other includes
+#include <Eigen/Dense>
 #include <memory>
 #include <vector>
 
+namespace libecpint {
+class GaussianShell;
+}
+
 namespace Serenity {
-using namespace std;
 
 // Forward declarations
 class Atom;
@@ -38,6 +42,11 @@ template<Options::SCF_MODES T>
 class MatrixInBasis;
 template<Options::SCF_MODES T>
 class SPMatrix;
+template<Options::SCF_MODES T>
+class MatrixinBasis;
+template<Options::SCF_MODES SCFMode>
+using DensityMatrix = MatrixInBasis<SCFMode>;
+class AtomCenteredBasisController;
 
 /**
  * @class Libecpint Libecpint.h
@@ -58,19 +67,54 @@ class Libecpint {
    * are the gaussian functions representing the core potential. These functions are taken
    * from the atoms.
    *
-   * @param   basisController the controller for the basis for which the integrals shall be
-   *          computed
-   * @param   atoms the atoms from which the ECP functions are taken. Not every atom needs to
-   *          actually have ECP functions.
-   * @returns a matrix containing the effective core potential in basis form so that it can be
-   *          added to, e.g., the core Hamiltonian
+   * @param   basisController The controller for the basis for which the integrals shall be
+   *                          computed
+   * @param   atoms The atoms from which the ECP functions are taken. Not every atom needs to
+   *                actually have ECP functions.
+   * @returns A matrix containing the effective core potential in basis form so that it can be
+   *          added to, e.g., the core Hamiltonian.
    */
-  static MatrixInBasis<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(std::shared_ptr<BasisController> basisController,
-                                                                           std::vector<std::shared_ptr<Atom>> atoms);
-
+  static MatrixInBasis<Options::SCF_MODES::RESTRICTED>
+  computeECPIntegrals(std::shared_ptr<BasisController> basisController, const std::vector<std::shared_ptr<Atom>>& atoms);
+  /**
+   * @brief Method for the calculation of effective core potential integrals.
+   *
+   * Calculates sum_v <i|v|j>, where i and j are basis functions of basisController A/B and v
+   * are the gaussian functions representing the core potential. These functions are taken
+   * from the atoms.
+   *
+   * @param   basisControllerA The controller for the basis on the LHS of the integrals that shall be
+   *                           computed.
+   * @param   basisControllerB The controller for the basis on the RHS of the integrals that shall be
+   *                           computed.
+   * @param   atoms The atoms from which the ECP functions are taken. Not every atom needs to
+   *                actually have ECP functions.
+   * @returns A matrix containing the effective core potential in basis form so that it can be
+   *          added to, e.g., the core Hamiltonian.
+   */
   static SPMatrix<Options::SCF_MODES::RESTRICTED> computeECPIntegrals(std::shared_ptr<BasisController> basisControllerA,
                                                                       std::shared_ptr<BasisController> basisControllerB,
-                                                                      std::vector<std::shared_ptr<Atom>> atoms);
+                                                                      const std::vector<std::shared_ptr<Atom>>& atoms);
+  /**
+   * @brief Calculates the nuclear gradient contribution resulting from the ECPs.
+   * @param basisController  The basis of to be used
+   * @param atoms            All atoms present in the molecule.
+   * @param density          The current electron density, basis must match the basisController.
+   * @return Eigen::MatrixXd The gradient contributions.
+   */
+  static Eigen::MatrixXd computeECPGradientContribution(std::shared_ptr<AtomCenteredBasisController> basisController,
+                                                        const std::vector<std::shared_ptr<Atom>>& atoms,
+                                                        const DensityMatrix<RESTRICTED>& density);
+
+ private:
+  /**
+   * @brief Constructs a libecpint style gaussian shell.
+   * @param atoms All atoms in the molecule.
+   * @param shell The Serenity::Shell
+   * @return libecpint::GaussianShell The gaussian shell.
+   */
+  static libecpint::GaussianShell makeShell(const std::vector<std::shared_ptr<Atom>>& atoms,
+                                            std::shared_ptr<const Serenity::Shell> shell);
 };
 
 } /* namespace Serenity */

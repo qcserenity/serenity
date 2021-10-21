@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/BasisOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -26,20 +28,33 @@ namespace Options {
 
 template<>
 void resolve<BASIS_PURPOSES>(std::string& value, BASIS_PURPOSES& field) {
-  static const std::map<std::string, BASIS_PURPOSES> m = {{"DEFAULT", BASIS_PURPOSES::DEFAULT},
-                                                          {"AUX_COULOMB", BASIS_PURPOSES::AUX_COULOMB},
-                                                          {"MINBAS", BASIS_PURPOSES::MINBAS},
-                                                          {"HUECKEL", BASIS_PURPOSES::HUECKEL},
-                                                          {"IAO_LOCALIZATION", BASIS_PURPOSES::IAO_LOCALIZATION},
-                                                          {"SCF_DENS_GUESS", BASIS_PURPOSES::SCF_DENS_GUESS},
-                                                          {"AUX_CORREL", BASIS_PURPOSES::AUX_CORREL}};
+  static const std::map<std::string, BASIS_PURPOSES> m = {
+      {"DEFAULT", BASIS_PURPOSES::DEFAULT},
+      {"AUX_COULOMB", BASIS_PURPOSES::AUX_COULOMB},
+      {"MINBAS", BASIS_PURPOSES::MINBAS},
+      {"HUECKEL", BASIS_PURPOSES::HUECKEL},
+      {"IAO_LOCALIZATION", BASIS_PURPOSES::IAO_LOCALIZATION},
+      {"SCF_DENS_GUESS", BASIS_PURPOSES::SCF_DENS_GUESS},
+      {"AUX_CORREL", BASIS_PURPOSES::AUX_CORREL},
+      {"ATOMIC_CHOLESKY", BASIS_PURPOSES::ATOMIC_CHOLESKY},
+      {"ATOMIC_COMPACT_CHOLESKY", BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY},
+      {"ATOMIC_CHOLESKY_ERF", BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY},
+      {"ATOMIC_COMPACT_CHOLESKY_ERF", BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY}};
   check(m, value, field);
 }
 
 template<>
 void resolve<DENS_FITS>(std::string& value, DENS_FITS& field) {
-  static const std::map<std::string, DENS_FITS> m = {
-      {"RI", DENS_FITS::RI}, {"NORI", DENS_FITS::NONE}, {"NONE", DENS_FITS::NONE}};
+  static const std::map<std::string, DENS_FITS> m = {{"RI", DENS_FITS::RI},     {"NORI", DENS_FITS::NONE},
+                                                     {"NONE", DENS_FITS::NONE}, {"CD", DENS_FITS::CD},
+                                                     {"ACD", DENS_FITS::ACD},   {"ACCD", DENS_FITS::ACCD}};
+  check(m, value, field);
+}
+
+template<>
+void resolve<EXTEND_ACD>(std::string& value, EXTEND_ACD& field) {
+  static const std::map<std::string, EXTEND_ACD> m = {
+      {"NONE", EXTEND_ACD::NONE}, {"SIMPLE", EXTEND_ACD::SIMPLE}, {"COMPLETE", EXTEND_ACD::COMPLETE}};
   check(m, value, field);
 }
 

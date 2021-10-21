@@ -21,6 +21,7 @@
 #ifndef SETTINGS_LRSCFOPTIONS_H_
 #define SETTINGS_LRSCFOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -39,9 +40,9 @@ namespace Options {
  * The latter one includes TDHF, hybrid TDDFT, FDEc with
  * external orthogonality and supermolecular TDDFT with local orbitals.
  */
-enum class RESPONSE_PROBLEM { TDA = 0, TDDFT = 1, RPA = 2 };
+enum class RESPONSE_ALGORITHM { SYMMETRIC = 0, SYMMETRIZED = 1, SYMPLECTIC = 2 };
 template<>
-void resolve<RESPONSE_PROBLEM>(std::string& value, RESPONSE_PROBLEM& field);
+void resolve<RESPONSE_ALGORITHM>(std::string& value, RESPONSE_ALGORITHM& field);
 /**
  * Type of the LRSCF calculation.
  * ISOLATED:  Only the fragment.
@@ -67,14 +68,13 @@ void resolve<INTEGRAL_TYPE>(std::string& value, INTEGRAL_TYPE& field);
 enum class GAUGE { LENGTH = 0, VELOCITY = 1 };
 template<>
 void resolve<GAUGE>(std::string& value, GAUGE& field);
+
 /**
- * Multiplicity of excited state in LRSCF calculation
- * Singlet: 2*S + 1 = 1
- * Triplet: 2*S + 1 = 3
+ * Excited state wavefunction model.
  */
-enum class MULTIPLICITY { SINGLET = 0, TRIPLET = 1 };
+enum class LR_METHOD { TDA = 0, TDDFT = 1, CC2 = 2, CISDINF = 3, CISD = 4, ADC2 = 5 };
 template<>
-void resolve<MULTIPLICITY>(std::string& value, MULTIPLICITY& field);
+void resolve<LR_METHOD>(std::string& value, LR_METHOD& field);
 
 } /* namespace Options */
 } /* namespace Serenity */

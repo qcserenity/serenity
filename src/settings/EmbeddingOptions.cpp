@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "settings/EmbeddingOptions.h"
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -35,6 +37,35 @@ void resolve<KIN_EMBEDDING_MODES>(std::string& value, KIN_EMBEDDING_MODES& field
       {"RECONSTRUCTION", KIN_EMBEDDING_MODES::RECONSTRUCTION},
       {"FERMI_SHIFTED_HUZINAGA", KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA},
       {"FERMI", KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA}};
+  check(m, value, field);
+}
+template<>
+void resolve<std::vector<KIN_EMBEDDING_MODES>>(std::string& value, std::vector<KIN_EMBEDDING_MODES>& field) {
+  if (value.empty()) {
+  }
+  else {
+    try {
+      field.clear();
+      std::istringstream iss(value);
+      std::string word;
+      while (iss >> word) {
+        KIN_EMBEDDING_MODES toResolve;
+        resolve<KIN_EMBEDDING_MODES>(word, toResolve);
+        field.push_back(toResolve);
+      }
+    }
+    catch (...) {
+      throw SerenityError("ERROR: Could not convert '" + value + "' into a vector of KIN_EMBEDDING_MODES.");
+    }
+  }
+}
+
+template<>
+void resolve<EMBEDDING_SCHEME>(std::string& value, EMBEDDING_SCHEME& field) {
+  static const std::map<std::string, EMBEDDING_SCHEME> m = {{"NONE", EMBEDDING_SCHEME::NONE},
+                                                            {"ISOLATED", EMBEDDING_SCHEME::ISOLATED},
+                                                            {"FDE", EMBEDDING_SCHEME::FDE},
+                                                            {"FAT", EMBEDDING_SCHEME::FAT}};
   check(m, value, field);
 }
 

@@ -60,6 +60,7 @@ class SPMatrix<Options::SCF_MODES::RESTRICTED> : public Eigen::MatrixXd {
    * @brief Stores the SPMatrix into a HDF5 file.
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
+   *
    */
   void toHDF5(std::string fBaseName, std::string matrixName);
   /**
@@ -220,6 +221,7 @@ class SPMatrix<Options::SCF_MODES::UNRESTRICTED> {
    * @brief Stores the SPMatrix into a HDF5 file.
    * @param fBaseName  The base name of the HDF5 file
    * @param matrixName The name of the dataset inside the file, optional.
+   *
    */
   void toHDF5(std::string fBaseName, std::string matrixName);
   /**

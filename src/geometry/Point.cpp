@@ -21,7 +21,6 @@
 #include "geometry/Point.h"
 
 namespace Serenity {
-using namespace std;
 /**
  * @param lhs
  * @param rhs
@@ -57,6 +56,18 @@ Point operator*(Point lhs, const double rhs) {
 Point operator/(Point lhs, const double rhs) {
   lhs /= rhs;
   return lhs;
+}
+
+bool Point::isSamePoint(const Point& point, double precision) {
+  double dX = std::abs(this->_x - point.getX());
+  double dY = std::abs(this->_y - point.getY());
+  double dZ = std::abs(this->_z - point.getZ());
+  if (dX > precision || dY > precision || dZ > precision) {
+    return false;
+  }
+  else {
+    return true;
+  }
 }
 
 } // namespace Serenity

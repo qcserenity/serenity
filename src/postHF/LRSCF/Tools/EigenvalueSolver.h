@@ -28,7 +28,7 @@
 namespace Serenity {
 
 namespace Options {
-enum class RESPONSE_PROBLEM;
+enum class RESPONSE_ALGORITHM;
 }
 
 /**
@@ -61,17 +61,20 @@ class EigenvalueSolver : public IterativeSolver {
    *        exceeds this threshold.
    * @param initialSubspace Multiplied with nEigen to obtain the size of the initial subspace
    *        (usually two or three is a common choice).
-   * @param responseType Variable to tell the eigenvalue solver which kind of TDDFT problem is to be solved
+   * @param algorithm Variable to tell the eigenvalue solver which kind of TDDFT problem is to be solved
    *        to apply the according solution technique.
    * @param sigmaCalculator A lambda to conveniently form response matrix -- guess vector products.\n
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
    * @param initialGuess The initial guess space might also be passed to the eigenvalue solver.
+   * @param writeToDisk A lambda function to store temporary iteration data to disk.
    */
-  EigenvalueSolver(bool printResponseMatrix, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal,
-                   double convergenceCriterion, unsigned maxIterations, unsigned maxSubspaceDimension,
-                   unsigned initialSubspace, Options::RESPONSE_PROBLEM responseType,
-                   std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-                   std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess);
+  EigenvalueSolver(
+      bool printResponseMatrix, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion,
+      unsigned maxIterations, unsigned maxSubspaceDimension, unsigned initialSubspace, Options::RESPONSE_ALGORITHM algorithm,
+      std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
+      std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess = nullptr,
+      std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk = [](std::vector<Eigen::MatrixXd>&,
+                                                                                            Eigen::VectorXd&) {});
 
   /**
    * @brief Default destructor
@@ -96,14 +99,19 @@ class EigenvalueSolver : public IterativeSolver {
    */
   void postProcessing() override;
 
+  /**
+   * @brief Normalizes the eigenvectors
+   */
+  void normalizeEigenvectors();
+
   ///@brief Bool to invoke the printing of the subspace matrix.
   bool _printResponseMatrix;
 
   ///@brief Number of initial unit-guess vectors.
   unsigned _initialSubspace;
 
-  ///@brief Response type of the TDDFT problem (TDA, TDDFT or RPA).
-  Options::RESPONSE_PROBLEM _responseType;
+  ///@brief Response type of the eigenvalue problem (symmetric, symmetrized or symplectic).
+  Options::RESPONSE_ALGORITHM _algorithm;
 
 }; /* class EigenvalueSolver */
 } /* namespace Serenity */

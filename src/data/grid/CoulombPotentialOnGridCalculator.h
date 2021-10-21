@@ -45,21 +45,21 @@ class DensityOnGridController;
  * interaction: At every point r in real space, the Coulomb potential can be
  * described as
  *
- * int sum_i^occ (|phi_i(r')|^2 / |r-r'|) dr'
+ * \f$\int \sum_i^{n_\text{occ}} \frac{|\phi_i(r')|^2}{|r-r'|} \text{d}r'\f$
  *
  * The key part, i.e.
  *
- * int (|phi_i(r')|^2 / |r-r'|) dr'
+ * \f$\int  \frac{|\phi_i(r')|^2}{|r-r'|} \text{d}r'\f$
  *
  * or, using a different notation
  *
- * <phi_i(r')|1/(r-r')|phi_i(r')>
+ * \f$\langle \phi_i(r')|\frac{1}{r-r'}|\phi_i(r')\rangle \f$
  *
  * can be calculated using the one-electron integrals for the electron-nuclei
  * interaction and using a charge of -1 at position r. This has to be performed
  * on every point r.
  * This may be computationally costly, but circumvents the numerical problems
- * arising when trying to evaluate (|phi_i(r')|^2 / |r-r'|) for r=r'.
+ * arising when trying to evaluate \f$\frac{|\phi_i(r')|^2}{|r-r'|}\f$ for r=r'.
  */
 class CoulombPotentialOnGridCalculator {
  private:

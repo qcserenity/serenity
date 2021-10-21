@@ -21,6 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "postHF/MPn/RIMP2.h"
 #include "data/ElectronicStructure.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

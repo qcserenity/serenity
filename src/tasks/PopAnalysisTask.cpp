@@ -19,11 +19,13 @@
  */
 /* Include Class Header*/
 #include "tasks/PopAnalysisTask.h"
-#include "../analysis/populationAnalysis/IAOPopulationCalculator.h"
 /* Include Serenity Internal Headers */
+#include "analysis/populationAnalysis/BeckePopulationCalculator.h"
 #include "analysis/populationAnalysis/HirshfeldPopulationCalculator.h"
+#include "analysis/populationAnalysis/IAOPopulationCalculator.h"
 #include "analysis/populationAnalysis/MullikenPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/Basis.h" //Shell wise populations.
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/grid/BasisFunctionOnGridController.h"
@@ -108,8 +110,24 @@ void PopAnalysisTask<SCFMode>::run() {
         std::make_shared<DensityMatrixDensityOnGridController<SCFMode>>(densOnGridCalc, densMatController);
 
     HirshfeldPopulationCalculator<SCFMode> hirshFeld(_systemController, densOnGridController);
-
     this->print("Hirshfeld", hirshFeld.getAtomPopulations());
+  }
+  if (settings.algorithm == Options::POPULATION_ANALYSIS_ALGORITHMS::BECKE) {
+    auto densPtr =
+        std::make_shared<DensityMatrix<SCFMode>>(_systemController->getElectronicStructure<SCFMode>()->getDensityMatrix());
+    auto beckeCalculator = BeckePopulationCalculator<SCFMode>(_systemController, densPtr);
+    auto atomPops = beckeCalculator.getAtomPopulations();
+    auto spinPops = beckeCalculator.getSpinPopulations();
+    const auto& atoms = _systemController->getAtoms();
+    unsigned int nAtoms = atoms.size();
+    printSubSectionTitle("Becke Population Analysis");
+    printf("%4s %5s %9s %11s %11s\n", "", "No.", "Atomtype", "Electrons", "Spin Pop.");
+    printf("%4s %5s %9s %11s %11s\n", "", "---", "--------", "---------", "---------");
+    for (unsigned int i = 0; i < nAtoms; ++i) {
+      printf("%4s %5d %9s %11f %11f\n", "", (i + 1), atoms[i]->getAtomType()->getName().c_str(), atomPops[i], spinPops[i]);
+    }
+    printf("%4s %5s %9s %11s %11s\n", "", "---", "--------", "---------", "---------");
+    printf("%4s %5s %9s %11f %11f\n\n\n", "", "sum", "", atomPops.sum(), spinPops.sum());
   }
 
   if (settings.algorithm == Options::POPULATION_ANALYSIS_ALGORITHMS::IAO ||
@@ -169,7 +187,7 @@ void PopAnalysisTask<RESTRICTED>::print(std::string type, const SpinPolarizedDat
     auto charge = atoms[i]->getEffectiveCharge() - populations[i];
     if (atoms[i]->usesECP()) {
       printf("%4s %5d %9s %11f %11f %2s %3i %24s\n", "", (i + 1), atoms[i]->getAtomType()->getName().c_str(),
-             populations[i], charge, " (", atoms[i]->getNCoreElectrons(), " core electrons present)");
+             populations[i], charge, " (", atoms[i]->getNECPElectrons(), " core electrons present)");
     }
     else {
       printf("%4s %5d %9s %11f %11f\n", "", (i + 1), atoms[i]->getAtomType()->getName().c_str(), populations[i], charge);
@@ -177,6 +195,7 @@ void PopAnalysisTask<RESTRICTED>::print(std::string type, const SpinPolarizedDat
   }
   printf("\n");
 }
+
 template<>
 void PopAnalysisTask<UNRESTRICTED>::print(std::string type, const SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& populations) {
   // getting the atoms of the system and the number of atoms.
@@ -190,7 +209,7 @@ void PopAnalysisTask<UNRESTRICTED>::print(std::string type, const SpinPolarizedD
     if (atoms[i]->usesECP()) {
       printf("%4s %5d %9s %11f %11f %11f %2s %3i %24s\n", "", (i + 1), atoms[i]->getAtomType()->getName().c_str(),
              populations.alpha[i] + populations.beta[i], populations.alpha[i] - populations.beta[i], charge, " (",
-             atoms[i]->getNCoreElectrons(), " core electrons present)");
+             atoms[i]->getNECPElectrons(), " core electrons present)");
     }
     else {
       printf("%4s %5d %9s %11f %11f %11f\n", "", (i + 1), atoms[i]->getAtomType()->getName().c_str(),

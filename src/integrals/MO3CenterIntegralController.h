@@ -43,6 +43,7 @@ class PAOController;
  * and K an auxiliary function. The integrals can be understood as\n
  *     \f$ \int \int \mathrm{d}r_1 \mathrm{d}r_2 i(r_1) a(r_1) \frac{1}{r_{12}} K(r_2). \f$
  */
+
 enum class MO3CENTER_INTS { ia_K, kl_K, ab_K };
 /**
  * @brief Classification of the two non-auxiliary functions: i,k--> Occupied, a,b-->virtual.
@@ -68,16 +69,8 @@ class MO3CenterIntegralController {
   MO3CenterIntegralController(std::shared_ptr<BasisController> auxilliaryBasisController,
                               std::shared_ptr<BasisController> basisController,
                               const std::shared_ptr<SparseMapsController> sparseMaps,
-                              std::shared_ptr<PAOController> paoController,
-                              std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients, std::string fBaseName, std::string id)
-    : _auxilliaryBasisController(auxilliaryBasisController),
-      _basisController(basisController),
-      _sparseMaps(sparseMaps),
-      _paoController(paoController),
-      _occupiedCoefficients(occupiedCoefficients),
-      _fBaseName(fBaseName),
-      _id(id) {
-  }
+                              std::shared_ptr<PAOController> paoController, std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients,
+                              std::string fBaseName, std::string id, bool triplesMode = false);
   /**
    * @brief Non-default destructor.
    *
@@ -101,10 +94,21 @@ class MO3CenterIntegralController {
    * @param kDomain The domain of auxiliary functions which should at least be available.
    * @return The MO 3 center integrals.
    */
-  const MO3CenterIntegrals& getMO3CenterInts(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain) {
+  const MO3CenterIntegrals& getMO3CenterInts(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain,
+                                             const Eigen::SparseVector<int> paoDomain = Eigen::SparseVector<int>(0)) {
+    // Check what is missing.
     Eigen::SparseVector<int> missing = getMissingDomain(mo3CenterType, kDomain);
+    // Remove unused integrals.
+    Eigen::SparseVector<int> unusedDomain = getUnusedDomain(kDomain);
+    if (paoDomain.size() != 0) {
+      unusedDomain = Eigen::VectorXi::Constant(unusedDomain.size(), 1).sparseView();
+      missing = kDomain;
+    }
+    this->removeIntegralsByDomain(unusedDomain, mo3CenterType);
+    _integrals[mo3CenterType].second = kDomain;
+    // Calculate missing integrals.
     if (missing.nonZeros() != 0)
-      loadOrCalculateIntegrals(mo3CenterType, missing);
+      calculateIntegrals(mo3CenterType, missing, paoDomain);
     return *_integrals[mo3CenterType].first;
   }
   /**
@@ -134,19 +138,57 @@ class MO3CenterIntegralController {
 
   /**
    * @brief Getter for the projection matrix to the significant occupied/virtual orbitals
-   *        for each auxiliary basis function K and the associated indices of the full
-   *        set of orbitals within the significant set.
+   *        for each auxiliary basis function K.
    *
    *  For each K only a subset of integrals with a selection of virtual and occupied functions
-   *  is calculated. The indices which are calculated for each K are given for the specified orbital
-   *  type by the vector (-1 denotes that the function was omitted) and the projection matrix is the
-   *  map between the small set and full set of functions for the given orbital type.
+   *  is calculated. The projection matrix is the map between the small set and full set of
+   *  functions for the given orbital type.
    *
    * @param orbitalType The orbital type: Occupied or virtual.
    * @return The projection matrix and the associated indices.
    */
-  const std::pair<std::vector<Eigen::SparseMatrix<double>>, std::vector<Eigen::VectorXi>>&
-  getProjectionAndIndices(ORBITAL_TYPE orbitalType);
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> getProjection(ORBITAL_TYPE orbitalType);
+  /**
+   * @brief Getter for the indices of the significant occupied/virtual orbitals
+   *        for each auxiliary basis function K.
+   *
+   *  For each K only a subset of integrals with a selection of virtual and occupied functions
+   *  is calculated. The indices which are calculated for each K are given for the specified orbital
+   *  type by the map. If the orbital is not in the map, it was never calculated.
+   *
+   * @param orbitalType The orbital type: Occupied or virtual.
+   * @return The projection matrix and the associated indices.
+   */
+  std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>> getIndices(ORBITAL_TYPE orbitalType);
+  /**
+   * @brief Remove the integrals domain-wise.
+   * @param kDomain The domain to be removed.
+   * @param mo3CenterType The integral set for which integrals should be removed.
+   */
+  void removeIntegralsByDomain(const Eigen::SparseVector<int>& kDomain, MO3CENTER_INTS mo3CenterType);
+  /**
+   * @brief Getter for the total memory requirement for the given integral type. This function is static so that
+   *        it can be used without an instance of this class.
+   * @param type The integral type.
+   * @param sparseMaps The sparse map controller encoding which integrals need to be calculated.
+   * @param auxBasisController The auxiliary basis controller.
+   * @param kDomain The auxiliary domain to calculate integrals on.
+   * @param triplesMode Boolean if the integrals are needed for the triples calculation.
+   * @return The memory requirement.
+   */
+  static double getMemoryRequirement(MO3CENTER_INTS type, std::shared_ptr<SparseMapsController> sparseMaps,
+                                     std::shared_ptr<BasisController> auxBasisController,
+                                     const Eigen::SparseVector<int> kDomain, bool triplesMode = false);
+  /**
+   * @brief Getter for the memory requirement of all three integral types. Assuming triplesMode = false.
+   * @param sparseMaps The sparse map controller encoding which integrals need to be calculated.
+   * @param auxBasisController The auxiliary basis controller.
+   * @param kDomain The auxiliary domain to calculate integrals on.
+   * @return The total memory requirement.
+   */
+  static double getTotalMemoryRequirement(std::shared_ptr<SparseMapsController> sparseMaps,
+                                          std::shared_ptr<BasisController> auxBasisController,
+                                          const Eigen::SparseVector<int> kDomain);
 
  private:
   /**
@@ -154,68 +196,56 @@ class MO3CenterIntegralController {
    * @param map The map.
    * @return The projection matrix.
    */
-  std::vector<Eigen::SparseMatrix<double>> getProjectionMatrices(const SparseMap& map);
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> getProjectionMatrices(const SparseMap& map);
 
   /**
    * @brief Calculate the mapping indices of a given projection matrix and stores them
-   *        easily accessible within a vector. Index of -1 denotes that the function is
-   *        not contained within the projection.
-   * @param k_redToFullMaps
+   *        easily accessible within a map.
+   * @param k_redToFullMaps The set of projection matrices.
    * @return The indices.
    */
-  std::vector<Eigen::VectorXi> getReducedIndices(const std::vector<Eigen::SparseMatrix<double>>& k_redToFullMaps);
-  /**
-   * @brief Load or calculate the integrals of the given type.
-   * @param mo3CenterType The integral type.
-   */
-  void loadOrCalculateIntegrals(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain);
+  std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>>
+  getReducedIndices(const std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>>& k_redToFullMaps);
   /**
    * @brief Load the integrals.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    */
   void loadIntegrals(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain);
 
   /**
    * @brief Calculate the integrals.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    */
-  void calculateIntegrals(MO3CENTER_INTS mo3CenterType);
+  void calculateIntegrals(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain,
+                          const Eigen::SparseVector<int>& paoDomain);
 
   /**
    * @brief Write the integrals to disk.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    */
   void writeToDisk(MO3CENTER_INTS mo3CenterType);
 
   /**
    * @brief Checks whether an integral file is already present and accessible.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    * @return True if the file is present, false if not.
    */
   bool checkDisk(MO3CENTER_INTS mo3CenterType);
 
   /**
    * @brief Selects the maps used for the integral calculation.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    * @return The prescreening maps.
    */
-  std::pair<const std::shared_ptr<SparseMap>, const std::shared_ptr<SparseMap>> selectPrescreeningMaps(MO3CENTER_INTS mo3CenterType) {
-    if (!_kToRhoMap)
-      _kToRhoMap = std::make_shared<SparseMap>(_sparseMaps->getExtendedKtoRhoMap());
-    if (!_kToSigmaMap)
-      _kToSigmaMap = std::make_shared<SparseMap>(_sparseMaps->getExtendedKtoSigmaMap());
-    switch (mo3CenterType) {
-      case MO3CENTER_INTS::ia_K:
-        return std::make_pair(_kToRhoMap, _kToSigmaMap);
-      case MO3CENTER_INTS::kl_K:
-        return std::make_pair(_kToRhoMap, _kToRhoMap);
-      case MO3CENTER_INTS::ab_K:
-        return std::make_pair(_kToSigmaMap, _kToSigmaMap);
-    }
-    // No default so that the compiler gives a warning.
-    assert(false);
-    return std::make_pair(nullptr, nullptr);
-  }
+  std::pair<const std::shared_ptr<SparseMap>, const std::shared_ptr<SparseMap>> selectPrescreeningMaps(MO3CENTER_INTS mo3CenterType);
+  ///@brief Map from significant set of PAOs to total set.
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> _projection_virt;
+  ///@brief Map from significant set of occupied orbitals to total set.
+  std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> _projection_occ;
+  ///@brief Indices of PAOs within the significant set of PAOs.
+  std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>> _indices_virt;
+  ///@brief Indices of occupied orbitals within the significant set of orbitals.
+  std::vector<std::shared_ptr<std::map<unsigned int, unsigned int>>> _indices_occ;
 
   /**
    * @brief The integrals and their currently available K-domain.
@@ -232,7 +262,7 @@ class MO3CenterIntegralController {
 
   /**
    * @brief Transform the AO 3-center integrals to MO basis.
-   * @param mo3CenterType
+   * @param mo3CenterType The integral type.
    * @param result The transformed integrals are written into this object.
    * @param c_K The occupied coefficients.
    * @param pao_K The virtual coefficients.
@@ -240,7 +270,6 @@ class MO3CenterIntegralController {
    */
   inline void transformCoefficients(MO3CENTER_INTS mo3CenterType, Eigen::MatrixXd& result, const Eigen::MatrixXd& c_K,
                                     const Eigen::MatrixXd& pao_K, const Eigen::MatrixXd& i_K);
-
   /**
    * @brief Getter for the aux. domains over which no integrals have been calculated yet.
    * @param mo3CenterType The integral type.
@@ -249,6 +278,7 @@ class MO3CenterIntegralController {
    */
   Eigen::SparseVector<int> getMissingDomain(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain);
 
+  Eigen::SparseVector<int> getUnusedDomain(const Eigen::SparseVector<int>& kDomain);
   ///@brief Auxiliary basis controller.
   std::shared_ptr<BasisController> _auxilliaryBasisController;
   ///@brief Basis controller.
@@ -271,9 +301,11 @@ class MO3CenterIntegralController {
   std::string _id = "";
   ///@brief The disk mode.
   bool _diskMode = false;
-  ///@brief Map for the already constructed projections and indices.
-  std::map<ORBITAL_TYPE, std::shared_ptr<std::pair<std::vector<Eigen::SparseMatrix<double>>, std::vector<Eigen::VectorXi>>>>
-      _calculatedIntsProjectionsAndIndices = {{ORBITAL_TYPE::OCCUPIED, nullptr}, {ORBITAL_TYPE::VIRTUAL, nullptr}};
+  ///@brief Use triples prescreening maps indstead of pair-based maps.
+  bool _triplesMode = false;
+  ///@brief Print general information about the number of MO integrals to be stored and the AO integrals to be calculated.
+  void printInfo(const SparseMap& kToRhoMap, const SparseMap& kToSigmaMap, const SparseMap& kToOccMap,
+                 const SparseMap& kToPAOMap, MO3CENTER_INTS type, const Eigen::SparseVector<int>& kDomain);
 };
 
 } /* namespace Serenity */

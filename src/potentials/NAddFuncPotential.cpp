@@ -22,18 +22,24 @@
 #include "potentials/NAddFuncPotential.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/BasisController.h"
+#include "basis/BasisFunctionMapper.h"
 #include "data/ElectronicStructure.h"
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/DensityOnGridController.h"
 #include "data/grid/DensityOnGridFactory.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/grid/SupersystemDensityOnGridController.h"
+#include "data/matrices/DensityMatrixController.h"
 #include "dft/functionals/FunctionalLibrary.h"
 #include "dft/functionals/wrappers/PartialDerivatives.h"
 #include "energies/EnergyComponentController.h"
 #include "energies/EnergyContributions.h"
+#include "grid/GridController.h"
 #include "misc/Timing.h"
+#include "potentials/ExchangeInteractionPotential.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
@@ -94,6 +100,82 @@ NAddFuncPotential<SCFMode>::NAddFuncPotential(std::shared_ptr<SystemController> 
   _supersysDensOnGridController = std::make_shared<SupersystemDensityOnGridController<SCFMode>>(_densOnGridControllers);
   Timings::timeTaken("FDE - Non-Add. Func. Pot.");
 }
+
+template<Options::SCF_MODES SCFMode>
+NAddFuncPotential<SCFMode>::NAddFuncPotential(std::shared_ptr<SystemController> system,
+                                              std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat,
+                                              std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> otherExactDmats,
+                                              std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> BtoAProjections,
+                                              std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
+                                              std::shared_ptr<GridController> grid, Functional functional,
+                                              std::pair<bool, std::vector<std::shared_ptr<EnergyComponentController>>> eCon,
+                                              bool evaluateEnergy, bool evaluateExactX, bool calculateSolvationEnergy)
+  : Potential<SCFMode>(activeDMat->getDensityMatrix().getBasisController()),
+    _system(system),
+    _actDMatController(activeDMat),
+    _otherExactDmats(otherExactDmats),
+    _envDMatController(envDMats),
+    _grid(grid),
+    _functional(functional),
+    _potential(nullptr),
+    _densOnGridControllers(),
+    _supersysDensOnGridController(nullptr),
+    _gridToMatrix(nullptr),
+    _basisFunctionOnGridController(nullptr),
+    _excPot(nullptr),
+    _energy(0.0),
+    _helper(),
+    _energyController(eCon.second),
+    _isXC(eCon.first),
+    _evaluateEnergy(evaluateEnergy),
+    _evaluateExactX(evaluateExactX),
+    _calculateSolvationEnergy(calculateSolvationEnergy) {
+  Timings::takeTime("FDE - Non-Add. Func. Pot.");
+  assert(_energyController.size() == 0 or _energyController.size() == (envDMats.size() + 1));
+  this->_grid->addSensitiveObject(ObjectSensitiveClass<Grid>::_self);
+  this->_actDMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  for (auto& otherDmat : _otherExactDmats) {
+    otherDmat->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  }
+  for (auto& envMat : _envDMatController) {
+    envMat->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  }
+  DensityMatrix<SCFMode> combinedExactlyTreatedDensMatrix(_actDMatController->getDensityMatrix());
+  for (unsigned int iSys = 0; iSys < _otherExactDmats.size(); ++iSys) {
+    const auto& BtoA = *BtoAProjections[iSys];
+    const DensityMatrix<SCFMode>& dens = _otherExactDmats[iSys]->getDensityMatrix();
+    for_spin(combinedExactlyTreatedDensMatrix, dens) {
+      combinedExactlyTreatedDensMatrix_spin += BtoA.transpose() * dens_spin * BtoA;
+    };
+  }
+  auto combinedExactlyTreatedDensMatrixController =
+      std::make_shared<DensityMatrixController<SCFMode>>(combinedExactlyTreatedDensMatrix);
+  _basisFunctionOnGridController =
+      BasisFunctionOnGridControllerFactory::produce(system->getSettings(), this->_basis, this->_grid);
+
+  auto activeDensityOnGridController =
+      DensityOnGridFactory<SCFMode>::produce(combinedExactlyTreatedDensMatrixController, _grid, 1, system->getSettings());
+  _densOnGridControllers.push_back(activeDensityOnGridController);
+  _gridToMatrix = std::make_shared<ScalarOperatorToMatrixAdder<SCFMode>>(_basisFunctionOnGridController,
+                                                                         system->getSettings().grid.blockAveThreshold);
+
+  unsigned int count = 0;
+  for (auto& envMat : _envDMatController) {
+    auto dens = DensityOnGridFactory<SCFMode>::produce(envMat, _grid, 1, system->getSettings());
+    _densOnGridControllers.push_back(dens);
+    _helper.push_back(nullptr);
+    _helper[count].reset(new NAddEnergyHelper<SCFMode>(_functional, dens));
+    count++;
+  }
+  if (calculateSolvationEnergy) {
+    std::vector<std::shared_ptr<DensityOnGridController<SCFMode>>> envDensOnGridController(
+        _densOnGridControllers.begin() + 1, _densOnGridControllers.end());
+    _environmentDensOnGridController = std::make_shared<SupersystemDensityOnGridController<SCFMode>>(envDensOnGridController);
+  }
+  _supersysDensOnGridController = std::make_shared<SupersystemDensityOnGridController<SCFMode>>(_densOnGridControllers);
+  Timings::timeTaken("FDE - Non-Add. Func. Pot.");
+}
+
 template<Options::SCF_MODES SCFMode>
 double NAddFuncPotential<SCFMode>::getLinearizedEnergy(const DensityMatrix<SCFMode>& P, double scaling) {
   if (!_potential)
@@ -428,6 +510,9 @@ double NAddEnergyHelper<SCFMode>::getEnergy() {
   }
   return _energy;
 }
+template<Options::SCF_MODES SCFMode>
+NAddFuncPotential<SCFMode>::~NAddFuncPotential() = default;
+
 template class NAddEnergyHelper<Options::SCF_MODES::RESTRICTED>;
 template class NAddEnergyHelper<Options::SCF_MODES::UNRESTRICTED>;
 } /* namespace Serenity */

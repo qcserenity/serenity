@@ -22,8 +22,11 @@
 #include "potentials/bundles/DFTPotentials.h"
 /* Include Serenity Internal Headers */
 #include "energies/EnergyContributions.h"
+#include "geometry/Geometry.h"
 #include "potentials/ERIPotential.h"
+#include "potentials/FuncPotential.h"
 #include "potentials/LRXPotential.h"
+#include "potentials/Potential.h"
 
 namespace Serenity {
 template<Options::SCF_MODES SCFMode>
@@ -48,7 +51,6 @@ FockMatrix<SCFMode> DFTPotentials<SCFMode>::getFockMatrix(const DensityMatrix<SC
   const FockMatrix<SCFMode>& h = _h->getMatrix();
   double eh = _h->getEnergy(P);
   energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::ONE_ELECTRON_ENERGY, eh);
-
   // XC part
   auto& V = _Vxc->getMatrix();
   double eV = _Vxc->getEnergy(P);
@@ -74,6 +76,7 @@ FockMatrix<SCFMode> DFTPotentials<SCFMode>::getFockMatrix(const DensityMatrix<SC
   energies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::SOLVATION_ENERGY, ePCM);
   return h + J + V + pcm;
 }
+
 template<Options::SCF_MODES SCFMode>
 void DFTPotentials<SCFMode>::replaceFunctionalPotential(std::shared_ptr<FuncPotential<SCFMode>> newVxc) {
   _Vxc = newVxc;

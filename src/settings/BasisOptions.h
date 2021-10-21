@@ -21,6 +21,7 @@
 #ifndef SETTINGS_BASISOPTIONS_H_
 #define SETTINGS_BASISOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -34,11 +35,16 @@ namespace Options {
  * AUX_COULOMB:      The auxiliary basis for a density fitting to evaluate Coulombic electron-electron
  *                   interactions
  * MINBAS            Default minimal basis set.
- * HUECKEL:          The basis set used for semiempirical calculations, most probably a minimal basis
- * IAO_LOCALIZATION: The basis set in which the Intrinsic Atomic Orbitals will be expressed
+ * HUECKEL:          The basis set used for semiempirical calculations, most probably a minimal basis.
+ * IAO_LOCALIZATION: The basis set in which the Intrinsic Atomic Orbitals will be expressed.
  * SCF_DENS_GUESS:   Basis set for the atom density guess.
  * AUX_CORREL:       The auxiliary basis for density fitting to evaluate electron-electron correlation
- *                   contributions
+ *                   contributions.
+ * ATOMIC_CHOLESKY:  The universal auxiliary basis generated using the atomic Cholesky decomposition.
+ * ATOMIC_COMPACT_CHOLESKY:  The universal auxiliary basis generated using the atomic-compact Cholesky decomposition.
+ * ERF_ATOMIC_CHOLESKY: The auxiliary basis generated for long-range contributions using the atomic Cholesky
+ * decomposition. ERF_ATOMIC_COMPACT_CHOLESKY: The auxiliary basis generated for long-range contributions using the
+ * atomic-compact Cholesky decomposition.
  */
 enum class BASIS_PURPOSES {
   DEFAULT = 0,
@@ -47,7 +53,11 @@ enum class BASIS_PURPOSES {
   HUECKEL = 3,
   IAO_LOCALIZATION = 4,
   SCF_DENS_GUESS = 5,
-  AUX_CORREL = 6
+  AUX_CORREL = 6,
+  ATOMIC_CHOLESKY = 7,
+  ATOMIC_COMPACT_CHOLESKY = 8,
+  ERF_ATOMIC_CHOLESKY = 9,
+  ERF_ATOMIC_COMPACT_CHOLESKY = 10
 };
 template<>
 void resolve<BASIS_PURPOSES>(std::string& value, BASIS_PURPOSES& field);
@@ -56,16 +66,39 @@ void resolve<BASIS_PURPOSES>(std::string& value, BASIS_PURPOSES& field);
 /*                                     Density Fitting                                            */
 /**************************************************************************************************/
 /**
- * How a Hartree-Potential should be calculated.
+ * How the electron repulsion integrals should be calculated.
+ * NONE: The full ERI is calculated and evaluated.
+ * RI: The resolution of the identity approach is used to approximate the ERIs or corresponding contributions.
+ * CD: A Cholesky decomposition of the complete ERIs is to evaluate them.
+ * ACD: The atomic Cholesky decomposition approach is used to approximate the ERIs or corresponding contributions.
+ * ACCD: The atomic-compact Cholesky decomposition approach is used to approximate the ERIs or corresponding
+ * contributions.
+ *
  * (Old explanation:
  * In case of a split Coulomb and exchange part in the Fock update (e.g. in DFT no Exchange is
  * needed) these are the possibilities to evaluate the Coulomb part. In principle all complete
  * HARTREE_FOCK_POTENTIAL_CALCULATORS are possible, but also the famous RI approximation, which is a
- * way to reduce the scaling behaviour of DFT from O(n^4) to O(n^3).)
+ * way to reduce the scaling behavior of DFT from O(n^4) to O(n^3).)
  */
-enum class DENS_FITS { RI = 0, NONE = 1 };
+enum class DENS_FITS { RI = 0, NONE = 1, CD = 2, ACD = 3, ACCD = 4 };
 template<>
 void resolve<DENS_FITS>(std::string& value, DENS_FITS& field);
+
+/**************************************************************************************************/
+/*                                     Extend Spherical ACD Shells                                            */
+/**************************************************************************************************/
+/**
+ * In a pure spherical basis the use of a combined shell as the product of the base shells is an approximation
+ * (If the combined shell is treated as a spherical shell). This can be circumvented by extending the
+ * combined shell:
+ *  NONE: no extension is applied
+ *  SIMPLE: only one additional basis function is added for lower am.
+ *  COMPLETE: three additional basis functions are added for each basis functions of higher am.  (This
+ *  is an experimental setting and can produce numeric problems for some systems!)
+ */
+enum class EXTEND_ACD { NONE = 0, SIMPLE = 1, COMPLETE = 2 };
+template<>
+void resolve<EXTEND_ACD>(std::string& value, EXTEND_ACD& field);
 
 } /* namespace Options */
 } /* namespace Serenity */

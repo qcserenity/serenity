@@ -21,15 +21,12 @@
 #include "geometry/gradients/CoreCoreRepulsionDerivative.h"
 /* Include Serenity Internal Headers */
 #include "geometry/Atom.h"
-#include "math/Matrix.h"
 
 namespace Serenity {
-using namespace std;
 
-Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const vector<std::shared_ptr<Atom>>& atoms) {
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atoms) {
   const unsigned int nAtoms = atoms.size();
-  Matrix<double> gradient(nAtoms, 3);
-  gradient.setZero();
+  Matrix<double> gradient = Eigen::MatrixXd::Zero(nAtoms, 3);
 
   for (unsigned int i = 0; i < nAtoms; ++i) {
     for (unsigned int j = 0; j < nAtoms; ++j) {
@@ -56,8 +53,8 @@ Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const vector<std
   return gradient;
 }
 
-Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const vector<std::shared_ptr<Atom>>& atomsAct,
-                                                                const vector<std::shared_ptr<Atom>>& atomsEnv) {
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atomsAct,
+                                                                const std::vector<std::shared_ptr<Atom>>& atomsEnv) {
   const unsigned int nAtomsAct = atomsAct.size();
   const unsigned int nAtomsEnv = atomsEnv.size();
   Matrix<double> gradient(nAtomsAct, 3);

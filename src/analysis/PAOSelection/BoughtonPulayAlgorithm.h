@@ -23,7 +23,7 @@
 #define ANALYSIS_PAOSELECTION_BOUGHTONPULAYALGORITHM_H_
 
 /* Include Serenity Internal Headers */
-#include "analysis/PAOSelection/PAOSelecter.h" //Base class.
+#include "analysis/PAOSelection/PAOSelector.h" //Base class.
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 
@@ -41,7 +41,7 @@ class OneElectronIntegralController;
  * For more details see:\n
  *   J. Comput. Chem. 143, 024105 (1993)\n
  */
-class BoughtonPulayAlgorithm : public PAOSelecter {
+class BoughtonPulayAlgorithm : public PAOSelector {
  public:
   /**
    * @brief Constructor.

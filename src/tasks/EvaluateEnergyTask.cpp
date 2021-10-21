@@ -1,7 +1,7 @@
 /**
  * @file EvaluateEnergyTask.cpp
  *
- * @author Moritz Bensberg
+ * @author Moritz Bensberg, Anja Massolle
  * @date Mar 10, 2020
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
@@ -20,99 +20,176 @@
 /* Include Class Header*/
 #include "tasks/EvaluateEnergyTask.h"
 /* Include Serenity Internal Headers */
-#include "data/ElectronicStructure.h"                                //Access to the EnergyComponentController.
+#include "data/ElectronicStructure.h" //Access to the EnergyComponentController.
+#include "data/OrbitalController.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h" //Dispersion correction
 #include "energies/EnergyComponentController.h"                      //Energy printing and adding.
 #include "energies/EnergyContributions.h"                            //EnergyContributions definitions.
-#include "io/FormattedOutput.h"                                      //Captions.
-#include "misc/SerenityError.h"                                      //Error messages.
-#include "postHF/MPn/LocalMP2.h"                                     //Local MP2.
-#include "postHF/MPn/MP2.h"                                          //MP2.
-#include "postHF/MPn/RIMP2.h"                                        //RI-MP2.
-#include "potentials/bundles/PotentialBundle.h"                      //Fock matrix construction for energy calculation.
-#include "settings/Settings.h"                                       //Settings-->HF vs DFT
-#include "system/SystemController.h"                                 //SystemController definition.
-#include "tasks/LocalizationTask.h"                                  //Orbital localization for local MP2.
+#include "geometry/Geometry.h"
+#include "integrals/OneElectronIntegralController.h" //Kinetic integrals.
+#include "io/FormattedOutput.h"                      //Captions.
+#include "misc/SerenityError.h"                      //Error messages.
+#include "postHF/MPn/LocalMP2.h"                     //Local MP2.
+#include "postHF/MPn/MP2.h"                          //MP2.
+#include "postHF/MPn/RIMP2.h"                        //RI-MP2.
+#include "settings/Settings.h"
+#include "settings/Settings.h"       //Settings-->HF vs DFT
+#include "system/SystemController.h" //SystemController definition.
+#include "tasks/FDETask.h"
+#include "tasks/LocalizationTask.h" //Orbital localization for local MP2.
+#include "tasks/OrthogonalizationTask.h"
+#include "tasks/ScfTask.h"
+#include "tasks/SystemAdditionTask.h"
 
 namespace Serenity {
 template<Options::SCF_MODES SCFMode>
-EvaluateEnergyTask<SCFMode>::EvaluateEnergyTask(std::shared_ptr<SystemController> systemController)
-  : _systemController(systemController) {
+EvaluateEnergyTask<SCFMode>::EvaluateEnergyTask(std::vector<std::shared_ptr<SystemController>> systemController,
+                                                std::shared_ptr<SystemController> superSystem)
+  : _systemController(systemController), _superSystem(superSystem) {
 }
 
 template<Options::SCF_MODES SCFMode>
 void EvaluateEnergyTask<SCFMode>::run() {
-  printSubSectionTitle((std::string) "Energy Evaluation for System " + _systemController->getSystemName());
-  auto es = _systemController->getElectronicStructure<SCFMode>();
-  es->getDensityMatrixController()->updateDensityMatrix();
-  const auto p = es->getDensityMatrixController()->getDensityMatrix();
+  if (_systemController.size() == 1) {
+    printSubSectionTitle((std::string) "Energy Evaluation for System " + _systemController[0]->getSystemName());
 
-  std::shared_ptr<PotentialBundle<SCFMode>> potentials;
-  const Settings& settings = _systemController->getSettings();
-  if (settings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-    potentials = _systemController->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+    /*
+     * KS-DFT
+     */
+    auto system = _systemController[0];
+    auto originalXCfunc = (system->getSettings()).dft.functional;
+    if (settings.useDifferentXCFunc) {
+      system->setXCfunctional(settings.XCfunctional);
+    }
+    ScfTask<SCFMode> scf(_systemController[0]);
+    scf.settings.skipSCF = true;
+    scf.settings.mp2Type = settings.mp2Type;
+    scf.settings.lcSettings = settings.lcSettings;
+    scf.settings.maxResidual = settings.maxResidual;
+    scf.settings.maxCycles = settings.maxCycles;
+    scf.run();
+    system->setXCfunctional(originalXCfunc);
   }
-  else if (settings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    potentials = _systemController->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
-  }
+  /*
+   * sDFT evaluation
+   */
   else {
-    throw SerenityError("Unknown electronic structure theory!");
-  }
-  auto energyComponentController = es->getEnergyComponentController();
-  auto f = potentials->getFockMatrix(p, energyComponentController);
-  double dispersionCorrection = 0;
-  if (settings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    dispersionCorrection = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
-        settings.dft.dispersion, _systemController->getGeometry(), settings.dft.functional);
-  }
-  energyComponentController->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, dispersionCorrection);
+    std::shared_ptr<SystemController> activeSystem;
+    std::vector<std::shared_ptr<SystemController>> envSystems;
+    std::vector<CompositeFunctionals::XCFUNCTIONALS> originalXCfunc;
+    /*
+     * construct Systems with the new XC func
+     */
 
-  auto functional = resolveFunctional(settings.dft.functional);
-  double MP2Correlation = 0.0;
-  if (functional.isDoubleHybrid()) {
-    // perform MP2 for double hybrids
-    switch (this->settings.mp2Type) {
-      case Options::MP2_TYPES::LOCAL: {
-        LocalizationTask locTask(_systemController);
-        locTask.settings.splitValenceAndCore = true;
-        locTask.run();
-        if (SCFMode != RESTRICTED)
-          throw SerenityError("MP2 is not available for unrestricted systems, please use RI-MP2. Please set "
-                              "DensityFitting to RI in the system block.");
-        auto localCorrelationController =
-            std::make_shared<LocalCorrelationController>(_systemController, this->settings.lcSettings);
-        LocalMP2 localMP2(localCorrelationController);
-        localMP2.settings.ssScaling = functional.getssScaling();
-        localMP2.settings.osScaling = functional.getosScaling();
-        localMP2.settings.maxCycles = this->settings.maxCycles;
-        localMP2.settings.maxResidual = this->settings.maxResidual;
-        MP2Correlation = localMP2.calculateEnergyCorrection().sum();
-        break;
+    for (unsigned int i = 0; i < _systemController.size(); i++) {
+      originalXCfunc.push_back((_systemController[i]->getSettings()).dft.functional);
+      if (settings.useDifferentXCFunc) {
+        _systemController[i]->setXCfunctional(settings.XCfunctional);
       }
-      case Options::MP2_TYPES::RI: {
-        RIMP2<SCFMode> rimp2(_systemController, functional.getssScaling(), functional.getosScaling());
-        MP2Correlation = rimp2.calculateCorrection();
-        break;
+
+      // Update the energies of the subsystems
+      ScfTask<SCFMode> scf(_systemController[i]);
+      scf.settings.skipSCF = true;
+      scf.run();
+
+      if (i > 0) {
+        envSystems.push_back(_systemController[i]);
       }
-      case Options::MP2_TYPES::AO: {
-        if (SCFMode != RESTRICTED)
-          throw SerenityError("MP2 is not available for unrestricted systems, please use RI-MP2. Please set "
-                              "DensityFitting to RI in the system block.");
-        MP2EnergyCorrector<RESTRICTED> mp2EnergyCorrector(_systemController, functional.getssScaling(),
-                                                          functional.getosScaling());
-        MP2Correlation = mp2EnergyCorrector.calculateElectronicEnergy();
-        break;
+      else {
+        activeSystem = _systemController[i];
       }
     }
-    MP2Correlation *= functional.getHfCorrelRatio();
+
+    FDETask<SCFMode> fde(activeSystem, envSystems);
+    fde.settings.skipSCF = true;
+    fde.settings.lcSettings = this->settings.lcSettings;
+    fde.settings.embedding = this->settings.embedding;
+    fde.run();
+    auto eCont = activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+
+    /*
+     * Evaluate the non-additive kinietik energy from orthogonalized orbitals
+     */
+
+    if (settings.evalTsOrtho) {
+      double naddKin = this->calcNaddKin(_superSystem, _systemController);
+      eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC, naddKin);
+
+      /*
+       * Evaluate all energy contributions from orthogonalized orbitals
+       */
+    }
+    else if (settings.evalAllOrtho) {
+      Settings settingsSuper;
+      if (_superSystem == nullptr) {
+        settingsSuper = _systemController[0]->getSettings();
+        settingsSuper.name = _systemController[0]->getSettings().name + "Ortho";
+        settingsSuper.charge = 0;
+        settingsSuper.spin = 0;
+        _superSystem = std::make_shared<SystemController>(std::make_shared<Geometry>(), settingsSuper);
+      }
+
+      OrthogonalizationTask<SCFMode> orthoTask(_systemController, _superSystem);
+      orthoTask.settings.orthogonalizationScheme = settings.orthogonalizationScheme;
+      orthoTask.run();
+
+      auto energyEval = EvaluateEnergyTask({_superSystem});
+      energyEval.settings.XCfunctional = settings.XCfunctional;
+      energyEval.run();
+    }
+    eCont->printAllComponents();
+    for (unsigned int i = 0; i < _systemController.size(); i++) {
+      _systemController[i]->setXCfunctional(originalXCfunc[i]);
+    }
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+double EvaluateEnergyTask<SCFMode>::calcNaddKin(std::shared_ptr<SystemController> supersystem,
+                                                std::vector<std::shared_ptr<SystemController>> subsystems) {
+  Settings settingsSuper;
+  if (supersystem == nullptr) {
+    settingsSuper = _systemController[0]->getSettings();
+    settingsSuper.name = _systemController[0]->getSettings().name + "Ortho";
+    settingsSuper.charge = 0;
+    settingsSuper.spin = 0;
+    supersystem = std::make_shared<SystemController>(std::make_shared<Geometry>(), settingsSuper);
   }
 
-  // add energy to the EnergyController
-  energyComponentController->addOrReplaceComponent(
-      std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, MP2Correlation));
+  if (settings.orthogonalizationScheme != Options::ORTHOGONALIZATION_ALGORITHMS::NONE) {
+    OrthogonalizationTask<SCFMode> orthoTask(subsystems, supersystem);
+    orthoTask.settings.orthogonalizationScheme = settings.orthogonalizationScheme;
+    orthoTask.run();
+  }
+  else {
+    SystemAdditionTask<SCFMode> additionTask(supersystem, _systemController);
+    additionTask.settings.addOccupiedOrbitals = true;
+    additionTask.run();
+  }
 
-  energyComponentController->printAllComponents();
-}
+  Eigen::MatrixXd sAO = supersystem->getOneElectronIntegralController()->getOverlapIntegrals();
+  auto coeffMatrix = supersystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  auto kin = supersystem->getOneElectronIntegralController()->getKinIntegrals();
+  auto P = supersystem->getElectronicStructure<SCFMode>()->getDensityMatrix();
+
+  double naddKinE = 0.0;
+  for_spin(coeffMatrix, P) {
+    if (settings.orthogonalizationScheme == Options::ORTHOGONALIZATION_ALGORITHMS::NONE) {
+      Eigen::MatrixXd sMO = (coeffMatrix_spin).transpose() * sAO * coeffMatrix_spin;
+      P_spin = (coeffMatrix_spin) * (sMO.completeOrthogonalDecomposition().pseudoInverse()).eval() *
+               (coeffMatrix_spin).transpose();
+    }
+    naddKinE += (P_spin).cwiseProduct(kin).sum();
+  };
+  for (unsigned int i = 0; i < subsystems.size(); i++) {
+    auto subsystemKinInt = subsystems[i]->getOneElectronIntegralController()->getKinIntegrals();
+    auto subsystemDens = subsystems[i]->getElectronicStructure<SCFMode>()->getDensityMatrix();
+    for_spin(subsystemDens) {
+      naddKinE -= (subsystemDens_spin).cwiseProduct(subsystemKinInt).sum();
+    };
+  }
+  return naddKinE;
+} /*calcNaddKin*/
 
 template class EvaluateEnergyTask<Options::SCF_MODES::RESTRICTED>;
 template class EvaluateEnergyTask<Options::SCF_MODES::UNRESTRICTED>;

@@ -173,6 +173,12 @@ class Shell : public libint2::Shell, public NotifyingClass<Shell> {
     return _contractions;
   }
   /**
+   * @return Returns the contractions of the normalized basis functions.
+   */
+  const libint2::svector<double> getNormContractions() const {
+    return this->contr[0].coeff;
+  }
+  /**
    * @return Returns the exponents of the basis functions.
    */
   const libint2::svector<double> getExponents() const {

@@ -35,6 +35,8 @@
 
 namespace Serenity {
 class SystemController;
+template<Options::SCF_MODES T>
+class PotentialBundle;
 
 using namespace Serenity::Reflection;
 
@@ -49,22 +51,23 @@ struct FDETaskSettings {
       maxCycles(100),
       calculateEnvironmentEnergy(false),
       mp2Type(Options::MP2_TYPES::LOCAL),
-      calculateSolvationEnergy(false) {
+      calculateSolvationEnergy(false),
+      skipSCF(false) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
-    lcSettings.method = PNO_METHOD::DLPNO_MP2;
+    lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (double)gridCutOff, (bool)smallSupersystemGrid,
               (bool)finalGrid, (bool)calculateMP2Energy, (double)maxResidual, (int)maxCycles,
-              (bool)calculateEnvironmentEnergy, (Options::MP2_TYPES)mp2Type, (bool)calculateSolvationEnergy)
+              (bool)calculateEnvironmentEnergy, (Options::MP2_TYPES)mp2Type, (bool)calculateSolvationEnergy, (bool)skipSCF)
  public:
   LocalCorrelationSettings lcSettings;
   EmbeddingSettings embedding;
-  bool initializeSuperMolecularSurface = true;
   ///@brief The index of the first passive environment subsystem that will never
   ///       be changed during a freeze-and-thaw procedure.
   unsigned int firstPassiveSystemIndex = 9999999;
+  bool initializeSuperMolecularSurface = true;
 };
 
 /**
@@ -104,7 +107,7 @@ class FDETask : public Task {
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
       if (!c.lcSettings.visitSettings(v, blockname)) {
-        throw SerenityError((string) "Unknown block in FDETaskSettings: " + blockname);
+        throw SerenityError((std::string) "Unknown block in FDETaskSettings: " + blockname);
       }
     }
   }
@@ -156,6 +159,10 @@ class FDETask : public Task {
   std::shared_ptr<GridController> _supersystemgrid;
   std::shared_ptr<GridController> _finalGrid;
   void calculateNonAdditiveDispersionCorrection();
+  void calculateMP2CorrelationContribution(std::shared_ptr<PotentialBundle<SCFMode>> fdePot);
+  // prints the S*S values
+  void printFaTAnalysis(std::vector<std::shared_ptr<SystemController>> systems,
+                        std::shared_ptr<GridController> supersystemGrid = nullptr, bool actOnly = false);
 };
 
 } /* namespace Serenity */

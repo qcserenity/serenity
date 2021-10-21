@@ -20,24 +20,42 @@
 #ifndef LIBINT_H
 #define LIBINT_H
 
-/* Include Serenity Internal Headers */
-#include "basis/BasisController.h"
-#include "geometry/Atom.h"
-#include "math/Matrix.h"
-
 /* Include Std and External Headers */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <libint2.hpp>
-#pragma GCC diagnostic pop
+#include <Eigen/Dense>
+#include <limits>
+#include <map>
+#include <memory>
 #include <mutex>
+#include <vector>
+
+namespace libint2 {
+enum class Operator;
+class Engine;
+class Shell;
+} // namespace libint2
 
 namespace Serenity {
-using namespace Serenity;
+
+/* Forward Declarations */
+class BasisController;
+class Atom;
+class Point;
+
+enum class LIBINT_OPERATOR {
+  overlap,
+  kinetic,
+  nuclear,
+  emultipole1,
+  emultipole2,
+  delta,
+  coulomb,
+  cgtg,
+  cgtg_x_coulomb,
+  delcgtg2,
+  erf_coulomb,
+  erfc_coulomb
+};
+
 /**
  * @class IntegralType
  * @brief A small class to wrap all the possible integral types.
@@ -53,11 +71,11 @@ struct IntegralType {
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  IntegralType(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter)
+  IntegralType(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter)
     : op(op), deriv(deriv), nCenter(nCenter - 2) {
   }
   /// @brief The kernel/operator as libint enum.
-  libint2::Operator op;
+  LIBINT_OPERATOR op;
   /// @brief The derivative level.
   unsigned int deriv;
   /// @brief The number of centers (2-4).
@@ -99,7 +117,7 @@ struct IntegralType {
  *     A set contains one value per basis function combination.
  *     The first set is always integral values (thus int(i,0) will give i'th-integral)
  *     The number of sets depends on the number of derivatives and is ordered as follows:
- *     0->[ints],1->[dx,dz,dz],2->[dxdx,dxdy,dxdz,dydy,dydz,dzdz],... .
+ *     0->[ints],1->[dx,dy,dz],2->[dxdx,dxdy,dxdz,dydy,dydz,dzdz],... .
  *     Here e.g. derivative level 2 also contains all the previous values.
  *     Inside one set the integrals are ordered by their shells, with the first shell being
  *     the outer index (loop).
@@ -167,9 +185,15 @@ class Libint {
    * @param nCenter The number of centers (2-4).
    * @param pointCharges The charges to be added to the engines
    *                     (needed for Operator::nuclear integrals).
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    */
-  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter,
-                  const std::vector<std::pair<double, std::array<double, 3>>> pointCharges, double mu);
+  void initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
+                  const std::vector<std::pair<double, std::array<double, 3>>> pointCharges, double mu,
+                  double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                  unsigned int maxNPrim = N_PRIM_MAX);
 
   /**
    * @brief Initializes the engines for a specific type of integral.
@@ -179,18 +203,42 @@ class Libint {
    * @param atoms The atoms to be added to the engines
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    */
-  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter,
-                  const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0), double mu = 0.0);
+  void initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
+                  const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0),
+                  double mu = 0.0, double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                  unsigned int maxNPrim = N_PRIM_MAX);
 
+  /**
+   * @brief Initializes the engines for a specific type of integral.
+   * @param op The kernel/operator as libint enum.
+   * @param nCenter The number of centers (2-4).
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
+   */
+  void initialize_plain(LIBINT_OPERATOR op, const unsigned int nCenter,
+                        double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                        unsigned int maxNPrim = N_PRIM_MAX);
   /**
    * @brief Initializes the engines for a specific type of integral.
    * @param op The kernel/operator as libint enum.
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    * @param multipoleOrigin The gauge-origin for multipole integrals.
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    */
-  void initialize(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter, const Point multipoleOrigin);
+  void initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter, const Point multipoleOrigi,
+                  double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                  unsigned int maxNPrim = N_PRIM_MAX);
 
   /**
    * @brief Cleans the engines for a specific type of integral.
@@ -198,7 +246,7 @@ class Libint {
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void finalize(libint2::Operator op, unsigned int deriv, unsigned int nCenter);
+  void finalize(LIBINT_OPERATOR op, unsigned int deriv, unsigned int nCenter);
 
   /**
    * @brief Keeps a set of engines form being destroyed by finalize calls.
@@ -209,7 +257,7 @@ class Libint {
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void keepEngines(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter);
+  void keepEngines(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter);
 
   /**
    * @brief Allows the destruction and destroys a set of engines if they are present.
@@ -217,7 +265,7 @@ class Libint {
    * @param deriv The derivative level.
    * @param nCenter The number of centers (2-4).
    */
-  void freeEngines(libint2::Operator op, const unsigned int deriv, const unsigned int nCenter);
+  void freeEngines(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter);
 
   /**
    * @brief Destroys all engines, call with caution!
@@ -244,11 +292,33 @@ class Libint {
    * @param deriv  The derivative level.
    * @param a      The first shell.
    * @param b      The second shell.
+   * @param ints   The integrals stored per set (see class description for more information).
+   * @return Boolean. True if integrals were calculated, false if they were screened out.
+   */
+  bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b, Eigen::MatrixXd& ints);
+  /**
+   * @brief Computes a set (operator/derivative) of integrals for the given shells.
+   * @param op     The kernel/operator as libint enum.
+   * @param deriv  The derivative level.
+   * @param a      The first shell.
+   * @param b      The second shell.
    * @param c      The third shell.
    * @param ints   The integrals stored per set (see class description for more information).
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
   bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, Eigen::MatrixXd& ints);
+  /**
+   * @brief Computes a set (operator/derivative) of integrals for the given shells.
+   * @param op     The kernel/operator as libint enum.
+   * @param deriv  The derivative level.
+   * @param a      The first shell.
+   * @param b      The second shell.
+   * @param c      The third shell.
+   * @param ints   The integrals stored per set (see class description for more information).
+   * @return Boolean. True if integrals were calculated, false if they were screened out.
+   */
+  bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
                const libint2::Shell& c, Eigen::MatrixXd& ints);
   /**
    * @brief Computes a set (operator/derivative) of integrals for the given shells.
@@ -263,6 +333,19 @@ class Libint {
    */
   bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
                const libint2::Shell& c, const libint2::Shell& d, Eigen::MatrixXd& ints);
+  /**
+   * @brief Computes a set (operator/derivative) of integrals for the given shells.
+   * @param op     The kernel/operator as libint enum.
+   * @param deriv  The derivative level.
+   * @param a      The first shell.
+   * @param b      The second shell.
+   * @param c      The third shell.
+   * @param d      The fourth shell.
+   * @param ints   The integrals stored per set (see class description for more information).
+   * @return Boolean. True if integrals were calculated, false if they were screened out.
+   */
+  bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, const libint2::Shell& d, Eigen::MatrixXd& ints);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -271,10 +354,16 @@ class Libint {
    * @param pointCharges  The atoms to be added to the engine
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    * @return The entire set if integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis,
-                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges);
+  Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
+                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
+                                double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                                unsigned int maxNPrim = N_PRIM_MAX);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -283,23 +372,35 @@ class Libint {
    * @param pointCharges  The atoms to be added to the engine
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    * @return The entire set if integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis,
-                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0));
+  Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
+                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0),
+                                double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                                unsigned int maxNPrim = N_PRIM_MAX);
   /**
    * @brief Shorthand for an entire set of 'interaction' 1e integrals.
    * @param op     The kernel/operator as libint enum.
    * @param basis1 The first basis.
-   * @param basis2 The sacond basis.
+   * @param basis2 The second basis.
    * @param atoms  The atoms to be added to the engine
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    * @return The entire set of 'interaction' integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis1,
+  Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis1,
                                 std::shared_ptr<BasisController> basis2,
-                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges);
+                                const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
+                                double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                                unsigned int maxNPrim = N_PRIM_MAX);
 
   /**
    * @brief Shorthand for an entire set of 'interaction' 1e integrals.
@@ -309,18 +410,36 @@ class Libint {
    * @param atoms  The atoms to be added to the engine
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param mu Range separation parameter if operator is erf_coulomb.
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
    * @return The entire set of 'interaction' integrals.
    */
-  Eigen::MatrixXd compute1eInts(libint2::Operator op, std::shared_ptr<BasisController> basis1,
+  Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis1,
                                 std::shared_ptr<BasisController> basis2,
-                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0));
+                                const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0),
+                                double mu = 0.0, double precision = std::numeric_limits<double>::epsilon(),
+                                double maxD = 10, unsigned int maxNPrim = N_PRIM_MAX);
 
   /**
    * @brief Engines for 2e-4c integrals.
    * @param The kernel/operator as libint enum.
    * @return A reference to the libint engines for 2e-4c integrals.
    */
-  std::vector<std::unique_ptr<libint2::Engine>>& getFourCenterEngines(libint2::Operator op);
+  std::vector<std::unique_ptr<libint2::Engine>>& getFourCenterEngines(LIBINT_OPERATOR op);
+
+  /**
+   * @brief  Resolve the internal operator to its libint2 representation.
+   * @param op The operator.
+   */
+  static libint2::Operator resolveLibintOperator(LIBINT_OPERATOR op);
+  /**
+   * @brief  Resolve the internal operator to its Serenity representation.
+   * @param op The operator.
+   */
+  static LIBINT_OPERATOR resolveLibintOperator(libint2::Operator op);
 
  private:
   /**
@@ -344,7 +463,15 @@ class Libint {
    * If more are used just increase this number; Libint objects will then
    * only take slightly more memory.
    */
-  const unsigned int N_PRIM_MAX = 20;
+  static const unsigned int N_PRIM_MAX = 20;
+  /**
+   * Libint will truncate the primitive functions at some point. Thus, we have to make sure that
+   * the error introduced like this in the final contracted integral set does not exceed our required
+   * precision.
+   * This function returns the precision needed for the primitive function evaluation.
+   * The current implementation is rather conservative.
+   */
+  long double getFinalPrecision(double precision, double maxD, double nPrim, unsigned int nCenters);
 };
 
 } /* namespace Serenity */

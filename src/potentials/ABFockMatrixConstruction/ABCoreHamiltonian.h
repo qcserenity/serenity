@@ -23,7 +23,6 @@
 #define POTENTIALS_ABFOCKMATRIXCONSTRUCTION_ABCOREHAMILTONIAN_H_
 
 /* Include Serenity Internal Headers */
-#include "integrals/wrappers/Libint.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "potentials/ABFockMatrixConstruction/ABPotential.h"
 
@@ -31,6 +30,7 @@ namespace Serenity {
 
 /* Forward Declarations */
 class Geometry;
+class Libint;
 
 /**
  * @class ABCoreHamiltonian ABCoreHamiltonian.h
@@ -76,7 +76,7 @@ class ABCoreHamiltonian : public ABPotential<SCFMode>, public ObjectSensitiveCla
   ///@brief The outer diagonal block of the fock matrix.
   std::unique_ptr<SPMatrix<SCFMode>> _abPotential;
   ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
+  const std::shared_ptr<Libint> _libint;
   ///@brief The ECP contribution.
   std::shared_ptr<ABPotential<SCFMode>> _abEffectiveCorePotential;
 };

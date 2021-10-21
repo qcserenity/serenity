@@ -76,8 +76,7 @@ void OrbitalPairSelector::calculateDOIs(std::vector<std::shared_ptr<OrbitalPair>
 void OrbitalPairSelector::calculateDipoleApproximation(std::vector<std::shared_ptr<OrbitalPair>> initialPairs,
                                                        double paoOrthoThreshold,
                                                        std::shared_ptr<FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
-                                                       std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap,
-                                                       double collinearDipolePairThreshold) {
+                                                       std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap) {
   const auto scfMode = Options::SCF_MODES::RESTRICTED;
   unsigned int nOcc = _systemController->getNOccupiedOrbitals<scfMode>();
   auto S = _systemController->getOneElectronIntegralController()->getOverlapIntegrals();
@@ -90,7 +89,7 @@ void OrbitalPairSelector::calculateDipoleApproximation(std::vector<std::shared_p
   approxCalculator.calculateDipoleApproximationCollinear(initialPairs);
   std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs;
   for (auto& pair : initialPairs) {
-    if (std::fabs(pair->dipoleCollinearPairEnergy) < collinearDipolePairThreshold)
+    if (std::fabs(pair->dipoleCollinearPairEnergy) < pair->getCollinearDipolePairThreshold())
       veryDistantPairs.push_back(pair);
   } // for pair
   approxCalculator.calculateDipoleApproximation(veryDistantPairs);
@@ -101,7 +100,7 @@ OrbitalPairSelector::selectOrbitalPairs(std::vector<std::shared_ptr<OrbitalPair>
                                         double paoOrthoThreshold,
                                         std::shared_ptr<FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
                                         std::shared_ptr<Eigen::SparseMatrix<int>> paoToOccupiedOrbitalMap,
-                                        double doiThreshold, double collinearDipolePairThreshold) {
+                                        double doiThreshold) {
   takeTime("Pair Prescreening");
   assert(_systemController->getLastSCFMode() == Options::SCF_MODES::RESTRICTED &&
          "Local MP2 is only implemented for RESTRICTED calculations.");
@@ -112,7 +111,7 @@ OrbitalPairSelector::selectOrbitalPairs(std::vector<std::shared_ptr<OrbitalPair>
     if (std::fabs(pair->doi) < doiThreshold)
       dipoleCheckPairs.push_back(pair);
   } // for pair
-  calculateDipoleApproximation(dipoleCheckPairs, paoOrthoThreshold, f, paoToOccupiedOrbitalMap, collinearDipolePairThreshold);
+  calculateDipoleApproximation(dipoleCheckPairs, paoOrthoThreshold, f, paoToOccupiedOrbitalMap);
 
   std::vector<std::shared_ptr<OrbitalPair>> significantPairs;
   std::vector<std::shared_ptr<OrbitalPair>> inSignificantPairs;
@@ -121,7 +120,7 @@ OrbitalPairSelector::selectOrbitalPairs(std::vector<std::shared_ptr<OrbitalPair>
     bool significantCollinearPair = false;
     if (std::fabs(pair->doi >= doiThreshold))
       significantDoi = true;
-    if (std::fabs(pair->dipoleCollinearPairEnergy) >= collinearDipolePairThreshold)
+    if (std::fabs(pair->dipoleCollinearPairEnergy) >= pair->getCollinearDipolePairThreshold())
       significantCollinearPair = true;
     if (!significantDoi && !significantCollinearPair) {
       pair->type = OrbitalPairTypes::VERY_DISTANT;

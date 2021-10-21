@@ -64,17 +64,12 @@ class Atom : public Point, public NotifyingClass<Atom> {
    */
   Atom(std::shared_ptr<const AtomType> atomType, double x, double y, double z,
        std::pair<std::string, std::vector<std::shared_ptr<Shell>>> basisFunctions);
-
-  bool operator==(Atom rhs) {
-    bool same = true;
-    auto lhsName = this->getAtomType()->getName();
-    auto rhsName = rhs.getAtomType()->getName();
-    same *= this->_atomType->getElementSymbol() == rhs.getAtomType()->getElementSymbol();
-    same *= isEqual(this->_x, rhs.getX(), 5e-5);
-    same *= isEqual(this->_y, rhs.getY(), 5e-5);
-    same *= isEqual(this->_z, rhs.getZ(), 5e-5);
-    return same;
-  }
+  /**
+   * @brief checks if two atoms are equal.
+   * @return True if atoms are equal.
+   * @param rhs other atom.
+   */
+  bool operator==(Atom rhs);
   /**
    * @param symbol   The atom symbol in a string.
    * @param x,y,z    Coordinates of the atom (atomic units).
@@ -138,7 +133,7 @@ class Atom : public Point, public NotifyingClass<Atom> {
    *          an effective core potential is used.
    */
   inline int getEffectiveCharge() const {
-    return getNuclearCharge() - _nCoreElectrons;
+    return getNuclearCharge() - _nECPElectrons;
   }
   /**
    * @brief Supplies this atom with another set of basis functions.
@@ -171,9 +166,10 @@ class Atom : public Point, public NotifyingClass<Atom> {
    * @param newBasis  the primary basis with an identifying label
    * @param ecpSet    A set of effective core potential functions which is used along with
    *                  the newBasis.
+   * @param nECPElectrons The number of electrons contained in the ECP.
    */
   void addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> newBasis,
-                std::shared_ptr<libecpint::ECP> ecp, unsigned int nCoreElectrons);
+                std::shared_ptr<libecpint::ECP> ecp, unsigned int nECPElectrons);
   /**
    * @brief Deletes a previously attached set of basis functions.
    *
@@ -244,17 +240,34 @@ class Atom : public Point, public NotifyingClass<Atom> {
    */
   inline bool usesECP() const {
     assert(_primaryBasisLabel != "-");
-    return _nCoreElectrons != 0;
+    return _nECPElectrons != 0;
   }
   /**
    * @returns the number of core electrons. These core electrons are purely described by an
    *          effective potential / pseudopotential (ECP) and thus appear as being nonexistent
    *          in most other contexts (e.g. they do not enter the electron density)
    */
-  inline unsigned int getNCoreElectrons() const {
+  inline unsigned int getNECPElectrons() const {
     assert(_primaryBasisLabel != "-");
-    return _nCoreElectrons;
+    return _nECPElectrons;
   }
+  /**
+   * @brief Getter for the number of non-valence electrons. Respects ECPs.
+   * @return The number of non-valence/core orbitals.
+   */
+  inline unsigned int getNCoreElectrons() const {
+    int nCore = _atomType->getNCoreElectrons() - _nECPElectrons;
+    return (nCore < 0) ? 0 : nCore;
+  }
+
+  /**
+   * @brief Getter for the chemical hardness.
+   * @return Chemical hardness.
+   */
+  inline double getChemicalHardness() const {
+    return _atomType->getChemicalHardness();
+  }
+
   std::shared_ptr<libecpint::ECP> getCorePotential() const;
 
  private:
@@ -287,7 +300,7 @@ class Atom : public Point, public NotifyingClass<Atom> {
   /*
    * The number of core electrons in case the atom is defined with an effective core potential
    */
-  unsigned int _nCoreElectrons = 0;
+  unsigned int _nECPElectrons = 0;
 };
 
 } /* namespace Serenity */

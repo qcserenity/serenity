@@ -21,6 +21,7 @@
 #ifndef SETTINGS_GEOMETRYOPTIONS_H_
 #define SETTINGS_GEOMETRYOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {

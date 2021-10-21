@@ -28,6 +28,7 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/range_c.hpp>
 #include <boost/preprocessor.hpp>
+#include <boost/type_traits/add_const.hpp>
 #include <fstream>
 #include <iostream>
 #include <typeinfo>

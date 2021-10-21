@@ -36,7 +36,6 @@
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 #include "math/Matrix.h"
 #include "misc/WarningTracker.h" //Warnings.
-#include "settings/Settings.h"
 #include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <Eigen/StdVector>
@@ -44,7 +43,6 @@
 #include <unsupported/Eigen/MatrixFunctions>
 
 namespace Serenity {
-using namespace std;
 
 LocalizationTask::LocalizationTask(std::shared_ptr<SystemController> systemController,
                                    std::vector<std::shared_ptr<SystemController>> templateSystem)
@@ -54,7 +52,7 @@ LocalizationTask::LocalizationTask(std::shared_ptr<SystemController> systemContr
 
 void LocalizationTask::run() {
   if (_systemController->getLastSCFMode() == Options::SCF_MODES::UNRESTRICTED or
-      _systemController->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      _systemController->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
     runByLastSCFMode<Options::SCF_MODES::UNRESTRICTED>();
   }
   else {
@@ -76,26 +74,24 @@ template<Options::SCF_MODES SCFMode>
 std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
 LocalizationTask::getValenceOrbitalIndices() {
   auto nOcc = _systemController->getNOccupiedOrbitals<SCFMode>();
-  SpinPolarizedData<SCFMode, std::vector<unsigned int>> valenceRange;
-  SpinPolarizedData<SCFMode, std::vector<unsigned int>> coreRange;
+  std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>> ranges;
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>>& valenceRange = ranges.first;
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>>& coreRange = ranges.second;
   if (!settings.splitValenceAndCore) {
     for_spin(nOcc, valenceRange) {
       for (unsigned int iOcc = 0; iOcc < nOcc_spin; ++iOcc)
         valenceRange_spin.push_back(iOcc);
     };
-    return std::make_pair(valenceRange, coreRange);
+    return ranges;
   }
-  const auto eigenvalues = _systemController->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-  for_spin(nOcc, valenceRange, eigenvalues, coreRange) {
-    for (unsigned int iOcc = 0; iOcc < nOcc_spin; ++iOcc) {
-      if (eigenvalues_spin[iOcc] > settings.energyCutOff) {
-        valenceRange_spin.push_back(iOcc);
-      }
-      else {
-        coreRange_spin.push_back(iOcc);
-      }
-    } // for iOcc
-  };  // for spin
+
+  if (settings.useEnergyCutOff) {
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setCoreOrbitalsByEnergyCutOff(settings.energyCutOff);
+  }
+  else if (settings.nCoreOrbitals != std::numeric_limits<unsigned int>::infinity()) {
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setCoreOrbitalsByNumber(settings.nCoreOrbitals);
+  }
+  ranges = this->_systemController->template getActiveOrbitalController<SCFMode>()->getValenceOrbitalIndices(nOcc);
   OutputControl::mOut << "  Note: Valence and core orbitals are localized separately." << std::endl;
   OutputControl::mOut << "        Please ensure that the initial orbitals were canonical orbitals!\n" << std::endl;
   OutputControl::vOut << "The following orbitals have been identified as valence orbitals:" << std::endl;
@@ -103,7 +99,7 @@ LocalizationTask::getValenceOrbitalIndices() {
   for_spin(valenceRange, praefix, nOcc) {
     OutputControl::vOut << praefix_spin << std::endl << "  ";
     for (const auto orb : valenceRange_spin)
-      OutputControl::vOut << orb + 1 << " ";
+      OutputControl::vOut << orb << " ";
     OutputControl::vOut << std::endl;
     OutputControl::nOut << "  Number of core-like orbitals: " << nOcc_spin - valenceRange_spin.size() << "  "
                         << praefix_spin << std::endl;
@@ -179,8 +175,10 @@ void LocalizationTask::runByLastSCFMode() {
     WarningTracker::printWarning(
         (std::string) "Warning: Density Matrix Changed! Largest absolute change: " + fabs(densMatrixDiff), true);
   };
-  const auto systemSettings = _systemController->getSettings();
-  _systemController->getElectronicStructure<T>()->toHDF5(systemSettings.path + systemSettings.name, systemSettings.identifier);
+  if (_systemController->getElectronicStructure<T>()->getDiskMode() != true) {
+    _systemController->getElectronicStructure<T>()->toHDF5(_systemController->getHDF5BaseName(),
+                                                           _systemController->getSystemIdentifier());
+  }
 }
 
 } /* namespace Serenity */

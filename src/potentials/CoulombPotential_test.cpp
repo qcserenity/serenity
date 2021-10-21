@@ -60,7 +60,8 @@ TEST_F(CoulombPotentialTest, H2_rFockMatrix) {
   auto& factory = RI_J_IntegralControllerFactory::getInstance();
   auto ri_j_IntController = factory.produce(basisController, auxBasisController);
 
-  CoulombPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemController, dMat, ri_j_IntController, 1E-10, 0.0, 0.0, 0);
+  CoulombPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemController, dMat, ri_j_IntController,
+                                                           basisController->getPrescreeningThreshold(), 0.0, 0.0, 0);
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> F = coulPot.getMatrix();
 
@@ -87,7 +88,8 @@ TEST_F(CoulombPotentialTest, H2_uFockMatrix) {
   auto& factory = RI_J_IntegralControllerFactory::getInstance();
   auto ri_j_IntController = factory.produce(basisController, auxBasisController);
 
-  CoulombPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemController, dMat, ri_j_IntController, 1E-10, 0.0, 0.0, 0);
+  CoulombPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemController, dMat, ri_j_IntController,
+                                                             basisController->getPrescreeningThreshold(), 0.0, 0.0, 0);
 
   FockMatrix<Options::SCF_MODES::UNRESTRICTED> F(std::move(coulPot.getMatrix()));
 
@@ -119,7 +121,8 @@ TEST_F(CoulombPotentialTest, H2_rGradients) {
   auto& factory = RI_J_IntegralControllerFactory::getInstance();
   auto ri_j_IntController = factory.produce(basisController, auxBasisController);
 
-  CoulombPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemController, dMat, ri_j_IntController, 1E-10, 0.0, 0.0, 0);
+  CoulombPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemController, dMat, ri_j_IntController,
+                                                           basisController->getPrescreeningThreshold(), 0.0, 0.0, 0);
 
   auto ElEl = coulPot.getGeomGradients();
 
@@ -145,7 +148,8 @@ TEST_F(CoulombPotentialTest, H2_uGradients) {
   auto& factory = RI_J_IntegralControllerFactory::getInstance();
   auto ri_j_IntController = factory.produce(basisController, auxBasisController);
 
-  CoulombPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemController, dMat, ri_j_IntController, 1E-10, 0.0, 0.0, 0);
+  CoulombPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemController, dMat, ri_j_IntController,
+                                                             basisController->getPrescreeningThreshold(), 0.0, 0.0, 0);
 
   auto ElEl = coulPot.getGeomGradients();
 

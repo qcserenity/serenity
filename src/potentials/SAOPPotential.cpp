@@ -22,12 +22,16 @@
 /* Include Class Header*/
 #include "potentials/SAOPPotential.h"
 /* Include Serenity Internal Headers */
+#include "basis/BasisController.h"
 #include "data/OrbitalController.h"
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
-#include "data/grid/GridData.h"
-#include "data/grid/MatrixOperatorToGridTransformer.h"
+#include "data/grid/DensityOnGridController.h"
+#include "data/grid/GridPotential.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
+#include "data/matrices/DensityMatrixController.h"
 #include "dft/functionals/wrappers/XCFun.h"
+#include "io/FormattedOutputStream.h"
+#include "misc/HelperFunctions.h"
 #include "settings/DFTOptions.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -40,7 +44,7 @@ SAOPPotential<SCFMode>::SAOPPotential(std::shared_ptr<BasisController> basis, st
   : Potential<SCFMode>(basis),
     _densityOnGridController(densityOnGridController),
     _nOCC(systemController->getNOccupiedOrbitals<SCFMode>()),
-    _orbitalController(systemController->getActiveOrbitalController<SCFMode>()),
+    _systemController(systemController),
     _potential(nullptr),
     _energy(0.0),
     _grid(densityOnGridController->getGridController()) {
@@ -59,11 +63,13 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
     for_spin(pot) {
       pot_spin.setZero();
     };
+    if (_systemController->template hasElectronicStructure<SCFMode>())
+      _orbitalController = _systemController->template getActiveOrbitalController<SCFMode>();
     XCFun<SCFMode> xcFun(128);
-    if (_orbitalController->orbitalsAvailable()) {
+    if (_orbitalController) {
       // the density
       const auto& density = _densityOnGridController->getDensityOnGrid();
-      Matrix<int> evaluatedGridPoints;
+      Eigen::MatrixXi evaluatedGridPoints;
       // the density gradient
       auto& drho_dr = _densityOnGridController->getDensityGradientOnGrid();
       // the potential
@@ -93,17 +99,10 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
         for (unsigned int i = 0; i < _nOCC_spin; ++i) {
           newDensityMatrix.setZero();
           auto currentCoefVector = coefficients_spin.col(i);
-          unsigned int nBasisFunc(newDensityMatrix.cols());
-          assert(nBasisFunc == currentCoefVector.size());
-          for (unsigned int k = 0; k < nBasisFunc; ++k) {
-            for (unsigned int l = 0; l < nBasisFunc; ++l) {
-              newDensityMatrix(l, k) += _occupations * currentCoefVector(l) * currentCoefVector(k);
-            }
-          }
+          newDensityMatrix += _occupations * currentCoefVector * currentCoefVector.transpose();
           densityMatrices_spin.push_back(newDensityMatrix);
         }
       };
-
       /*
        * 1. b) Calculate all exp(-2(eps_n-eps_i)^2 and 1 - exp(-2(eps_n-eps_i)^2
        *    c) Calculate all sqrt(eps_n-eps_i)
@@ -170,7 +169,6 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
         evaluatedGridPoints(iBlock) = blocksize;
         // the first and last grid index of the current block
         unsigned int firstGridIndex = _basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
-        unsigned int lastGridIndex = firstGridIndex + blocksize;
         /*
          * 2. a) Calculate all LB potential
          *       alpha nu_x,LDA+ nu_C,LDA - beta x(r)^2 rho^(1/3)(r) / (1+3 beta x(r) ln[(x(r)+sqrt{x(r)^2+1})]),
@@ -178,76 +176,78 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
          *       and calculating nu_hole
          */
         // 1/rho(r) for the current block
-        SpinPolarizedData<SCFMode, Eigen::VectorXd> recRho(blocksize);
+        SpinPolarizedData<SCFMode, Eigen::VectorXd> recRho(Eigen::VectorXd::Zero(blocksize));
+        Eigen::VectorXd recTotalRho = Eigen::VectorXd::Zero(blocksize);
+        for (unsigned int r = 0; r < blocksize; ++r) {
+          double totalDens = 0.0;
+          for_spin(density, recRho) {
+            double rho_r_spin = density_spin(r + firstGridIndex);
+            totalDens += rho_r_spin;
+            if (rho_r_spin > 1e-9)
+              recRho_spin(r) = 1.0 / rho_r_spin;
+          };
+          if (totalDens > 1E-9)
+            recTotalRho(r) = 1.0 / totalDens;
+        }
         // the LB potential contribution
-        SpinPolarizedData<SCFMode, Eigen::VectorXd> nu_lb(blocksize);
+        SpinPolarizedData<SCFMode, Eigen::VectorXd> nu_lb(Eigen::VectorXd::Zero(blocksize));
         // nu_hole
-        Eigen::VectorXd nu_hole(blocksize);
-        nu_hole.setZero();
-        for_spin(nu_lb) {
-          nu_lb_spin.setZero();
+        Eigen::VectorXd nu_hole = Eigen::VectorXd::Zero(blocksize);
+        // calculating the LDA contribution to the LB potential separately to make use of the for_spin macro.
+        for_spin(nu_LDA_x, nu_LDA_c) {
+          nu_LDA_x_spin.segment(firstGridIndex, blocksize) = _alpha * nu_LDA_x_spin.segment(firstGridIndex, blocksize) +
+                                                             nu_LDA_c_spin.segment(firstGridIndex, blocksize);
         };
-        recRho = nu_lb;
-        // calculating the LDA contribution to the LB potential separately to make use of the for_spin makro.
-        for (unsigned int r = firstGridIndex; r < lastGridIndex; ++r) {
-          unsigned int reducedIndex = r - firstGridIndex;
-          for_spin(nu_LDA_x, nu_LDA_c) {
-            nu_LDA_x_spin[r] = _alpha * nu_LDA_x_spin[r] + nu_LDA_c_spin[r];
-          };
-          /*
-           * Storing the density gradient differently to make further calculations more convenient
-           */
-          SpinPolarizedData<SCFMode, Eigen::Vector3d> dRho_dr;
-          auto& drho_drx = drho_dr.x;
-          auto& drho_dry = drho_dr.y;
-          auto& drho_drz = drho_dr.z;
-          for_spin(drho_drx, drho_dry, drho_drz, dRho_dr) {
-            dRho_dr_spin = Eigen::Vector3d(drho_drx_spin(r), drho_dry_spin(r), drho_drz_spin(r));
-          };
-          for_spin(dRho_dr, density, recRho, nu_lb, nu_LDA_x) {
-            if (density_spin(r) > 1E-9) {
-              recRho_spin(reducedIndex) = 1 / density_spin(r);
-              // lb potential
-              if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
-                auto x_r = dRho_dr_spin.norm() / (pow(density_spin(r), 4.0 / 3.0));
-                nu_lb_spin(reducedIndex) = nu_LDA_x_spin[r] - (_beta * x_r * x_r * pow(density_spin(r), 1.0 / 3.0)) /
-                                                                  (1 + 3 * _beta * x_r * log(x_r + sqrt(x_r * x_r + 1)));
-              }
-              else {
-                auto x_r = dRho_dr_spin.norm() / (2 * pow(density_spin(r) / 2, 4.0 / 3.0));
-                nu_lb_spin(reducedIndex) = nu_LDA_x_spin[r] - (_beta * x_r * x_r * pow(density_spin(r) / 2, 1.0 / 3.0)) /
-                                                                  (1 + 3 * _beta * x_r * log(x_r + sqrt(x_r * x_r + 1)));
-              }
-            }
-          };
-          // nu_hole
-          double totalDensity_r = 0.0;
-          for_spin(density) {
-            totalDensity_r += density_spin(r);
-          };
-          if (totalDensity_r > 1E-9) {
-            nu_hole(reducedIndex) = (2 * (*epuvPerdew)[r] + 2 * (*epuvBecke)[r]) / totalDensity_r;
+        auto& drho_drx = drho_dr.x;
+        auto& drho_dry = drho_dr.y;
+        auto& drho_drz = drho_dr.z;
+        for_spin(drho_drx, drho_dry, drho_drz, density, recRho, nu_lb, nu_LDA_x) {
+          const Eigen::VectorXd nablaRhoNorm = (drho_drx_spin.segment(firstGridIndex, blocksize).array() *
+                                                    drho_drx_spin.segment(firstGridIndex, blocksize).array() +
+                                                drho_dry_spin.segment(firstGridIndex, blocksize).array() *
+                                                    drho_dry_spin.segment(firstGridIndex, blocksize).array() +
+                                                drho_drz_spin.segment(firstGridIndex, blocksize).array() *
+                                                    drho_drz_spin.segment(firstGridIndex, blocksize).array())
+                                                   .sqrt();
+          const auto one = Eigen::ArrayXd::Constant(blocksize, 1.0);
+          if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
+            const Eigen::ArrayXd x = nablaRhoNorm.array() * recRho_spin.array().pow(4.0 / 3.0);
+            const Eigen::ArrayXd x2 = x * x;
+            nu_lb_spin = nu_LDA_x_spin.segment(firstGridIndex, blocksize).array() -
+                         (_beta * x2 * density_spin.segment(firstGridIndex, blocksize).array().pow(1.0 / 3.0)) /
+                             (one + 3.0 * _beta * x * (x + (x2 + one).sqrt()).log());
           }
-        } /* for r */
+          else {
+            const Eigen::ArrayXd x = 0.5 * nablaRhoNorm.array() * (2 * recRho_spin).array().pow(4.0 / 3.0);
+            const Eigen::ArrayXd x2 = x * x;
+            nu_lb_spin = nu_LDA_x_spin.segment(firstGridIndex, blocksize).array() -
+                         (_beta * x2 * (0.5 * density_spin.segment(firstGridIndex, blocksize)).array().pow(1.0 / 3.0)) /
+                             (one + 3.0 * _beta * x * (x + (x2 + one).sqrt()).log());
+          }
+        };
+        // nu_hole
+        nu_hole = (2 * epuvPerdew->segment(firstGridIndex, blocksize).array() +
+                   2 * epuvBecke->segment(firstGridIndex, blocksize).array()) *
+                  recTotalRho.array();
         /*
          * 2. b) Calculate all scaling coefficients (psi_i^2/rho) in matrix representation -> nOCC x blocksize
          */
         // the qout(r,i) matrix
-        SpinPolarizedData<SCFMode, Matrix<double>> qout;
+        SpinPolarizedData<SCFMode, Eigen::MatrixXd> qout;
+        const Eigen::MatrixXd pA = constructProjectionMatrix(negligible);
+        const Eigen::MatrixXd basisFuncVA = basisFuncBlockVal * pA;
         for_spin(recRho, densityMatrices, qout, _nOCC) {
           qout_spin.resize(blocksize, _nOCC_spin);
           qout_spin.setZero();
           for (unsigned int i = 1; i < _nOCC_spin; ++i) {
-            for (unsigned int col = 0; col < basisFuncBlockVal.cols(); col++) {
-              if (negligible[col])
-                continue;
+            const Eigen::MatrixXd signDensMat_i = pA.transpose() * densityMatrices_spin[i] * pA;
+            const unsigned int nSign = signDensMat_i.cols();
+            for (unsigned int col = 0; col < nSign; col++) {
               Eigen::VectorXd tmp = Eigen::VectorXd::Zero(blocksize);
-              for (unsigned int row = 0; row < basisFuncBlockVal.cols(); row++) {
-                if (negligible[row])
-                  continue;
-                tmp += basisFuncBlockVal.col(row) * densityMatrices_spin[i](row, col);
+              for (unsigned int row = 0; row < nSign; row++) {
+                tmp += basisFuncVA.col(row) * signDensMat_i(row, col);
               }
-              qout_spin.col(i).array() += tmp.array() * basisFuncBlockVal.col(col).array();
+              qout_spin.col(i).array() += tmp.array() * basisFuncVA.col(col).array();
             }
             qout_spin.col(i).array() = qout_spin.col(i).array() * recRho_spin.array();
           }
@@ -256,33 +256,25 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
          * 3. Adding up
          */
         for_spin(nu_lb, exp_eps, sqrt_eps, qout, saopGridPotential) {
-          Eigen::VectorXd blockPot(blocksize);
-          Eigen::VectorXd E = Eigen::VectorXd::Constant(exp_eps_spin.size(), 1);
-          //            std::cout << (E-exp_eps_spin)+exp_eps_spin << std::endl;
-          blockPot = ((nu_lb_spin * exp_eps_spin.transpose()) +
-                      ((qout_spin * sqrt_eps_spin) + nu_hole) * (E - exp_eps_spin).transpose())
-                         .cwiseProduct(qout_spin)
-                         .rowwise()
-                         .sum();
-          for (unsigned int r = firstGridIndex; r < lastGridIndex; ++r) {
-            unsigned int reducedIndex = r - firstGridIndex;
-            saopGridPotential_spin[r] = blockPot(reducedIndex);
-          } /* for r */
-        };  /* for spin */
-      }     /* for iBlock, parallel for */
-      // sanity check if all grid points have been evaluated
-      assert(evaluatedGridPoints.sum() == static_cast<int>(_grid->getNGridPoints()) &&
-             "not all grid points were evaluated! Something is wrong here!");
+          const Eigen::VectorXd one = Eigen::VectorXd::Constant(exp_eps_spin.size(), 1);
+          saopGridPotential_spin.segment(firstGridIndex, blocksize) =
+              ((nu_lb_spin * exp_eps_spin.transpose()) +
+               ((qout_spin * sqrt_eps_spin) + nu_hole) * (one - exp_eps_spin).transpose())
+                  .cwiseProduct(qout_spin)
+                  .rowwise()
+                  .sum();
+        }; /* for spin */
+      }    /* for iBlock, parallel for */
       /*
        * 4. Transforming the potential from grid representation to a matrix
        */
       _gridToMatrix->addScalarOperatorToMatrix(pot, saopGridPotential);
     } /* if orbtialsAvailable */
     else {
-      std::cout << std::endl;
-      std::cout << "SAOP-Potential: No initial orbital data available."
-                << " Making initial guess using LDA functional." << std::endl;
-      std::cout << std::endl;
+      OutputControl::vOut << std::endl;
+      OutputControl::vOut << "SAOP-Potential: No initial orbital data available."
+                          << " Making initial guess using LDA functional." << std::endl
+                          << std::endl;
       auto funcData = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS,
                                      CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::LDA),
                                      _densityOnGridController);

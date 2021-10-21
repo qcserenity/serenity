@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
+#include "energies/EnergyComponentController.h"
 #include "misc/RememberingFactory.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "tasks/FDETask.h"
@@ -32,11 +33,17 @@
 #include <vector>
 
 namespace Serenity {
-
 /* Forward Declarations */
 class SystemController;
 class GridController;
+template<Options::SCF_MODES SCFMode>
+class PCMPotential;
+template<Options::SCF_MODES SCFMode>
+class ESIPotentials;
+template<Options::SCF_MODES SCFMode>
+class ECPInteractionPotential;
 
+template<Options::SCF_MODES SCFMode>
 /**
  * @class FDEPotentialBundleFactory FDEPotentialBundleFactory.h
  * @brief Constructs an embedding potential bundle based on a set of EmbeddingSettings and optional
@@ -54,7 +61,6 @@ class GridController;
  *
  *            MB
  */
-template<Options::SCF_MODES SCFMode>
 class FDEPotentialBundleFactory {
  private:
   /**
@@ -109,6 +115,17 @@ class FDEPotentialBundleFactory {
              const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
              std::shared_ptr<SystemController> supersystem, bool topDown, bool noSuperRecon, double gridCutOff,
              std::vector<std::shared_ptr<EnergyComponentController>> eConts, unsigned int firstPassiveSystemIndex);
+  // Building the mixed embedding potential for exact/approx embedding
+  static std::shared_ptr<PotentialBundle<SCFMode>>
+  buildMixedEmbedding(std::shared_ptr<SystemController> activeSystem,
+                      std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
+                      std::vector<std::shared_ptr<SystemController>> environmentSystems,
+                      std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
+                      const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
+                      bool topDown, double gridCutOff, std::vector<std::shared_ptr<EnergyComponentController>> eConts,
+                      std::shared_ptr<PotentialBundle<SCFMode>> potBundle,
+                      std::shared_ptr<PotentialBundle<SCFMode>> esiPot, std::shared_ptr<PCMPotential<SCFMode>> pcm,
+                      std::shared_ptr<ECPInteractionPotential<SCFMode>> ecpInt_total);
 };
 
 } /* namespace Serenity */

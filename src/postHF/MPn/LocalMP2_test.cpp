@@ -156,7 +156,7 @@ TEST_F(LocalMP2Test, LocalizedWater) {
   LocalCorrelationSettings lCSettings;
   lCSettings.orbitalToShellThreshold = 1e-5;
   lCSettings.mullikenThreshold = 1e-5;
-  lCSettings.fockMatrixPreescreeningThreshold = 1e-5;
+  lCSettings.fockMatrixPrescreeningThresholdd = 1e-5;
   lCSettings.pnoThreshold = 1e-12;
   lCSettings.doiPAOThreshold = 1e-7;
   lCSettings.diisStartResidual = 1e-4;

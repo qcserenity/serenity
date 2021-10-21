@@ -20,14 +20,14 @@
 
 /* Include Class Header*/
 #include "basis/CustomBasisController.h"
+#include "basis/Basis.h" //Constructor.
 
 namespace Serenity {
-using namespace std;
 
 CustomBasisController::CustomBasisController(std::vector<std::shared_ptr<const Shell>>& basisFunctions,
                                              const std::string& basisString)
   : BasisController(basisString) {
-  _basis = unique_ptr<Basis>(new Basis());
+  _basis = std::unique_ptr<Basis>(new Basis());
   _basis->insert(_basis->end(), basisFunctions.begin(), basisFunctions.end());
 
   const unsigned int nBasRed = _basis->size();
@@ -67,6 +67,8 @@ CustomBasisController::CustomBasisController(std::vector<std::shared_ptr<const S
     }
     i += (*_basis)[iRed]->getNContracted();
   }
+  _pureCartesian = (_nBasisFunctions == _nBasisFunctionsCart);
+  _pureSpherical = (_nBasisFunctions == _nBasisFunctionsSpherical);
 }
 
 std::unique_ptr<Basis> CustomBasisController::produceBasisFunctionVector() {

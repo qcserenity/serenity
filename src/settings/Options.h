@@ -23,12 +23,14 @@
 
 /* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
-//#include "settings/DFTOptions.h"
 /* Include Std and External Headers */
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cassert>
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace Serenity {
@@ -152,9 +154,8 @@ template<>
 inline void resolve<std::vector<unsigned int>>(std::string& value, std::vector<unsigned int>& field) {
   if (value.empty()) {
     for (unsigned int val : field) {
-      std::ostringstream strs;
-      strs << val << ' ';
-      value = strs.str();
+      std::string varAsString = boost::lexical_cast<std::string>(val);
+      value += (varAsString + " ");
     }
   }
   else {
@@ -165,7 +166,7 @@ inline void resolve<std::vector<unsigned int>>(std::string& value, std::vector<u
     }
     try {
       field.clear();
-      istringstream iss(value);
+      std::istringstream iss(value);
       std::string word;
       while (iss >> word) {
         field.push_back(std::stoi(word));
@@ -177,12 +178,49 @@ inline void resolve<std::vector<unsigned int>>(std::string& value, std::vector<u
   }
 }
 template<>
+inline void resolve<std::vector<std::vector<unsigned int>>>(std::string& value, std::vector<std::vector<unsigned int>>& field) {
+  if (value.empty()) {
+    for (unsigned outer = 0; outer < field.size(); ++outer) {
+      for (unsigned inner = 0; inner < field[outer].size(); ++inner) {
+        std::string varAsString = boost::lexical_cast<std::string>(field[outer][inner]);
+        value += (varAsString + " ");
+      }
+    }
+  }
+  else {
+    std::string bad_symbols = ",?\\'\"&*()^%$#@!{}[]|<>?+-";
+    for (auto& c : bad_symbols) {
+      if (value.find(c) != std::string::npos)
+        throw SerenityError("ERROR: List inputs require spaces as delimiters.");
+    }
+    boost::replace_all(value, ";", " ; ");
+    try {
+      field.clear();
+      std::istringstream iss(value);
+      std::string word;
+      field.push_back({});
+      unsigned item = 0;
+      while (iss >> word) {
+        if (word == ";") {
+          field.push_back({});
+          item++;
+        }
+        else {
+          field[item].push_back(std::stoi(word));
+        }
+      }
+    }
+    catch (...) {
+      throw SerenityError("ERROR: Could not convert '" + value + "' into a vector of vector of unsigned integers.");
+    }
+  }
+}
+template<>
 inline void resolve<std::vector<unsigned long int>>(std::string& value, std::vector<unsigned long int>& field) {
   if (value.empty()) {
     for (unsigned long int val : field) {
-      std::ostringstream strs;
-      strs << val << ' ';
-      value = strs.str();
+      std::string varAsString = boost::lexical_cast<std::string>(val);
+      value += (varAsString + " ");
     }
   }
   else {
@@ -193,7 +231,7 @@ inline void resolve<std::vector<unsigned long int>>(std::string& value, std::vec
     }
     try {
       field.clear();
-      istringstream iss(value);
+      std::istringstream iss(value);
       std::string word;
       while (iss >> word) {
         field.push_back(std::stoul(word));
@@ -208,9 +246,8 @@ template<>
 inline void resolve<std::vector<int>>(std::string& value, std::vector<int>& field) {
   if (value.empty()) {
     for (int val : field) {
-      std::ostringstream strs;
-      strs << val << ' ';
-      value = strs.str();
+      std::string varAsString = boost::lexical_cast<std::string>(val);
+      value += (varAsString + " ");
     }
   }
   else {
@@ -221,7 +258,7 @@ inline void resolve<std::vector<int>>(std::string& value, std::vector<int>& fiel
     }
     try {
       field.clear();
-      istringstream iss(value);
+      std::istringstream iss(value);
       std::string word;
       while (iss >> word) {
         field.push_back(std::stoi(word));
@@ -236,14 +273,12 @@ template<>
 inline void resolve<std::vector<bool>>(std::string& value, std::vector<bool>& field) {
   if (value.empty()) {
     for (bool val : field) {
-      std::ostringstream strs;
       if (val) {
-        strs << "true " << ' ';
+        value += "true ";
       }
       else {
-        strs << "false " << ' ';
+        value += "false ";
       }
-      value = strs.str();
     }
   }
   else {
@@ -253,7 +288,7 @@ inline void resolve<std::vector<bool>>(std::string& value, std::vector<bool>& fi
         throw SerenityError("ERROR: List inputs require spaces as delimiters.");
     }
     field.clear();
-    istringstream iss(value);
+    std::istringstream iss(value);
     std::string word;
     while (iss >> word) {
       std::string copy = word;
@@ -275,9 +310,8 @@ template<>
 inline void resolve<std::vector<double>>(std::string& value, std::vector<double>& field) {
   if (value.empty()) {
     for (double val : field) {
-      std::ostringstream strs;
-      strs << val << ' ';
-      value = strs.str();
+      std::string varAsString = boost::lexical_cast<std::string>(val);
+      value += (varAsString + " ");
     }
   }
   else {
@@ -288,7 +322,7 @@ inline void resolve<std::vector<double>>(std::string& value, std::vector<double>
     }
     try {
       field.clear();
-      istringstream iss(value);
+      std::istringstream iss(value);
       std::string word;
       while (iss >> word) {
         field.push_back(std::stod(word));
@@ -303,9 +337,7 @@ template<>
 inline void resolve<std::vector<std::string>>(std::string& value, std::vector<std::string>& field) {
   if (value.empty()) {
     for (std::string val : field) {
-      std::ostringstream strs;
-      strs << val << ' ';
-      value = strs.str();
+      value += (val + " ");
     }
   }
   else {
@@ -316,7 +348,7 @@ inline void resolve<std::vector<std::string>>(std::string& value, std::vector<st
     }
     try {
       field.clear();
-      istringstream iss(value);
+      std::istringstream iss(value);
       std::string word;
       while (iss >> word) {
         field.push_back(word);
@@ -356,6 +388,7 @@ void check(const std::map<std::string, T> m, std::string& key, T& field) {
   }
 }
 } /* namespace Options */
+
 } /* namespace Serenity */
 
 #endif /* OPTIONS_H_ */

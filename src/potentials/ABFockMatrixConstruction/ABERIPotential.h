@@ -20,7 +20,6 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
-#include "integrals/wrappers/Libint.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "potentials/ABFockMatrixConstruction/ABPotential.h"
 #include "settings/BasisOptions.h"
@@ -31,6 +30,7 @@
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
+class Libint;
 
 template<Options::SCF_MODES SCFMode>
 class ABERIPotential : public ABPotential<SCFMode>,

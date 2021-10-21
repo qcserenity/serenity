@@ -23,8 +23,9 @@
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
 #include "io/IOOptions.h"
-#include "settings/Settings.h"
+#include "tasks/LocalizationTask.h"
 #include "tasks/ScfTask.h"
+#include "tasks/SystemSplittingTask.h"
 #include "tasks/TDEmbeddingTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -55,21 +56,7 @@ class FreezeAndThawTaskTest : public ::testing::Test {
       task.run();
       _supersystemEnergy = supersystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy();
       // clean up
-      std::remove((supersystem->getSettings().path +
-                   "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
-                      .c_str());
-      std::remove(
-          (supersystem->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz").c_str());
-      std::remove((supersystem->getSettings().path +
-                   "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res")
-                      .c_str());
-      std::remove((supersystem->getSettings().path +
-                   "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5")
-                      .c_str());
-      std::remove((supersystem->getSettings().path +
-                   "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5")
-                      .c_str());
-      std::remove((supersystem->getSettings().path).c_str());
+      SystemController__TEST_SUPPLY::cleanUpSystemDirectory(supersystem);
     } // if
     return _supersystemEnergy;
   }
@@ -214,14 +201,8 @@ TEST_F(FreezeAndThawTaskTest, supersystembasis_Hoffmann_HYBRID) {
   double superEnergy = supersystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy();
   // clean up
   auto supersystemName = supersystem->getSystemName();
-  std::remove((supersystem->getSettings().path + supersystemName + ".settings").c_str());
-  std::remove((supersystem->getSettings().path + supersystemName + ".xyz").c_str());
-  std::remove((supersystem->getSettings().path + supersystemName + ".energies.res").c_str());
-  std::remove((supersystem->getSettings().path + supersystemName + ".orbs.res.h5").c_str());
-  std::remove((supersystem->getSettings().path + supersystemName + ".dmat.res.h5").c_str());
-  std::remove((supersystem->getSettings().path).c_str());
-
   EXPECT_NEAR(superEnergy, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(supersystem->getSystemPath() + "/", supersystemName);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -330,27 +311,8 @@ TEST_F(FreezeAndThawTaskTest, TDPlusFaT) {
   // Different results to the scratch calculation (restricted) due to different settings of the systems on disk.
   EXPECT_NEAR(getSupersystemEnergy(), act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
   // Clean up
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.settings")
-                  .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-                                         "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.xyz")
-                  .c_str());
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.energies.res")
-                  .c_str());
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.orbs.res.h5")
-                  .c_str());
-  std::remove((env->getSettings().path +
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
-               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.res.h5")
-                  .c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/out").c_str());
-  std::remove((env->getSettings().path + "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE").c_str());
+  std::string name = "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 /**
@@ -399,5 +361,86 @@ TEST_F(FreezeAndThawTaskTest, WaterDimer_DFTinDFT_PassiveSolvated) {
               eCont->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_EMBEDDED_KS_DFT_ENERGY), 1e-6);
   SystemController__TEST_SUPPLY::cleanUp();
 }
+/**
+ * @test
+ * @brief Tests FDETask.h/.cpp: Tests energy for multiscale approx in exact embedding (Levelshift/ nadd-kin).
+ */
+TEST_F(FreezeAndThawTaskTest, rMultiscaleLevel) {
+  const auto SPIN = Options::SCF_MODES::RESTRICTED;
+  auto act1_act2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_6_31Gs_BP86, true);
+  auto act1 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_1_6_31Gs_BP86, true);
+  auto act2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_2_6_31Gs_BP86, true);
+  auto env3 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_3_6_31Gs_BP86, true);
+  act1_act2->setSCFMode(SPIN);
+  act1->setSCFMode(SPIN);
+  act2->setSCFMode(SPIN);
+  env3->setSCFMode(SPIN);
+  auto task = FreezeAndThawTask<SPIN>({act1_act2, env3}, {});
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  // Perform FaT with comibed 1+2 and 3 calculation
+  task.run();
+  // Perform Localization
+  auto localization = LocalizationTask(act1_act2);
+  localization.run();
+  // Splitting
+  auto splitting = SystemSplittingTask<SPIN>(act1_act2, {act1, act2});
+  splitting.run();
+  // Run additional FaT with 1 cycle to relax exactly treated systems
+  // auto task2 = FDETask<SPIN>(act1,{act2,env3});
+  // task2.settings.calculateEnvironmentEnergy = true;
+  auto task2 = FreezeAndThawTask<SPIN>({act1, act2}, {env3});
+  task2.settings.maxCycles = 2;
+  task2.settings.convThresh = 0.0;
+  task2.settings.embedding.embeddingModeList = {Options::KIN_EMBEDDING_MODES::LEVELSHIFT,
+                                                Options::KIN_EMBEDDING_MODES::LEVELSHIFT,
+                                                Options::KIN_EMBEDDING_MODES::NADD_FUNC};
+  task2.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
+  task2.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
+                                             CompositeFunctionals::XCFUNCTIONALS::BP86};
+  task2.run();
+  EXPECT_NEAR(act1_act2->getElectronicStructure<SPIN>()->getEnergy(), act2->getElectronicStructure<SPIN>()->getEnergy(), 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+/**
+ * @test
+ * @brief Tests FDETask.h/.cpp: Tests energy for multiscale approx in exact embedding (Huzinaga/ nadd-kin; unrestricted).
+ */
+TEST_F(FreezeAndThawTaskTest, uMultiscaleHuzinaga) {
+  const auto SPIN = Options::SCF_MODES::UNRESTRICTED;
+  auto act1_act2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_6_31Gs_BP86, true);
+  auto act1 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_1_6_31Gs_BP86, true);
+  auto act2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_2_6_31Gs_BP86, true);
+  auto env3 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He_3_6_31Gs_BP86, true);
+  act1_act2->setSCFMode(SPIN);
+  act1->setSCFMode(SPIN);
+  act2->setSCFMode(SPIN);
+  env3->setSCFMode(SPIN);
+  auto task = FreezeAndThawTask<SPIN>({act1_act2, env3}, {});
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  // Perform FaT with comibed 1+2 and 3 calculation
+  task.run();
+  // Perform Localization
+  auto localization = LocalizationTask(act1_act2);
+  localization.run();
+  // Splitting
+  auto splitting = SystemSplittingTask<SPIN>(act1_act2, {act1, act2});
+  splitting.run();
+  // Run additional FaT with 1 cycle to relax exactly treated systems
+  auto task2 = FreezeAndThawTask<SPIN>({act1, act2}, {env3});
+  task2.settings.maxCycles = 2;
+  task2.settings.embedding.embeddingModeList = {Options::KIN_EMBEDDING_MODES::HUZINAGA, Options::KIN_EMBEDDING_MODES::HUZINAGA,
+                                                Options::KIN_EMBEDDING_MODES::NADD_FUNC};
+  task2.settings.convThresh = 0.0;
+  task2.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
+  task2.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
+                                             CompositeFunctionals::XCFUNCTIONALS::BP86};
+  task2.run();
 
+  EXPECT_NEAR(act1_act2->getElectronicStructure<SPIN>()->getEnergy(), act2->getElectronicStructure<SPIN>()->getEnergy(), 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
 } /*namespace Serenity*/

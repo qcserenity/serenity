@@ -20,11 +20,14 @@
 
 #ifndef BASIS_ABSHELLPAIRCALCULATOR_H_
 #define BASIS_ABSHELLPAIRCALCULATOR_H_
-/* Include Serenity Internal Headers */
-#include "basis/BasisController.h"
-#include "integrals/wrappers/Libint.h"
+/* Include Std and External Headers */
+#include <memory>
+#include <vector>
 
 namespace Serenity {
+/* Forward Declarations */
+class BasisController;
+class ShellPairData;
 /**
  * @class ABShellPairCalculator ABShellPairCalculator.h
  * @brief Calculates the ShellPairData for two arbitrary basis controllers.
@@ -44,34 +47,7 @@ class ABShellPairCalculator {
    * @return Returns the ShellPairData for the two basis controllers.
    */
   static std::shared_ptr<std::vector<ShellPairData>>
-  calculateShellPairData_AB(std::shared_ptr<BasisController> basisControllerA, std::shared_ptr<BasisController> basisControllerB) {
-    // intialize libint
-    auto& libint = Libint::getInstance();
-    libint.initialize(libint2::Operator::coulomb, 0, 4);
-    auto shellPairList = std::make_shared<std::vector<ShellPairData>>();
-    const auto& basisA = basisControllerA->getBasis();
-    const auto& basisB = basisControllerB->getBasis();
-    // loops over shells
-    Eigen::MatrixXd integrals;
-    const unsigned int nShellsA = basisA.size();
-    const unsigned int nShellsB = basisB.size();
-    for (unsigned int a = 0; a < nShellsA; ++a) {
-      const auto& shellA = *basisA[a];
-      for (unsigned int b = 0; b < nShellsB; ++b) {
-        const auto& shellB = *basisB[b];
-        // calculate integrals
-        if (libint.compute(libint2::Operator::coulomb, 0, shellA, shellB, shellA, shellB, integrals)) {
-          (*shellPairList).push_back(ShellPairData(a, b, sqrt(integrals.maxCoeff()), false));
-        } /* if (prescreen) */
-      }   /* b/shellB */
-    }     /* a/shellA */
-    // finalize libint
-    libint.finalize(libint2::Operator::coulomb, 0, 4);
-    // sort the list
-    std::sort((*shellPairList).begin(), (*shellPairList).end());
-    std::reverse((*shellPairList).begin(), (*shellPairList).end());
-    return shellPairList;
-  }
+  calculateShellPairData_AB(std::shared_ptr<BasisController> basisControllerA, std::shared_ptr<BasisController> basisControllerB);
 };
 
 } /* namespace Serenity */

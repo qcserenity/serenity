@@ -44,22 +44,22 @@ class GeometryOptimizationTest : public ::testing::Test {
 
   static void SetUpTestCase() {
     auto& libint = Libint::getInstance();
-    libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 4);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 1, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 4);
   }
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
-    libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 4);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 1, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 4);
   }
 };
 
@@ -70,7 +70,7 @@ class GeometryOptimizationTest : public ::testing::Test {
 TEST_F(GeometryOptimizationTest, h2Hf) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-TZVP";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   std::vector<std::shared_ptr<SystemController>> activesystems;
@@ -78,7 +78,7 @@ TEST_F(GeometryOptimizationTest, h2Hf) {
   auto geomTask = GeometryOptimizationTask<Options::SCF_MODES::RESTRICTED>(activesystems);
   geomTask.settings.rmsgradThresh = 1e-3;
   geomTask.run();
-  auto path = systemController->getSettings().path;
+  auto path = systemController->getSystemPath();
   auto atoms = systemController->getGeometry()->getAtoms();
   double dist = (*atoms[0] - *atoms[1]).distanceToOrigin() * BOHR_TO_ANGSTROM;
   EXPECT_NEAR(dist, 0.735141, 1e-3);
@@ -88,7 +88,8 @@ TEST_F(GeometryOptimizationTest, h2Hf) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.dmat.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -99,7 +100,7 @@ TEST_F(GeometryOptimizationTest, H2DimerDftNori) {
   SystemController__TEST_SUPPLY::cleanUp();
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PW91;
   settings.basis.label = "STO-6G";
   settings.basis.makeSphericalBasis = true;
@@ -117,21 +118,21 @@ TEST_F(GeometryOptimizationTest, H2DimerDftNori) {
   auto envCoM = envSystem->getGeometry()->getCenterOfMass();
   double dist = (actCoM - envCoM).distanceToOrigin() * BOHR_TO_ANGSTROM;
   EXPECT_NEAR(dist, 2.7868424993460508, 1e-3);
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "../opt.xyz").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "../opt.trj").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.settings").c_str()));
-  EXPECT_EQ(0, std::remove((activeSystem->getSettings().path + "SomeTestSystem.xyz").c_str()));
-  EXPECT_EQ(0, std::remove((envSystem->getSettings().path + "GeometryOptimizationTest_H2DimerDftNori_env.energies.res").c_str()));
-  EXPECT_EQ(0, std::remove((envSystem->getSettings().path + "GeometryOptimizationTest_H2DimerDftNori_env.dmat.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((envSystem->getSettings().path + "GeometryOptimizationTest_H2DimerDftNori_env.orbs.res.h5").c_str()));
-  EXPECT_EQ(0, std::remove((envSystem->getSettings().path + "GeometryOptimizationTest_H2DimerDftNori_env.settings").c_str()));
-  EXPECT_EQ(0, std::remove((envSystem->getSettings().path + "GeometryOptimizationTest_H2DimerDftNori_env.xyz").c_str()));
-  std::remove((activeSystem->getSettings().path).c_str());
-  std::remove((envSystem->getSettings().path).c_str());
-  std::remove("WARNING");
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "../opt.xyz").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "../opt.trj").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.settings").c_str()));
+  EXPECT_EQ(0, std::remove((activeSystem->getSystemPath() + "SomeTestSystem.xyz").c_str()));
+  EXPECT_EQ(0, std::remove((envSystem->getSystemPath() + "GeometryOptimizationTest_H2DimerDftNori_env.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((envSystem->getSystemPath() + "GeometryOptimizationTest_H2DimerDftNori_env.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((envSystem->getSystemPath() + "GeometryOptimizationTest_H2DimerDftNori_env.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((envSystem->getSystemPath() + "GeometryOptimizationTest_H2DimerDftNori_env.settings").c_str()));
+  EXPECT_EQ(0, std::remove((envSystem->getSystemPath() + "GeometryOptimizationTest_H2DimerDftNori_env.xyz").c_str()));
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(activeSystem);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(envSystem);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -142,7 +143,7 @@ TEST_F(GeometryOptimizationTest, H2DimerDftNori) {
 TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::CO_MINBAS, settings);
@@ -151,7 +152,7 @@ TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
   auto geomTask = GeometryOptimizationTask<Options::SCF_MODES::RESTRICTED>(activesystems);
   geomTask.settings.rmsgradThresh = 1e-3;
   geomTask.run();
-  auto path = systemController->getSettings().path;
+  auto path = systemController->getSystemPath();
   auto atoms = systemController->getGeometry()->getAtoms();
   double dist = (*atoms[0] - *atoms[1]).distanceToOrigin() * BOHR_TO_ANGSTROM;
   EXPECT_NEAR(dist, 1.20372, 1e-3);
@@ -161,7 +162,8 @@ TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.dmat.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -172,7 +174,7 @@ TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
 TEST_F(GeometryOptimizationTest, h2DftRi) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densityFitting = Options::DENS_FITS::RI;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP, settings);
@@ -181,7 +183,7 @@ TEST_F(GeometryOptimizationTest, h2DftRi) {
   auto geomTask = GeometryOptimizationTask<Options::SCF_MODES::RESTRICTED>(activesystems);
   geomTask.settings.rmsgradThresh = 1e-3;
   geomTask.run();
-  auto path = systemController->getSettings().path;
+  auto path = systemController->getSystemPath();
   auto atoms = systemController->getGeometry()->getAtoms();
   double dist = (*atoms[0] - *atoms[1]).distanceToOrigin() * BOHR_TO_ANGSTROM;
   EXPECT_NEAR(dist, 0.7326501, 1e-3);
@@ -191,7 +193,8 @@ TEST_F(GeometryOptimizationTest, h2DftRi) {
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.dmat.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
   EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
-  std::remove((path).c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 }; /* NameSpace Serenity */

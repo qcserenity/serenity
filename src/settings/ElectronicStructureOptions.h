@@ -21,10 +21,19 @@
 #ifndef SETTINGS_ELECTRONICSTRUCTUREOPTIONS_H_
 #define SETTINGS_ELECTRONICSTRUCTUREOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
 namespace Options {
+/**
+ * The file formats supported for the ReadOrbitals task.
+ *   TURBOMOLE: Turbomole ASCII-MOS.
+ *   SERENITY:  Serenity HDF5 files.
+ */
+enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1 };
+template<>
+void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field);
 
 /**
  * The type of SCF calculation that is made\n

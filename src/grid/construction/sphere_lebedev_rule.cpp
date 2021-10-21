@@ -39,8 +39,6 @@
 #include <fstream>
 #include <iostream>
 
-using namespace std;
-
 namespace Serenity {
 
 int gen_oh(int code, double a, double b, double v, double* x, double* y, double* z, double* w)
@@ -620,9 +618,9 @@ int gen_oh(int code, double a, double b, double v, double* x, double* y, double*
     num = 48;
   }
   else {
-    cerr << "\n";
-    cerr << "GEN_OH - Fatal error!\n";
-    cerr << "  Illegal value of code.\n";
+    std::cerr << "\n";
+    std::cerr << "GEN_OH - Fatal error!\n";
+    std::cerr << "  Illegal value of code.\n";
     exit(1);
   }
   return num;

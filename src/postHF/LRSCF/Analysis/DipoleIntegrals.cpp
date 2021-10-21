@@ -19,14 +19,11 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
-
 /* Include Serenity Internal Headers */
-#include "data/grid/BasisFunctionOnGridController.h"
-#include "data/grid/BasisFunctionOnGridControllerFactory.h"
-#include "grid/GridController.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "integrals/wrappers/Libint.h"
-#include "settings/Settings.h"
+#include "postHF/LRSCF/LRSCFController.h"
+#include "postHF/LRSCF/Sigmavectors/RICC2/XWFController.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
@@ -75,47 +72,43 @@ void DipoleIntegrals<SCFMode>::computeIntegrals() {
   Timings::timeTaken("LRSCF -      Dipole Integrals");
 
   // Perform AO -> MO transformation and assign shared pointer
-  _lengths = std::make_shared<const Eigen::MatrixXd>(ao2mo(len));
-  _velocities = std::make_shared<const Eigen::MatrixXd>(ao2mo(vel));
-  _magnetics = std::make_shared<const Eigen::MatrixXd>(ao2mo(mag));
+  _lengths = std::make_shared<const Eigen::MatrixXd>(this->ao2mo(len));
+  _velocities = std::make_shared<const Eigen::MatrixXd>(this->ao2mo(vel));
+  _magnetics = std::make_shared<const Eigen::MatrixXd>(this->ao2mo(mag));
 }
 
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd DipoleIntegrals<SCFMode>::ao2mo(std::vector<std::vector<MatrixInBasis<RESTRICTED>>>& ao_xyz) {
-  // Determine length of dipole matrices
-  unsigned int nDimension = 0;
-  for (unsigned int iSys = 0; iSys < _lrscf.size(); ++iSys) {
-    auto nOccupied = _lrscf[iSys]->getNOccupied();
-    auto nVirtual = _lrscf[iSys]->getNVirtual();
-    for_spin(nOccupied, nVirtual) {
-      nDimension += nOccupied_spin * nVirtual_spin;
-    };
-  }
+  Eigen::MatrixXd dipoles(0, 3);
 
-  Eigen::MatrixXd dipoles = Eigen::MatrixXd::Zero(nDimension, 3);
+  unsigned iStartSysSpin = 0;
+  for (unsigned iSys = 0; iSys < _lrscf.size(); ++iSys) {
+    auto no = _lrscf[iSys]->getNOccupied();
+    auto nv = _lrscf[iSys]->getNVirtual();
+    auto P = _lrscf[iSys]->getParticleCoefficients();
+    auto H = _lrscf[iSys]->getHoleCoefficients();
+    auto xwf = _lrscf[iSys]->getXWFController();
 
-  unsigned int iStartSys = 0;
-  for (unsigned int iSys = 0; iSys < _lrscf.size(); ++iSys) {
-    auto coeff = _lrscf[iSys]->getCoefficients();
-    auto nOccupied = _lrscf[iSys]->getNOccupied();
-    auto nVirtual = _lrscf[iSys]->getNVirtual();
-    for (unsigned int iMu = 0; iMu < 3; ++iMu) {
-      unsigned int iStartSpin = 0;
-      for_spin(coeff, nOccupied, nVirtual) {
-        Eigen::MatrixXd tmp = coeff_spin.block(0, 0, coeff_spin.rows(), nOccupied_spin).transpose() *
-                              ao_xyz[iSys][iMu] * coeff_spin.block(0, nOccupied_spin, coeff_spin.rows(), nVirtual_spin);
-        tmp.transposeInPlace();
-        dipoles.block(iStartSys + iStartSpin, iMu, nOccupied_spin * nVirtual_spin, 1) =
-            Eigen::Map<Eigen::VectorXd>(tmp.data(), tmp.cols() * tmp.rows());
-        iStartSpin += nOccupied_spin * nVirtual_spin;
-      };
-    }
-    for_spin(nOccupied, nVirtual) {
-      iStartSys += nOccupied_spin * nVirtual_spin;
+    for_spin(nv, no, P, H) {
+      unsigned nb = nv_spin + no_spin;
+      unsigned np = xwf ? nb : nv_spin;
+      unsigned nh = xwf ? nb : no_spin;
+      dipoles.conservativeResize(dipoles.rows() + np * nh, 3);
+      for (unsigned j = 0; j < 3; ++j) {
+        Eigen::MatrixXd tmp =
+            P_spin.middleCols(xwf ? 0 : no_spin, np).transpose() * ao_xyz[iSys][j] * H_spin.middleCols(0, nh);
+        dipoles.block(iStartSysSpin, j, np * nh, 1) = Eigen::Map<Eigen::VectorXd>(tmp.data(), np * nh);
+      }
+      iStartSysSpin += np * nh;
     };
   }
 
   return dipoles;
+}
+
+template<Options::SCF_MODES SCFMode>
+Point DipoleIntegrals<SCFMode>::getGaugeOrigin() {
+  return _gaugeOrigin;
 }
 
 template class DipoleIntegrals<Options::SCF_MODES::RESTRICTED>;

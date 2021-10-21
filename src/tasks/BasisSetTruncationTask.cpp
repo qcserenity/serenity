@@ -18,9 +18,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "tasks/BasisSetTruncationTask.h"
+#include "basis/Basis.h" //Sehll-wise truncation.
+#include "basis/CustomBasisController.h"
 #include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
+#include "integrals/OneElectronIntegralController.h" //Overlap integrals
 #include "misc/BasisSetTruncationAlgorithms.h"
 #include "misc/SystemSplittingTools.h"
 #include "misc/WarningTracker.h"
@@ -51,19 +55,28 @@ void BasisSetTruncationTask<SCFMode>::run() {
             (std::string) " Only shells centered on dummy atoms can be truncated!",
         iOOptions.printSCFCycleInfo);
   }
-  BasisSetTruncationAlgorithms truncAlgorithm(_system);
-
+  // We need to explicitly copy the basis controller, since it may be reset during basis
+  // set truncation. Since we would like to project the density matrix below. We need to
+  // keep the basis set information.
+  Basis basis = _system->getBasisController()->getBasis();
+  auto oldBasis = std::make_shared<CustomBasisController>(basis, "nonTruncated");
   // active density matrix
-  auto activeDensityMatrix = _system->getElectronicStructure<SCFMode>()->getDensityMatrix();
-
+  DensityMatrix<SCFMode> newActiveDensityMatrix(oldBasis);
+  auto oldActiveDensityMatrix = _system->getElectronicStructure<SCFMode>()->getDensityMatrix();
+  // Explcitly copy the 'old' density matrix.
+  for_spin(newActiveDensityMatrix, oldActiveDensityMatrix) {
+    newActiveDensityMatrix_spin.setZero();
+    newActiveDensityMatrix_spin += Eigen::MatrixXd(oldActiveDensityMatrix_spin);
+  };
   // truncate the basis set
+  BasisSetTruncationAlgorithms truncAlgorithm(_system);
   truncAlgorithm.truncateBasis(settings.truncAlgorithm, settings.truncationFactor,
-                               std::make_shared<DensityMatrix<Options::SCF_MODES::RESTRICTED>>(activeDensityMatrix.total()),
+                               std::make_shared<DensityMatrix<Options::SCF_MODES::RESTRICTED>>(oldActiveDensityMatrix.total()),
                                settings.netThreshold);
 
   // project former density matrix into the new basis set.
   DensityMatrix<SCFMode> projectedDens = SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(
-      activeDensityMatrix, _system->getBasisController(),
+      newActiveDensityMatrix, _system->getBasisController(),
       std::make_shared<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>(
           _system->getOneElectronIntegralController()->getOverlapIntegrals()));
 

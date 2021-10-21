@@ -81,11 +81,7 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
   void updateDensityMatrix();
 
   ///@brief Notification system implementation.
-  void notify() {
-    _outOfDate = true;
-    _densityMatrix.reset();
-    _occupations.reset();
-  }
+  void notify();
 
   /**
    * @brief A function to attach orbitals to the DensityMatrixController after its creation.
@@ -156,6 +152,8 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
   std::string _id;
   bool _diskmode = false;
   bool _fractionalDegeneracy = false;
+
+  void rebuildAufbauOccupations();
 };
 
 } /* namespace Serenity */

@@ -58,29 +58,29 @@ TEST_F(OrbitalPairSelectorTest, selectOrbitalPairs) {
       std::make_shared<MatrixInBasis<scfMode>>(waterDimer->getOneElectronIntegralController()->getOverlapIntegrals());
   auto paoController = std::make_shared<PAOController>(densPtr, sPtr, 1e-6);
 
-  OrbitalPairSelector selecter(waterDimer, paoController);
+  double collTh = 1e-2;
+  OrbitalPairSelector selector(waterDimer, paoController);
   std::vector<std::shared_ptr<OrbitalPair>> initialPairs;
   for (unsigned int i = 0; i < nOcc; ++i) {
     for (unsigned int j = 0; j < i; ++j) {
-      auto newPair = std::make_shared<OrbitalPair>(i, j);
+      auto newPair = std::make_shared<OrbitalPair>(i, j, 1e-7, 1e-3, collTh);
       initialPairs.push_back(newPair);
     } // for j
   }   // for i
   unsigned int nPAOs = paoController->getNPAOs();
   auto paoToOcc = std::make_shared<Eigen::SparseMatrix<int>>(Eigen::MatrixXi::Constant(nPAOs, nOcc, 1).sparseView());
-  double doiTh = 1e-3;
-  double collTh = 1e-4;
+  double doiTh = 1e-2;
   auto sysPot = waterDimer->getPotentials<scfMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
   auto f =
       std::make_shared<FockMatrix<scfMode>>(sysPot->getFockMatrix(*densPtr, std::make_shared<EnergyComponentController>()));
-  auto screenedPairs = selecter.selectOrbitalPairs(initialPairs, 1e-5, 1e-6, f, paoToOcc, doiTh, collTh);
+  auto screenedPairs = selector.selectOrbitalPairs(initialPairs, 1e-5, 1e-6, f, paoToOcc, doiTh);
   for (const auto& pair : screenedPairs.first) {
     EXPECT_EQ(pair->type, OrbitalPairTypes::CLOSE);
   }
   for (const auto& pair : screenedPairs.second) {
     EXPECT_GE(pair->dipolePairEnergy, pair->dipoleCollinearPairEnergy);
   }
-  EXPECT_EQ(screenedPairs.second.size(), 3);
+  EXPECT_EQ(screenedPairs.second.size(), 6);
   auto dPair1 = screenedPairs.second[0];
   auto dPair2 = screenedPairs.second[1];
   auto dPair3 = screenedPairs.second[2];

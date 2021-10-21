@@ -49,7 +49,7 @@ class MultipoleMomentTaskTest : public ::testing::Test {
  */
 TEST_F(MultipoleMomentTaskTest, Quad_R_Output) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
-  MultipoleMomentTask<RESTRICTED> task(act);
+  MultipoleMomentTask task({act});
   task.settings.highestOrder = 2;
   task.run();
 }
@@ -60,7 +60,7 @@ TEST_F(MultipoleMomentTaskTest, Quad_R_Output) {
 TEST_F(MultipoleMomentTaskTest, Quad_U_Output) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   act->setSCFMode(UNRESTRICTED);
-  MultipoleMomentTask<UNRESTRICTED> task(act);
+  MultipoleMomentTask task({act});
   task.settings.highestOrder = 2;
   task.run();
 }

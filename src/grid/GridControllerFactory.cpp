@@ -26,20 +26,20 @@
 #include <cassert>
 
 namespace Serenity {
-using namespace std;
 
-shared_ptr<AtomCenteredGridController>
-GridControllerFactory::produce(shared_ptr<const Geometry> geometry, Options::GRID_TYPES gridType, unsigned int gridSmoothing,
-                               Options::RADIAL_GRID_TYPES radialGridType, Options::SPHERICAL_GRID_TYPES sphericalGridType,
-                               unsigned int gridAccuracy, double gridWeightThreshold, const bool gridPointSorting) {
+std::shared_ptr<AtomCenteredGridController>
+GridControllerFactory::produce(std::shared_ptr<const Geometry> geometry, Options::GRID_TYPES gridType,
+                               unsigned int gridSmoothing, Options::RADIAL_GRID_TYPES radialGridType,
+                               Options::SPHERICAL_GRID_TYPES sphericalGridType, unsigned int gridAccuracy,
+                               double gridWeightThreshold, const bool gridPointSorting) {
   if (!_instance)
     _instance.reset(new GridControllerFactory);
   return _instance->getOrProduce(geometry, gridType, gridSmoothing, radialGridType, sphericalGridType, gridAccuracy,
                                  gridWeightThreshold, gridPointSorting);
 }
-shared_ptr<AtomCenteredGridController> GridControllerFactory::produce(std::shared_ptr<const Geometry> geometry,
-                                                                      const Settings& settings,
-                                                                      Options::GRID_PURPOSES purpose) {
+std::shared_ptr<AtomCenteredGridController> GridControllerFactory::produce(std::shared_ptr<const Geometry> geometry,
+                                                                           const Settings& settings,
+                                                                           Options::GRID_PURPOSES purpose) {
   if (purpose == Options::GRID_PURPOSES::SMALL) {
     return produce(geometry, settings.grid.gridType, settings.grid.smoothing, settings.grid.radialGridType,
                    settings.grid.sphericalGridType, settings.grid.smallGridAccuracy, settings.grid.weightThreshold,
@@ -50,7 +50,7 @@ shared_ptr<AtomCenteredGridController> GridControllerFactory::produce(std::share
                  settings.grid.gridPointSorting);
 }
 
-unique_ptr<AtomCenteredGridController>
+std::unique_ptr<AtomCenteredGridController>
 GridControllerFactory::produceNew(const std::shared_ptr<const Geometry> geometry, Options::GRID_TYPES gridType,
                                   unsigned int gridSmoothing, Options::RADIAL_GRID_TYPES radialGridType,
                                   Options::SPHERICAL_GRID_TYPES sphericalGridType, unsigned int gridAccuracy,
@@ -63,7 +63,7 @@ GridControllerFactory::produceNew(const std::shared_ptr<const Geometry> geometry
   /*
    * Construct and return the controller
    */
-  return unique_ptr<AtomCenteredGridController>(new AtomCenteredGridController(geometry, gridFactory, gridPointSorting));
+  return std::unique_ptr<AtomCenteredGridController>(new AtomCenteredGridController(geometry, gridFactory, gridPointSorting));
 }
 
 } /* namespace Serenity */

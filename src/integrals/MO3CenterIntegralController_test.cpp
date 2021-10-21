@@ -23,8 +23,9 @@
 #include "postHF/LocalCorrelation/LocalCorrelationController.h" //Easy construction of the MO3CenterIntegralController.
 #include "system/SystemController.h"                            //Test systems.
 #include "testsupply/SystemController__TEST_SUPPLY.h"           //Test systems.
-                                                                /* Include Std and External Headers */
-#include <gtest/gtest.h>                                        //Test framework.
+
+/* Include Std and External Headers */
+#include <gtest/gtest.h> //Test framework.
 namespace Serenity {
 /**
  * @class MO3CenterIntegralControllerTest MO3CenterIntegralController_test.cpp
@@ -52,7 +53,7 @@ TEST_F(MO3CenterIntegralControllerTest, H2_RIvsRI) {
   LocalCorrelationController lCController(system, lCSettings);
 
   auto auxBasis = system->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL);
-  auto m = auxBasis->getBasis().size();
+  auto m = auxBasis->getReducedNBasisFunctions();
   auto mo3CenterIntController = lCController.getMO3CenterIntegralController();
   auto exchangeInts =
       mo3CenterIntController->getMO3CenterInts(MO3CENTER_INTS::ia_K, Eigen::VectorXi::Constant(m, 1).sparseView());
@@ -86,7 +87,7 @@ TEST_F(MO3CenterIntegralControllerTest, ReadAndWrite) {
   LocalCorrelationController lCController(system, lCSettings);
 
   auto auxBasis = system->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL);
-  auto m = auxBasis->getBasis().size();
+  auto m = auxBasis->getReducedNBasisFunctions();
   auto mo3CenterIntController = lCController.getMO3CenterIntegralController();
   auto exchangeInts =
       mo3CenterIntController->getMO3CenterInts(MO3CENTER_INTS::ia_K, Eigen::VectorXi::Constant(m, 1).sparseView());

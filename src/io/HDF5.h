@@ -118,6 +118,18 @@ void check_attribute(H5::H5File file, const std::string& attributeName, const T&
     throw SerenityError(attributeName + " from file " + file.getFileName() + "does not match the current system");
   }
 }
+/**
+ * @brief Load an attribute from HDF5 file.
+ * @param file The HDF5 file.
+ * @param attributeName The name of the attribute to be loaded.
+ * @return The attribute value.
+ */
+template<typename T>
+T load_attribute(H5::H5File file, const std::string& attributeName) {
+  T value;
+  load_scalar_attribute(file, attributeName, value);
+  return value;
+}
 
 /**
  * @brief Loads a vector from file.

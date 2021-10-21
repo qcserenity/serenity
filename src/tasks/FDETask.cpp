@@ -26,14 +26,18 @@
 #include "data/matrices/MatrixInBasis.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
-#include "geometry/MolecularSurfaceFactory.h"
+#include "geometry/MolecularSurfaceController.h"
 #include "grid/GridControllerFactory.h"
 #include "io/FormattedOutput.h"
 #include "misc/WarningTracker.h"
 #include "postHF/MPn/LocalMP2.h"
+#include "postHF/MPn/LocalMP2InteractionCalculator.h"
 #include "postHF/MPn/MP2.h"
 #include "postHF/MPn/RIMP2.h"
+#include "potentials/ExchangeInteractionPotential.h"
+#include "potentials/NAddFuncPotential.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
+#include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
 #include "tasks/LocalizationTask.h"
@@ -73,7 +77,7 @@ void FDETask<SCFMode>::run() {
 
   _activeSystem->setDiskMode(false);
   for (auto sys : _environmentSystems) {
-    if (sys->getSettings().scfMode == RESTRICTED) {
+    if (sys->getSCFMode() == RESTRICTED) {
       sys->template getElectronicStructure<RESTRICTED>();
     }
     else {
@@ -111,7 +115,7 @@ void FDETask<SCFMode>::run() {
     // geometry of the entire system
     auto superSystemGeometry = std::make_shared<Geometry>(superSystemAtomsCavity);
     superSystemGeometry->deleteIdenticalAtoms();
-    auto molecularSurface = MolecularSurfaceFactory::produce(superSystemGeometry, settings.embedding.pcm);
+    auto molecularSurface = std::make_shared<MolecularSurfaceController>(superSystemGeometry, settings.embedding.pcm);
     _activeSystem->setMolecularSurface(molecularSurface, MOLECULAR_SURFACE_TYPES::FDE);
     for (auto sys : _environmentSystems)
       sys->setMolecularSurface(molecularSurface, MOLECULAR_SURFACE_TYPES::FDE);
@@ -173,7 +177,7 @@ void FDETask<SCFMode>::run() {
         else {
           fBaseName = fBaseName + ".energies.res";
         }
-        envEnergies->toFile(fBaseName, sys->getSettings().identifier);
+        envEnergies->toFile(fBaseName, sys->getSystemIdentifier());
       }
       else {
         assert(false && "Non-existing electronic structure theory requested");
@@ -183,21 +187,22 @@ void FDETask<SCFMode>::run() {
     auto energyContribution = (sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT)
                                   ? ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY
                                   : ENERGY_CONTRIBUTIONS::HF_ENERGY;
-    if (sys->getSettings().scfMode == SCFMode) {
+    if (sys->getSCFMode() == SCFMode) {
       // Add isolated energies to totEnvEnergy; we need them either way.
       if (sys->template getElectronicStructure<SCFMode>()->checkEnergy(energyContribution)) {
         totEnvEnergy += sys->template getElectronicStructure<SCFMode>()->getEnergy(energyContribution);
       }
       // Check interaction energies of every env system are present at this point
-      allInteractionsPresent *=
-          sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-          (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-           sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY));
+      allInteractionsPresent =
+          allInteractionsPresent &&
+          (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+           (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
+            sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
       eConts.push_back(sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
     }
     else {
-      if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
-        WarningTracker::printWarning("Warning: Calculating environment system " + sys->getSettings().name +
+      if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
+        WarningTracker::printWarning("Warning: Calculating environment system " + sys->getSystemName() +
                                          " in restricted scfMode.\n Will proceed by assuming that alpha and beta "
                                          "densities are equal for this system...\n",
                                      iOOptions.printSCFCycleInfo);
@@ -207,17 +212,18 @@ void FDETask<SCFMode>::run() {
               sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(energyContribution);
         }
         // Check interaction energies of every env system are present at this point
-        allInteractionsPresent *= sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
-                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-                                  (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
-                                       ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-                                   sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
-                                       ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY));
+        allInteractionsPresent =
+            allInteractionsPresent &&
+            (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
+                 ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+             (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
+              sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
+                  ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
         eConts.push_back(sys->template getElectronicStructure<RESTRICTED>()->getEnergyComponentController());
       }
-      else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         WarningTracker::printWarning(
-            "Warning: Calculating environment system " + sys->getSettings().name +
+            "Warning: Calculating environment system " + sys->getSystemName() +
                 " in unrestricted scfMode.\n Will proceed by summing up alpha and beta densities for this system...\n",
             iOOptions.printSCFCycleInfo);
         // Add KS-DFT energies to totEnvEnergy; we need them either way.
@@ -226,12 +232,13 @@ void FDETask<SCFMode>::run() {
               sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(energyContribution);
         }
         // Check interaction energies of every env system are present at this point
-        allInteractionsPresent *= sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
-                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-                                  (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
-                                       ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-                                   sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
-                                       ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY));
+        allInteractionsPresent =
+            allInteractionsPresent &&
+            (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
+                 ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+             (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
+              sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
+                  ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
         eConts.push_back(sys->template getElectronicStructure<UNRESTRICTED>()->getEnergyComponentController());
       }
       else {
@@ -248,16 +255,16 @@ void FDETask<SCFMode>::run() {
    */
   if (allInteractionsPresent) {
     for (auto sys : _environmentSystems) {
-      if (sys->getSettings().scfMode == SCFMode) {
+      if (sys->getSCFMode() == SCFMode) {
         totEnvEnergy += 0.5 * sys->template getElectronicStructure<SCFMode>()->getEnergy(
                                   ENERGY_CONTRIBUTIONS::FDE_ELECTROSTATIC_INTERACTIONS);
       }
       else {
-        if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+        if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
           totEnvEnergy += 0.5 * sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(
                                     ENERGY_CONTRIBUTIONS::FDE_ELECTROSTATIC_INTERACTIONS);
         }
-        else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+        else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
           totEnvEnergy += 0.5 * sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(
                                     ENERGY_CONTRIBUTIONS::FDE_ELECTROSTATIC_INTERACTIONS);
         }
@@ -281,11 +288,11 @@ void FDETask<SCFMode>::run() {
   // list of environment density matrices (their controllers)
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensities;
   for (auto sys : _environmentSystems) {
-    if (sys->getSettings().scfMode == SCFMode) {
+    if (sys->getSCFMode() == SCFMode) {
       envDensities.push_back(sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController());
     }
     else {
-      if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         // Build unrestricted DensityMatrixController
         DensityMatrix<SCFMode> uDensMat(sys->getBasisController());
         for_spin(uDensMat) {
@@ -293,7 +300,7 @@ void FDETask<SCFMode>::run() {
         };
         envDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(uDensMat));
       }
-      else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         // Build restricted DensityMatrixController
         DensityMatrix<SCFMode> rDensMat(sys->getBasisController());
         for_spin(rDensMat) {
@@ -330,16 +337,19 @@ void FDETask<SCFMode>::run() {
     actDispCorrection = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
         actsettings.dft.dispersion, _activeSystem->getGeometry(), _activeSystem->getSettings().dft.functional);
   }
-  /*
-   * Attach everything and run scf
-   */
   auto eCont = es->getEnergyComponentController();
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, actDispCorrection);
   /*
    * Attach everything and run scf
    */
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES, totEnvEnergy);
-  Scf<SCFMode>::perform(actsettings, es, fdePot);
+  if (this->settings.skipSCF) {
+    fdePot->getFockMatrix(es->getDensityMatrix(), eCont);
+    es->attachPotentials(fdePot);
+  }
+  else {
+    Scf<SCFMode>::perform(actsettings, es, fdePot);
+  }
 
   if (settings.gridCutOff > 0.0 and settings.finalGrid and !_finalGrid) {
     // atoms of all subsystems
@@ -403,51 +413,7 @@ void FDETask<SCFMode>::run() {
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_KINETIC, eLinNaddKin);
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_XC, eLinNaddXC);
   }
-
-  auto functional = resolveFunctional(_activeSystem->getSettings().dft.functional);
-  double MP2Correlation = 0.0;
-  if (settings.calculateMP2Energy && functional.isDoubleHybrid()) {
-    switch (settings.mp2Type) {
-      case Options::MP2_TYPES::LOCAL: {
-        LocalizationTask locTask(_activeSystem);
-        locTask.settings.locType = settings.locType;
-        locTask.settings.splitValenceAndCore = true;
-        locTask.run();
-        // perform MP2 for double hybrids
-        settings.lcSettings.embeddingSettings = settings.embedding;
-        FockMatrix<SCFMode> f = fdePot->getFockMatrix(_activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
-                                                      std::make_shared<EnergyComponentController>());
-        auto fock = std::make_shared<FockMatrix<RESTRICTED>>(_activeSystem->getBasisController());
-        for_spin(f) {
-          *fock = f_spin;
-        };
-        auto localCorrelationController =
-            std::make_shared<LocalCorrelationController>(_activeSystem, settings.lcSettings, _environmentSystems, fock);
-        LocalMP2 localMP2(localCorrelationController);
-        localMP2.settings.maxResidual = settings.maxResidual;
-        localMP2.settings.maxCycles = settings.maxCycles;
-        // ss and os scaling.
-        localMP2.settings.osScaling = functional.getosScaling();
-        localMP2.settings.ssScaling = functional.getssScaling();
-        MP2Correlation = functional.getHfCorrelRatio() * localMP2.calculateEnergyCorrection().sum();
-        break;
-      }
-      case Options::MP2_TYPES::RI: {
-        RIMP2<SCFMode> rimp2(_activeSystem, functional.getssScaling(), functional.getosScaling());
-        MP2Correlation = functional.getHfCorrelRatio() * rimp2.calculateCorrection();
-        break;
-      }
-      case Options::MP2_TYPES::AO: {
-        if (SCFMode != RESTRICTED)
-          throw SerenityError("MP2 is not available for unrestricted systems. Please use the RI approximation.");
-        MP2EnergyCorrector<RESTRICTED> mp2EnergyCorrector(_activeSystem, functional.getssScaling(), functional.getosScaling());
-        MP2Correlation = functional.getHfCorrelRatio() * mp2EnergyCorrector.calculateElectronicEnergy();
-        break;
-      }
-    }
-  } // if settings.calculateMP2Energy && functional.isDoubleHybrid()
-  eCont->addOrReplaceComponent(
-      std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, MP2Correlation));
+  calculateMP2CorrelationContribution(fdePot);
   /*
    * Print final results if sensible
    */
@@ -458,7 +424,7 @@ void FDETask<SCFMode>::run() {
   else {
     fBaseName = fBaseName + ".energies.res";
   }
-  eCont->toFile(fBaseName, _activeSystem->getSettings().identifier);
+  eCont->toFile(fBaseName, _activeSystem->getSystemIdentifier());
   if ((iOOptions.printSCFResults and not(settings.gridCutOff > 0.0 and !settings.finalGrid)) ||
       settings.calculateSolvationEnergy) {
     printSubSectionTitle("Final SCF Results");
@@ -469,9 +435,111 @@ void FDETask<SCFMode>::run() {
       es->printMOEnergies();
       print("");
     }
+    this->printFaTAnalysis({_activeSystem}, nullptr, true);
+
+    std::vector<std::shared_ptr<SystemController>> Systems;
+    Systems.push_back(_activeSystem);
+    for (auto& sys : _environmentSystems) {
+      Systems.push_back(sys);
+    }
+
+    if (!_finalGrid) {
+      this->printFaTAnalysis(Systems, _supersystemgrid);
+    }
+    else {
+      this->printFaTAnalysis(Systems, _finalGrid);
+    }
   }
-  // Resett continuum model mode
+  // Reset continuum model mode
   _activeSystem->setSystemContinuumModelMode(oldContinuumModelMode);
+  // Clean up.
+  _activeSystem->clear4CenterCache();
+}
+
+template<Options::SCF_MODES SCFMode>
+void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<PotentialBundle<SCFMode>> fdePot) {
+  auto eCont = _activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+  auto functional = resolveFunctional(_activeSystem->getSettings().dft.functional);
+  auto naddXCFunctional = resolveFunctional(settings.embedding.naddXCFunc);
+  double MP2Correlation = 0.0;
+  double mp2Interaction = 0.0;
+  if (settings.calculateMP2Energy) {
+    if (functional.isDoubleHybrid() and _activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+      switch (settings.mp2Type) {
+        case Options::MP2_TYPES::LOCAL: {
+          LocalizationTask locTask(_activeSystem);
+          locTask.settings.locType = settings.locType;
+          locTask.settings.splitValenceAndCore = true;
+          locTask.run();
+          // perform MP2 for double hybrids
+          settings.lcSettings.embeddingSettings = settings.embedding;
+          FockMatrix<SCFMode> f = fdePot->getFockMatrix(_activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
+                                                        std::make_shared<EnergyComponentController>());
+          auto fock = std::make_shared<FockMatrix<RESTRICTED>>(_activeSystem->getBasisController());
+          for_spin(f) {
+            *fock = f_spin;
+          };
+          auto localCorrelationController =
+              std::make_shared<LocalCorrelationController>(_activeSystem, settings.lcSettings, _environmentSystems, fock);
+          LocalMP2 localMP2(localCorrelationController);
+          localMP2.settings.maxResidual = settings.maxResidual;
+          localMP2.settings.maxCycles = settings.maxCycles;
+          // ss and os scaling.
+          localMP2.settings.osScaling = functional.getosScaling();
+          localMP2.settings.ssScaling = functional.getssScaling();
+          MP2Correlation = functional.getHfCorrelRatio() * localMP2.calculateEnergyCorrection().sum();
+          break;
+        }
+        case Options::MP2_TYPES::RI: {
+          RIMP2<SCFMode> rimp2(_activeSystem, functional.getssScaling(), functional.getosScaling());
+          MP2Correlation = functional.getHfCorrelRatio() * rimp2.calculateCorrection();
+          break;
+        }
+        case Options::MP2_TYPES::AO: {
+          if (SCFMode != RESTRICTED)
+            throw SerenityError("MP2 is not available for unrestricted systems. Please use the RI approximation.");
+          MP2EnergyCorrector<RESTRICTED> mp2EnergyCorrector(_activeSystem, functional.getssScaling(),
+                                                            functional.getosScaling());
+          MP2Correlation = functional.getHfCorrelRatio() * mp2EnergyCorrector.calculateElectronicEnergy();
+          break;
+        }
+      }
+    } // if functional.isDoubleHybrid()
+    if (naddXCFunctional.isDoubleHybrid()) {
+      LocalizationTask locTaskAct(_activeSystem);
+      locTaskAct.settings.locType = settings.locType;
+      locTaskAct.settings.splitValenceAndCore = true;
+      locTaskAct.run();
+      LocalizationTask locTaskEnv(_environmentSystems[0]);
+      locTaskEnv.settings.locType = settings.locType;
+      locTaskEnv.settings.splitValenceAndCore = true;
+      locTaskEnv.run();
+      settings.lcSettings.embeddingSettings = settings.embedding;
+      FockMatrix<SCFMode> f = fdePot->getFockMatrix(_activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
+                                                    std::make_shared<EnergyComponentController>());
+      auto fock = std::make_shared<FockMatrix<RESTRICTED>>(_activeSystem->getBasisController());
+      for_spin(f) {
+        *fock = f_spin;
+      };
+      LocalMP2InteractionCalculator locMP2Inter(_activeSystem, _environmentSystems, settings.lcSettings, settings.maxCycles,
+                                                settings.maxResidual, settings.embedding.fullMP2Coupling);
+      auto envXCFunctional = resolveFunctional(_environmentSystems[0]->getSettings().dft.functional);
+      bool envIsDFT = _environmentSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      if (settings.calculateEnvironmentEnergy && envXCFunctional.isDoubleHybrid() && envIsDFT) {
+        double envEnergy = eCont->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES);
+        double envMP2Energy = locMP2Inter.getEnvironmentEnergy();
+        envEnergy += envMP2Energy;
+        auto envECont = _environmentSystems[0]->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+        eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES, envEnergy);
+        envECont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, envMP2Energy);
+      }
+      mp2Interaction = locMP2Inter.getInteractionEnergy();
+      mp2Interaction += locMP2Inter.getCouplingEnergyCorrection();
+    } // if naddXCFunctional.isDoubleHybrid()
+  }   // if settings.calculateMP2Energy
+  eCont->addOrReplaceComponent(
+      std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, MP2Correlation));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_MP2_INT_ENERGY, mp2Interaction);
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -508,6 +576,20 @@ void FDETask<SCFMode>::calculateNonAdditiveDispersionCorrection() {
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_DISP, solvScaledNadDispCorrection);
   }
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_DISP, nadDispCorrection);
+}
+
+template<Options::SCF_MODES SCFMode>
+void FDETask<SCFMode>::printFaTAnalysis(std::vector<std::shared_ptr<SystemController>> systems,
+                                        std::shared_ptr<GridController> supersystemGrid, bool actOnly) {
+  SCFAnalysis<SCFMode> FaTanalysisSuperSys(systems, supersystemGrid);
+  auto S2 = FaTanalysisSuperSys.S2();
+  if (actOnly) {
+    printSmallCaption("Analysis:");
+    printf("ActiveSystem <S*S> = %4.3f \n", S2);
+  }
+  else {
+    printf("Supersystem <S*S> = %4.3f \n\n", S2);
+  }
 }
 
 template class FDETask<Options::SCF_MODES::RESTRICTED>;

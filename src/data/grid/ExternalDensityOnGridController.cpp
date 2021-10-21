@@ -19,6 +19,7 @@
  */
 /* Include Class Header*/
 #include "data/grid/ExternalDensityOnGridController.h"
+/* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
 /* Include Std and External Headers */
 #include <cassert>
@@ -28,15 +29,15 @@ namespace Serenity {
 template<Options::SCF_MODES T>
 ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid)
   : DensityOnGridController<T>(densityOnGrid->getGridController(), 0) {
-  this->_densityOnGrid.swap(densityOnGrid);
+  this->_densityOnGrid = std::move(densityOnGrid);
 }
 
 template<Options::SCF_MODES T>
 ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
                                                                     std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid)
   : DensityOnGridController<T>(densityOnGrid->getGridController(), 1) {
-  this->_densityOnGrid.swap(densityOnGrid);
-  this->_densityGradientOnGrid.swap(densityGradientOnGrid);
+  this->_densityOnGrid = std::move(densityOnGrid);
+  this->_densityGradientOnGrid = std::move(densityGradientOnGrid);
   for (const auto& component : *this->_densityGradientOnGrid) {
     if (not isDefinedOnSameGrid(component, *this->_densityOnGrid))
       throw SerenityError("DensityOnGridController: data is not defined on the same grind");
@@ -48,9 +49,9 @@ ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_
                                                                     std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid,
                                                                     std::unique_ptr<Hessian<DensityOnGrid<T>>>& densityHessianOnGrid)
   : DensityOnGridController<T>(densityOnGrid->getGridController(), 2) {
-  this->_densityOnGrid.swap(densityOnGrid);
-  this->_densityGradientOnGrid.swap(densityGradientOnGrid);
-  this->_densityHessianOnGrid.swap(densityHessianOnGrid);
+  this->_densityOnGrid = std::move(densityOnGrid);
+  this->_densityGradientOnGrid = std::move(densityGradientOnGrid);
+  this->_densityHessianOnGrid = std::move(densityHessianOnGrid);
   for (const auto& component : *this->_densityGradientOnGrid) {
     if (not isDefinedOnSameGrid(component, *this->_densityOnGrid))
       throw SerenityError("DensityOnGridController: data is not defined on the same grind");
@@ -79,7 +80,9 @@ ExternalDensityOnGridController<T>::~ExternalDensityOnGridController() {
 
 template<Options::SCF_MODES T>
 const DensityOnGrid<T>& ExternalDensityOnGridController<T>::getDensityOnGrid() {
-  assert(this->_densityOnGrid->isValid());
+  if (!this->_densityOnGrid->isValid()) {
+    throw SerenityError("A component of the density stored on the grid is invalid.");
+  }
   return *this->_densityOnGrid;
 }
 
@@ -87,7 +90,7 @@ template<Options::SCF_MODES T>
 const Gradient<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensityGradientOnGrid() {
   for (const auto& component : *this->_densityGradientOnGrid) {
     if (!component.isValid())
-      throw SerenityError("A component of the Density stored on the grid is invalid.");
+      throw SerenityError("A component of the density gradient stored on the grid is invalid.");
   }
   return *this->_densityGradientOnGrid;
 }
@@ -96,7 +99,7 @@ template<Options::SCF_MODES T>
 const Hessian<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensityHessianOnGrid() {
   for (const auto& component : *this->_densityHessianOnGrid) {
     if (!component.isValid())
-      throw SerenityError("A component of the Density stored on the grid is invalid.");
+      throw SerenityError("A component of the density hessian stored on the grid is invalid.");
   }
   return *this->_densityHessianOnGrid;
 }

@@ -44,9 +44,19 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    * @param coefficientMatrix with data defined for the basis
    * @param basis             for which the orbitals in coefficientMatrix are defined.
    * @param eigenvalues       the orbital energies
+   * @param isCoreOrbital     Flag for core orbitals.
    */
   OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
-                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues);
+                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues,
+                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> isCoreOrbital);
+  /**
+   * @param coefficientMatrix with data defined for the basis
+   * @param basis             for which the orbitals in coefficientMatrix are defined.
+   * @param eigenvalues       the orbital energies
+   * @param nCoreElectrons    The number of core electrons (Assigns the core orbitals by eigenvalue).
+   */
+  OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
+                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues, unsigned int nCoreElectrons);
   /**
    * @brief provides an empty set of orbitals waiting to be filled
    * @param basis for which the orbitals in coefficientMatrix are defined.
@@ -88,13 +98,42 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   /**
    * @brief Updates the orbitals using custom coefficients and eigenvalues.
    * @param updatedCoefficients The new coefficients.
-   * @param updatedEigenvalues The new orbital energies.
+   * @param updatedEigenvalues  The new orbital energies.
+   * @param coreOrbitals        The core orbital flags.
+   */
+  void updateOrbitals(const CoefficientMatrix<T>& updatedCoefficients,
+                      const SpinPolarizedData<T, Eigen::VectorXd>& updatedEigenvalues,
+                      SpinPolarizedData<T, Eigen::VectorXi> coreOrbitals);
+
+  /**
+   * @brief Updates the orbitals using custom coefficients and eigenvalues.
+   * @param updatedCoefficients The new coefficients.
+   * @param updatedEigenvalues  The new orbital energies.
    */
   void updateOrbitals(const CoefficientMatrix<T>& updatedCoefficients,
                       const SpinPolarizedData<T, Eigen::VectorXd>& updatedEigenvalues);
 
   /// @returns the orbital energies.
   SpinPolarizedData<T, Eigen::VectorXd> getEigenvalues();
+  /// @returns Returns the core orbital flags.
+  SpinPolarizedData<T, Eigen::VectorXi> getCoreOrbitals();
+  /**
+   * @brief Set all orbitals with an orbital eigenvalue lower than the cut-off as core orbitals.
+   * @param energyCutOff The energy cut-off
+   */
+  void setCoreOrbitalsByEnergyCutOff(double energyCutOff);
+  /**
+   * @brief Set the orbitals with lowest eigenvalues as core orbitals.
+   * @param nCoreOrbitals The number of core orbitals.
+   */
+  void setCoreOrbitalsByNumber(unsigned int nCoreOrbitals);
+  /**
+   * @brief Get the ranges for valence and core orbitals among the set of occupied orbitals.
+   * @param nOcc The number of occupied orbitals.
+   * @return The ranges for core and valence orbitals.
+   */
+  std::pair<SpinPolarizedData<T, std::vector<unsigned int>>, SpinPolarizedData<T, std::vector<unsigned int>>>
+  getValenceOrbitalIndices(SpinPolarizedData<T, unsigned int> nOcc);
   /**
    * @returns the number of orbitals (occupied AND virtual) in this OrbitalController
    */
@@ -132,11 +171,7 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    *        more for pairs with small energy differences.
    *        \n
    *        The level shift can be fixed or determined dynamically. Here, we determine the level shift
-   *        based on the owned Fock-like matrix and overlap integrals
-   *        \f[
-   *          b = 0.1 \sqrt{log(d_{conv} + 2)}
-   *        \f]
-   *        where \f$ d_{conv} \f$ is a scalar measure for convergence. See function getLevelShift()
+   *        based on the owned Fock-like matrix and overlap integrals. See function getLevelShift()
    *        in the ConvergenceController.cpp.
    *        \n
    *        Ref.: H. B. Schlegel and J. J. W. McDouall, Do you have SCF Stability and Convergence
@@ -153,17 +188,7 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
                       const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController);
 
   ///@brief Notification
-  void notify() {
-    _X.resize(0, 0);
-    _firstIteration = true;
-  }
-
-  /**
-   * @brief Triggers the notification.
-   */
-  void externalNotifyObjects() {
-    this->notifyObjects();
-  }
+  void notify();
   /**
    * @brief Saves an OrbitalController to file.
    * @param fBaseName The basename of the HDF5 files.
@@ -186,6 +211,11 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    * @param fBaseName The basename of the HDF5 files.
    */
   void eigenvaluesfromHDF5(std::string fBaseName, std::string id);
+  /**
+   * @brief Reads only the core orbital flags from file
+   * @param fBaseName The basename of the HDF5 files.
+   */
+  void coreOrbitalsfromHDF5(std::string fBaseName, std::string id);
 
   /**
    * @brief Sets the threshold for the canonical orthogonalization.
@@ -195,15 +225,6 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
     _canOrthTh = threshold;
     _X.resize(0, 0);
   }
-
-  /**
-   * @brief Sets iff F is expected to be in an orthogonal basis [default: false].
-   * @param value The new value.
-   */
-  void setExpectedOthogonality(bool value) {
-    _fIsInOthoBasis = value;
-  }
-
   /**
    * @brief Sets a custom overlap to be used.
    *
@@ -215,15 +236,6 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   void useCustomOverlap(const MatrixInBasis<T> S) {
     _customS.reset(new MatrixInBasis<T>(S));
   }
-
-  /**
-   * @brief Check if orbitals are already calculated.
-   * @return Returns true iff orbitals are available.
-   */
-  bool orbitalsAvailable() {
-    return !_firstIteration;
-  }
-
   /**
    * @brief Getter for the transformation matrix to the basis in which the eigenvalue problem is solved.
    * @param oneIntController The OneElectronIntegralController of the system.
@@ -235,23 +247,16 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
     assert(_X.cols() > 0);
     return std::make_shared<Eigen::MatrixXd>(_X);
   }
-  /**
-   * @brief Getter for the inverse transformation matrix to the canonical
-   *        basis.
-   */
-  std::shared_ptr<Eigen::MatrixXd> getTransformMatrixInverse(std::shared_ptr<OneElectronIntegralController> oneIntController) {
-    if (!(_Xinv.cols() > 0))
-      calculateTransformationX(oneIntController);
-    assert(_X.cols() > 0);
-    return std::make_shared<Eigen::MatrixXd>(_Xinv);
-  }
 
  private:
   std::unique_ptr<CoefficientMatrix<T>> _coefficients;
   const std::shared_ptr<BasisController> _basisController;
   std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> _eigenvalues;
+  /**
+   * number of core orbitals in constructor with default argument
+   */
+  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> _isCoreOrbital;
   double _canOrthTh;
-  std::shared_ptr<OneElectronIntegralController> _oneIntController;
   bool _firstIteration = true;
   Eigen::MatrixXd _X;
   Eigen::MatrixXd _Xinv;
@@ -263,6 +268,14 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   std::string _fBaseName;
   std::string _id;
   void calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController);
+  /**
+   * @brief Constructs a core orbital vector according to the eigenvalue up to the given number of core electrons.
+   * @param nCoreElectrons The number of core electrons.
+   * @param eigenvalues    The eigenvalues.
+   * @return The core orbital vector.
+   */
+  SpinPolarizedData<T, Eigen::VectorXi>
+  getCoreOrbitalsByEigenvalue(unsigned int nCoreElectrons, const SpinPolarizedData<T, Eigen::VectorXd>& eigenvalues);
 };
 
 } /* namespace Serenity */

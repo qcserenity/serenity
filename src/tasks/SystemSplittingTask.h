@@ -25,9 +25,10 @@
 #include "settings/MiscOptions.h"   //SYSTEM_SPLITTING_ALGORITHM.
 #include "tasks/Task.h"             //inherits from.
 /* Include Std and External Headers */
-#include <memory> //smrt_ptr.
-#include <string> //Output praefixes.
-#include <vector> //std::vector.
+#include <Eigen/Dense> //Eigen::VectorXi
+#include <memory>      //smrt_ptr.
+#include <string>      //Output praefixes.
+#include <vector>      //std::vector.
 
 namespace Serenity {
 
@@ -39,6 +40,20 @@ struct SystemSplittingTaskSettings {
     : orbitalThreshold(0.4), systemPartitioning(Options::SYSTEM_SPLITTING_ALGORITHM::BEST_MATCH) {
   }
   REFLECTABLE((double)orbitalThreshold, (Options::SYSTEM_SPLITTING_ALGORITHM)systemPartitioning)
+ public:
+  /**
+   * @brief Parse the settings from the input an instance of this class.
+   * @param c The settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("SPLIT")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
 };
 
 /**
@@ -66,6 +81,12 @@ class SystemSplittingTask : public Task {
    *                       subsystem 0.
    */
   SystemSplittingTaskSettings settings;
+  /**
+   * @brief Getter for the final orbital partitioning.
+   *   The assignment vector contains the subsystem index for each occupied orbital.
+   * @return The assignment vector.
+   */
+  const SpinPolarizedData<SCFMode, Eigen::VectorXi>& getFinalAssignment();
 
  private:
   // The supersystem.
@@ -74,10 +95,10 @@ class SystemSplittingTask : public Task {
   std::vector<std::shared_ptr<SystemController>> _subsystems;
   // Helper function to search for the subsystem atoms in the supersystem geometry.
   std::vector<unsigned int> findAtoms(std::shared_ptr<SystemController> subsystem);
+  // The final assignments. Only available after executing run().
+  std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXi>> _assignment = nullptr;
   // Helper function to make sure that the supersystem can be partitioned into the given fragments.
   void checkInput();
-  // Getter for alpha/beta output praefixes.
-  SpinPolarizedData<SCFMode, std::string> getOutputPraefixes();
 };
 
 } /* namespace Serenity */

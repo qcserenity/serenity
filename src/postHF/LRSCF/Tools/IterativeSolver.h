@@ -27,6 +27,7 @@
 #include "misc/WarningTracker.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
+#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -60,6 +61,7 @@ class IterativeSolver {
   IterativeSolver(unsigned nSets, unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal,
                   double convergenceCriterion, unsigned maxIterations, unsigned maxSubspaceDimension,
                   std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
+                  std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk,
                   std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess)
     : _nSets(nSets),
       _nDimension(nDimension),
@@ -69,6 +71,7 @@ class IterativeSolver {
       _maxIterations(maxIterations),
       _maxSubspaceDimension(maxSubspaceDimension),
       _sigmaCalculator(sigmaCalculator),
+      _writeToDisk(writeToDisk),
       _initialGuess(initialGuess) {
   }
 
@@ -84,22 +87,19 @@ class IterativeSolver {
     do {
       ++_nIter;
       this->iterate();
-      if (_nIter >= _maxIterations) {
-        printf("\n Reached maximum number of iterations.\n");
-        break;
-      }
-      if (_nConverged == _nEigen)
+      if (_nConverged == _nEigen) {
         _converged = true;
-    } while (_converged == false);
+      }
+    } while (_converged == false && _nIter < _maxIterations);
     // Print information if converged or not
     if (_converged) {
-      printf("\n Reached convergence criterion.\n\n");
+      printf("\n  Iterative solver converged in %3i iterations.\n\n", _nIter);
     }
     else if (_maxIterations == 1) {
-      printf("\n Finished FDEc step.\n\n");
+      printf("\n  Finished FDEc step.\n\n");
     }
     else {
-      WarningTracker::printWarning("Warning: convergence criterion not reached.", true);
+      WarningTracker::printWarning("Warning: Convergence criterion not reached.", true);
     }
     this->postProcessing();
     _done = true;
@@ -167,13 +167,6 @@ class IterativeSolver {
 
   ///@brief Expands the guess space with the current correction vectors.
   void expandSubspace() {
-    // Normalize correction vectors in case of non-Hermitian problem
-    if (_nSets > 1) {
-      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-        _correctionVectors[iSet].colwise().normalize();
-      }
-    }
-
     // Subspace expansion
     unsigned nAppend = 0;
     Eigen::VectorXd norm(_nSets);
@@ -187,15 +180,17 @@ class IterativeSolver {
           double jj = _guessVectors[iSet].col(j).dot(_guessVectors[iSet].col(j));
           _correctionVectors[iSet].col(iNew) -= ij / jj * _guessVectors[iSet].col(j);
         }
+        double newNorm = _correctionVectors[iSet].col(iNew).norm();
         norm(iSet) = _correctionVectors[iSet].col(iNew).norm() / oldNorm;
+
+        _correctionVectors[iSet].col(iNew) *= (std::max(oldNorm, 1e-7) / newNorm);
       }
 
       // Determine if to be appended
       if (norm.sum() / std::sqrt(_nSets) > _appendThresh) {
         for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
           _guessVectors[iSet].conservativeResize(_nDimension, _guessVectors[iSet].cols() + 1);
-          _guessVectors[iSet].rightCols(1) =
-              _correctionVectors[iSet].col(iNew) / (_nSets == 1 ? 1.0 : _correctionVectors[iSet].col(iNew).norm());
+          _guessVectors[iSet].rightCols(1) = _correctionVectors[iSet].col(iNew);
         }
         ++nAppend;
       }
@@ -218,8 +213,8 @@ class IterativeSolver {
         if (newDim <= _maxSubspaceDimension) {
           _sigmaVectors[iSet].conservativeResize(_nDimension, newDim);
           _sigmaVectors[iSet].rightCols(nAppend) = newSigma[iSet];
-          // Otherwise, collapse subspace and then append new sigma vectors
         }
+        // Otherwise, collapse subspace and then append new sigma vectors
         else {
           // Set guessVectors to current ritz vectors
           _guessVectors[iSet] = _eigenvectors[iSet];
@@ -271,6 +266,9 @@ class IterativeSolver {
   ///@brief A lambda to conveniently form response matrix -- guess vector products.
   std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> _sigmaCalculator;
 
+  ///@brief A lambda to store temporary iteration data.
+  std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> _writeToDisk;
+
   ///@brief The initial guess space might also be passed to the eigenvalue solver.
   std::shared_ptr<std::vector<Eigen::MatrixXd>> _initialGuess;
 
@@ -285,6 +283,9 @@ class IterativeSolver {
 
   ///@brief Subspace dimension, equals number of guess/sigma vectors.
   unsigned _subDim;
+
+  ///@brief Subspace metric of guessVectors.
+  Eigen::MatrixXd _metric;
 
   ///@brief Contains _nSets matrices containing the guess vectors.
   std::vector<Eigen::MatrixXd> _guessVectors;
@@ -327,6 +328,12 @@ class IterativeSolver {
 
   ///@brief Number of converged roots. If this is equal to _nEigen, the iterative procedure is finished.
   unsigned _nConverged = 0;
+
+  ///@brief Time point at the beginning of an iteration.
+  std::chrono::steady_clock::time_point _itStart;
+
+  ///@brief Time point at the end of an iteration.
+  std::chrono::steady_clock::time_point _itEnd;
 
 }; /* class IterativeSolver */
 } /* namespace Serenity */

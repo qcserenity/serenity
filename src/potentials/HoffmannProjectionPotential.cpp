@@ -25,6 +25,7 @@
 #include "basis/AtomCenteredBasisController.h"
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "misc/SystemSplittingTools.h"
 #include "potentials/HuzinagaFDEProjectionPotential.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"

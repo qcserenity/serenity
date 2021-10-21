@@ -23,14 +23,13 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-#include "data/matrices/CoefficientMatrix.h"
 #include "settings/Options.h"
 #include "system/SystemController.h"
-#include "tasks/LRSCFTask.h"
+
+/* Include External Header */
+#include <Eigen/Dense>
 
 namespace Serenity {
-
-struct LRSCFTaskSettings;
 
 /**
  * @class Besley

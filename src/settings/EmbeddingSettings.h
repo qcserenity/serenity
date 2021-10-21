@@ -47,7 +47,10 @@ using namespace Serenity::Reflection;
  * exceed this threshold in order to be included in the projector. -basisFunctionRatio : The minimum ratio of retained
  * basis functions needed in order to consider an atom to be not "distant". -truncateProjector: A flag whether the
  * projector should be truncated (default: false). See HuzinagaFDEProjectionPotential.h. -projectionTruncThreshold: The
- * projection truncation threshold (default: 1.0e+1). See HuzinagaFDEProjectionPotential.h.
+ * projection truncation threshold (default: 1.0e+1). See HuzinagaFDEProjectionPotential.h. -naddXCFuncList : A list of
+ * non-additive exchange correlation functionals -naddKinFuncList : A list of non-additive kinetic functionals
+ *        -embeddingModeList : A list of embedding types to use (e.g., level shift, potential reconstruction... see
+ * Options class)
  */
 struct EmbeddingSettings {
   EmbeddingSettings()
@@ -68,14 +71,21 @@ struct EmbeddingSettings {
       truncateProjector(false),
       projecTruncThresh(1.0e+1),
       fermiShift(1.0),
-      calculateMP2Correction(true) {
+      calculateMP2Correction(true),
+      fullMP2Coupling(false),
+      naddXCFuncList({}),
+      naddKinFuncList({}),
+      embeddingModeList({}) {
   }
   REFLECTABLE((double)levelShiftParameter, (CompositeFunctionals::XCFUNCTIONALS)naddXCFunc,
               (CompositeFunctionals::KINFUNCTIONALS)naddKinFunc, (CompositeFunctionals::KINFUNCTIONALS)longRangeNaddKinFunc,
               (Options::KIN_EMBEDDING_MODES)embeddingMode, (Options::DFT_DISPERSION_CORRECTIONS)dispersion,
               (double)smoothFactor, (std::string)potentialBasis, (double)singValThreshold, (double)lbDamping,
               (unsigned int)lbCycles, (unsigned int)carterCycles, (double)borderAtomThreshold, (double)basisFunctionRatio,
-              (bool)truncateProjector, (double)projecTruncThresh, (double)fermiShift, (bool)calculateMP2Correction)
+              (bool)truncateProjector, (double)projecTruncThresh, (double)fermiShift, (bool)calculateMP2Correction,
+              (bool)fullMP2Coupling, (std::vector<CompositeFunctionals::XCFUNCTIONALS>)naddXCFuncList,
+              (std::vector<CompositeFunctionals::KINFUNCTIONALS>)naddKinFuncList,
+              (std::vector<Options::KIN_EMBEDDING_MODES>)embeddingModeList)
  public:
   PCMSettings pcm;
   /**

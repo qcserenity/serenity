@@ -32,7 +32,7 @@
 #include "misc/SerenityError.h"                                       //Error messages.
 #include "misc/SystemSplittingTools.h"                                //System partitioning.
 #include "misc/WarningTracker.h"                                      //Warnings.
-#include "settings/Settings.h"                                        //Settings.
+#include "system/SystemController.h"                                  //System handling.
 /* Include Std and External Headers */
 #include <iomanip> //setw(...) for ostream.
 
@@ -102,7 +102,7 @@ void SystemSplittingTask<SCFMode>::checkInput() {
   }
   bool warningTriggered = false;
   for (auto subsystem : _subsystems) {
-    if (subsystem->getSettings().scfMode != SCFMode) {
+    if (subsystem->getSCFMode() != SCFMode) {
       std::string scfModeString = (SCFMode == RESTRICTED) ? "RESTRICTED" : "UNRESTRICTED";
       WarningTracker::printWarning((std::string) "    WARNING: The SCFMode of the subsystem " + subsystem->getSystemName() +
                                        "\n             is different from the SCFMode used in the task!\n" +
@@ -114,23 +114,19 @@ void SystemSplittingTask<SCFMode>::checkInput() {
   if (warningTriggered)
     std::cout << std::endl;
 }
-template<>
-SpinPolarizedData<RESTRICTED, std::string> SystemSplittingTask<RESTRICTED>::getOutputPraefixes() {
-  return "";
-}
 
-template<>
-SpinPolarizedData<UNRESTRICTED, std::string> SystemSplittingTask<UNRESTRICTED>::getOutputPraefixes() {
-  SpinPolarizedData<UNRESTRICTED, std::string> toReturn;
-  toReturn.alpha = "Alpha";
-  toReturn.beta = "Beta";
-  return toReturn;
+template<Options::SCF_MODES SCFMode>
+const SpinPolarizedData<SCFMode, Eigen::VectorXi>& SystemSplittingTask<SCFMode>::getFinalAssignment() {
+  if (!_assignment)
+    run();
+  return *_assignment;
 }
 
 template<Options::SCF_MODES SCFMode>
 void SystemSplittingTask<SCFMode>::run() {
   checkInput();
-  SpinPolarizedData<SCFMode, Eigen::VectorXi> assignment;
+  _assignment = std::make_shared<SpinPolarizedData<SCFMode, Eigen::VectorXi>>();
+  SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment = *_assignment;
   unsigned int nSubsystems = _subsystems.size();
   const auto nOccSuper = _supersystem->getNOccupiedOrbitals<SCFMode>();
   /*
@@ -184,15 +180,17 @@ void SystemSplittingTask<SCFMode>::run() {
             subsystemWisePopulations_spin(iSub, iOrb) += std::fabs(orbitalWisePopulations_spin(subAtomIndex, iOrb));
           } // for subAtomIndex
         }   // for iSub
+        // Assign the orbitals based on a population threshold for the first (0th) subsystem.
+        if (settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD) {
+          if (subsystemWisePopulations_spin(0, iOrb) >= settings.orbitalThreshold) {
+            assignment_spin(iOrb) = 0;
+            continue;
+          }
+        } // if settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD
         unsigned int subMax;
         subsystemWisePopulations_spin.col(iOrb).maxCoeff(&subMax);
         assignment_spin(iOrb) = subMax;
-        // Assign the orbitals based on a population threshold for the first (0th) subsystem.
-        if (settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD) {
-          if (subsystemWisePopulations_spin(0, iOrb) >= settings.orbitalThreshold)
-            assignment_spin(iOrb) = 0;
-        } // if settings.systemPartitioning == Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD
-      }   // for iOrb
+      } // for iOrb
     };
     // Assign orbitals to the subsystems until charge and spin is correct.
     // The order of the assignment is based on the population analysis done previously.
@@ -201,6 +199,7 @@ void SystemSplittingTask<SCFMode>::run() {
         const auto subsystem = _subsystems[iSub];
         const auto nOccSub = subsystem->template getNOccupiedOrbitals<SCFMode>();
         for_spin(nOccSub, assignment, subsystemWisePopulations) {
+          assignment_spin.setZero();
           for (unsigned int i = 0; i < nOccSub_spin; ++i) {
             unsigned int maxOrb;
             subsystemWisePopulations_spin.row(iSub).maxCoeff(&maxOrb);
@@ -222,92 +221,8 @@ void SystemSplittingTask<SCFMode>::run() {
       };
     }
   }
-  for (unsigned int iSub = 0; iSub < nSubsystems; ++iSub) {
-    auto subsystem = _subsystems[iSub];
-    // Generate the final orbital selection based on the criteria constructed above.
-    SpinPolarizedData<SCFMode, std::vector<bool>> orbitalSelection;
-    for_spin(nOccSuper, orbitalSelection, assignment) {
-      orbitalSelection_spin = std::vector<bool>(nOccSuper_spin, false);
-      for (unsigned int iOrb = 0; iOrb < nOccSuper_spin; ++iOrb) {
-        if ((int)iSub == assignment_spin(iOrb))
-          orbitalSelection_spin[iOrb] = true;
-      } // for iOrb
-    };
-    // Update basis, electronic structure and geometry and save them on disk.
-    subsystem->getGeometry()->addAsDummy(*_supersystem->getGeometry());
-    subsystem->getGeometry()->deleteIdenticalAtoms();
-    subsystem->setBasisController(nullptr);
-    subsystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_COULOMB);
-    subsystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_CORREL);
-
-    // Select the part of the electronic structure.
-    auto subsystemES = SystemSplittingTools<SCFMode>::splitElectronicStructure(_supersystem, orbitalSelection).first;
-
-    if (subsystem->getAtomCenteredBasisController()->getBasisLabel() !=
-        _supersystem->getAtomCenteredBasisController()->getBasisLabel()) {
-      OutputControl::dOut << "NOTE: The basis label of the subsystem " << subsystem->getSystemName() << std::endl;
-      OutputControl::dOut << "      is different from the basis label of the supersystem!" << std::endl;
-      OutputControl::dOut << "      The density matrix will be projected into the subsystem basis." << std::endl;
-      OutputControl::dOut << "      Orbitals will not be available until the next Fock-matrix diagonalization." << std::endl;
-      OutputControl::dOut << "      Note that the projection may be inaccurate." << std::endl;
-      const DensityMatrix<SCFMode>& selectedDensity = subsystemES->getDensityMatrix();
-      DensityMatrix<SCFMode> projectedDensity =
-          SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(selectedDensity, subsystem->getBasisController());
-      subsystemES = std::make_shared<ElectronicStructure<SCFMode>>(
-          subsystem->getBasisController(), subsystem->getGeometry(), subsystemES->getNOccupiedOrbitals());
-      subsystemES->getDensityMatrixController()->setDensityMatrix(projectedDensity);
-    }
-    else {
-      // The same basis set is used for the subsystem and the supersystem.
-      // The coefficients may need to be resorted, but no projection is necessary!
-      subsystemES = SystemSplittingTools<SCFMode>::resortBasisSetOfElectronicStructure(
-          subsystemES, subsystem->getBasisController(), subsystem->getOneElectronIntegralController());
-    }
-
-    subsystem->setSCFMode(SCFMode);
-    subsystem->template setElectronicStructure<SCFMode>(subsystemES);
-    subsystem->getGeometry()->printToFile(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
-    subsystemES->toHDF5(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
-    // Check charges and spin of the system, since it may have changed during the partitioning.
-    if (settings.systemPartitioning != Options::SYSTEM_SPLITTING_ALGORITHM::ENFORCE_CHARGES) {
-      auto oldNElSub = subsystem->template getNElectrons<SCFMode>();
-      auto newNElSub = SystemSplittingTools<SCFMode>::getNElectrons(orbitalSelection).first;
-      unsigned int nTotOld = 0;
-      unsigned int nTotNew = 0;
-      for_spin(oldNElSub, newNElSub) {
-        nTotOld += oldNElSub_spin;
-        nTotNew += newNElSub_spin;
-      };
-      int subSpin = SystemSplittingTools<SCFMode>::getSpin(newNElSub);
-      unsigned int minusNElChanged = nTotOld - nTotNew;
-      subsystem->setSpin(subSpin);
-      subsystem->setCharge(subsystem->getCharge() + minusNElChanged);
-    } // if !settings.enforceCharges
-    // Print information about the system selection to the output.
-    OutputControl::nOut << "--------------------------------------------------------" << std::endl;
-    OutputControl::nOut << "  Partitioning for subsystem " << subsystem->getSystemName() << std::endl;
-    OutputControl::nOut << "  Charge: " << subsystem->getCharge() << std::endl;
-    OutputControl::nOut << "  Spin:   " << subsystem->getSpin() << std::endl;
-    OutputControl::vOut << "Orbital selection:" << std::endl;
-    auto praefixes = getOutputPraefixes();
-    for_spin(orbitalSelection, praefixes) {
-      if (SCFMode == UNRESTRICTED)
-        OutputControl::vOut << praefixes_spin << " orbitals:" << std::endl;
-      unsigned int printCounter = 0;
-      for (unsigned int iOrb = 0; iOrb < orbitalSelection_spin.size(); ++iOrb) {
-        if (orbitalSelection_spin[iOrb]) {
-          OutputControl::vOut << iOrb << " ";
-          ++printCounter;
-          if (printCounter % 15 == 0)
-            OutputControl::vOut << std::endl;
-        } // if orbitalSelection_spin[iOrb]
-      }   // for iOrb
-      if (printCounter % 15 != 0)
-        OutputControl::vOut << std::endl;
-      OutputControl::vOut << "Number of occ. orbitals " << printCounter << std::endl;
-    };
-  } // for iSub
-  OutputControl::nOut << "--------------------------------------------------------" << std::endl;
+  // Split the electronic structure.
+  SystemSplittingTools<SCFMode>::splitSupersystemBasedOnAssignment(_supersystem, _subsystems, assignment);
 }
 
 template class SystemSplittingTask<Options::SCF_MODES::RESTRICTED>;

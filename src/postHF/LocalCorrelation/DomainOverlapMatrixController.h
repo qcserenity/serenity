@@ -45,14 +45,13 @@ class DomainOverlapMatrixController {
  public:
   /**
    * @brief Constructor.
-   * @param s The AO-AO overlap matrix.
    * @param paoController The PAO controller.
    * @param closeOrbitalPairs The orbital pairs.
    * @param singles The singles.
    * @param closeOrbitalPairIndices The indices of the orbital pairs.
    * @param nOcc The number of occupied orbitals in the system.
    */
-  DomainOverlapMatrixController(MatrixInBasis<RESTRICTED> s, std::shared_ptr<PAOController> paoController,
+  DomainOverlapMatrixController(std::shared_ptr<PAOController> paoController,
                                 std::vector<std::shared_ptr<OrbitalPair>> closeOrbitalPairs,
                                 std::vector<std::shared_ptr<SingleSubstitution>> singles,
                                 const Eigen::MatrixXi closeOrbitalPairIndices, unsigned int nOcc);
@@ -103,8 +102,6 @@ class DomainOverlapMatrixController {
   double getOverlapMatrixSize();
 
  private:
-  // The AO-AO overlap matrix.
-  MatrixInBasis<RESTRICTED> _s;
   // The PAO controller.
   std::shared_ptr<PAOController> _paoController;
   // The orbital paris.

@@ -26,7 +26,6 @@
 #include <gtest/gtest.h>
 
 namespace Serenity {
-using namespace std;
 
 class MultipoleMomentCalculatorTest : public ::testing::Test {
  protected:

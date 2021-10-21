@@ -27,6 +27,7 @@
 #include "dft/functionals/CompositeFunctionals.h"
 #include "dft/functionals/wrappers/XCFun.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -76,8 +77,9 @@ TEST_F(LibXCTest, Comparison_LDA_Restricted) {
     ASSERT_NEAR((*funResults.epuv)[i], (*libResults.epuv)[i], 1.0e-5);
     ASSERT_NEAR((*funResults.dFdRho)[i], (*libResults.dFdRho)[i], 1.0e-5);
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan((*libResults.d2FdRho2)[i]));
+    ASSERT_FALSE(std::isnan((*libResults.d2FdRho2)[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -113,10 +115,11 @@ TEST_F(LibXCTest, Comparison_LDA_Unrestricted) {
     EXPECT_NEAR(funResults.dFdRho->alpha[i], libResults.dFdRho->alpha[i], 1.0e-4);
     EXPECT_NEAR(funResults.dFdRho->beta[i], libResults.dFdRho->beta[i], 1.0e-4);
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->bb[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -154,13 +157,14 @@ TEST_F(LibXCTest, Comparison_PBE_Restricted_Invariant) {
     ASSERT_NEAR((*funResults.epuv)[i], (*libResults.epuv)[i], 1.0e-5);
     ASSERT_NEAR((*funResults.dFdRho)[i], (*libResults.dFdRho)[i], 1.0e-5);
     // Derivatives of sigma are fairly different between libxc and xcfun
-    ASSERT_FALSE(isnan((*libResults.dFdSigma)[i]));
+    ASSERT_FALSE(std::isnan((*libResults.dFdSigma)[i]));
     // ASSERT_NEAR((*funResults.dFdSigma)[i], (*libResults.dFdSigma)[i], 1.0e-5);
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan((*libResults.d2FdRho2)[i]));
-    ASSERT_FALSE(isnan((*libResults.d2FdRhodSigma)[i]));
-    ASSERT_FALSE(isnan((*libResults.d2FdSigma2)[i]));
+    ASSERT_FALSE(std::isnan((*libResults.d2FdRho2)[i]));
+    ASSERT_FALSE(std::isnan((*libResults.d2FdRhodSigma)[i]));
+    ASSERT_FALSE(std::isnan((*libResults.d2FdSigma2)[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -198,26 +202,27 @@ TEST_F(LibXCTest, Comparison_PBE_Unrestricted_Invariant) {
     ASSERT_NEAR(funResults.dFdRho->alpha[i], libResults.dFdRho->alpha[i], 1.0e-4);
     ASSERT_NEAR(funResults.dFdRho->beta[i], libResults.dFdRho->beta[i], 1.0e-4);
     // Derivatives of sigma are fairly different between libxc and xcfun
-    ASSERT_FALSE(isnan(libResults.dFdSigma->aa[i]));
-    ASSERT_FALSE(isnan(libResults.dFdSigma->ab[i]));
-    ASSERT_FALSE(isnan(libResults.dFdSigma->bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdSigma->aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdSigma->ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdSigma->bb[i]));
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->aaa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->aab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->abb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->baa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->bab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodSigma->bbb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->aaaa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->aaab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->aabb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->abab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->abbb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdSigma2->bbbb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->aaa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->aab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->abb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->baa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->bab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodSigma->bbb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->aaaa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->aaab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->aabb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->abab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->abbb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdSigma2->bbbb[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -254,22 +259,23 @@ TEST_F(LibXCTest, Comparison_PBE_Restricted_Cartesian) {
     ASSERT_NEAR((*funResults.epuv)[i], (*libResults.epuv)[i], 1.0e-5);
     ASSERT_NEAR((*funResults.dFdRho)[i], (*libResults.dFdRho)[i], 1.0e-5);
     // Derivatives of sigma are fairly different between libxc and xcfun
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->x[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->y[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->z[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->x[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->y[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->z[i]));
 
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan((*libResults.d2FdRho2)[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->x[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->y[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->z[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xx[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xy[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xz[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yy[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yz[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->zz[i]));
+    ASSERT_FALSE(std::isnan((*libResults.d2FdRho2)[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->x[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->y[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->z[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xx[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xy[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xz[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yy[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yz[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->zz[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -307,54 +313,55 @@ TEST_F(LibXCTest, Comparison_PBE_Unrestricted_Cartesian) {
     ASSERT_NEAR(funResults.dFdRho->alpha[i], libResults.dFdRho->alpha[i], 1.0e-4);
     ASSERT_NEAR(funResults.dFdRho->beta[i], libResults.dFdRho->beta[i], 1.0e-4);
     // Derivatives of sigma are fairly different between libxc and xcfun
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->x.alpha[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->x.beta[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->y.alpha[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->y.beta[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->z.alpha[i]));
-    ASSERT_FALSE(isnan(libResults.dFdGradRho->z.beta[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->x.alpha[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->x.beta[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->y.alpha[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->y.beta[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->z.alpha[i]));
+    ASSERT_FALSE(std::isnan(libResults.dFdGradRho->z.beta[i]));
 
     // 2nd derivatives can be way off for small densities just make sure they are non nan.
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRho2->bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->x.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->y.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->z.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->x.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->y.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->z.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->x.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->y.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->z.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->x.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->y.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdRhodGradRho->z.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xx.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xy.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xz.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xx.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xy.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xz.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yy.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yz.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xy.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yy.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yz.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->zz.aa[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xz.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yz.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->zz.ab[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xx.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xy.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xz.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yy.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yz.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->zz.bb[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->xx.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->yy.ba[i]));
-    ASSERT_FALSE(isnan(libResults.d2FdGradRho2->zz.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRho2->bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->x.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->y.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->z.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->x.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->y.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->z.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->x.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->y.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->z.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->x.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->y.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdRhodGradRho->z.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xx.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xy.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xz.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xx.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xy.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xz.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yy.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yz.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xy.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yy.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yz.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->zz.aa[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xz.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yz.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->zz.ab[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xx.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xy.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xz.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yy.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yz.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->zz.bb[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->xx.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->yy.ba[i]));
+    ASSERT_FALSE(std::isnan(libResults.d2FdGradRho2->zz.ba[i]));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -394,32 +401,34 @@ TEST_F(LibXCTest, Comparison_PBE_Restricted_Cartesian_Cross) {
   for (unsigned int i = 0; i < densOnGridController->getNGridPoints(); i++) {
     // 1st deriv
     ASSERT_NEAR(funResults.dFdGradRho->x[i], libResults.dFdGradRho->x[i],
-                max(fabs(funResults.dFdGradRho->x[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->x[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->y[i], libResults.dFdGradRho->y[i],
-                max(fabs(funResults.dFdGradRho->y[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->y[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->z[i], libResults.dFdGradRho->z[i],
-                max(fabs(funResults.dFdGradRho->z[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->z[i] * 1.0e-6), 1.0e-5));
     // 2nd deriv
-    ASSERT_NEAR((*funResults.d2FdRho2)[i], (*libResults.d2FdRho2)[i], max(fabs((*funResults.d2FdRho2)[i] * 1.0e-6), 1.0e-5));
+    ASSERT_NEAR((*funResults.d2FdRho2)[i], (*libResults.d2FdRho2)[i],
+                std::max(fabs((*funResults.d2FdRho2)[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->x[i], libResults.d2FdRhodGradRho->x[i],
-                max(fabs(funResults.d2FdRhodGradRho->x[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->x[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->y[i], libResults.d2FdRhodGradRho->y[i],
-                max(fabs(funResults.d2FdRhodGradRho->y[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->y[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->z[i], libResults.d2FdRhodGradRho->z[i],
-                max(fabs(funResults.d2FdRhodGradRho->z[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->z[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xx[i], libResults.d2FdGradRho2->xx[i],
-                max(fabs(funResults.d2FdGradRho2->xx[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xx[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xy[i], libResults.d2FdGradRho2->xy[i],
-                max(fabs(funResults.d2FdGradRho2->xy[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xy[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xz[i], libResults.d2FdGradRho2->xz[i],
-                max(fabs(funResults.d2FdGradRho2->xz[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xz[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yy[i], libResults.d2FdGradRho2->yy[i],
-                max(fabs(funResults.d2FdGradRho2->yy[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yy[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yz[i], libResults.d2FdGradRho2->yz[i],
-                max(fabs(funResults.d2FdGradRho2->yz[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yz[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->zz[i], libResults.d2FdGradRho2->zz[i],
-                max(fabs(funResults.d2FdGradRho2->zz[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->zz[i] * 1.0e-6), 1.0e-5));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
@@ -459,94 +468,98 @@ TEST_F(LibXCTest, Comparison_PBE_Unrestricted_Cartesian_Cross) {
   for (unsigned int i = 0; i < densOnGridController->getNGridPoints(); i++) {
     // 1st deriv
     ASSERT_NEAR(funResults.dFdGradRho->x.alpha[i], libResults.dFdGradRho->x.alpha[i],
-                max(fabs(funResults.dFdGradRho->x.alpha[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->x.alpha[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->y.alpha[i], libResults.dFdGradRho->y.alpha[i],
-                max(fabs(funResults.dFdGradRho->y.alpha[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->y.alpha[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->z.alpha[i], libResults.dFdGradRho->z.alpha[i],
-                max(fabs(funResults.dFdGradRho->z.alpha[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->z.alpha[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->x.beta[i], libResults.dFdGradRho->x.beta[i],
-                max(fabs(funResults.dFdGradRho->x.beta[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->x.beta[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->y.beta[i], libResults.dFdGradRho->y.beta[i],
-                max(fabs(funResults.dFdGradRho->y.beta[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->y.beta[i] * 1.0e-6), 1.0e-5));
     ASSERT_NEAR(funResults.dFdGradRho->z.beta[i], libResults.dFdGradRho->z.beta[i],
-                max(fabs(funResults.dFdGradRho->z.beta[i] * 1.0e-6), 1.0e-5));
+                std::max(fabs(funResults.dFdGradRho->z.beta[i] * 1.0e-6), 1.0e-5));
     // 2nd deriv (ab cross terms seem a bit more noisy than aa and bb terms)
-    ASSERT_NEAR(funResults.d2FdRho2->aa[i], libResults.d2FdRho2->aa[i], max(fabs(funResults.d2FdRho2->aa[i]) * 1.0e-6, 5.0e-5));
-    ASSERT_NEAR(funResults.d2FdRho2->ab[i], libResults.d2FdRho2->ab[i], max(fabs(funResults.d2FdRho2->ab[i]) * 1.0e-6, 5.0e-5));
-    ASSERT_NEAR(funResults.d2FdRho2->bb[i], libResults.d2FdRho2->bb[i], max(fabs(funResults.d2FdRho2->bb[i]) * 1.0e-6, 5.0e-5));
+    ASSERT_NEAR(funResults.d2FdRho2->aa[i], libResults.d2FdRho2->aa[i],
+                std::max(fabs(funResults.d2FdRho2->aa[i]) * 1.0e-6, 5.0e-5));
+    ASSERT_NEAR(funResults.d2FdRho2->ab[i], libResults.d2FdRho2->ab[i],
+                std::max(fabs(funResults.d2FdRho2->ab[i]) * 1.0e-6, 5.0e-5));
+    ASSERT_NEAR(funResults.d2FdRho2->bb[i], libResults.d2FdRho2->bb[i],
+                std::max(fabs(funResults.d2FdRho2->bb[i]) * 1.0e-6, 5.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->x.aa[i], libResults.d2FdRhodGradRho->x.aa[i],
-                max(fabs(funResults.d2FdRhodGradRho->x.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->x.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->y.aa[i], libResults.d2FdRhodGradRho->y.aa[i],
-                max(fabs(funResults.d2FdRhodGradRho->y.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->y.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->z.aa[i], libResults.d2FdRhodGradRho->z.aa[i],
-                max(fabs(funResults.d2FdRhodGradRho->z.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->z.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->x.ab[i], libResults.d2FdRhodGradRho->x.ab[i],
-                max(fabs(funResults.d2FdRhodGradRho->x.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->x.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->y.ab[i], libResults.d2FdRhodGradRho->y.ab[i],
-                max(fabs(funResults.d2FdRhodGradRho->y.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->y.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->z.ab[i], libResults.d2FdRhodGradRho->z.ab[i],
-                max(fabs(funResults.d2FdRhodGradRho->z.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->z.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->x.ba[i], libResults.d2FdRhodGradRho->x.ba[i],
-                max(fabs(funResults.d2FdRhodGradRho->x.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->x.ba[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->y.ba[i], libResults.d2FdRhodGradRho->y.ba[i],
-                max(fabs(funResults.d2FdRhodGradRho->y.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->y.ba[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->z.ba[i], libResults.d2FdRhodGradRho->z.ba[i],
-                max(fabs(funResults.d2FdRhodGradRho->z.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdRhodGradRho->z.ba[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->x.bb[i], libResults.d2FdRhodGradRho->x.bb[i],
-                max(fabs(funResults.d2FdRhodGradRho->x.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->x.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->y.bb[i], libResults.d2FdRhodGradRho->y.bb[i],
-                max(fabs(funResults.d2FdRhodGradRho->y.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->y.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdRhodGradRho->z.bb[i], libResults.d2FdRhodGradRho->z.bb[i],
-                max(fabs(funResults.d2FdRhodGradRho->z.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdRhodGradRho->z.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xx.aa[i], libResults.d2FdGradRho2->xx.aa[i],
-                max(fabs(funResults.d2FdGradRho2->xx.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xx.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yy.aa[i], libResults.d2FdGradRho2->yy.aa[i],
-                max(fabs(funResults.d2FdGradRho2->yy.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yy.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->zz.aa[i], libResults.d2FdGradRho2->zz.aa[i],
-                max(fabs(funResults.d2FdGradRho2->zz.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->zz.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xx.bb[i], libResults.d2FdGradRho2->xx.bb[i],
-                max(fabs(funResults.d2FdGradRho2->xx.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xx.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yy.bb[i], libResults.d2FdGradRho2->yy.bb[i],
-                max(fabs(funResults.d2FdGradRho2->yy.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yy.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->zz.bb[i], libResults.d2FdGradRho2->zz.bb[i],
-                max(fabs(funResults.d2FdGradRho2->zz.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->zz.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xx.ab[i], libResults.d2FdGradRho2->xx.ab[i],
-                max(fabs(funResults.d2FdGradRho2->xx.ab[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->xx.ab[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->yy.ab[i], libResults.d2FdGradRho2->yy.ab[i],
-                max(fabs(funResults.d2FdGradRho2->yy.ab[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->yy.ab[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->zz.ab[i], libResults.d2FdGradRho2->zz.ab[i],
-                max(fabs(funResults.d2FdGradRho2->zz.ab[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->zz.ab[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->xx.ba[i], libResults.d2FdGradRho2->xx.ba[i],
-                max(fabs(funResults.d2FdGradRho2->xx.ba[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->xx.ba[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->yy.ba[i], libResults.d2FdGradRho2->yy.ba[i],
-                max(fabs(funResults.d2FdGradRho2->yy.ba[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->yy.ba[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->zz.ba[i], libResults.d2FdGradRho2->zz.ba[i],
-                max(fabs(funResults.d2FdGradRho2->zz.ba[i]) * 1.0e-6, 1.0e-3));
+                std::max(fabs(funResults.d2FdGradRho2->zz.ba[i]) * 1.0e-6, 1.0e-3));
     ASSERT_NEAR(funResults.d2FdGradRho2->xz.aa[i], libResults.d2FdGradRho2->xz.aa[i],
-                max(fabs(funResults.d2FdGradRho2->xz.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xz.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xy.aa[i], libResults.d2FdGradRho2->xy.aa[i],
-                max(fabs(funResults.d2FdGradRho2->xy.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xy.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yz.aa[i], libResults.d2FdGradRho2->yz.aa[i],
-                max(fabs(funResults.d2FdGradRho2->yz.aa[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yz.aa[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xy.bb[i], libResults.d2FdGradRho2->xy.bb[i],
-                max(fabs(funResults.d2FdGradRho2->xy.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xy.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->yz.bb[i], libResults.d2FdGradRho2->yz.bb[i],
-                max(fabs(funResults.d2FdGradRho2->yz.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->yz.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xz.bb[i], libResults.d2FdGradRho2->xz.bb[i],
-                max(fabs(funResults.d2FdGradRho2->xz.bb[i]) * 1.0e-6, 1.0e-5));
+                std::max(fabs(funResults.d2FdGradRho2->xz.bb[i]) * 1.0e-6, 1.0e-5));
     ASSERT_NEAR(funResults.d2FdGradRho2->xy.ab[i], libResults.d2FdGradRho2->xy.ab[i],
-                max(fabs(funResults.d2FdGradRho2->xy.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->xy.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdGradRho2->xz.ab[i], libResults.d2FdGradRho2->xz.ab[i],
-                max(fabs(funResults.d2FdGradRho2->xz.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->xz.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdGradRho2->yz.ab[i], libResults.d2FdGradRho2->yz.ab[i],
-                max(fabs(funResults.d2FdGradRho2->yz.ab[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->yz.ab[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdGradRho2->xy.ba[i], libResults.d2FdGradRho2->xy.ba[i],
-                max(fabs(funResults.d2FdGradRho2->xy.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->xy.ba[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdGradRho2->xz.ba[i], libResults.d2FdGradRho2->xz.ba[i],
-                max(fabs(funResults.d2FdGradRho2->xz.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->xz.ba[i]) * 1.0e-6, 1.0e-4));
     ASSERT_NEAR(funResults.d2FdGradRho2->yz.ba[i], libResults.d2FdGradRho2->yz.ba[i],
-                max(fabs(funResults.d2FdGradRho2->yz.ba[i]) * 1.0e-6, 1.0e-4));
+                std::max(fabs(funResults.d2FdGradRho2->yz.ba[i]) * 1.0e-6, 1.0e-4));
   }
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 #endif /* defined SERENITY_USE_LIBXC && defined SERENITY_USE_XCFUN */
 /**

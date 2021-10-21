@@ -29,6 +29,7 @@
 #include <vector>           // std::vector
 
 namespace Serenity {
+typedef std::vector<Eigen::MatrixXd> MO3CenterIntegrals;
 /* Forward Declartaions */
 class OrbitalPair;
 class SingleSubstitution;
@@ -47,9 +48,21 @@ class MO3CenterIntegralController;
  */
 class OrbitalTriple {
  public:
-  OrbitalTriple(std::shared_ptr<OrbitalPair> ikPair, std::shared_ptr<OrbitalPair> jkPair,
-                std::shared_ptr<OrbitalPair> ijPair, std::vector<std::shared_ptr<OrbitalPair>> ilPairs,
-                std::vector<std::shared_ptr<OrbitalPair>> jlPairs, std::vector<std::shared_ptr<OrbitalPair>> klPairs);
+  /**
+   * @brief Constructor. An orbital triple is given by the three pairs ij, ik and jk.
+   * @param ikPair   The ik-pair.
+   * @param jkPair   The jk-pair.
+   * @param ijPair   The ij-pair.
+   * @param ilPairs  List of il-pairs.
+   * @param jlPairs  List of jl-pairs.
+   * @param klPairs  List of kl-pairs.
+   * @param i        Triples index i.
+   * @param j        Triples index j.
+   * @param k        Triples index k.
+   */
+  OrbitalTriple(std::shared_ptr<OrbitalPair> ikPair, std::shared_ptr<OrbitalPair> jkPair, std::shared_ptr<OrbitalPair> ijPair,
+                std::vector<std::shared_ptr<OrbitalPair>> ilPairs, std::vector<std::shared_ptr<OrbitalPair>> jlPairs,
+                std::vector<std::shared_ptr<OrbitalPair>> klPairs, unsigned int i, unsigned int j, unsigned int k);
 
   /**
    * @brief Getter for semi-canonical triples correction increment.
@@ -172,11 +185,13 @@ class OrbitalTriple {
    * @param s_i_ijk  The overlap matrix between i-PNOs and ijk-TNOs.
    * @param s_j_ijk  The overlap matrix between j-PNOs and ijk-TNOs.
    * @param s_k_ijk  The overlap matrix between k-PNOs and ijk-TNOs.
+   * @param paoProjection The PAO projection matrix.
    */
   void setTNOTransformation(Eigen::MatrixXd trafo, Eigen::VectorXd eps, Eigen::MatrixXd s_ij_ijk,
                             Eigen::MatrixXd s_ik_ijk, Eigen::MatrixXd s_jk_ijk, std::vector<Eigen::MatrixXd> s_il_ijk,
                             std::vector<Eigen::MatrixXd> s_kl_ijk, std::vector<Eigen::MatrixXd> s_jl_ijk,
-                            Eigen::MatrixXd s_i_ijk, Eigen::MatrixXd s_j_ijk, Eigen::MatrixXd s_k_ijk) {
+                            Eigen::MatrixXd s_i_ijk, Eigen::MatrixXd s_j_ijk, Eigen::MatrixXd s_k_ijk,
+                            Eigen::SparseMatrix<double> paoProjection) {
     assert(!_tnoInit);
     _toPAODomain = trafo;
     _tnoEigenvalues = eps;
@@ -190,6 +205,7 @@ class OrbitalTriple {
     _s_i_ijk = s_i_ijk;
     _s_j_ijk = s_j_ijk;
     _s_k_ijk = s_k_ijk;
+    _domainProjection = paoProjection;
   }
   /**
    * @brief Getter for the TNO coefficients in the redundant PAO basis.
@@ -217,6 +233,7 @@ class OrbitalTriple {
    */
   void calculateIntegrals(std::shared_ptr<BasisController> auxBasisController,
                           std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
+                          const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& abK, const MO3CenterIntegrals& klK,
                           const MatrixInBasis<RESTRICTED>& coulombMetric);
   /**
    * @brief Getter for the integrals (ia|bc).
@@ -434,6 +451,32 @@ class OrbitalTriple {
       throw SerenityError("Call to TNO based method before initializing TNOs");
     return _s_jl_ijk;
   }
+  /**
+   * @brief Getter for the triples type.
+   * @return Returns true if the triple is a weak triple. False, otherwise.
+   */
+  bool isWeak();
+  /**
+   * @brief Getter for the number of auxiliary functions used in the triple.
+   *        This is initialized during the integral calculation.
+   * @return The number of auxiliary functions.
+   */
+  unsigned int getNLocalAuxiliaryFunctions();
+  /**
+   * @brief Getter for the number of TNOs used.
+   * @return The number of TNOs.
+   */
+  unsigned int getNTNOs();
+  /**
+   * @brief Setter for the triples specific fitting domain.
+   * @param fittingDomain The fittinge domain.
+   */
+  void setFittingDomain(const Eigen::SparseVector<int>& fittingDomain);
+  /**
+   * @brief Getter for the triple specific fitting domain.
+   * @return The fitting domain.
+   */
+  const Eigen::SparseVector<int>& getFittingDomain() const;
 
  private:
   // The overlap matrices. See the associated getter functions.
@@ -468,9 +511,15 @@ class OrbitalTriple {
   std::vector<Eigen::MatrixXd> calculateY(const std::vector<Eigen::MatrixXd>& V);
   // Calculates Eq. (3)
   std::vector<Eigen::MatrixXd> calculateZ(const std::vector<Eigen::MatrixXd>& V);
+  // Construct the map occupied orbital to list index in indices map.
+  std::map<unsigned int, unsigned int> getIndexMaps(std::vector<unsigned int>& indices);
 
   // The PAO domain.
   Eigen::SparseVector<int> _paoDomain;
+  // The auxiliary fitting domain.
+  Eigen::SparseVector<int> _fittingDomain;
+  // The projection matrix to the PAO domain.
+  Eigen::SparseMatrix<double> _domainProjection;
   // TNO coefficients in the redundant PAO basis.
   Eigen::MatrixXd _toPAODomain;
   // TNO pseudo eigenvalues.
@@ -497,7 +546,8 @@ class OrbitalTriple {
   Eigen::MatrixXd _ia_jb;
   Eigen::MatrixXd _ia_kb;
   Eigen::MatrixXd _ja_kb;
-
+  // Shared_ptr. The orbital pair will never hold a
+  // pointer to a triplet.
   // The ik-pair.
   std::shared_ptr<OrbitalPair> _ikPair;
   // The jk-pair.
@@ -516,11 +566,11 @@ class OrbitalTriple {
   std::shared_ptr<SingleSubstitution> _jSingle;
   // The k-single.
   std::shared_ptr<SingleSubstitution> _kSingle;
-  // The occ--occ fock matrix elements.
+  // The occ--occ Fock matrix elements.
   double _f_ii;
   double _f_jj;
   double _f_kk;
-  // The l indices for il/jl and kl pairs.
+  // The l indices for il/jl and kl occupied orbital indices.
   std::vector<unsigned int> _ilIndices;
   std::vector<unsigned int> _jlIndices;
   std::vector<unsigned int> _klIndices;
@@ -535,6 +585,8 @@ class OrbitalTriple {
   // Debug flags to check for TNO initialization and integral transformation.
   bool _tnoInit = false;
   bool _integralsCalc = false;
+  // Number of local auxiliary basis functions.
+  unsigned int _nLocalAux;
 };
 
 } /* namespace Serenity */

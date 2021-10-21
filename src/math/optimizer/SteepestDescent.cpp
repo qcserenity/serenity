@@ -25,7 +25,6 @@ namespace Serenity {
 SteepestDescent::SteepestDescent(Eigen::VectorXd& parameters, double stepWidth)
   : Optimizer(parameters), _stepWidth(stepWidth) {
 }
-
 void SteepestDescent::optimize(
     std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
   double value = std::numeric_limits<double>::infinity();
@@ -38,5 +37,4 @@ void SteepestDescent::optimize(
     converged = updateFunction(this->_parameters, value, gradients, nullptr, false);
   } while (!converged);
 }
-
 } /* namespace Serenity */

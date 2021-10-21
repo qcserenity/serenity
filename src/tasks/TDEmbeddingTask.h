@@ -59,7 +59,7 @@ struct TDEmbeddingTaskSettings {
       splitValenceAndCore(false),
       addOrbitals(false) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
-    lcSettings.method = PNO_METHOD::DLPNO_MP2;
+    lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (double)orbitalThreshold, (bool)noSupRec,
               (double)truncationFactor, (Options::BASIS_SET_TRUNCATION_ALGORITHMS)truncAlgorithm, (double)netThreshold,
@@ -117,7 +117,7 @@ class TDEmbeddingTask : public Task {
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
       if (!c.lcSettings.visitSettings(v, blockname)) {
-        throw SerenityError((string) "Unknown block in TDEmbeddingTaskSettings: " + blockname);
+        throw SerenityError((std::string) "Unknown block in TDEmbeddingTaskSettings: " + blockname);
       }
     }
   }

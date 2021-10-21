@@ -19,6 +19,7 @@
  */
 /* Include Serenity Internal Headers */
 #include "integrals/wrappers/Libint.h"
+#include "basis/Basis.h"
 #include "basis/Shell.h"
 #include "geometry/Atom.h"
 #include "geometry/Point.h"
@@ -58,16 +59,16 @@ TEST_F(LibintTest, OverlapIntegrals) {
   Eigen::MatrixXd results;
 
   /* Overlaps */
-  libint.initialize(libint2::Operator::overlap, 0, 2);
-  libint.compute(libint2::Operator::overlap, 0, *basis[0], *basis[0], results);
+  libint.initialize(LIBINT_OPERATOR::overlap, 0, 2);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[0], *basis[0], results);
   ASSERT_EQ(results.size(), (unsigned int)1);
   EXPECT_NEAR(results(0, 0), 1.1930904 / 1.1930904, expectedPrecision);
-  libint.compute(libint2::Operator::overlap, 0, *basis[0], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[0], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)3);
   EXPECT_NEAR(results(0, 0), -0.71871395 / sqrt(1.1930904 * 1.1826193), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(2, 0), 0.0, expectedPrecision);
-  libint.compute(libint2::Operator::overlap, 0, *basis[0], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[0], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)6);
   EXPECT_NEAR(results(0, 0), 0.049524003 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), -0.12211283 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
@@ -75,7 +76,7 @@ TEST_F(LibintTest, OverlapIntegrals) {
   EXPECT_NEAR(results(3, 0), 0.19757795 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(4, 0), 0.12211283 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(5, 0), 0.049524003 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::overlap, 0, *basis[1], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[1], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)9);
   EXPECT_NEAR(results(0, 0), 1.1826193 / 1.1826193, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
@@ -86,7 +87,7 @@ TEST_F(LibintTest, OverlapIntegrals) {
   EXPECT_NEAR(results(6, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(7, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(8, 0), 1.1826193 / 1.1826193, expectedPrecision);
-  libint.compute(libint2::Operator::overlap, 0, *basis[1], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[1], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)18);
   EXPECT_NEAR(results(0, 0), -0.025154920 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.074263027 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
@@ -106,7 +107,7 @@ TEST_F(LibintTest, OverlapIntegrals) {
   EXPECT_NEAR(results(15, 0), 0.047003867 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(16, 0), -0.012838467 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(17, 0), -0.0075377683 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::overlap, 0, *basis[2], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[2], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)36);
   EXPECT_NEAR(results(0, 0), 1.2623580 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
@@ -144,7 +145,7 @@ TEST_F(LibintTest, OverlapIntegrals) {
   EXPECT_NEAR(results(33, 0), 0.42078602 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(34, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(35, 0), 1.2623580 / 1.2623580, expectedPrecision);
-  libint.finalize(libint2::Operator::overlap, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::overlap, 0, 2);
 }
 /**
  * @test
@@ -158,16 +159,16 @@ TEST_F(LibintTest, KineticEnergyIntegrals) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
   auto basis = basisController->getBasis();
   Eigen::MatrixXd results;
-  libint.initialize(libint2::Operator::kinetic, 0, 2);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[0], *basis[0], results);
+  libint.initialize(LIBINT_OPERATOR::kinetic, 0, 2);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[0], *basis[0], results);
   ASSERT_EQ(results.size(), (unsigned int)1);
   EXPECT_NEAR(results(0, 0), 1.8961808 / 1.1930904, expectedPrecision);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[0], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[0], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)3);
   EXPECT_NEAR(results(0, 0), -1.4901775 / sqrt(1.1930904 * 1.1826193), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(2, 0), 0.0, expectedPrecision);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[0], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[0], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)6);
   EXPECT_NEAR(results(0, 0), -0.044097900 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), -0.039677301 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
@@ -175,7 +176,7 @@ TEST_F(LibintTest, KineticEnergyIntegrals) {
   EXPECT_NEAR(results(3, 0), 0.0040082713 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(4, 0), 0.039677301 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(5, 0), -0.044097900 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[1], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[1], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)9);
   EXPECT_NEAR(results(0, 0), 3.1253977 / 1.1826193, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
@@ -186,7 +187,7 @@ TEST_F(LibintTest, KineticEnergyIntegrals) {
   EXPECT_NEAR(results(6, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(7, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(8, 0), 3.1253977 / 1.1826193, expectedPrecision);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[1], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[1], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)18);
   EXPECT_NEAR(results(0, 0), -0.0024641700 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.047322082 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
@@ -206,7 +207,7 @@ TEST_F(LibintTest, KineticEnergyIntegrals) {
   EXPECT_NEAR(results(15, 0), -0.00082471112 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(16, 0), 0.022228040 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(17, 0), -0.0045631357 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[2], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[2], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)36);
   EXPECT_NEAR(results(0, 0), 1.7276239 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.0, expectedPrecision);
@@ -244,7 +245,7 @@ TEST_F(LibintTest, KineticEnergyIntegrals) {
   EXPECT_NEAR(results(33, 0), -0.22857367 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(34, 0), 0.0, expectedPrecision);
   EXPECT_NEAR(results(35, 0), 1.7276239 / 1.2623580, expectedPrecision);
-  libint.finalize(libint2::Operator::kinetic, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::kinetic, 0, 2);
 }
 /**
  * @test
@@ -261,16 +262,16 @@ TEST_F(LibintTest, NuclearAttractionIntegrals) {
 
   std::vector<std::pair<double, std::array<double, 3>>> ptchrgs = {{11.0, {{1.7, -0.4, 3.3}}}, {3.0, {{-1.2, 0.1, -2.0}}}};
 
-  libint.initialize(libint2::Operator::nuclear, 0, 2, ptchrgs, 0.0);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[0], *basis[0], results);
+  libint.initialize(LIBINT_OPERATOR::nuclear, 0, 2, ptchrgs, 0.0);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[0], *basis[0], results);
   ASSERT_EQ(results.size(), (unsigned int)1);
   EXPECT_NEAR(results(0, 0), -5.048262928 / 1.1930904, expectedPrecision);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[0], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[0], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)3);
   EXPECT_NEAR(results(0, 0), 3.051721730 / sqrt(1.1930904 * 1.1826193), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.028497005 / sqrt(1.1930904 * 1.1826193), expectedPrecision);
   EXPECT_NEAR(results(2, 0), -0.168618146 / sqrt(1.1930904 * 1.1826193), expectedPrecision);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[0], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[0], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)6);
   EXPECT_NEAR(results(0, 0), -0.205663564 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.517657942 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
@@ -278,7 +279,7 @@ TEST_F(LibintTest, NuclearAttractionIntegrals) {
   EXPECT_NEAR(results(3, 0), -0.820713984 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(4, 0), -0.489827936 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(5, 0), -0.196849405 / sqrt(1.1930904 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[1], *basis[1], results);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[1], *basis[1], results);
   ASSERT_EQ(results.size(), (unsigned int)9);
   EXPECT_NEAR(results(0, 0), -4.973913164 / 1.1826193, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.008098898 / 1.1826193, expectedPrecision);
@@ -289,7 +290,7 @@ TEST_F(LibintTest, NuclearAttractionIntegrals) {
   EXPECT_NEAR(results(6, 0), -0.0947756602 / 1.1826193, expectedPrecision);
   EXPECT_NEAR(results(7, 0), 0.029125858 / 1.1826193, expectedPrecision);
   EXPECT_NEAR(results(8, 0), -5.177260422 / 1.1826193, expectedPrecision);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[1], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[1], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)18);
   EXPECT_NEAR(results(0, 0), 0.104093519 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(1, 0), -0.3133169381 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
@@ -309,7 +310,7 @@ TEST_F(LibintTest, NuclearAttractionIntegrals) {
   EXPECT_NEAR(results(15, 0), -0.2260676973 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(16, 0), 0.0543626809 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
   EXPECT_NEAR(results(17, 0), 0.026792177 / sqrt(1.1826193 * 1.2623580), expectedPrecision);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[2], *basis[2], results);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[2], *basis[2], results);
   ASSERT_EQ(results.size(), (unsigned int)36);
   EXPECT_NEAR(results(0, 0), -3.967376346 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.102691822 / 1.2623580, expectedPrecision);
@@ -347,7 +348,7 @@ TEST_F(LibintTest, NuclearAttractionIntegrals) {
   EXPECT_NEAR(results(33, 0), -1.3507669655 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(34, 0), 0.0195141542 / 1.2623580, expectedPrecision);
   EXPECT_NEAR(results(35, 0), -4.026150420 / 1.2623580, expectedPrecision);
-  libint.finalize(libint2::Operator::nuclear, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::nuclear, 0, 2);
 }
 /**
  * @test
@@ -367,8 +368,8 @@ TEST_F(LibintTest, F_typeFunctionIntegrals) {
   std::vector<std::pair<double, std::array<double, 3>>> ptchrgs = {{11.0, {{1.7, -0.4, 3.3}}}, {3.0, {{-1.2, 0.1, -2.0}}}};
 
   /* Overlaps */
-  libint.initialize(libint2::Operator::overlap, 0, 2);
-  libint.compute(libint2::Operator::overlap, 0, *basis[0], fFunction, results);
+  libint.initialize(LIBINT_OPERATOR::overlap, 0, 2);
+  libint.compute(LIBINT_OPERATOR::overlap, 0, *basis[0], fFunction, results);
   ASSERT_EQ(results.size(), (unsigned int)10);
   EXPECT_NEAR(results(0, 0), -0.176338013 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(1, 0), -0.136513533 / sqrt(1.1930904), expectedPrecision);
@@ -380,10 +381,10 @@ TEST_F(LibintTest, F_typeFunctionIntegrals) {
   EXPECT_NEAR(results(7, 0), 0.045513435 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(8, 0), -0.061526666 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(9, 0), 0.0578745502 / sqrt(1.1930904), expectedPrecision);
-  libint.finalize(libint2::Operator::overlap, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::overlap, 0, 2);
   /* Kinetic */
-  libint.initialize(libint2::Operator::kinetic, 0, 2);
-  libint.compute(libint2::Operator::kinetic, 0, *basis[0], fFunction, results);
+  libint.initialize(LIBINT_OPERATOR::kinetic, 0, 2);
+  libint.compute(LIBINT_OPERATOR::kinetic, 0, *basis[0], fFunction, results);
   ASSERT_EQ(results.size(), (unsigned int)10);
   EXPECT_NEAR(results(0), -0.035495889 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(1, 0), -0.060828579 / sqrt(1.1930904), expectedPrecision);
@@ -395,10 +396,10 @@ TEST_F(LibintTest, F_typeFunctionIntegrals) {
   EXPECT_NEAR(results(7, 0), -0.006136429 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(8, 0), -0.016531939 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(9, 0), -0.010116192 / sqrt(1.1930904), expectedPrecision);
-  libint.finalize(libint2::Operator::kinetic, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::kinetic, 0, 2);
   /* Nuclear */
-  libint.initialize(libint2::Operator::nuclear, 0, 2, ptchrgs, 0.0);
-  libint.compute(libint2::Operator::nuclear, 0, *basis[0], fFunction, results);
+  libint.initialize(LIBINT_OPERATOR::nuclear, 0, 2, ptchrgs, 0.0);
+  libint.compute(LIBINT_OPERATOR::nuclear, 0, *basis[0], fFunction, results);
   ASSERT_EQ(results.size(), (unsigned int)10);
   EXPECT_NEAR(results(0, 0), 0.7287011069 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(1, 0), 0.569204468 / sqrt(1.1930904), expectedPrecision);
@@ -410,7 +411,7 @@ TEST_F(LibintTest, F_typeFunctionIntegrals) {
   EXPECT_NEAR(results(7, 0), -0.190720343 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(8, 0), 0.264209166 / sqrt(1.1930904), expectedPrecision);
   EXPECT_NEAR(results(9, 0), -0.2491949391 / sqrt(1.1930904), expectedPrecision);
-  libint.finalize(libint2::Operator::nuclear, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::nuclear, 0, 2);
 }
 /**
  * @test
@@ -439,32 +440,32 @@ TEST_F(LibintTest, Test2centerIntegrals) {
   normFactorP2 *= Normalization::finalNormalization(0, 1, 0);
 
   Eigen::MatrixXd results;
-  libint.initialize(libint2::Operator::coulomb, 0, 2);
+  libint.initialize(LIBINT_OPERATOR::coulomb, 0, 2);
   // s-function with itself, exp 1.0
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFunc, dummyBasFunc, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFunc, dummyBasFunc, results);
   EXPECT_NEAR(results(0, 0), 24.739 * normFactor * normFactor, 1e-3);
   // s-function with s-function, exp 1.0, different centers
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFunc, dummyBasFuncShifted, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFunc, dummyBasFuncShifted, results);
   EXPECT_NEAR(results(0, 0), 16.412 * normFactor * normFactor, 1e-3);
   // p-function, exp 0.5 with s-function, exp 1.0, different centers
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncP, dummyBasFuncShifted, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncP, dummyBasFuncShifted, results);
   EXPECT_NEAR(results(1, 0), 7.2170 * normFactorP * normFactor, 1e-4);
   // d-function, exp 0.5 with s-function, exp 1.0, different centers
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncD, dummyBasFuncShifted2, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncD, dummyBasFuncShifted2, results);
   EXPECT_NEAR(results(4, 0), 1.94482 * normFactorD * normFactor, 1e-4);
   // same as above, given in base functions the other way around
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncShifted2, dummyBasFuncD, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncShifted2, dummyBasFuncD, results);
   EXPECT_NEAR(results(4, 0), 1.94482 * normFactorD * normFactor, 1e-4);
   // Same as above, now no function at origin
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncDAgain, dummyBasFuncShifted2Again, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncDAgain, dummyBasFuncShifted2Again, results);
   EXPECT_NEAR(results(4, 0), 1.94482 * normFactorD * normFactor, 1e-4);
   // d-function, exp 0.5 with p-function, exp 1.0, different centers
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncD, dummyBasFuncShiftedP, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncD, dummyBasFuncShiftedP, results);
   EXPECT_NEAR(results(13, 0), -0.10605 * normFactorD * normFactorP2, 1e-4);
   // same as above, permuted
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncShiftedP, dummyBasFuncD, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncShiftedP, dummyBasFuncD, results);
   EXPECT_NEAR(results(10, 0), -0.10605 * normFactorD * normFactorP2, 1e-4);
-  libint.finalize(libint2::Operator::coulomb, 0, 2);
+  libint.finalize(LIBINT_OPERATOR::coulomb, 0, 2);
 }
 
 /**
@@ -498,25 +499,25 @@ TEST_F(LibintTest, Test3centerIntegrals) {
 
   Eigen::MatrixXd results;
   // All s-functions, same center
-  libint.initialize(libint2::Operator::coulomb, 0, 3);
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFunc, dummyBasFunc2, dummyBasFunc2, results);
+  libint.initialize(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFunc, dummyBasFunc2, dummyBasFunc2, results);
   EXPECT_NEAR(results(0, 0), 24.739 * normFactor * normFactor2 * normFactor2, 1e-4);
   // all s-functions, different centers
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFunc, dummyBasFuncShifted, dummyBasFuncShifted, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFunc, dummyBasFuncShifted, dummyBasFuncShifted, results);
   EXPECT_NEAR(results(0, 0), 2.92827 * normFactor * normFactor * normFactor, 1e-3);
   // d and p-functions, all different centers (checking D_yz, P_y, P_x)
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncD2, dummyBasFuncP, dummyBasFuncP2, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncD2, dummyBasFuncP, dummyBasFuncP2, results);
   EXPECT_NEAR(results(39, 0), 0.00287007 * normFactorD2 * normFactorP * normFactorP2, 1e-5);
   // same as above, shifted
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncD2Shifted, dummyBasFuncPShifted, dummyBasFuncP2Shifted, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncD2Shifted, dummyBasFuncPShifted, dummyBasFuncP2Shifted, results);
   EXPECT_NEAR(results(39, 0), 0.00287007 * normFactorD2 * normFactorP * normFactorP2, 1e-5);
   // Same as above permuted
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncP, dummyBasFuncD2, dummyBasFuncP2, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncP, dummyBasFuncD2, dummyBasFuncP2, results);
   EXPECT_NEAR(results(30, 0), -0.000223906 * normFactorP * normFactorD2 * normFactorP2, 1e-5);
   // Same as above permuted again
-  libint.compute(libint2::Operator::coulomb, 0, dummyBasFuncP, dummyBasFuncP2, dummyBasFuncD2, results);
+  libint.compute(LIBINT_OPERATOR::coulomb, 0, dummyBasFuncP, dummyBasFuncP2, dummyBasFuncD2, results);
   EXPECT_NEAR(results(22, 0), -0.000223906 * normFactorP * normFactorP2 * normFactorD2, 1e-5);
-  libint.finalize(libint2::Operator::coulomb, 0, 3);
+  libint.finalize(LIBINT_OPERATOR::coulomb, 0, 3);
 }
 
 /**
@@ -526,8 +527,8 @@ TEST_F(LibintTest, Test3centerIntegrals) {
 TEST_F(LibintTest, 1eInts_CrossBasis_Overlap) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
   /* Overlaps */
-  auto res1 = libint.compute1eInts(libint2::Operator::overlap, basisController, basisController);
-  auto res2 = libint.compute1eInts(libint2::Operator::overlap, basisController);
+  auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController);
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController);
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));
@@ -542,8 +543,8 @@ TEST_F(LibintTest, 1eInts_CrossBasis_Overlap) {
 TEST_F(LibintTest, 1eInts_CrossBasis_Nuclear1) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
   /* Overlaps */
-  auto res1 = libint.compute1eInts(libint2::Operator::overlap, basisController, basisController);
-  auto res2 = libint.compute1eInts(libint2::Operator::overlap, basisController);
+  auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController);
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController);
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));
@@ -559,8 +560,8 @@ TEST_F(LibintTest, 1eInts_CrossBasis_Nuclear2) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
   std::pair<double, std::array<double, 3>> test = {1.0, {{0.0, 0.0, 0.0}}};
   /* Overlaps */
-  auto res1 = libint.compute1eInts(libint2::Operator::overlap, basisController, basisController, {test});
-  auto res2 = libint.compute1eInts(libint2::Operator::overlap, basisController, {test});
+  auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController, {test});
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test});
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));
@@ -577,8 +578,8 @@ TEST_F(LibintTest, 1eInts_NuclearVersions1) {
   auto test1 = std::make_shared<Atom>("H", 0.0, 0.0, 0.0);
   std::pair<double, std::array<double, 3>> test2 = {1.0, {{0.0, 0.0, 0.0}}};
   /* Overlaps */
-  auto res1 = libint.compute1eInts(libint2::Operator::overlap, basisController, {test1});
-  auto res2 = libint.compute1eInts(libint2::Operator::overlap, basisController, {test2});
+  auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test1});
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test2});
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));
@@ -595,8 +596,8 @@ TEST_F(LibintTest, 1eInts_NuclearVersions2) {
   auto test1 = std::make_shared<Atom>("H", 0.0, 0.0, 0.0);
   std::pair<double, std::array<double, 3>> test2 = {1.0, {{0.0, 0.0, 0.0}}};
   /* Overlaps */
-  auto res1 = libint.compute1eInts(libint2::Operator::overlap, basisController, basisController, {test1});
-  auto res2 = libint.compute1eInts(libint2::Operator::overlap, basisController, basisController, {test2});
+  auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController, {test1});
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController, {test2});
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));

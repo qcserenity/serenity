@@ -23,7 +23,6 @@
 /* Include Std and External Headers */
 #include <Eigen/Dense>      //Dense matrices
 #include <Eigen/SparseCore> //Sparse matrices
-#include <cassert>          //Asserts
 #include <memory>           //smrt_ptr
 #include <vector>           //std::vector
 
@@ -41,8 +40,9 @@ class SingleSubstitution {
   /**
    * @brief Constructor.
    * @param diagonalPair The underlying diagonal pair.
+   * @param singlesPNOScaling The scaling for the PNO threshold for this single.
    */
-  SingleSubstitution(std::shared_ptr<OrbitalPair> diagonalPair);
+  SingleSubstitution(std::shared_ptr<OrbitalPair> diagonalPair, double singlesPNOScaling);
   /**
    * @brief Destructor.
    */
@@ -72,13 +72,24 @@ class SingleSubstitution {
   std::vector<std::weak_ptr<OrbitalPair>> orbitalPairs;
   ///@brief Flag for singles corresponding to core orbitals.
   bool coreLikeOrbital = false;
+  /**
+   * @brief Getter for the underlying diagonal pair.
+   * @return The diagonal ii-pair.
+   */
   inline std::shared_ptr<OrbitalPair> getDiagonalPair() {
     return diagPair.lock();
   }
+  /**
+   * @brief Getter for the PNO-Threshold.
+   * @return The PNO threshold.
+   */
+  double getPNOThreshold();
 
  private:
   ///@brief The "dummy" diagonal pair which is used for the domains/PAOs.
   const std::weak_ptr<OrbitalPair> diagPair;
+  ///@brief The PNO threshold.
+  double _pnoThreshold;
 };
 
 } /* namespace Serenity */

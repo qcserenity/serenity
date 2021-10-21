@@ -40,10 +40,12 @@ class ContinuumModel;
 template<Options::SCF_MODES T>
 class ElectrostaticPotentialOnGridController;
 class MolecularSurfaceController;
+template<Options::SCF_MODES T>
+class OrbitalController;
 
 /**
  * @class PCMPotential PCMPotential.h
- * @brief A class that handels Fock matrix, energy and gradient contributions that
+ * @brief A class that handles Fock matrix, energy and gradient contributions that
  *        originate from an implicit solvent model.
  */
 template<Options::SCF_MODES SCFMode>
@@ -62,6 +64,7 @@ class PCMPotential : public Potential<SCFMode>,
    */
   PCMPotential(const PCMSettings& pcmSettings, std::shared_ptr<BasisController> basisController,
                std::shared_ptr<const Geometry> geometry, std::shared_ptr<MolecularSurfaceController> molecularSurface = nullptr,
+               std::shared_ptr<MolecularSurfaceController> vdWmolecularSurface = nullptr,
                std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>> activePotential = nullptr,
                std::vector<std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>>> environmentPotentials = {});
   /**
@@ -98,6 +101,8 @@ class PCMPotential : public Potential<SCFMode>,
   Eigen::MatrixXd getGeomGradients() override final;
 
  private:
+  ///@brief Calculate the cavity formation energy.
+  bool _calculateG_cav;
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief Integrate the PCM charges to the final Fock matrix.
@@ -106,9 +111,13 @@ class PCMPotential : public Potential<SCFMode>,
   std::shared_ptr<ContinuumModel<SCFMode>> _continuumModel;
   ///@brief The geometry (needed for the gradients).
   std::shared_ptr<const Geometry> _geometry;
+  ///@brief The vdW surface used for the calculation of the cavity formation energy.
+  std::shared_ptr<MolecularSurfaceController> _vdWmolecularSurface;
   ///@brief The controller of the electrostatic potential of the active system. This
   /// is used to access the two center integrals used by it.
   std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>> _activePotential;
+  ///@brief The electrostatic potential controller for the environment systems.
+  std::vector<std::shared_ptr<ElectrostaticPotentialOnGridController<SCFMode>>> _environmentPotentials;
 };
 
 } /* namespace Serenity */

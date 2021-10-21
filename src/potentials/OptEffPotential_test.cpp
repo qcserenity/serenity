@@ -30,6 +30,8 @@
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/matrices/FockMatrix.h"
 #include "geometry/Geometry.h"
+#include "integrals/OneIntControllerFactory.h"
+#include "integrals/wrappers/Libint.h"
 #include "settings/Options.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -43,16 +45,16 @@ class OptEffPotentialTest : public ::testing::Test {
  protected:
   static void SetUpTestCase() {
     auto& libint = Libint::getInstance();
-    libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
-    libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
 };
 

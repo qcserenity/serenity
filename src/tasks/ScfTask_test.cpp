@@ -20,6 +20,7 @@
 /* Include Serenity Internal Headers */
 #include "tasks/ScfTask.h"                            //To be tested.
 #include "data/ElectronicStructure.h"                 //GetEnergy.
+#include "geometry/MolecularSurfaceController.h"      //Cavity energy.
 #include "settings/Settings.h"                        //Settings.
 #include "system/SystemController.h"                  //GetElectronicStructure.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Test systems.
@@ -37,6 +38,42 @@ class ScfTaskTest : public ::testing::Test {
     SystemController__TEST_SUPPLY::cleanUp();
   }
 };
+
+TEST_F(ScfTaskTest, restricted_cart_ethane) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
+  Settings settings = sys->getSettings();
+  settings.basis.makeSphericalBasis = false;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scf.initialguess = Options::INITIAL_GUESSES::H_CORE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, settings);
+
+  ScfTask<RESTRICTED> scfCart(sys);
+  scfCart.run();
+
+  double eCart = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
+  EXPECT_NEAR(-79.1786812939, eCart, 1e-8);
+
+  settings.basis.densityFitting = Options::DENS_FITS::ACD;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, settings);
+
+  ScfTask<RESTRICTED> scfChol(sys);
+  scfChol.run();
+
+  double eCartChol = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
+  EXPECT_NEAR(eCart, eCartChol, 1e-4);
+
+  settings.basis.makeSphericalBasis = true;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP, settings);
+
+  ScfTask<RESTRICTED> scfSph(sys);
+  scfSph.run();
+  double eSph = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
+  EXPECT_NEAR(-79.1728833551, eSph, 1e-8);
+
+  EXPECT_NEAR(eCart, eSph, 1e-2);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
 
 TEST_F(ScfTaskTest, restricted_doubleHybridFunctional) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::VERBOSE;
@@ -97,7 +134,7 @@ TEST_F(ScfTaskTest, restricted_doubleHybridFunctional_Full4CenterMP2) {
   Settings settings = sys->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
   settings.basis.label = "DEF2-SVP";
-  settings.dft.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densityFitting = Options::DENS_FITS::NONE;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<RESTRICTED> scf(sys);
@@ -117,7 +154,7 @@ TEST_F(ScfTaskTest, restartFromConverged) {
   scf.settings.restart = true;
   scf.run();
   // Serenity 28.01.2020.
-  EXPECT_NEAR(-76.4072970518, sys->getElectronicStructure<RESTRICTED>()->getEnergy(), 1e-8);
+  EXPECT_NEAR(-76.4072970518, sys->getElectronicStructure<RESTRICTED>()->getEnergy(), 1e-7);
 
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
@@ -126,11 +163,15 @@ TEST_F(ScfTaskTest, Water_PCM_Water) {
   Settings settings = sys->getSettings();
   settings.pcm.use = true;
   settings.pcm.solvent = Options::PCM_SOLVENTS::WATER;
+  settings.pcm.cavityFormation = true;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  EXPECT_NEAR(-76.416436801427736, sys->getElectronicStructure<RESTRICTED>()->getEnergy(), 1e-7);
+  auto vdwCav = sys->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW);
+  double cavityFormationEnergy = vdwCav->getCavityEnergy();
+  EXPECT_NEAR(-76.416394955332379, sys->getElectronicStructure<RESTRICTED>()->getEnergy() - cavityFormationEnergy, 1e-7);
+  EXPECT_NEAR(0.007651626114384984, cavityFormationEnergy, 1e-6);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
@@ -143,7 +184,7 @@ TEST_F(ScfTaskTest, unrestrictedWater_PCM_Water) {
 
   ScfTask<UNRESTRICTED> scf(sys);
   scf.run();
-  EXPECT_NEAR(-76.416436801427736, sys->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-7);
+  EXPECT_NEAR(-76.416394955341488, sys->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-7);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

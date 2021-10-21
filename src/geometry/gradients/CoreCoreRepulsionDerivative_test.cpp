@@ -32,8 +32,8 @@ namespace Serenity {
  *        of the core core repulsion w.r.t nuclear coordinates
  */
 TEST(CoreCoreRepulsionDerivativeTest, CalculateDerivative) {
-  std::shared_ptr<AtomType> atomtypeOne(new AtomType(std::string("H"), 1, 1.0, 1.0, 1.0, 1.0, {}));
-  std::shared_ptr<AtomType> atomtypeTwo(new AtomType(std::string("He"), 2, 1.0, 1.0, 1.0, 1.0, {}));
+  std::shared_ptr<AtomType> atomtypeOne(new AtomType(std::string("H"), 1, 1.0, 1.0, 1.0, 1.0, 0, {}, 1.0));
+  std::shared_ptr<AtomType> atomtypeTwo(new AtomType(std::string("He"), 2, 1.0, 1.0, 1.0, 1.0, 0, {}, 1.0));
   auto atomOne = std::make_shared<Atom>(atomtypeOne, 0.0, 0.0, 0.0);
   auto atomTwo = std::make_shared<Atom>(atomtypeTwo, 0.0, 0.0, 2.0);
   std::vector<std::shared_ptr<Atom>> fakeAtoms(2, nullptr);

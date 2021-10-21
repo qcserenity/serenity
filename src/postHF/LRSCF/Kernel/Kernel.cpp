@@ -29,27 +29,28 @@
 #include "data/grid/ExternalDensityOnGridController.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
+#include "dft/functionals/FunctionalLibrary.h"
 #include "dft/functionals/wrappers/XCFun.h"
 #include "geometry/Geometry.h"
 #include "grid/GridControllerFactory.h"
+#include "io/FormattedOutputStream.h" //Filtered output streams
 #include "misc/SerenityError.h"
-#include "misc/Timing.h"
 #include "misc/WarningTracker.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
+#include "tasks/LRSCFTask.h"
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-Kernel<T>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std::vector<std::shared_ptr<SystemController>> env,
-                  bool superSystemGrid, CompositeFunctionals::KINFUNCTIONALS naddKinFunc,
-                  CompositeFunctionals::XCFUNCTIONALS naddXCFunc, CompositeFunctionals::XCFUNCTIONALS func)
-  : _superSystemGrid(superSystemGrid),
-    _naddKinFunc(naddKinFunc),
-    _naddXCFunc(naddXCFunc),
-    _func(func),
+template<Options::SCF_MODES SCFMode>
+Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
+                        std::vector<std::shared_ptr<SystemController>> env, const LRSCFTaskSettings& settings)
+  : _settings(settings),
+    _naddKinFunc(settings.embedding.naddKinFunc),
+    _naddXCFunc(settings.embedding.naddXCFunc),
     _gridController(act[0]->getGridController()),
     _gga(false) {
-  // Build systems
+  // Build system
   for (auto sys : act) {
     _systems.push_back(sys);
   }
@@ -57,7 +58,19 @@ Kernel<T>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std::vecto
     _systems.push_back(sys);
   }
   // Build supersystem grid if desired
-  if (_superSystemGrid) {
+  if (settings.subsystemgrid.size() != 0) {
+    // Build subsystem-based grid
+    std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
+    for (unsigned int I = 0; I < settings.subsystemgrid.size(); ++I) {
+      if (settings.subsystemgrid[I] > _systems.size())
+        throw SerenityError("Your index for the subsystem-based grid is too large!");
+      (*geometry) += (*_systems[settings.subsystemgrid[I] - 1]->getGeometry());
+    }
+    geometry->deleteIdenticalAtoms();
+    // produce grid controller for supersystem geometry
+    _gridController = GridControllerFactory::produce(geometry, _systems[0]->getSettings(), Options::GRID_PURPOSES::DEFAULT);
+  }
+  else {
     // Build supersystem geometry
     std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
     for (unsigned int I = 0; I < _systems.size(); ++I) {
@@ -69,46 +82,79 @@ Kernel<T>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std::vecto
   }
   assert(_gridController);
   // Get and check data from input functionals
+  for (auto sys : _systems) {
+    if (sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF &&
+        settings.func == CompositeFunctionals::XCFUNCTIONALS::NONE) {
+      _func.push_back(CompositeFunctionals::XCFUNCTIONALS::HF);
+    }
+    else if (settings.func == CompositeFunctionals::XCFUNCTIONALS::NONE) {
+      _func.push_back(sys->getSettings().dft.functional);
+    }
+    else {
+      _func.push_back(settings.func);
+    }
+  }
   if (_systems.size() == 1) {
     // If only one system is present, non-additive contribution is zero and need not be calculated.
     // Though NONE is default, we reassure that non-additive functionals are not used.
     _naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     _naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
   }
-  Functional EnaddXC = resolveFunctional(naddXCFunc);
-  Functional EnaddKIN = resolveFunctional(naddKinFunc);
+  Functional EnaddXC = resolveFunctional(_naddXCFunc);
+  Functional EnaddKIN = resolveFunctional(_naddKinFunc);
   if (EnaddKIN.isHybrid() || EnaddKIN.isRSHybrid())
     throw SerenityError("ERROR: Found hybrid functional for non-additive kinetic kernel.");
   if (EnaddXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA ||
       EnaddKIN.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA)
     _gga = true;
-  for (auto sys : _systems) {
-    Functional EXC = resolveFunctional(sys->getSettings().dft.functional);
+  for (auto funcXC : _func) {
+    Functional EXC = resolveFunctional(funcXC);
     if (EXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA)
       _gga = true;
   }
-  if (resolveFunctional(_func).getFunctionalClass() == CompositeFunctionals::CLASSES::GGA)
-    _gga = true;
   // Initialize storage objects (this ensures that key is already present when working with it)
   for (auto sys : _systems) {
-    _pp.insert(std::make_pair(sys->getSettings().name,
-                              DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>(_gridController)));
+    _pp.insert(std::make_pair(sys->getSystemName(),
+                              DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>(_gridController)));
     if (_gga)
       _pg.insert(std::make_pair(
-          sys->getSettings().name,
-          makeGradient<DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController)));
+          sys->getSystemName(),
+          makeGradient<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController)));
     if (_gga)
       _gg.insert(std::make_pair(
-          sys->getSettings().name,
-          makeHessian<DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController)));
+          sys->getSystemName(),
+          makeHessian<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController)));
   }
   if (_systems.size() > 1) {
-    _pptot = std::make_shared<DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
-    _ggtot = makeHessianPtr<DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
-    _pgtot = makeGradientPtr<DoublySpinPolarizedData<T, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    _pptot = std::make_shared<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    _ggtot = makeHessianPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    _pgtot = makeGradientPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
   }
-  // Calculate and store derivatives
-  calculateDerivatives();
+  // Check if same density keyword is used correctly
+  if (_settings.samedensity.size() > 0) {
+    if (_settings.samedensity.size() != _systems.size()) {
+      throw SerenityError("You need to specify the same amount of systems for the samedensity keyword as systems in "
+                          "your system (act + env)!");
+    }
+  }
+  // Check for mixed exact approx embedding
+  if (settings.embedding.embeddingModeList.size() == 0) {
+    // Calculate and store derivatives
+    calculateDerivatives();
+  }
+  else {
+    auto embeddingmodes = settings.embedding.embeddingModeList;
+    if (embeddingmodes.size() != _systems.size()) {
+      throw SerenityError("You need to specify the same amount of systems as embedding modes!");
+    }
+    _mixedEmbeddingUsed = true;
+    // Additonal contributions for exact Embedding
+    _ppExact = std::make_shared<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    _ggExact = makeHessianPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    _pgExact = makeGradientPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
+    // Calculate and store mixed derivatives
+    calculateDerivativesMixedEmbedding();
+  }
 }
 
 template<>
@@ -126,6 +172,14 @@ Kernel<Options::SCF_MODES::RESTRICTED>::getPP(unsigned int I, unsigned int J, un
     auto& pp_system = _pp.find(name)->second;
     *pp_Block += pp_system.segment(iGridStart, blockSize);
   }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      *pp_Block += (*_ppExact).segment(iGridStart, blockSize);
+    }
+  }
   return pp_Block;
 }
 
@@ -140,11 +194,8 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getPP(unsigned int I, unsigned int J, 
   if (_systems.size() > 1) {
     (*pp_Block).aa += (*_pptot).aa.segment(iGridStart, blockSize);
     (*pp_Block).ab += (*_pptot).ab.segment(iGridStart, blockSize);
-    ;
     (*pp_Block).ba += (*_pptot).ba.segment(iGridStart, blockSize);
-    ;
     (*pp_Block).bb += (*_pptot).bb.segment(iGridStart, blockSize);
-    ;
   }
   if (I == J) {
     auto name = _systems[I]->getSettings().name;
@@ -153,6 +204,17 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getPP(unsigned int I, unsigned int J, 
     (*pp_Block).ab += ppsub.ab.segment(iGridStart, blockSize);
     (*pp_Block).ba += ppsub.ba.segment(iGridStart, blockSize);
     (*pp_Block).bb += ppsub.bb.segment(iGridStart, blockSize);
+  }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      (*pp_Block).aa += (*_ppExact).aa.segment(iGridStart, blockSize);
+      (*pp_Block).ab += (*_ppExact).ab.segment(iGridStart, blockSize);
+      (*pp_Block).ba += (*_ppExact).ba.segment(iGridStart, blockSize);
+      (*pp_Block).bb += (*_ppExact).bb.segment(iGridStart, blockSize);
+    }
   }
   return pp_Block;
 }
@@ -176,6 +238,16 @@ Kernel<Options::SCF_MODES::RESTRICTED>::getPG(unsigned int I, unsigned int J, un
     (*pg_Block).x += pg_system.x.segment(iGridStart, blockSize);
     (*pg_Block).y += pg_system.y.segment(iGridStart, blockSize);
     (*pg_Block).z += pg_system.z.segment(iGridStart, blockSize);
+  }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      (*pg_Block).x += (*_pgExact).x.segment(iGridStart, blockSize);
+      (*pg_Block).y += (*_pgExact).y.segment(iGridStart, blockSize);
+      (*pg_Block).z += (*_pgExact).z.segment(iGridStart, blockSize);
+    }
   }
   return pg_Block;
 }
@@ -229,6 +301,25 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getPG(unsigned int I, unsigned int J, 
     (*pg_Block).z.ba += pgsub.z.ba.segment(iGridStart, blockSize);
     (*pg_Block).z.bb += pgsub.z.bb.segment(iGridStart, blockSize);
   }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      (*pg_Block).x.aa += (*_pgExact).x.aa.segment(iGridStart, blockSize);
+      (*pg_Block).x.ab += (*_pgExact).x.ab.segment(iGridStart, blockSize);
+      (*pg_Block).x.ba += (*_pgExact).x.ba.segment(iGridStart, blockSize);
+      (*pg_Block).x.bb += (*_pgExact).x.bb.segment(iGridStart, blockSize);
+      (*pg_Block).y.aa += (*_pgExact).y.aa.segment(iGridStart, blockSize);
+      (*pg_Block).y.ab += (*_pgExact).y.ab.segment(iGridStart, blockSize);
+      (*pg_Block).y.ba += (*_pgExact).y.ba.segment(iGridStart, blockSize);
+      (*pg_Block).y.bb += (*_pgExact).y.bb.segment(iGridStart, blockSize);
+      (*pg_Block).z.aa += (*_pgExact).z.aa.segment(iGridStart, blockSize);
+      (*pg_Block).z.ab += (*_pgExact).z.ab.segment(iGridStart, blockSize);
+      (*pg_Block).z.ba += (*_pgExact).z.ba.segment(iGridStart, blockSize);
+      (*pg_Block).z.bb += (*_pgExact).z.bb.segment(iGridStart, blockSize);
+    }
+  }
   return pg_Block;
 }
 
@@ -262,6 +353,19 @@ Kernel<Options::SCF_MODES::RESTRICTED>::getGG(unsigned int I, unsigned int J, un
     (*gg_Block).yy += gg_system.yy.segment(iGridStart, blockSize);
     (*gg_Block).yz += gg_system.yz.segment(iGridStart, blockSize);
     (*gg_Block).zz += gg_system.zz.segment(iGridStart, blockSize);
+  }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      (*gg_Block).xx += (*_ggExact).xx.segment(iGridStart, blockSize);
+      (*gg_Block).xy += (*_ggExact).xy.segment(iGridStart, blockSize);
+      (*gg_Block).xz += (*_ggExact).xz.segment(iGridStart, blockSize);
+      (*gg_Block).yy += (*_ggExact).yy.segment(iGridStart, blockSize);
+      (*gg_Block).yz += (*_ggExact).yz.segment(iGridStart, blockSize);
+      (*gg_Block).zz += (*_ggExact).zz.segment(iGridStart, blockSize);
+    }
   }
   return gg_Block;
 }
@@ -350,6 +454,37 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getGG(unsigned int I, unsigned int J, 
     (*gg_Block).zz.ab += ggsub.zz.ab.segment(iGridStart, blockSize);
     (*gg_Block).zz.ba += ggsub.zz.ba.segment(iGridStart, blockSize);
     (*gg_Block).zz.bb += ggsub.zz.bb.segment(iGridStart, blockSize);
+  }
+  if (_mixedEmbeddingUsed) {
+    if ((_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) ||
+        (_settings.embedding.embeddingModeList[I] == _settings.embedding.embeddingModeList[J] &&
+         _settings.embedding.embeddingModeList[I] == Options::KIN_EMBEDDING_MODES::HUZINAGA)) {
+      (*gg_Block).xx.aa += (*_ggExact).xx.aa.segment(iGridStart, blockSize);
+      (*gg_Block).xx.ab += (*_ggExact).xx.ab.segment(iGridStart, blockSize);
+      (*gg_Block).xx.ba += (*_ggExact).xx.ba.segment(iGridStart, blockSize);
+      (*gg_Block).xx.bb += (*_ggExact).xx.bb.segment(iGridStart, blockSize);
+      (*gg_Block).xy.aa += (*_ggExact).xy.aa.segment(iGridStart, blockSize);
+      (*gg_Block).xy.ab += (*_ggExact).xy.ab.segment(iGridStart, blockSize);
+      (*gg_Block).xy.ba += (*_ggExact).xy.ba.segment(iGridStart, blockSize);
+      (*gg_Block).xy.bb += (*_ggExact).xy.bb.segment(iGridStart, blockSize);
+      (*gg_Block).xz.aa += (*_ggExact).xz.aa.segment(iGridStart, blockSize);
+      (*gg_Block).xz.ab += (*_ggExact).xz.ab.segment(iGridStart, blockSize);
+      (*gg_Block).xz.ba += (*_ggExact).xz.ba.segment(iGridStart, blockSize);
+      (*gg_Block).xz.bb += (*_ggExact).xz.bb.segment(iGridStart, blockSize);
+      (*gg_Block).yy.aa += (*_ggExact).yy.aa.segment(iGridStart, blockSize);
+      (*gg_Block).yy.ab += (*_ggExact).yy.ab.segment(iGridStart, blockSize);
+      (*gg_Block).yy.ba += (*_ggExact).yy.ba.segment(iGridStart, blockSize);
+      (*gg_Block).yy.bb += (*_ggExact).yy.bb.segment(iGridStart, blockSize);
+      (*gg_Block).yz.aa += (*_ggExact).yz.aa.segment(iGridStart, blockSize);
+      (*gg_Block).yz.ab += (*_ggExact).yz.ab.segment(iGridStart, blockSize);
+      (*gg_Block).yz.ba += (*_ggExact).yz.ba.segment(iGridStart, blockSize);
+      (*gg_Block).yz.bb += (*_ggExact).yz.bb.segment(iGridStart, blockSize);
+      (*gg_Block).zz.aa += (*_ggExact).zz.aa.segment(iGridStart, blockSize);
+      (*gg_Block).zz.ab += (*_ggExact).zz.ab.segment(iGridStart, blockSize);
+      (*gg_Block).zz.ba += (*_ggExact).zz.ba.segment(iGridStart, blockSize);
+      (*gg_Block).zz.bb += (*_ggExact).zz.bb.segment(iGridStart, blockSize);
+    }
   }
   return gg_Block;
 }
@@ -527,125 +662,222 @@ void Kernel<Options::SCF_MODES::UNRESTRICTED>::storeDerivatives(
   }
 }
 
-template<Options::SCF_MODES T>
-void Kernel<T>::calculateDerivatives() {
-  // Combine functionals and build new one for total density contributions
-  Functional EnaddXC = resolveFunctional(_naddXCFunc);
-  Functional EnaddKIN = resolveFunctional(_naddKinFunc);
-  std::vector<BasicFunctionals::BASIC_FUNCTIONALS> naddBasicFunctionals;
-  std::vector<double> naddMixingFactors;
-  // XCFun gets segmentation fault if functionals are provided in the order GGA NONE?!
-  // If the functionals are provided in the order NONE GGA, everything is fine; the order
-  // LDA NONE is also fine.
-  // To prevent this segmentation fault, none functionals are excluded if a functional from
-  // a different functional class is used. If both EnaddXC and EnaddKin are of functional class
-  // none, continue with none.
-  //
-  // As Sept 7, 2020 this should be outdated and could be resolved much cleaner
-  // This is to be checked - JU
-  if (EnaddXC.getFunctionalClass() == CompositeFunctionals::CLASSES::NONE &&
-      EnaddKIN.getFunctionalClass() == CompositeFunctionals::CLASSES::NONE) {
-    naddBasicFunctionals.push_back(BasicFunctionals::BASIC_FUNCTIONALS::NONE);
-    naddMixingFactors.push_back(0.0);
-  }
-  else {
-    for (unsigned int i = 0; i < EnaddKIN.getNBasicFunctionals(); ++i) {
-      if (BasicFunctionals::getClass[(int)EnaddKIN.getBasicFunctionals()[i]] == BasicFunctionals::CLASSES::NONE)
-        continue;
-      naddBasicFunctionals.push_back(EnaddKIN.getBasicFunctionals()[i]);
-      naddMixingFactors.push_back(EnaddKIN.getMixingFactors()[i]);
-    }
-    if (!EnaddXC.isRSHybrid() && !EnaddXC.isHybrid()) {
-      // Special treatment for hybrid functionals
-      for (unsigned int i = 0; i < EnaddXC.getNBasicFunctionals(); ++i) {
-        if (BasicFunctionals::getClass[(int)EnaddXC.getBasicFunctionals()[i]] == BasicFunctionals::CLASSES::NONE)
-          continue;
-        naddBasicFunctionals.push_back(EnaddXC.getBasicFunctionals()[i]);
-        naddMixingFactors.push_back(EnaddXC.getMixingFactors()[i]);
-      }
-    }
-    if (naddBasicFunctionals.empty())
-      naddBasicFunctionals.push_back(BasicFunctionals::BASIC_FUNCTIONALS::NONE);
-    if (naddMixingFactors.empty())
-      naddMixingFactors.push_back(0.0);
-  }
-  Functional totFunc(EnaddXC.implementation(), naddBasicFunctionals, naddMixingFactors);
-  // Prepare total density and gradient
-  std::unique_ptr<DensityOnGrid<T>> totalDensity = std::unique_ptr<DensityOnGrid<T>>(new DensityOnGrid<T>(_gridController));
-  std::shared_ptr<Gradient<DensityOnGrid<T>>> totalDensityGradient = makeGradientPtr<DensityOnGrid<T>>(_gridController);
+template<Options::SCF_MODES SCFMode>
+void Kernel<SCFMode>::calculateDerivatives() {
+  // total density objects
+  auto totalDensity = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
+  auto totalDensityGradient = makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
+  Functional exc_nadd = resolveFunctional(_naddXCFunc);
+  Functional kin_nadd = resolveFunctional(_naddKinFunc);
+  // Loop over systems
+  // Subsystem contributions
+  unsigned int counter = 0;
   for (auto sys : _systems) {
-    // Combine functionals and build new one for active density contributions
-    std::vector<BasicFunctionals::BASIC_FUNCTIONALS> sysBasicFunctionals;
-    std::vector<double> sysMixingFacotrs;
-    // Subtract non-additive functionals (if any)
-    for (unsigned int i = 0; i < totFunc.getNBasicFunctionals(); ++i) {
-      sysBasicFunctionals.push_back(totFunc.getBasicFunctionals()[i]);
-      sysMixingFacotrs.push_back(-1.0 * totFunc.getMixingFactors()[i]);
-    }
-    Functional EXC = resolveFunctional(sys->getSettings().dft.functional);
-    if (_func != CompositeFunctionals::XCFUNCTIONALS::NONE)
-      EXC = resolveFunctional(_func);
-    if (!EXC.isRSHybrid() && !EXC.isHybrid()) {
-      // hybrids need separate treatment
-      for (unsigned int i = 0; i < EXC.getNBasicFunctionals(); ++i) {
-        sysBasicFunctionals.push_back(EXC.getBasicFunctionals()[i]);
-        sysMixingFacotrs.push_back(EXC.getMixingFactors()[i]);
-      }
-    }
-    Functional sysFunc(totFunc.implementation(), sysBasicFunctionals, sysMixingFacotrs);
+    Functional exc = resolveFunctional(_func[counter]);
+    // Returns the density/density gradients on the custom grid
     // Calculate density of sys and add to total density
     auto densityOnGridController = getDensityOnGridController(sys);
-    auto density = std::unique_ptr<DensityOnGrid<T>>(new DensityOnGrid<T>(_gridController));
+    auto density = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
     (*density) = densityOnGridController->getDensityOnGrid();
-    (*totalDensity) += (*density);
     // Calculate density gradient of sys and add to total density gradient
-    std::shared_ptr<Gradient<DensityOnGrid<T>>> densityGradient = nullptr;
-    densityGradient = makeGradientPtr<DensityOnGrid<T>>(_gridController);
+    std::shared_ptr<Gradient<DensityOnGrid<SCFMode>>> densityGradient = nullptr;
+    densityGradient = makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
     (*densityGradient) = densityOnGridController->getDensityGradientOnGrid();
-    (*totalDensityGradient) += (*densityGradient);
-    // Calculate derivatives of sys functional and add to storage objects
-    XCFun<T> xcfun(sys->getSettings().grid.blocksize);
-    auto funcData = xcfun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, sysFunc, densityOnGridController, 2);
-    auto name = sys->getSettings().name;
-    storeDerivatives(funcData, (*density), sysFunc.getFunctionalClass(), _pp.find(name)->second, _gg.find(name)->second,
-                     _pg.find(name)->second);
-    if (EXC.isRSHybrid() || EXC.isHybrid()) {
-      // Separate treatment for hybrids
-      auto funcDataHybrid = xcfun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, EXC, densityOnGridController, 2);
-      storeDerivatives(funcDataHybrid, (*density), EXC.getFunctionalClass(), _pp.find(name)->second,
-                       _gg.find(name)->second, _pg.find(name)->second);
+    // Summed up density and gradient
+    if (_settings.samedensity.size() > 0) {
+      if (_settings.samedensity[counter] == (counter + 1)) {
+        (*totalDensity) += (*density);
+        (*totalDensityGradient) += (*densityGradient);
+      }
     }
+    else {
+      (*totalDensity) += (*density);
+      (*totalDensityGradient) += (*densityGradient);
+    }
+    // Calculate derivatives of sys functional and add to storage objects
+    auto name = sys->getSettings().name;
+    FunctionalLibrary<SCFMode> flib(sys->getSettings().grid.blocksize);
+    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc, densityOnGridController, 2);
+    // Complete kernel contributions
+    storeDerivatives(funcData, (*density), exc.getFunctionalClass(), _pp.find(name)->second, _gg.find(name)->second,
+                     _pg.find(name)->second);
+    // Subsystem specific kernel contributions
+    if (exc_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+      auto funcData_naddxc = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_nadd, densityOnGridController, 2);
+      storeDerivatives(funcData_naddxc, (*density), exc_nadd.getFunctionalClass(), _pp.find(name)->second,
+                       _gg.find(name)->second, _pg.find(name)->second, -1.0);
+    }
+    if (kin_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+      auto funcData_naddkin = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, kin_nadd, densityOnGridController, 2);
+      storeDerivatives(funcData_naddkin, (*density), kin_nadd.getFunctionalClass(), _pp.find(name)->second,
+                       _gg.find(name)->second, _pg.find(name)->second, -1.0);
+    }
+    counter++;
+  }
+  // Naddkin evaluation for complete density
+  std::shared_ptr<ExternalDensityOnGridController<SCFMode>> totalDensityOnGridController =
+      std::make_shared<ExternalDensityOnGridController<SCFMode>>(totalDensity, totalDensityGradient);
+  FunctionalLibrary<SCFMode> flib(_systems[0]->getSettings().grid.blocksize);
+  if (exc_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddxc = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_nadd, totalDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddxc, totaldens, exc_nadd.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  }
+  if (kin_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddkin = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, kin_nadd, totalDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddkin, totaldens, kin_nadd.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  }
+}
 
-    if (EnaddXC.isRSHybrid() || EnaddXC.isHybrid()) {
-      // Separate treatment for hybrids
-      auto funcDataHybrid = xcfun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, EnaddXC, densityOnGridController, 2);
-      storeDerivatives(funcDataHybrid, (*density), EnaddXC.getFunctionalClass(), _pp.find(name)->second,
-                       _gg.find(name)->second, _pg.find(name)->second, -1);
+template<Options::SCF_MODES SCFMode>
+void Kernel<SCFMode>::calculateDerivativesMixedEmbedding() {
+  // Embedding modes
+  auto embeddingmodes = _settings.embedding.embeddingModeList;
+  // Exact and approximate treated systems
+  std::vector<std::shared_ptr<SystemController>> treatedExact;
+  std::vector<std::shared_ptr<SystemController>> treatedApprox;
+  // Total density/gradient for exact and approximated treated subsystems
+  std::unique_ptr<DensityOnGrid<SCFMode>> totalDensityForExact =
+      std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
+  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>> totalDensityForExactGradient =
+      makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
+  std::unique_ptr<DensityOnGrid<SCFMode>> totalDensity =
+      std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
+  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>> totalDensityGradient =
+      makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
+  // Mixing factors and basic functionals
+  std::vector<BasicFunctionals::BASIC_FUNCTIONALS> naddBasicFunctionals_approx;
+  std::vector<double> naddMixingFactors_approx;
+  std::vector<BasicFunctionals::BASIC_FUNCTIONALS> naddBasicFunctionals_exact;
+  std::vector<double> naddMixingFactors_exact;
+  // NaddXC functionals
+  Functional exc_exact = resolveFunctional(_settings.embedding.naddXCFuncList[0]);
+  Functional exc_approx = resolveFunctional(_settings.embedding.naddXCFuncList[1]);
+  // Resolve NaddKinfunctional
+  Functional kin_nadd = resolveFunctional(_naddKinFunc);
+  // Subsystem contributions
+  for (unsigned int iSys = 0; iSys < _systems.size(); iSys++) {
+    // Denisty on custom grid
+    auto densityOnGridController = getDensityOnGridController(_systems[iSys]);
+    auto density = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
+    (*density) = densityOnGridController->getDensityOnGrid();
+    // Calculate density gradient of sys and add to total density gradient
+    std::shared_ptr<Gradient<DensityOnGrid<SCFMode>>> densityGradient = nullptr;
+    densityGradient = makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
+    (*densityGradient) = densityOnGridController->getDensityGradientOnGrid();
+    // Calculate derivatives of sys functional and add to storage objects
+    auto name = _systems[iSys]->getSettings().name;
+    FunctionalLibrary<SCFMode> flib(_systems[iSys]->getSettings().grid.blocksize);
+    Functional exc = resolveFunctional(_func[iSys]);
+    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc, densityOnGridController, 2);
+    // Subsystem kernel contributions
+    storeDerivatives(funcData, (*density), exc.getFunctionalClass(), _pp.find(name)->second, _gg.find(name)->second,
+                     _pg.find(name)->second);
+    if (embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::HUZINAGA ||
+        embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
+      // Systems from exact embedding
+      treatedExact.push_back(_systems[iSys]);
+      // Evaulate contributions for systems with the same density
+      if (_settings.samedensity.size() > 0) {
+        if (_settings.samedensity[iSys] == (iSys + 1)) {
+          (*totalDensity) += (*density);
+          (*totalDensityForExact) += (*density);
+          (*totalDensityGradient) += (*densityGradient);
+          (*totalDensityForExactGradient) += (*densityGradient);
+        }
+      }
+      else {
+        (*totalDensity) += (*density);
+        (*totalDensityForExact) += (*density);
+        (*totalDensityGradient) += (*densityGradient);
+        (*totalDensityForExactGradient) += (*densityGradient);
+      }
+      // Subsystem nadd kernel
+      if (exc_exact.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+        auto funcData_naddxc_exact = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_exact, densityOnGridController, 2);
+        storeDerivatives(funcData_naddxc_exact, (*density), exc_exact.getFunctionalClass(), _pp.find(name)->second,
+                         _gg.find(name)->second, _pg.find(name)->second, -1.0);
+      }
+    }
+    else if (embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA ||
+             embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::HOFFMANN ||
+             embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::RECONSTRUCTION) {
+      throw SerenityError("Exact embedding mode not supported in list input yet!");
+    }
+    else {
+      // Systems from approx embedding
+      treatedApprox.push_back(_systems[iSys]);
+      // Evaulate contributions for systems with the same density
+      if (_settings.samedensity.size() > 0) {
+        if (_settings.samedensity[iSys] == (iSys + 1)) {
+          (*totalDensity) += (*density);
+          (*totalDensityGradient) += (*densityGradient);
+        }
+      }
+      else {
+        (*totalDensity) += (*density);
+        (*totalDensityGradient) += (*densityGradient);
+      }
+      // Subsystem specific kernel contributions
+      if (exc_approx.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+        auto funcData_naddxc_approx = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_approx, densityOnGridController, 2);
+        storeDerivatives(funcData_naddxc_approx, (*density), exc_approx.getFunctionalClass(), _pp.find(name)->second,
+                         _gg.find(name)->second, _pg.find(name)->second, -1.0);
+      }
+      if (kin_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+        auto funcData_naddkin = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, kin_nadd, densityOnGridController, 2);
+        storeDerivatives(funcData_naddkin, (*density), kin_nadd.getFunctionalClass(), _pp.find(name)->second,
+                         _gg.find(name)->second, _pg.find(name)->second, -1.0);
+      }
     }
   }
-  // All done for conventional TDDFT
-  if (_systems.size() == 1)
-    return;
-  // If none functionals are used, all is done
-  if (EnaddKIN.getFunctionalClass() == CompositeFunctionals::CLASSES::NONE &&
-      EnaddXC.getFunctionalClass() == CompositeFunctionals::CLASSES::NONE)
-    return;
-  // Build DensityOnGridController for total density
-  auto totDens = makeGradientPtr<DensityOnGrid<T>>(_gridController);
-  (*totDens) = (*totalDensityGradient);
-  std::shared_ptr<ExternalDensityOnGridController<T>> totalDensityOnGridController =
-      std::make_shared<ExternalDensityOnGridController<T>>(totalDensity, totDens);
-  // Calculate derivatives of totFunc and add to storage objects
-  XCFun<T> xcfun(_systems[0]->getSettings().grid.blocksize);
-  auto funcData = xcfun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, totFunc, totalDensityOnGridController, 2);
-  DensityOnGrid<T> tmp(_gridController);
-  tmp = totalDensityOnGridController->getDensityOnGrid();
-  storeDerivatives(funcData, tmp, totFunc.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  // System sepcific debug output
+  OutputControl::dOut << " -- Mixed Exact-Approx Embedding: -- " << std::endl;
+  OutputControl::dOut << "  Systems treated exact - " << treatedExact.size() << std::endl;
+  OutputControl::dOut << "  Systems treated approx. - " << treatedApprox.size() << std::endl;
 
-  if (EnaddXC.isRSHybrid() || EnaddXC.isHybrid()) {
-    // Separate treatment for hybrids
-    auto funcDataHybrid = xcfun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, EnaddXC, totalDensityOnGridController, 2);
-    storeDerivatives(funcDataHybrid, tmp, EnaddXC.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  // Naddkin evaluation for complete density
+  std::shared_ptr<ExternalDensityOnGridController<SCFMode>> totalDensityOnGridController =
+      std::make_shared<ExternalDensityOnGridController<SCFMode>>(totalDensity, totalDensityGradient);
+  FunctionalLibrary<SCFMode> flib(_systems[0]->getSettings().grid.blocksize);
+  if (exc_approx.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddxc_approx = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_approx, totalDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddxc_approx, totaldens, exc_approx.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  }
+  if (kin_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddkin = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, kin_nadd, totalDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddkin, totaldens, kin_nadd.getFunctionalClass(), (*_pptot), (*_ggtot), (*_pgtot));
+  }
+  // Naddkin evaluation for density of exactly treates systems
+  std::shared_ptr<ExternalDensityOnGridController<SCFMode>> totalExactDensityOnGridController =
+      std::make_shared<ExternalDensityOnGridController<SCFMode>>(totalDensityForExact, totalDensityForExactGradient);
+  if (exc_exact.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddxc_exact =
+        flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_exact, totalExactDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalExactDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddxc_exact, totaldens, exc_exact.getFunctionalClass(), (*_ppExact), (*_ggExact), (*_pgExact));
+  }
+  if (exc_approx.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddxc_approx =
+        flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_approx, totalExactDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalExactDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddxc_approx, totaldens, exc_approx.getFunctionalClass(), (*_ppExact), (*_ggExact),
+                     (*_pgExact), -1.0);
+  }
+  if (kin_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
+    auto funcData_naddkin = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, kin_nadd, totalExactDensityOnGridController, 2);
+    DensityOnGrid<SCFMode> totaldens(_gridController);
+    totaldens = totalExactDensityOnGridController->getDensityOnGrid();
+    storeDerivatives(funcData_naddkin, totaldens, kin_nadd.getFunctionalClass(), (*_ppExact), (*_ggExact), (*_pgExact), -1.0);
   }
 }
 
@@ -683,21 +915,18 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getDensityOnGridController(std::shared
     WarningTracker::printWarning(
         (std::string) "WARNING: USE OF RESTRICTED ENVIRONMENT SYSTEM IN UNRESTRICTED EMBEDDING RESPONSE CALCULATION", true);
     // Build unrestricted CoefficientMatrix from restricted one
-    std::unique_ptr<CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED>> c =
-        std::unique_ptr<CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED>>(
-            new CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED>(sys->getBasisController()));
-    (*c).alpha = sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients();
-    (*c).beta = sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients();
+    auto c = std::make_unique<CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED>>(
+        sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients());
     // Build unrestricted eigenvalues from restricted ones
-    std::unique_ptr<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>> e =
-        std::unique_ptr<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>>(
-            new SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>);
-    (*e).alpha = sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getEigenvalues();
-    (*e).beta = sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getEigenvalues();
+    auto e = std::make_unique<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>>(
+        sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getEigenvalues());
+    // Build unrestricted core orbital vector from restricted ones
+    auto core = std::make_unique<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXi>>(
+        sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoreOrbitals());
     // Build unrestricted OrbitalController from restricted data
     std::shared_ptr<OrbitalController<Options::SCF_MODES::UNRESTRICTED>> orbitalController =
         std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(std::move(c), sys->getBasisController(),
-                                                                              std::move(e));
+                                                                              std::move(e), std::move(core));
     // Build DensityMatrixController
     densityMatrixController = std::make_shared<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>>(
         orbitalController, sys->getNOccupiedOrbitals<Options::SCF_MODES::UNRESTRICTED>());

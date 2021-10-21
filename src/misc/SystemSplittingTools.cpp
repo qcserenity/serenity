@@ -23,12 +23,15 @@
 /* Include Serenity Internal Headers */
 #include "analysis/populationAnalysis/MullikenPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/Basis.h"
 #include "basis/BasisFunctionMapper.h" //Coefficient matrix resorting.
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "geometry/Geometry.h"
+#include "grid/AtomCenteredGridController.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/FormattedOutputStream.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -43,9 +46,9 @@ MatrixInBasis<SCFMode> SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(
     overlapB = *newOverlap;
   }
   else {
-    overlapB = libint.compute1eInts(libint2::Operator::overlap, newBasis, newBasis);
+    overlapB = libint.compute1eInts(LIBINT_OPERATOR::overlap, newBasis, newBasis);
   }
-  Eigen::MatrixXd overlapAB = libint.compute1eInts(libint2::Operator::overlap, oldMatrix.getBasisController(), newBasis);
+  Eigen::MatrixXd overlapAB = libint.compute1eInts(LIBINT_OPERATOR::overlap, oldMatrix.getBasisController(), newBasis);
   // Calculate inverse of AO overlap integrals in basis B. Use SVD,
   // i.e. S_B = U * D * V^T, since overlapB could be ill-conditioned
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(overlapB, Eigen::ComputeThinU | Eigen::ComputeThinV);
@@ -187,21 +190,25 @@ std::shared_ptr<ElectronicStructure<SCFMode>> SystemSplittingTools<SCFMode>::res
   auto orbitalController = electronicStructure->getMolecularOrbitals();
   auto oldCoefficientMatrix = orbitalController->getCoefficients();
   auto oldEigenvalues = orbitalController->getEigenvalues();
-  auto newCoefficientMatrixPtr =
-      std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(newBasisController));
-  auto newEigenvaluesPtr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
-      new SpinPolarizedData<SCFMode, Eigen::VectorXd>(newBasisController->getNBasisFunctions()));
+  auto oldCoreOrbitals = orbitalController->getCoreOrbitals();
+  auto newCoefficientMatrixPtr = std::make_unique<CoefficientMatrix<SCFMode>>(newBasisController);
+  auto newEigenvaluesPtr =
+      std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(newBasisController->getNBasisFunctions());
+  auto newCoreOrbitalsPtr =
+      std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(newBasisController->getNBasisFunctions());
   auto nOcc = electronicStructure->getNOccupiedOrbitals();
   CoefficientMatrix<SCFMode>& newCoefficientMatrix = *newCoefficientMatrixPtr;
   SpinPolarizedData<SCFMode, Eigen::VectorXd>& newEigenvalues = *newEigenvaluesPtr;
+  SpinPolarizedData<SCFMode, Eigen::VectorXi>& newCoreOrbitals = *newCoreOrbitalsPtr;
   unsigned int nOrbEigenvalues =
       std::min(newBasisController->getNBasisFunctions(), oldBasisController->getNBasisFunctions());
-  for_spin(oldCoefficientMatrix, oldEigenvalues, newCoefficientMatrix, newEigenvalues) {
+  for_spin(oldCoefficientMatrix, oldEigenvalues, newCoefficientMatrix, newEigenvalues, newCoreOrbitals, oldCoreOrbitals) {
     newCoefficientMatrix_spin = *projection * oldCoefficientMatrix_spin;
     newEigenvalues_spin.head(nOrbEigenvalues) = oldEigenvalues_spin.head(nOrbEigenvalues);
+    newCoreOrbitals_spin.head(nOrbEigenvalues) = oldCoreOrbitals_spin.head(nOrbEigenvalues);
   };
   auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
-      std::move(newCoefficientMatrixPtr), newBasisController, std::move(newEigenvaluesPtr));
+      std::move(newCoefficientMatrixPtr), newBasisController, std::move(newEigenvaluesPtr), std::move(newCoreOrbitalsPtr));
   auto newElectronicStructure =
       std::make_shared<ElectronicStructure<SCFMode>>(newOrbitalController, oneElectronIntegralController, nOcc);
   newElectronicStructure->getDensityMatrixController()->updateDensityMatrix();
@@ -217,13 +224,14 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   const unsigned int nBasisFunctions = basisController->getNBasisFunctions();
   const auto& superCoefficients = system->getActiveOrbitalController<SCFMode>()->getCoefficients();
   const auto& superEigenvalues = system->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+  const auto& superCoreOrbitals = system->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
   // Build coefficient matrix and eigenvalue vectors
-  auto actCoeffPtr = std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisController));
-  auto actEigenPtr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
-      new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nBasisFunctions));
-  auto envCoeffPtr = std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisController));
-  auto envEigenPtr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
-      new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nBasisFunctions));
+  auto actCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
+  auto actEigenPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(nBasisFunctions);
+  auto actCoreOPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Zero(nBasisFunctions));
+  auto envCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
+  auto envEigenPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(nBasisFunctions);
+  auto envCoreOPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(nBasisFunctions);
 
   // Split coefficients
   auto& actCoefficients = *actCoeffPtr;
@@ -255,15 +263,26 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   // Split eigenvalues
   auto& actEigenvalues = *actEigenPtr;
   auto& envEigenvalues = *envEigenPtr;
-  for_spin(activeOrbitals, superEigenvalues, actEigenvalues, envEigenvalues) {
+  auto& actCoreOrbitals = *actCoreOPtr;
+  auto& envCoreOrbitals = *envCoreOPtr;
+  for_spin(activeOrbitals, superEigenvalues, actEigenvalues, envEigenvalues, actCoreOrbitals, envCoreOrbitals, superCoreOrbitals) {
     actEigenvalues_spin = Eigen::VectorXd::Constant(nBasisFunctions, std::numeric_limits<double>::infinity());
     envEigenvalues_spin = Eigen::VectorXd::Constant(nBasisFunctions, std::numeric_limits<double>::infinity());
     unsigned int aIndex = 0;
-    for (const auto& act : activeOrbitals_spin) {
-      if (act)
-        aIndex++;
+    unsigned int eIndex = 0;
+    // occupied orbitals
+    for (unsigned int i = 0; i < activeOrbitals_spin.size(); ++i) {
+      if (activeOrbitals_spin[i]) {
+        actEigenvalues_spin(aIndex) = superEigenvalues_spin(i);
+        actCoreOrbitals_spin(aIndex) = superCoreOrbitals_spin(i);
+        ++aIndex;
+      }
+      else {
+        envEigenvalues_spin(eIndex) = superEigenvalues_spin(i);
+        envCoreOrbitals_spin(eIndex) = superCoreOrbitals_spin(i);
+        ++eIndex;
+      }
     }
-    unsigned int eIndex = activeOrbitals_spin.size() - aIndex;
     // virtual orbital
     for (unsigned int i = activeOrbitals_spin.size(); i < nBasisFunctions; ++i) {
       actEigenvalues_spin(aIndex) = superEigenvalues_spin(i);
@@ -275,12 +294,12 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   // Number of occupied orbitals
   auto occupations = getNOccupiedOrbitals(activeOrbitals);
   // Build orbital controller
-  auto activeOrbitalSet =
-      std::make_shared<OrbitalController<SCFMode>>(std::move(actCoeffPtr), basisController, std::move(actEigenPtr));
+  auto activeOrbitalSet = std::make_shared<OrbitalController<SCFMode>>(std::move(actCoeffPtr), basisController,
+                                                                       std::move(actEigenPtr), std::move(actCoreOPtr));
   auto actES = std::make_shared<ElectronicStructure<SCFMode>>(activeOrbitalSet, system->getOneElectronIntegralController(),
                                                               occupations.first);
-  auto environmentOrbitalSet =
-      std::make_shared<OrbitalController<SCFMode>>(std::move(envCoeffPtr), basisController, std::move(envEigenPtr));
+  auto environmentOrbitalSet = std::make_shared<OrbitalController<SCFMode>>(
+      std::move(envCoeffPtr), basisController, std::move(envEigenPtr), std::move(envCoreOPtr));
   auto envES = std::make_shared<ElectronicStructure<SCFMode>>(
       environmentOrbitalSet, system->getOneElectronIntegralController(), occupations.second);
   // update density matrices
@@ -292,63 +311,49 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
 }
 
 template<Options::SCF_MODES SCFMode>
-std::pair<std::shared_ptr<Geometry>, std::shared_ptr<Geometry>>
+std::vector<std::shared_ptr<Geometry>>
 SystemSplittingTools<SCFMode>::splitGeometry(std::shared_ptr<SystemController> system,
-                                             std::shared_ptr<ElectronicStructure<SCFMode>> activeES,
-                                             double localizationThreshold) {
-  // Assign all atoms to the active system which have a population among
-  // the occupied orbitals greater than a given threshold.
-  // The order of the atoms is conserved!
-  std::vector<std::shared_ptr<Atom>> actAtoms;
-  std::vector<std::shared_ptr<Atom>> envAtoms;
+                                             const SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment,
+                                             bool prioFirst, double locThreshold, unsigned int nFrag) {
+  std::vector<std::vector<std::shared_ptr<Atom>>> partitioniedAtoms(nFrag, std::vector<std::shared_ptr<Atom>>());
   auto supersystemAtoms = system->getGeometry()->getAtoms();
-  activeES->getDensityMatrixController()->updateDensityMatrix();
-  auto actDensityMatrix = activeES->getDensityMatrix();
-  auto populations = MullikenPopulationCalculator<Options::SCF_MODES::RESTRICTED>::calculateAtomPopulations(
-      actDensityMatrix.total(), system->getOneElectronIntegralController()->getOverlapIntegrals(),
-      system->getAtomCenteredBasisController()->getBasisIndices());
-
-  Eigen::VectorXi assignmentList = Eigen::VectorXi::Constant(supersystemAtoms.size(), 0);
-  unsigned int maxAssigned = populations.size() - 1;
-  assert(maxAssigned > 0);
-  Eigen::VectorXd::Index maxIndex;
-  populations.maxCoeff(&maxIndex);
-  assignmentList(maxIndex) = 1;
-  populations(maxIndex) = -9999;
-  unsigned int nAssigned = 1;
-  for (unsigned int a = 1; a < populations.size(); ++a) {
-    double maxEntry = populations.maxCoeff(&maxIndex);
-    if (maxEntry > localizationThreshold && nAssigned <= maxAssigned) {
-      assignmentList(maxIndex) = 1;
-      populations(maxIndex) = -9999;
-      nAssigned++;
+  auto nOcc = system->template getNOccupiedOrbitals<SCFMode>();
+  const unsigned int nAtoms = supersystemAtoms.size();
+  Eigen::MatrixXd fragWiseAtomPopulations = Eigen::MatrixXd::Zero(nAtoms, nFrag);
+  const auto& coefficients = system->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+  const auto& overlapMatrix = system->getOneElectronIntegralController()->getOverlapIntegrals();
+  const auto& atomToBasis = system->getAtomCenteredBasisController()->getBasisIndices();
+  for_spin(nOcc, assignment, coefficients) {
+    auto orbitalWisePopulations = MullikenPopulationCalculator<RESTRICTED>::calculateAtomwiseOrbitalPopulations(
+        coefficients_spin.leftCols(nOcc_spin), overlapMatrix, atomToBasis);
+    for (unsigned int iOcc = 0; iOcc < nOcc_spin; ++iOcc) {
+      fragWiseAtomPopulations.col(assignment_spin(iOcc)) += orbitalWisePopulations.col(iOcc);
     }
-    else {
-      assert(populations(maxIndex) != -9999);
-    }
+  };
+  double occupation = (SCFMode == RESTRICTED) ? 2.0 : 1.0;
+  for (unsigned int iAtom = 0; iAtom < nAtoms; ++iAtom) {
+    unsigned int iFrag;
+    fragWiseAtomPopulations.row(iAtom).maxCoeff(&iFrag);
+    // If the first system is supposed to be prioritized in the selection,
+    // check if the given threshold is exceeded.
+    if (prioFirst && fragWiseAtomPopulations(iAtom, 0) > locThreshold / occupation)
+      iFrag = 0;
+    partitioniedAtoms[iFrag].push_back(supersystemAtoms[iAtom]);
+  } // for iAtom
+  std::vector<std::shared_ptr<Geometry>> geoms;
+  for (auto& atomList : partitioniedAtoms) {
+    geoms.push_back(std::make_shared<Geometry>(atomList));
   }
-  for (unsigned int a = 0; a < assignmentList.size(); ++a) {
-    if (assignmentList(a)) {
-      actAtoms.push_back(supersystemAtoms[a]);
-      envAtoms.push_back(makeDummyAtom(supersystemAtoms[a]));
-    }
-    else {
-      envAtoms.push_back(supersystemAtoms[a]);
-      actAtoms.push_back(makeDummyAtom(supersystemAtoms[a]));
-    }
-  }
-  auto actGeometry = std::make_shared<Geometry>(actAtoms);
-  auto envGeometry = std::make_shared<Geometry>(envAtoms);
-  return std::pair<std::shared_ptr<Geometry>, std::shared_ptr<Geometry>>(actGeometry, envGeometry);
+  return geoms;
 }
 
 template<Options::SCF_MODES SCFMode>
 std::shared_ptr<Atom> SystemSplittingTools<SCFMode>::makeDummyAtom(std::shared_ptr<Atom> atom) {
   auto oldAtomType = atom->getAtomType();
-  auto atomType =
-      std::make_shared<AtomType>(oldAtomType->getName() + ":", oldAtomType->getNuclearCharge(), oldAtomType->getMass(),
-                                 oldAtomType->getBraggSlaterRadius(), oldAtomType->getVanDerWaalsRadius(),
-                                 oldAtomType->getUFFRadius(), oldAtomType->getOccupations(), true);
+  auto atomType = std::make_shared<AtomType>(
+      oldAtomType->getName() + ":", oldAtomType->getNuclearCharge(), oldAtomType->getMass(),
+      oldAtomType->getBraggSlaterRadius(), oldAtomType->getVanDerWaalsRadius(), oldAtomType->getUFFRadius(),
+      oldAtomType->getNCoreElectrons(), oldAtomType->getOccupations(), oldAtomType->getChemicalHardness(), true);
   std::string basisLabel = atom->getPrimaryBasisLabel();
   auto basisFunctions = atom->getBasisFunctions();
 
@@ -367,7 +372,8 @@ std::shared_ptr<Atom> SystemSplittingTools<SCFMode>::makeAtomFromDummy(std::shar
     nonDummyName = nonDummyName.substr(0, nonDummyName.size() - 1);
   auto newAtomType = std::make_shared<AtomType>(nonDummyName, atomType->getPSEPosition(), atomType->getMass(),
                                                 atomType->getBraggSlaterRadius(), atomType->getVanDerWaalsRadius(),
-                                                atomType->getUFFRadius(), atomType->getOccupations());
+                                                atomType->getUFFRadius(), atomType->getNCoreElectrons(),
+                                                atomType->getOccupations(), atomType->getChemicalHardness());
   std::string basisLabel = atom->getPrimaryBasisLabel();
   auto basisFunctions = atom->getBasisFunctions();
   std::pair<std::string, std::vector<std::shared_ptr<Shell>>> atomBasisFunctions(basisLabel, basisFunctions);
@@ -545,6 +551,45 @@ void SystemSplittingTools<SCFMode>::diagonalizationInNonRedundantPAOBasis(
 }
 
 template<Options::SCF_MODES SCFMode>
+void SystemSplittingTools<SCFMode>::diagonalizationInNonRedundantPAOBasis(const Eigen::MatrixXd& s_PAO,
+                                                                          const Eigen::MatrixXd& f_PAO,
+                                                                          double paoOrthogonalizationThreshold,
+                                                                          Eigen::VectorXd& eigenvalues,
+                                                                          Eigen::MatrixXd& transformation) {
+  // Remove linear dependencies.
+  // Diagonalize overlap matrix
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(s_PAO);
+  auto U = es.eigenvectors();
+  auto s = es.eigenvalues();
+  int n = s.rows();
+  Eigen::VectorXd sigma(n);
+  sigma.setZero();
+  Eigen::VectorXd sigmaInvers(n);
+  sigmaInvers.setZero();
+  unsigned int notZero = 0;
+  for (int i = n - 1; i >= 0; --i) {
+    if (s(i) > paoOrthogonalizationThreshold) {
+      sigma[i] = s[i];
+      sigmaInvers[i] = 1 / s[i];
+      ++notZero;
+    }
+    else {
+      i = 0;
+    }
+  }
+  if (notZero == 0)
+    throw SerenityError("Redundant diagonalization failed!");
+  // Transform the Fock matrix into this basis and diagonalize it.
+  Eigen::MatrixXd orthogonalizedPAOs = (U * sigmaInvers.array().sqrt().matrix().asDiagonal()).rightCols(notZero).eval();
+  Eigen::MatrixXd f_pao = (orthogonalizedPAOs.transpose() * f_PAO * orthogonalizedPAOs).eval();
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> ef(f_pao);
+  // Save eigenvalues
+  eigenvalues = ef.eigenvalues();
+  // Save transformation to linear independent PAO-pair basis that diagonalize the fock matrix (in this block).
+  transformation = (orthogonalizedPAOs * ef.eigenvectors()).eval();
+}
+
+template<Options::SCF_MODES SCFMode>
 std::vector<std::shared_ptr<Eigen::MatrixXd>>
 SystemSplittingTools<SCFMode>::getProjectedSubsystems(std::shared_ptr<SystemController> activeSystem,
                                                       std::vector<std::shared_ptr<SystemController>> environmentSystems,
@@ -554,7 +599,7 @@ SystemSplittingTools<SCFMode>::getProjectedSubsystems(std::shared_ptr<SystemCont
   for (auto env : environmentSystems) {
     auto& libint = Libint::getInstance();
     auto s_AB = std::make_shared<Eigen::MatrixXd>(
-        libint.compute1eInts(libint2::Operator::overlap, env->getBasisController(), basisContA));
+        libint.compute1eInts(LIBINT_OPERATOR::overlap, env->getBasisController(), basisContA));
     double totalInterSystemBasisOverlap = 0.0;
     for (unsigned int k = 0; k < s_AB->rows(); ++k) {
       for (unsigned int l = 0; l < s_AB->cols(); ++l) {
@@ -580,12 +625,12 @@ SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(std::vector<std:
   // which are not in the system pair.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> environmentDensityControllers;
   for (auto sys : environmentSystems) {
-    if (sys->getSettings().scfMode == SCFMode || topDown) {
+    if (sys->getSCFMode() == SCFMode || topDown) {
       assert(sys->hasElectronicStructure<SCFMode>());
       environmentDensityControllers.push_back(sys->template getElectronicStructure<SCFMode>()->getDensityMatrixController());
     }
     else {
-      if (sys->getSettings().scfMode == Options::SCF_MODES::RESTRICTED) {
+      if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         // Build unrestricted DensityMatrixController
         DensityMatrix<SCFMode> uDensMat(sys->getBasisController());
         for_spin(uDensMat) {
@@ -593,7 +638,7 @@ SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(std::vector<std:
         };
         environmentDensityControllers.push_back(std::make_shared<DensityMatrixController<SCFMode>>(uDensMat));
       }
-      else if (sys->getSettings().scfMode == Options::SCF_MODES::UNRESTRICTED) {
+      else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
         // Build restricted DensityMatrixController
         DensityMatrix<SCFMode> rDensMat(sys->getBasisController());
         for_spin(rDensMat) {
@@ -608,6 +653,98 @@ SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(std::vector<std:
     }
   } // for sys
   return environmentDensityControllers;
+}
+
+template<Options::SCF_MODES SCFMode>
+void SystemSplittingTools<SCFMode>::splitSupersystemBasedOnAssignment(std::shared_ptr<SystemController> supersystem,
+                                                                      std::vector<std::shared_ptr<SystemController>> fragments,
+                                                                      const SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment) {
+  unsigned int nFragments = fragments.size();
+  const auto nOccSuper = supersystem->getNOccupiedOrbitals<SCFMode>();
+  for (unsigned int iFrag = 0; iFrag < nFragments; ++iFrag) {
+    auto subsystem = fragments[iFrag];
+    //    subsystem->getAtomCenteredGridController()->notify();
+    // Generate the final orbital selection based on the criteria constructed above.
+    SpinPolarizedData<SCFMode, std::vector<bool>> orbitalSelection;
+    for_spin(nOccSuper, orbitalSelection, assignment) {
+      orbitalSelection_spin = std::vector<bool>(nOccSuper_spin, false);
+      for (unsigned int iOrb = 0; iOrb < nOccSuper_spin; ++iOrb) {
+        if ((int)iFrag == assignment_spin(iOrb))
+          orbitalSelection_spin[iOrb] = true;
+      } // for iOrb
+    };
+    // Update basis, electronic structure and geometry and save them on disk.
+    subsystem->getGeometry()->addAsDummy(*supersystem->getGeometry());
+    subsystem->getGeometry()->deleteIdenticalAtoms();
+    subsystem->setBasisController(nullptr);
+    subsystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_COULOMB);
+    subsystem->setBasisController(nullptr, Options::BASIS_PURPOSES::AUX_CORREL);
+
+    // Select the part of the electronic structure.
+    auto subsystemES = SystemSplittingTools<SCFMode>::splitElectronicStructure(supersystem, orbitalSelection).first;
+
+    if (subsystem->getAtomCenteredBasisController()->getBasisLabel() !=
+        supersystem->getAtomCenteredBasisController()->getBasisLabel()) {
+      OutputControl::dOut << "NOTE: The basis label of the subsystem " << subsystem->getSystemName() << std::endl;
+      OutputControl::dOut << "      is different from the basis label of the supersystem!" << std::endl;
+      OutputControl::dOut << "      The density matrix will be projected into the subsystem basis." << std::endl;
+      OutputControl::dOut << "      Orbitals will not be available until the next Fock-matrix diagonalization." << std::endl;
+      OutputControl::dOut << "      Note that the projection may be inaccurate." << std::endl;
+      const DensityMatrix<SCFMode>& selectedDensity = subsystemES->getDensityMatrix();
+      DensityMatrix<SCFMode> projectedDensity =
+          SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(selectedDensity, subsystem->getBasisController());
+      subsystemES = std::make_shared<ElectronicStructure<SCFMode>>(
+          subsystem->getBasisController(), subsystem->getGeometry(), subsystemES->getNOccupiedOrbitals());
+      subsystemES->getDensityMatrixController()->setDensityMatrix(projectedDensity);
+    }
+    else {
+      // The same basis set is used for the subsystem and the supersystem.
+      // The coefficients may need to be resorted, but no projection is necessary!
+      subsystemES = SystemSplittingTools<SCFMode>::resortBasisSetOfElectronicStructure(
+          subsystemES, subsystem->getBasisController(), subsystem->getOneElectronIntegralController());
+    }
+
+    subsystem->setSCFMode(SCFMode);
+    subsystem->setElectronicStructure<SCFMode>(subsystemES);
+    subsystem->getGeometry()->printToFile(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
+    subsystemES->toHDF5(subsystem->getHDF5BaseName(), subsystem->getSettings().identifier);
+    // Calculate charges and spin of the system, since it may have changed during the partitioning.
+    auto nElSubSpin = SystemSplittingTools<SCFMode>::getNElectrons(orbitalSelection).first;
+    int totEffCharge = subsystem->getGeometry()->getTotalEffectiveCharge();
+    unsigned int nElSub = 0;
+    for_spin(nElSubSpin) {
+      nElSub += nElSubSpin_spin;
+    };
+    int subSpin = SystemSplittingTools<SCFMode>::getSpin(nElSubSpin);
+    subsystem->setSpin(subSpin);
+    subsystem->setCharge(totEffCharge - nElSub);
+    // Print information about the system selection to the output.
+    OutputControl::nOut << "--------------------------------------------------------" << std::endl;
+    OutputControl::nOut << "  Partitioning for subsystem " << subsystem->getSystemName() << std::endl;
+    OutputControl::nOut << "  Charge: " << subsystem->getCharge() << std::endl;
+    OutputControl::nOut << "  Spin:   " << subsystem->getSpin() << std::endl;
+    OutputControl::vOut << "Orbital selection:" << std::endl;
+    std::vector<std::string> preafixes = {"Alpha", "Beta"};
+    unsigned int counter = 0;
+    for_spin(orbitalSelection) {
+      if (SCFMode == UNRESTRICTED)
+        OutputControl::vOut << preafixes[counter] << " orbitals:" << std::endl;
+      unsigned int printCounter = 0;
+      for (unsigned int iOrb = 0; iOrb < orbitalSelection_spin.size(); ++iOrb) {
+        if (orbitalSelection_spin[iOrb]) {
+          OutputControl::vOut << iOrb << " ";
+          ++printCounter;
+          if (printCounter % 15 == 0)
+            OutputControl::vOut << std::endl;
+        } // if orbitalSelection_spin[iOrb]
+      }   // for iOrb
+      if (printCounter % 15 != 0)
+        OutputControl::vOut << std::endl;
+      OutputControl::nOut << "Number of occ. orbitals: " << printCounter << std::endl;
+      ++counter;
+    };
+  } // for iSub
+  OutputControl::nOut << "--------------------------------------------------------" << std::endl;
 }
 
 template class SystemSplittingTools<Options::SCF_MODES::RESTRICTED>;

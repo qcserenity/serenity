@@ -23,7 +23,7 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h" // Output suffix
 #include "tasks/Task.h"             // Task
-
+#include <limits>                   // std::numeric_limits
 namespace Serenity {
 
 class SystemController;
@@ -63,14 +63,24 @@ struct PlotTaskSettings {
       orbitals(std::vector<unsigned int>(0)),
       maxGridPoints(1e+8),
       cavity(false),
-      gridCoordinates(false) {
+      gridCoordinates(false),
+      ntos(false),
+      ntoPlotThreshold(0.1),
+      transitionDensity(false),
+      holeparticleDensity(false),
+      excitations({0}),
+      nros(false),
+      nrominimum(0.75),
+      fragments({}) {
   }
   REFLECTABLE((std::vector<double>)p1, (std::vector<double>)p2, (std::vector<double>)p3, (std::vector<double>)p4,
               (int)atom1, (int)atom2, (int)atom3, (int)atom4, (std::vector<double>)gridSpacing, (double)borderWidth,
               (std::vector<double>)xUnitVector, (std::vector<double>)yUnitVector, (std::vector<double>)zUnitVector,
               (double)projectCutOffRadius, (bool)xyHeatmap, (bool)density, (bool)allOrbitals, (bool)occOrbitals,
               (bool)electrostaticPot, (bool)sedd, (bool)dori, (bool)elf, (bool)elfts, (bool)signedDensity,
-              (std::vector<unsigned int>)orbitals, (double)maxGridPoints, (bool)cavity, (bool)gridCoordinates)
+              (std::vector<unsigned int>)orbitals, (double)maxGridPoints, (bool)cavity, (bool)gridCoordinates,
+              (bool)ntos, (double)ntoPlotThreshold, (bool)transitionDensity, (bool)holeparticleDensity,
+              (std::vector<unsigned int>)excitations, (bool)nros, (double)nrominimum, (std::vector<unsigned int>)fragments)
 };
 
 /**
@@ -126,6 +136,8 @@ class PlotTask : public Serenity::Task {
    *        - maxGridPoints (default 1e+8) Maximum number of grid points.
    *        - cavity (default false) plot values on the molecular cavity.
    *        - gridCoordinates plot the gird coordinates and weights to file.
+   *        - NTOs (Natural Transition Orbitals)
+   *	    - ntoPlotThreshold (threshold for which eigenvalues in the NTO evaluation are taken into account)
    */
   PlotTaskSettings settings;
 

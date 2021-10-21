@@ -22,15 +22,16 @@
 #define POTENTIALS_EXCHANGEINTERACTIONPOTENTIAL_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/DensityMatrixController.h"
-#include "integrals/looper/ExchangeInteractionIntLooper.h"
-#include "integrals/wrappers/Libint.h"
+#include "data/matrices/DensityMatrix.h"
+#include "data/matrices/FockMatrix.h"
 #include "potentials/Potential.h"
-#include "settings/Options.h"
-#include "system/SystemController.h"
-
 namespace Serenity {
 
+class Libint;
+class SystemController;
+class BasisController;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
 /**
  * @class ExchangeInteractionPotential ExchangeInteractionPotential.h
  *
@@ -45,20 +46,8 @@ class ExchangeInteractionPotential : public Potential<SCFMode>,
   ExchangeInteractionPotential(const std::shared_ptr<BasisController> activeSystemBasis,
                                std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensityMatrixControllers,
                                const double exchangeRatio, const double prescreeningThreshold,
-                               const double lrExchangeRatio = 0.0, const double mu = 0.0)
-    : Potential<SCFMode>(activeSystemBasis),
-      _prescreeningThreshold(prescreeningThreshold),
-      _basis(activeSystemBasis),
-      _dMatControllers(envDensityMatrixControllers),
-      _exc(exchangeRatio),
-      _lrexc(lrExchangeRatio),
-      _mu(mu) {
-    this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
-    for (auto& envMat : _dMatControllers) {
-      envMat->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
-    }
-  };
-  virtual ~ExchangeInteractionPotential() = default;
+                               const double lrExchangeRatio = 0.0, const double mu = 0.0);
+  ~ExchangeInteractionPotential();
 
   /**
    * @brief Getter for the actual potential.
@@ -92,16 +81,16 @@ class ExchangeInteractionPotential : public Potential<SCFMode>,
   };
 
  private:
-  ///@brief Threshold for the integral prescreening.
-  const double _prescreeningThreshold;
   ///@brief Active System Basis
   const std::shared_ptr<BasisController> _basis;
+  ///@brief Threshold for the integral prescreening.
+  const double _prescreeningThreshold;
   ///@brief The active System basis this potential is defined in.
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _dMatControllers;
   ///@brief The exchange ratio.
   double _exc;
   ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
+  const std::shared_ptr<Libint> _libint;
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief The long range exchange ratio.

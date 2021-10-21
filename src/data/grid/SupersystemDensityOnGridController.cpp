@@ -51,8 +51,7 @@ SupersystemDensityOnGridController<T>::SupersystemDensityOnGridController(
 }
 
 template<Options::SCF_MODES T>
-SupersystemDensityOnGridController<T>::~SupersystemDensityOnGridController() {
-}
+SupersystemDensityOnGridController<T>::~SupersystemDensityOnGridController() = default;
 
 template<Options::SCF_MODES T>
 const DensityOnGrid<T>& SupersystemDensityOnGridController<T>::getDensityOnGrid() {

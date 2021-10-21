@@ -20,7 +20,6 @@
 
 /* Include Serenity Internal Headers */
 #include "tasks/PopAnalysisTask.h"
-#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -45,6 +44,17 @@ class PopAnalysisTaskTest : public ::testing::Test {
 
 /**
  * @test
+ * @brief Tests restricted output of Becke population analysis.
+ */
+TEST_F(PopAnalysisTaskTest, Becke_R_Output) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  PopAnalysisTask<RESTRICTED> task(act);
+  task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::BECKE;
+  task.run();
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+/**
+ * @test
  * @brief Tests restricted output.
  */
 TEST_F(PopAnalysisTaskTest, Mulliken_R_Output) {
@@ -52,6 +62,7 @@ TEST_F(PopAnalysisTaskTest, Mulliken_R_Output) {
   PopAnalysisTask<RESTRICTED> task(act);
   task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN;
   task.run();
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 /**
  * @test
@@ -62,13 +73,9 @@ TEST_F(PopAnalysisTaskTest, Hirshfeld_R_Output) {
   PopAnalysisTask<RESTRICTED> task(act);
   task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::HIRSHFELD;
   task.run();
-  std::string hFree = act->getSettings().path + "/H_FREE/H_FREE";
-  std::remove((hFree + ".settings").c_str());
-  std::remove((hFree + ".xyz").c_str());
-  std::remove((hFree + ".energies.unres").c_str());
-  std::remove((hFree + ".orbs.unres.h5").c_str());
-  std::remove((hFree + ".dmat.unres.h5").c_str());
-  std::remove((act->getSettings().path + "/H_FREE").c_str());
+  std::string hFree = act->getSystemPath() + "/H_FREE/";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(hFree, "H_FREE");
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 /**
  * @test
@@ -79,6 +86,7 @@ TEST_F(PopAnalysisTaskTest, IAO_R_Output) {
   PopAnalysisTask<RESTRICTED> task(act);
   task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::IAO;
   task.run();
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 /**
  * @test
@@ -89,13 +97,7 @@ TEST_F(PopAnalysisTaskTest, IAOShell_R_Output) {
   PopAnalysisTask<RESTRICTED> task(act);
   task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell;
   task.run();
-  std::string hFree = act->getSettings().path + "/H_FREE/H_FREE";
-  std::remove((hFree + ".settings").c_str());
-  std::remove((hFree + ".xyz").c_str());
-  std::remove((hFree + ".energies.unres").c_str());
-  std::remove((hFree + ".orbs.unres.h5").c_str());
-  std::remove((hFree + ".dmat.unres.h5").c_str());
-  std::remove((act->getSettings().path + "/H_FREE").c_str());
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 /**
  * @test
@@ -107,6 +109,7 @@ TEST_F(PopAnalysisTaskTest, Mulliken_U_Output) {
   PopAnalysisTask<UNRESTRICTED> task(act);
   task.settings.algorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN;
   task.run();
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } /*namespace Serenity*/

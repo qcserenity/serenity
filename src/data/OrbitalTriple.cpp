@@ -30,13 +30,11 @@ namespace Serenity {
 
 OrbitalTriple::OrbitalTriple(std::shared_ptr<OrbitalPair> ikPair, std::shared_ptr<OrbitalPair> jkPair,
                              std::shared_ptr<OrbitalPair> ijPair, std::vector<std::shared_ptr<OrbitalPair>> ilPairs,
-                             std::vector<std::shared_ptr<OrbitalPair>> jlPairs, std::vector<std::shared_ptr<OrbitalPair>> klPairs)
-  : _ikPair(ikPair), _jkPair(jkPair), _ijPair(ijPair), _ilPairs(ilPairs), _jlPairs(jlPairs), _klPairs(klPairs) {
+                             std::vector<std::shared_ptr<OrbitalPair>> jlPairs,
+                             std::vector<std::shared_ptr<OrbitalPair>> klPairs, unsigned int i, unsigned int j, unsigned int k)
+  : _ikPair(ikPair), _jkPair(jkPair), _ijPair(ijPair), _ilPairs(ilPairs), _jlPairs(jlPairs), _klPairs(klPairs), _i(i), _j(j), _k(k) {
   _weakTriple = (_ikPair->type != OrbitalPairTypes::CLOSE || _jkPair->type != OrbitalPairTypes::CLOSE ||
                  _ijPair->type != OrbitalPairTypes::CLOSE);
-  _i = (_ijPair->i == _ikPair->i) ? _ijPair->i : _ijPair->j;
-  _k = (_jkPair->j == _ikPair->j) ? _jkPair->j : _jkPair->i;
-  _j = (_ijPair->i == _i) ? _ijPair->j : _ijPair->i;
   if (_i == _j && _j == _k)
     throw SerenityError("ERROR: An artificial orbital triplet i==j==k was constructed.");
   _paoDomain = _ijPair->paoDomain + _ikPair->paoDomain + _jkPair->paoDomain;
@@ -99,12 +97,14 @@ void OrbitalTriple::cleanUp() {
   _tnoEigenvalues.resize(0);
   _tnoInit = false;
   _integralsCalc = false;
+  _domainProjection.resize(0, 0);
 }
 
 double OrbitalTriple::calculateTripleEnergy() {
   assert(_integralsCalc);
   const unsigned int nTNOs = _ia_bc.size();
   // Note: Capital letters are used in order to be as close to the reference publication as possible.
+  // The calculation of the intermediate W is by far the most expensive step.
   std::vector<Eigen::MatrixXd> W = calculateW();
   std::vector<Eigen::MatrixXd> V = calculateV(W);
   std::vector<Eigen::MatrixXd> X = calculateX(W, V);
@@ -122,6 +122,8 @@ double OrbitalTriple::calculateTripleEnergy() {
       const double eps_ab = eps_a + _tnoEigenvalues(b);
       for (unsigned int c = 0; c <= b; ++c) {
         const double eps_abc = eps_ab + _tnoEigenvalues(c);
+        if (std::abs(f_ijk - eps_abc) < 1e-9)
+          throw SerenityError("ERROR: Effective zero denominator!");
         double tmp = (Y[c](a, b) - 2.0 * Z[c](a, b)) * (W[c](a, b) + W[a](b, c) + W[b](c, a));
         tmp += (Z[c](a, b) - 2 * Y[c](a, b)) * (W[b](a, c) + W[c](b, a) + W[a](c, b));
         tmp += 3.0 * X[c](a, b);
@@ -269,90 +271,124 @@ std::vector<Eigen::MatrixXd> OrbitalTriple::calculateW() {
   return W_abc;
 }
 
+std::map<unsigned int, unsigned int> OrbitalTriple::getIndexMaps(std::vector<unsigned int>& indices) {
+  std::map<unsigned int, unsigned int> indexMap;
+  unsigned int index = 0;
+  for (const auto& l : indices) {
+    if (indexMap.find(l) == indexMap.end()) {
+      indexMap.insert(std::make_pair(l, index));
+      ++index;
+    }
+  }
+  return indexMap;
+}
+
 void OrbitalTriple::calculateIntegrals(std::shared_ptr<BasisController> auxBasisController,
                                        std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
-                                       const MatrixInBasis<RESTRICTED>& coulombMetric) {
+                                       const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& abK,
+                                       const MO3CenterIntegrals& klK, const MatrixInBasis<RESTRICTED>& coulombMetric) {
   if (!_integralsCalc) {
     const auto& sparseMaps = mo3CenterIntegralController->getSparseMapsController();
-    const SparseMap& occToK = sparseMaps->getTripletOccToAuxShellMap(_weakTriple);
-    const Eigen::SparseVector<int> fittingDomain = (occToK.col(_i) + occToK.col(_j) + occToK.col(_k)).pruned().eval();
+    const Eigen::SparseVector<int>& fittingDomain = this->getFittingDomain();
     const Eigen::MatrixXd localBlock =
         SystemSplittingTools<RESTRICTED>::getMatrixBlockShellWise(coulombMetric, fittingDomain, fittingDomain);
-    const unsigned int nLocalAux = localBlock.cols();
+    _nLocalAux = localBlock.cols();
     // Calculate the Cholesky decomposition of the local metric.
     const Eigen::LLT<Eigen::MatrixXd> llt = localBlock.llt();
+    const auto& k_redToFullMapsPAO = mo3CenterIntegralController->getProjection(ORBITAL_TYPE::VIRTUAL);
+    const auto& reducedOccIndices = mo3CenterIntegralController->getIndices(ORBITAL_TYPE::OCCUPIED);
 
-    std::vector<Eigen::Triplet<double>> projectionTriplets;
-    unsigned int row = 0;
-    for (Eigen::SparseVector<int>::InnerIterator itPAO(_paoDomain); itPAO; ++itPAO) {
-      projectionTriplets.push_back(Eigen::Triplet<double>(row, itPAO.row(), 1.0));
-      row++;
-    } // for itMu
-    Eigen::SparseMatrix<double> projectionMatrix(_paoDomain.nonZeros(), _paoDomain.rows());
-    projectionMatrix.setFromTriplets(projectionTriplets.begin(), projectionTriplets.end());
-
-    const auto& paoMapAndIndices = mo3CenterIntegralController->getProjectionAndIndices(ORBITAL_TYPE::VIRTUAL);
-    const auto& occMapAndIndices = mo3CenterIntegralController->getProjectionAndIndices(ORBITAL_TYPE::OCCUPIED);
-    const auto& k_redToFullMapsPAO = paoMapAndIndices.first;
-    const auto& reducedOccIndices = occMapAndIndices.second;
-
-    Eigen::SparseVector<int> auxSuperDomain =
-        Eigen::VectorXi::Constant(auxBasisController->getBasis().size(), 1).sparseView();
-    const MO3CenterIntegrals& iaK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
-    const MO3CenterIntegrals& abK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
-    const MO3CenterIntegrals& klK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
-
-    // TODO write get_iaK and get_ikK functions for more than one occupied index.
-    // Note: This is currently not a bottleneck or close to one. Thus, I will ignore it for now.
-    const Eigen::MatrixXd ibQ =
-        Ao2MoExchangeIntegralTransformer::get_iaK(auxBasisController, nLocalAux, fittingDomain, projectionMatrix,
-                                                  k_redToFullMapsPAO, reducedOccIndices, _toPAODomain, _i, iaK);
-    const Eigen::MatrixXd jbQ =
-        Ao2MoExchangeIntegralTransformer::get_iaK(auxBasisController, nLocalAux, fittingDomain, projectionMatrix,
-                                                  k_redToFullMapsPAO, reducedOccIndices, _toPAODomain, _j, iaK);
-    const Eigen::MatrixXd kbQ =
-        Ao2MoExchangeIntegralTransformer::get_iaK(auxBasisController, nLocalAux, fittingDomain, projectionMatrix,
-                                                  k_redToFullMapsPAO, reducedOccIndices, _toPAODomain, _k, iaK);
-
-    const Eigen::MatrixXd ibQ_llt = llt.solve(ibQ.transpose()).eval().transpose();
-    const Eigen::MatrixXd jbQ_llt = llt.solve(jbQ.transpose()).eval().transpose();
-    const Eigen::MatrixXd kbQ_llt = llt.solve(kbQ.transpose()).eval().transpose();
-
-    const std::vector<Eigen::MatrixXd> acQ =
-        Ao2MoExchangeIntegralTransformer::get_abK(auxBasisController, nLocalAux, fittingDomain, projectionMatrix,
-                                                  projectionMatrix, k_redToFullMapsPAO, _toPAODomain, _toPAODomain, abK);
-    const Eigen::MatrixXd ilQ = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
-                                                                          reducedOccIndices, _ilIndices, _i, klK);
-    //(ib|ac), (jb|ac), (kb|ac)
-    for (const auto& m_acQ : acQ) {
-      _ia_bc.push_back((ibQ_llt * m_acQ.transpose()).eval());
-      _ja_bc.push_back((jbQ_llt * m_acQ.transpose()).eval());
-      _ka_bc.push_back((kbQ_llt * m_acQ.transpose()).eval());
+    std::map<unsigned int, unsigned int> ijkInIntMap;
+    ijkInIntMap.insert(std::make_pair(_i, 0));
+    unsigned int index = 1;
+    if (ijkInIntMap.find(_j) == ijkInIntMap.end()) {
+      ijkInIntMap.insert(std::make_pair(_j, index));
+      ++index;
+    }
+    if (ijkInIntMap.find(_k) == ijkInIntMap.end()) {
+      ijkInIntMap.insert(std::make_pair(_k, index));
+    }
+    const auto ijk_aQ =
+        Ao2MoExchangeIntegralTransformer::get_iaK(auxBasisController, _nLocalAux, fittingDomain, _domainProjection,
+                                                  k_redToFullMapsPAO, reducedOccIndices, _toPAODomain, ijkInIntMap, iaK);
+    const Eigen::MatrixXd& ibQ = ijk_aQ[0];
+    const Eigen::MatrixXd& jbQ = ijk_aQ[ijkInIntMap.find(_j)->second];
+    std::vector<Eigen::MatrixXd> ijk_aQ_llt;
+    for (const auto& ik_aQ : ijk_aQ) {
+      ijk_aQ_llt.push_back(llt.solve(ik_aQ.transpose()).eval().transpose());
+    }
+    const Eigen::MatrixXd& ibQ_llt = ijk_aQ_llt[0];
+    const Eigen::MatrixXd& jbQ_llt = ijk_aQ_llt[ijkInIntMap.find(_j)->second];
+    const Eigen::MatrixXd& kbQ_llt = ijk_aQ_llt[ijkInIntMap.find(_k)->second];
+    {
+      const std::vector<Eigen::MatrixXd> acQ =
+          Ao2MoExchangeIntegralTransformer::get_abK(auxBasisController, _nLocalAux, fittingDomain, _domainProjection,
+                                                    _domainProjection, k_redToFullMapsPAO, _toPAODomain, _toPAODomain, abK);
+      //(ib|ac), (jb|ac), (kb|ac)
+      // The contraction with these integrals is by far the most expensive step
+      // of the integral transformation.
+      for (const auto& m_acQ : acQ) {
+        _ia_bc.push_back((ibQ_llt * m_acQ.transpose()).eval());
+      }
+      if (_i == _j) {
+        _ja_bc = _ia_bc;
+      }
+      else {
+        for (const auto& m_acQ : acQ) {
+          _ja_bc.push_back((jbQ_llt * m_acQ.transpose()).eval());
+        }
+      }
+      if (_k == _i) {
+        _ka_bc = _ia_bc;
+      }
+      else if (_k == _j) {
+        _ka_bc = _ja_bc;
+      }
+      else {
+        for (const auto& m_acQ : acQ) {
+          _ka_bc.push_back((kbQ_llt * m_acQ.transpose()).eval());
+        }
+      }
     }
     //(il|ja), (jl|ia),(il|ka),(kl|ia),(jl|ka),(kl|ja)
     {
-      const Eigen::MatrixXd ilQ_kl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
+      const Eigen::MatrixXd ilQ_kl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, _nLocalAux, fittingDomain,
                                                                                reducedOccIndices, _klIndices, _i, klK);
-      const Eigen::MatrixXd jlQ_kl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
-                                                                               reducedOccIndices, _klIndices, _j, klK);
       _ja_il = (jbQ_llt * ilQ_kl.transpose()).eval(); // contracted with kl
-      _ia_jl = (ibQ_llt * jlQ_kl.transpose()).eval(); // contracted with kl
+      if (_i != _j) {
+        const Eigen::MatrixXd jlQ_kl = Ao2MoExchangeIntegralTransformer::get_ikK(
+            auxBasisController, _nLocalAux, fittingDomain, reducedOccIndices, _klIndices, _j, klK);
+        _ia_jl = (ibQ_llt * jlQ_kl.transpose()).eval(); // contracted with kl
+      }
+      else {
+        _ia_jl = _ja_il;
+      }
     }
     {
-      const Eigen::MatrixXd ilQ_jl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
+      const Eigen::MatrixXd ilQ_jl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, _nLocalAux, fittingDomain,
                                                                                reducedOccIndices, _jlIndices, _i, klK);
-      const Eigen::MatrixXd klQ_jl = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
-                                                                               reducedOccIndices, _jlIndices, _k, klK);
       _ka_il = (kbQ_llt * ilQ_jl.transpose()).eval(); // contracted with jl
-      _ia_kl = (ibQ_llt * klQ_jl.transpose()).eval(); // contracted with jl
+      if (_k != _i) {
+        const Eigen::MatrixXd klQ_jl = Ao2MoExchangeIntegralTransformer::get_ikK(
+            auxBasisController, _nLocalAux, fittingDomain, reducedOccIndices, _jlIndices, _k, klK);
+        _ia_kl = (ibQ_llt * klQ_jl.transpose()).eval(); // contracted with jl
+      }
+      else {
+        _ia_kl = _ka_il;
+      }
     }
     {
-      const Eigen::MatrixXd jlQ_il = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
+      const Eigen::MatrixXd jlQ_il = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, _nLocalAux, fittingDomain,
                                                                                reducedOccIndices, _ilIndices, _j, klK);
-      const Eigen::MatrixXd klQ_il = Ao2MoExchangeIntegralTransformer::get_ikK(auxBasisController, nLocalAux, fittingDomain,
-                                                                               reducedOccIndices, _ilIndices, _k, klK);
       _ka_jl = (kbQ_llt * jlQ_il.transpose()).eval(); // contracted with il
-      _ja_kl = (jbQ_llt * klQ_il.transpose()).eval(); // contracted with il
+      if (_j != _k) {
+        const Eigen::MatrixXd klQ_il = Ao2MoExchangeIntegralTransformer::get_ikK(
+            auxBasisController, _nLocalAux, fittingDomain, reducedOccIndices, _ilIndices, _k, klK);
+        _ja_kl = (jbQ_llt * klQ_il.transpose()).eval(); // contracted with il
+      }
+      else {
+        _ja_kl = _ka_jl;
+      }
     }
     //(ia|jb),(ia|kb),(ja|kb)
     _ia_jb = ibQ * jbQ_llt.transpose();
@@ -360,6 +396,31 @@ void OrbitalTriple::calculateIntegrals(std::shared_ptr<BasisController> auxBasis
     _ja_kb = jbQ * kbQ_llt.transpose();
     _integralsCalc = true;
   } // if !_integralsCalc
+}
+
+bool OrbitalTriple::isWeak() {
+  return _weakTriple;
+}
+
+unsigned int OrbitalTriple::getNLocalAuxiliaryFunctions() {
+  if (!_integralsCalc)
+    throw SerenityError((std::string) "ERROR: The local fitting domains are determined during integral calculation" +
+                        "which has not happened yet!");
+  return _nLocalAux;
+}
+
+unsigned int OrbitalTriple::getNTNOs() {
+  if (!_tnoInit)
+    throw SerenityError("Call to TNO based method before initializing TNOs");
+  return _toPAODomain.cols();
+}
+
+void OrbitalTriple::setFittingDomain(const Eigen::SparseVector<int>& fittingDomain) {
+  _fittingDomain = fittingDomain;
+}
+
+const Eigen::SparseVector<int>& OrbitalTriple::getFittingDomain() const {
+  return _fittingDomain;
 }
 
 } /* namespace Serenity */

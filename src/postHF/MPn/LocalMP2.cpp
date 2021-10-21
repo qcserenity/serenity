@@ -31,20 +31,18 @@
 /* Prescreening, PAOs and PAO selection */
 #include "analysis/PAOSelection/PNOConstructor.h"       //PNO construction
 #include "data/OrbitalPair.h"                           //OrbitalPair definition.
-#include "data/PAOController.h"                         //PAOs
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //K-Set definition.
 /* Include Std and External Headers */
 #include <iomanip> //setw(...) for ostream/std::fixed
 
 namespace Serenity {
 
-void LocalMP2::generateExchangeIntegrals() {
+void LocalMP2::generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
+                                         std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs) {
   // Calculate exchange integrals for each pair.
   const auto scfMode = Options::SCF_MODES::RESTRICTED;
   const auto activeSystem = _localCorrelationController->getActiveSystemController();
-  const auto paoController = _localCorrelationController->getPAOController();
   unsigned int nOcc = activeSystem->getNOccupiedOrbitals<scfMode>();
-  auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
   // Calculate all three center integrals
   const Eigen::MatrixXd occCoefficients =
       activeSystem->getActiveOrbitalController<scfMode>()->getCoefficients().leftCols(nOcc);
@@ -66,7 +64,7 @@ void LocalMP2::generateExchangeIntegrals() {
         _localCorrelationController->getMO3CenterIntegralController(), orbitalPairs, pnoConstructor);
   }
   _localCorrelationController->buildOrbitalPairCouplingMap();
-  double scMP2Energy = calculateEnergy().sum();
+  double scMP2Energy = calculateEnergy(orbitalPairs, veryDistantPairs).sum();
   unsigned int nPNOsTot = 0;
   unsigned int nAuxTot = 0;
   for (const auto& pair : orbitalPairs) {
@@ -84,15 +82,18 @@ void LocalMP2::generateExchangeIntegrals() {
                       << std::endl;
   OutputControl::nOut << "-----------------------------------------------------" << std::endl;
   OutputControl::nOut << std::scientific;
+  OutputControl::nOut << "  Calculating overlap matrices                           ...";
+  OutputControl::nOut.flush();
   for (auto& pair : orbitalPairs) {
     pair->setOverlapMatrixController(_localCorrelationController->getDomainOverlapMatrixController());
     for (auto& kSet : pair->coupledPairs)
       kSet->setOverlapMatrixController(_localCorrelationController->getDomainOverlapMatrixController());
   }
+  OutputControl::nOut << " done" << std::endl;
 }
 
-void LocalMP2::optimizeAmplitudes() {
-  Timings::takeTime("Local Cor. -    Amplitude Opt.");
+void LocalMP2::optimizeAmplitudes(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
+                                  std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs) {
   const auto scfMode = Options::SCF_MODES::RESTRICTED;
   // Get the fock matrix.
   const auto& f = _localCorrelationController->getFockMatrix();
@@ -101,12 +102,8 @@ void LocalMP2::optimizeAmplitudes() {
   unsigned int nOcc = activeSystem->getNOccupiedOrbitals<scfMode>();
   const Eigen::MatrixXd actCoef = activeSystem->getActiveOrbitalController<scfMode>()->getCoefficients().leftCols(nOcc);
   const Eigen::MatrixXd f_MO = actCoef.transpose() * f * actCoef;
-  auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
-  auto distantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT);
-  orbitalPairs.insert(orbitalPairs.end(), distantPairs.begin(), distantPairs.end());
-  const auto paoController = _localCorrelationController->getPAOController();
 
-  double f_cut = _localCorrelationController->getSettings().fockMatrixPreescreeningThreshold;
+  double f_cut = _localCorrelationController->getSettings().fockMatrixPrescreeningThresholdd;
 
   // Start the iterative optimization of the amplitudes.
   double largestResidual = 10;
@@ -115,7 +112,7 @@ void LocalMP2::optimizeAmplitudes() {
   takeTime("Amplitude Optimization");
   OrbitalPairDIISWrapper diis(activeSystem->getSettings().scf.diisMaxStore);
   double oldEnergy = 0.0;
-  std::printf("%6s %20s %20s %20s\n", "Cycle", "abs. max Residual", "Corr. Energy", "Delta E_corr");
+  std::printf("%6s %12s %12s %12s\n", "Cycle", "abs. max. Res.", "Corr. Energy", "Delta E_corr");
   while (largestResidual > settings.maxResidual) {
     takeTime("Amplitude Optimization Cycle");
     largestResidual = 0.0;
@@ -182,28 +179,22 @@ void LocalMP2::optimizeAmplitudes() {
         largestResidual = maxCoeff;
     } // for ijPairIndex
     ++cycle;
-    double newEnergy = calculateEnergy().sum();
+    double newEnergy = calculateEnergy(orbitalPairs, veryDistantPairs).sum();
     if (_localCorrelationController->getSettings().diisStartResidual > largestResidual)
       diis.optimize(orbitalPairs, {});
-    std::printf("%6d %15f %5s %17f %3s %17f\n", cycle, largestResidual, "", newEnergy, "", oldEnergy - newEnergy);
+    std::printf("%6d %12f %12f %12f\n", cycle, largestResidual, newEnergy, oldEnergy - newEnergy);
     oldEnergy = newEnergy;
     if (cycle > settings.maxCycles - 1) {
-      throw SerenityError((string) "Canceling amplitude optimization after " + cycle + " cycles. NOT CONVERGED!!!");
+      throw SerenityError((std::string) "Canceling amplitude optimization after " + cycle + " cycles. NOT CONVERGED!!!");
     } // if cycle > _maxCycles-1
     timeTaken(3, "Amplitude Optimization Cycle");
   } // while
   OutputControl::mOut << "Converged!" << std::endl;
   timeTaken(0, "Amplitude Optimization");
-  Timings::timeTaken("Local Cor. -    Amplitude Opt.");
 }
 
-Eigen::VectorXd LocalMP2::calculateEnergy() {
-  // Loop over pairs
-  auto closePairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
-  auto distantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT);
-  closePairs.insert(closePairs.end(), distantPairs.begin(), distantPairs.end());
-  auto veryDistantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::VERY_DISTANT);
-
+Eigen::VectorXd LocalMP2::calculateEnergy(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
+                                          std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs) {
   double localMP2PairEnergies = 0;
   for (const auto& pair : closePairs) {
     double ssEnergy =
@@ -230,10 +221,29 @@ Eigen::VectorXd LocalMP2::calculateEnergy() {
   return energies;
 }
 
+Eigen::VectorXd LocalMP2::calculateEnergyCorrection(std::vector<std::shared_ptr<OrbitalPair>> pairs) {
+  std::vector<std::shared_ptr<OrbitalPair>> closePairs;
+  std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs;
+  for (auto pair : pairs) {
+    if (pair->type == OrbitalPairTypes::VERY_DISTANT) {
+      veryDistantPairs.push_back(pair);
+    }
+    else {
+      closePairs.push_back(pair);
+    }
+  } // for pair
+  optimizeAmplitudes(closePairs, veryDistantPairs);
+  return calculateEnergy(closePairs, veryDistantPairs);
+}
+
 Eigen::VectorXd LocalMP2::calculateEnergyCorrection() {
-  generateExchangeIntegrals();
-  optimizeAmplitudes();
-  return calculateEnergy();
+  auto veryDistantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::VERY_DISTANT);
+  auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
+  auto distantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT);
+  orbitalPairs.insert(orbitalPairs.end(), distantPairs.begin(), distantPairs.end());
+  generateExchangeIntegrals(orbitalPairs, veryDistantPairs);
+  optimizeAmplitudes(orbitalPairs, veryDistantPairs);
+  return calculateEnergy(orbitalPairs, veryDistantPairs);
 }
 
 } /* namespace Serenity */

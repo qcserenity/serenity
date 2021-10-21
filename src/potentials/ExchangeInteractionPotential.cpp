@@ -20,8 +20,34 @@
 
 /* Include Class Header*/
 #include "potentials/ExchangeInteractionPotential.h"
+/* Include Serenity Internal Headers */
+#include "data/matrices/DensityMatrixController.h"
+#include "integrals/looper/ExchangeInteractionIntLooper.h"
+#include "integrals/wrappers/Libint.h"
+#include "system/SystemController.h"
+/* Include Std and External Headers */
+#include <Eigen/Dense>
 
 namespace Serenity {
+
+template<Options::SCF_MODES SCFMode>
+ExchangeInteractionPotential<SCFMode>::ExchangeInteractionPotential(
+    const std::shared_ptr<BasisController> activeSystemBasis,
+    std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensityMatrixControllers,
+    const double exchangeRatio, const double prescreeningThreshold, const double lrExchangeRatio, const double mu)
+  : Potential<SCFMode>(activeSystemBasis),
+    _basis(activeSystemBasis),
+    _prescreeningThreshold(prescreeningThreshold == 0 ? _basis->getPrescreeningThreshold() : prescreeningThreshold),
+    _dMatControllers(envDensityMatrixControllers),
+    _exc(exchangeRatio),
+    _libint(Libint::getSharedPtr()),
+    _lrexc(lrExchangeRatio),
+    _mu(mu) {
+  this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
+  for (auto& envMat : _dMatControllers) {
+    envMat->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
+  }
+};
 
 template<Options::SCF_MODES SCFMode>
 double ExchangeInteractionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
@@ -80,18 +106,18 @@ FockMatrix<SCFMode>& ExchangeInteractionPotential<SCFMode>::getMatrix() {
 
       // Add Exchange if desired
       if (fabs(_exc) > 0.0) {
-        ExchangeInteractionIntLooper excLooper(libint2::Operator::coulomb, 0, _basis, envMat.getBasisController(),
+        ExchangeInteractionIntLooper excLooper(LIBINT_OPERATOR::coulomb, 0, _basis, envMat.getBasisController(),
                                                _prescreeningThreshold);
-        excLooper.loopNoDerivative(excLooperFunction);
+        excLooper.loopNoDerivative(excLooperFunction, envMat.total().array().abs().maxCoeff());
       }
       // Add LR Exchange if desired
       if (fabs(_lrexc) > 0.0) {
         // overwrite old exchange ratio to reuse excLooperFunction
         double tmp = _exc;
         _exc = _lrexc;
-        ExchangeInteractionIntLooper excLooper(libint2::Operator::erf_coulomb, 0, _basis, envMat.getBasisController(),
+        ExchangeInteractionIntLooper excLooper(LIBINT_OPERATOR::erf_coulomb, 0, _basis, envMat.getBasisController(),
                                                _prescreeningThreshold, _mu);
-        excLooper.loopNoDerivative(excLooperFunction);
+        excLooper.loopNoDerivative(excLooperFunction, envMat.total().array().abs().maxCoeff());
         _exc = tmp;
       }
 
@@ -121,6 +147,8 @@ Eigen::MatrixXd ExchangeInteractionPotential<SCFMode>::getGeomGradients() {
   assert(false && "No gradients available for the experimental ExchangeInteractionPotential.");
   return gradientContr;
 }
+template<Options::SCF_MODES SCFMode>
+ExchangeInteractionPotential<SCFMode>::~ExchangeInteractionPotential() = default;
 
 template class ExchangeInteractionPotential<Options::SCF_MODES::RESTRICTED>;
 template class ExchangeInteractionPotential<Options::SCF_MODES::UNRESTRICTED>;

@@ -36,10 +36,10 @@ class SystemController;
 using namespace Serenity::Reflection;
 
 struct MP2TaskSettings {
-  MP2TaskSettings() : mp2Type(Options::MP2_TYPES::RI), maxResidual(1e-5), maxCycles(100) {
+  MP2TaskSettings() : mp2Type(Options::MP2_TYPES::RI), maxResidual(1e-5), maxCycles(100), writePairEnergies(false) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::NORMAL;
   };
-  REFLECTABLE((Options::MP2_TYPES)mp2Type, (double)maxResidual, (unsigned int)maxCycles)
+  REFLECTABLE((Options::MP2_TYPES)mp2Type, (double)maxResidual, (unsigned int)maxCycles, (bool)writePairEnergies)
  public:
   LocalCorrelationSettings lcSettings;
 };
@@ -56,7 +56,8 @@ class MP2Task : public Task {
    * @param environmentSystems For local MP2 the occupied env. orbitals are projected out of
    *                           the space of the virtual orbitals.
    */
-  MP2Task(std::shared_ptr<SystemController> systemController, std::vector<std::shared_ptr<SystemController>> environmentSystems);
+  MP2Task(std::shared_ptr<SystemController> systemController,
+          std::vector<std::shared_ptr<SystemController>> environmentSystems = {});
 
   /**
    * @brief Default destructor.
@@ -77,7 +78,7 @@ class MP2Task : public Task {
       visit_each(c, v);
     }
     else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
     }
   }
 

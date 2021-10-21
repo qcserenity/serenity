@@ -143,6 +143,7 @@ void OptEffPotential<Options::SCF_MODES::RESTRICTED>::calculateOEP(
     if (fabs(densDiff - oldDensDiff) < 1e-5 or cycle > 50) {
       converged = true;
       std::cout << "Remaining density difference is " << densDiff << std::endl;
+      std::cout << "After cycle: " << cycle << std::endl;
     }
 
     oldDensDiff = densDiff;
@@ -252,8 +253,10 @@ void OptEffPotential<Options::SCF_MODES::UNRESTRICTED>::calculateOEP(
       if (fabs(densDiff_spin - oldDensDiff_spin) < 1e-5 or cycle > 50) {
         converged = true;
         std::cout << "Remaining density difference is " << densDiff_spin << std::endl;
+        std::cout << "After cycle: " << cycle << std::endl;
       }
     };
+    oldDensDiff = densDiff;
 
     oldDensDiff = densDiff;
     if (converged)
@@ -312,7 +315,7 @@ OptEffPotential<SCFMode>::calculateOEPLB(const DensityOnGrid<SCFMode>& targetDen
   FockMatrix<SCFMode> fockMat(basisController);
 
   auto& libint = Libint::getInstance();
-  auto aoKinInts = libint.compute1eInts(libint2::Operator::kinetic, basisController);
+  auto aoKinInts = libint.compute1eInts(LIBINT_OPERATOR::kinetic, basisController);
 
   _potential.reset(new FockMatrix<SCFMode>(_basisFuncOnGridController->getBasisController()));
   _potentialOnGrid.reset(new GridPotential<SCFMode>(_basisFuncOnGridController->getGridController()));
@@ -405,6 +408,7 @@ OptEffPotential<SCFMode>::calculateOEPLB(const DensityOnGrid<SCFMode>& targetDen
     for_spin(densDiff, oldDensDiff) {
       if (fabs(oldDensDiff_spin - densDiff_spin.sum()) < 1e-7 or densDiff_spin.sum() < 1e-5 or cycle > maxCycles) {
         std::cout << "Remaining density difference is " << densDiff_spin.sum() << std::endl;
+        std::cout << "After cycle: " << cycle << std::endl;
         converged = true;
       }
       oldDensDiff_spin = densDiff_spin.sum();
@@ -479,7 +483,7 @@ OptEffPotential<SCFMode>::getGradient(const DensityOnGrid<SCFMode>& targetDens, 
    * Get kinetic integrals for smoothing constraint
    */
   Eigen::MatrixXd aoKineticIntegrals(nBasisFunc, nBasisFunc);
-  aoKineticIntegrals = libint.compute1eInts(libint2::Operator::kinetic, _potBasisFuncOnGridController->getBasisController());
+  aoKineticIntegrals = libint.compute1eInts(LIBINT_OPERATOR::kinetic, _potBasisFuncOnGridController->getBasisController());
   /*
    * Prepare gradient
    */
@@ -555,7 +559,7 @@ OptEffPotential<SCFMode>::getHessian(std::shared_ptr<OrbitalController<SCFMode>>
    * Get kinetic integrals for smoothing contraint
    */
   Matrix<double> aoKineticIntegrals(nBasisFunc, nBasisFunc);
-  auto aoKinInts = libint.compute1eInts(libint2::Operator::kinetic, _potBasisFuncOnGridController->getBasisController());
+  auto aoKinInts = libint.compute1eInts(LIBINT_OPERATOR::kinetic, _potBasisFuncOnGridController->getBasisController());
   /*
    * Prepare Hessian
    */
@@ -698,7 +702,7 @@ void OptEffPotential<SCFMode>::updateDensity(DensityOnGrid<SCFMode>& densMatOnGr
    * of the reconstructed system
    */
   Matrix<double> aoKineticIntegrals(nBasisFunc, nBasisFunc);
-  aoKineticIntegrals = libint.compute1eInts(libint2::Operator::kinetic, basisController);
+  aoKineticIntegrals = libint.compute1eInts(LIBINT_OPERATOR::kinetic, basisController);
 
   GridPotential<SCFMode>& OEPGrid = *_potentialOnGrid;
   for_spin(OEPGrid) {
@@ -753,20 +757,12 @@ FockMatrix<RESTRICTED> OptEffPotential<RESTRICTED>::getX(DensityMatrix<RESTRICTE
   /*
    * Function which parses the integrals
    */
-  auto distribute = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, const Eigen::VectorXd integral,
+  auto distribute = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, const double integral,
                         unsigned int threadId) {
-    /*
-     * Permutations
-     */
-    double perm = 2.0;
-    perm *= (i == j) ? 0.5 : 1.0;
-    perm *= (k == l) ? 0.5 : 1.0;
-    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
-
     /*
      * Exchange
      */
-    const double exc = perm * integral[0] * 0.25 * _exc;
+    const double exc = integral * 0.5 * _exc;
     const double exc1 = *(densityMatrix.data() + i * nBFs + k) * exc;
     const double exc2 = *(densityMatrix.data() + i * nBFs + l) * exc;
     const double exc3 = *(densityMatrix.data() + j * nBFs + k) * exc;
@@ -784,20 +780,18 @@ FockMatrix<RESTRICTED> OptEffPotential<RESTRICTED>::getX(DensityMatrix<RESTRICTE
    * Detailed prescreening function
    */
   // Maximum absolute value in densityMatrix
-  const double maxDens = densityMatrix.lpNorm<Eigen::Infinity>();
-  auto prescreeningFunc = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, unsigned int nI,
-                              unsigned int nJ, unsigned int nK, unsigned int nL, double schwartz) {
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  const auto maxDens = maxDensMat.maxCoeff();
+  auto prescreeningFunc = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, double schwartz) {
     /*
      * Early return for insignificance based on the largest element in the whole density matrix
      */
     if (maxDens * schwartz < 1e-12)
       return true;
-    double maxDBlock = densityMatrix.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>();
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
+    double maxDBlock = maxDensMat(i, k);
+    maxDBlock = std::max(maxDBlock, maxDensMat(i, l));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, k));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, l));
     if (maxDBlock * schwartz < 1e-12)
       return true;
     /*
@@ -808,11 +802,11 @@ FockMatrix<RESTRICTED> OptEffPotential<RESTRICTED>::getX(DensityMatrix<RESTRICTE
   /*
    * Construct the looper, which loops over all integrals
    */
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisFuncOnGridController->getBasisController(), 1e-12);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basisFuncOnGridController->getBasisController(), 1e-12);
   /*
    * Run
    */
-  looper.loop(distribute, prescreeningFunc);
+  looper.loopNoDerivative(distribute, prescreeningFunc, maxDens, nullptr, true);
   for (unsigned int i = 0; i < nThreads; ++i) {
     xMat += *fx[i];
     delete fx[i];
@@ -827,6 +821,7 @@ FockMatrix<UNRESTRICTED> OptEffPotential<UNRESTRICTED>::getX(DensityMatrix<UNRES
 
   /*
    * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
+   * ToDo: Don't use raw pointer here.
    */
   std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>*> fx;
   const unsigned int nThreads = omp_get_max_threads();
@@ -836,20 +831,12 @@ FockMatrix<UNRESTRICTED> OptEffPotential<UNRESTRICTED>::getX(DensityMatrix<UNRES
   /*
    * Function which parses the integrals
    */
-  auto distribute = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, const Eigen::VectorXd integral,
+  auto distribute = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, const double integral,
                         unsigned int threadId) {
-    /*
-     * Permutations
-     */
-    double perm = 2.0;
-    perm *= (i == j) ? 0.5 : 1.0;
-    perm *= (k == l) ? 0.5 : 1.0;
-    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
-
     /*
      * Exchange
      */
-    const double exc = perm * integral[0] * 0.5 * _exc;
+    const double exc = integral * _exc;
 
     const double exc1a = densityMatrix.alpha(i, k) * exc;
     const double exc2a = densityMatrix.alpha(i, l) * exc;
@@ -880,24 +867,20 @@ FockMatrix<UNRESTRICTED> OptEffPotential<UNRESTRICTED>::getX(DensityMatrix<UNRES
    * Detailed prescreening function
    */
   // Maximum absolute value in densityMatrix
-  const double maxDens =
-      std::max(densityMatrix.alpha.lpNorm<Eigen::Infinity>(), densityMatrix.beta.lpNorm<Eigen::Infinity>());
-  auto prescreeningFunc = [&](unsigned int i, unsigned int j, unsigned int k, unsigned int l, unsigned int nI,
-                              unsigned int nJ, unsigned int nK, unsigned int nL, double schwartz) {
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  const double maxDens = maxDensMat.maxCoeff();
+  auto prescreeningFunc = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l, const double& schwartz) {
     /*
      * Early return for insignificance based on the largest element in the whole density matrix
      */
     if (maxDens * schwartz < 1e-12)
       return true;
-    double maxDBlock = 0.0;
-    for_spin(densityMatrix) {
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
-    };
+    double maxDBlock = maxDensMat(i, j);
+    maxDBlock = std::max(maxDBlock, maxDensMat(i, k));
+    maxDBlock = std::max(maxDBlock, maxDensMat(i, l));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, k));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, l));
+    maxDBlock = std::max(maxDBlock, maxDensMat(k, l));
     if (maxDBlock * schwartz < 1e-12)
       return true;
     /*
@@ -908,11 +891,11 @@ FockMatrix<UNRESTRICTED> OptEffPotential<UNRESTRICTED>::getX(DensityMatrix<UNRES
   /*
    * Construct the looper, which loops over all integrals
    */
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basisFuncOnGridController->getBasisController(), 1e-12);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basisFuncOnGridController->getBasisController(), 1e-12);
   /*
    * Run
    */
-  looper.loop(distribute, prescreeningFunc);
+  looper.loopNoDerivative(distribute, prescreeningFunc, maxDens, nullptr, true);
   for (unsigned int i = 0; i < nThreads; ++i) {
     xMat += *fx[i];
     delete fx[i];
@@ -946,7 +929,7 @@ void OptEffPotential<Options::SCF_MODES::RESTRICTED>::calculateOEPCarter(
    * of the reconstructed system
    */
   Matrix<double> aoKineticIntegrals(nBasisFunc, nBasisFunc);
-  aoKineticIntegrals = libint.compute1eInts(libint2::Operator::kinetic, basisController);
+  aoKineticIntegrals = libint.compute1eInts(LIBINT_OPERATOR::kinetic, basisController);
 
   /*
    * Get stuff related to the reconstructed orbitalset
@@ -998,6 +981,8 @@ void OptEffPotential<Options::SCF_MODES::RESTRICTED>::calculateOEPCarter(
 
     bool converged = false;
     if (cycle > maxCycles or densDiff < 1e-8 or fabs(densDiffOld - densDiff) < 1e-10) {
+      std::cout << "Remaining density difference is " << densDiff << std::endl;
+      std::cout << "After cycle: " << cycle << std::endl;
       converged = true;
     }
 
@@ -1041,7 +1026,7 @@ void OptEffPotential<Options::SCF_MODES::UNRESTRICTED>::calculateOEPCarter(
    * of the reconstructed system
    */
   Matrix<double> aoKineticIntegrals(nBasisFunc, nBasisFunc);
-  aoKineticIntegrals = libint.compute1eInts(libint2::Operator::kinetic, basisController);
+  aoKineticIntegrals = libint.compute1eInts(LIBINT_OPERATOR::kinetic, basisController);
 
   /*
    * Get stuff related to the reconstructed orbitalset
@@ -1059,7 +1044,7 @@ void OptEffPotential<Options::SCF_MODES::UNRESTRICTED>::calculateOEPCarter(
   LBFGS optimizer(coeffs);
 
   unsigned int cycle = 0;
-  double densDiffOld = 9999999.9;
+  double densDiffOld = std::numeric_limits<double>::infinity();
   /*
    * BFGS optimization
    */
@@ -1104,6 +1089,7 @@ void OptEffPotential<Options::SCF_MODES::UNRESTRICTED>::calculateOEPCarter(
     bool converged = false;
     if (cycle > maxCycles or densDiff < 1e-8 or fabs(densDiffOld - densDiff) < 1e-10) {
       std::cout << "Remaining density difference is " << densDiff << std::endl;
+      std::cout << "After cycle: " << cycle << std::endl;
       converged = true;
     }
     densDiffOld = densDiff;

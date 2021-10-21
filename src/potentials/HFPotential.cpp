@@ -27,7 +27,7 @@
 #include "integrals/looper/TwoElecFourCenterIntLooper.h"
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 #include "misc/Timing.h"
-#include "settings/Settings.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <algorithm>
 
@@ -37,16 +37,18 @@ template<Options::SCF_MODES SCFMode>
 HFPotential<SCFMode>::HFPotential(std::shared_ptr<SystemController> systemController,
                                   std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double xRatio,
                                   const double prescreeningThreshold, double prescreeningIncrementStart,
-                                  double prescreeningIncrementEnd, unsigned int incrementSteps)
+                                  double prescreeningIncrementEnd, unsigned int incrementSteps, bool clear4CenterCache)
   : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
-    IncrementalFockMatrix<SCFMode>(dMat, prescreeningThreshold, prescreeningIncrementStart, prescreeningIncrementEnd,
-                                   incrementSteps),
     _systemController(systemController),
     _xRatio(xRatio),
     _dMatController(dMat),
     _fullpotential(nullptr),
     _fullXpotential(nullptr),
-    _outOfDate(true) {
+    _outOfDate(true),
+    _incrementHelper(std::make_shared<IncrementalFockMatrix<SCFMode>>(
+        dMat, (prescreeningThreshold != 0) ? prescreeningThreshold : this->_basis->getPrescreeningThreshold(),
+        prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps, "Coulomb and Exact-Exchange")),
+    _clear4CenterCache(clear4CenterCache) {
   this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
 
@@ -64,25 +66,12 @@ HFPotential<SCFMode>::HFPotential(std::shared_ptr<SystemController> systemContro
 };
 
 template<Options::SCF_MODES SCFMode>
-void HFPotential<SCFMode>::resetFockMatrix(FockMatrix<SCFMode>& f, double nextTreshold) {
-  // No printing in the fist cycle.
-  if (this->getCounter() != 0) {
-    OutputControl::dOut << " ***** Reset Incremental Fock Matrix Build: Coulomb and Exact-Exchange *****" << std::endl;
-    OutputControl::dOut << " ***** New Prescreening Threshold - " << nextTreshold << " ***** " << std::endl;
-  }
-  auto& xPot = *_fullXpotential;
-  for_spin(f, xPot) {
-    f_spin.setZero();
-    xPot_spin.setZero();
-  };
-}
-
-template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& HFPotential<SCFMode>::getMatrix() {
   Timings::takeTime("Active System -         HF Pot.");
   if (_outOfDate) {
     DensityMatrix<SCFMode> densityMatrix(this->_basis);
-    this->updateDensityAndThreshold(densityMatrix, _screening, *_fullpotential);
+    std::vector<std::shared_ptr<FockMatrix<SCFMode>>> matrices = {_fullpotential, _fullXpotential};
+    _incrementHelper->updateDensityAndThreshold(densityMatrix, _screening, matrices);
     this->addToMatrix(*_fullpotential, densityMatrix);
     _outOfDate = false;
   }
@@ -121,266 +110,192 @@ void HFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Options
                                                               const DensityMatrix<Options::SCF_MODES::RESTRICTED>& densityMatrix) {
   const unsigned int nBFs = _basis->getNBasisFunctions();
 
-  /*
-   * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
-   */
-  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fc;
-  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>*> fx;
-#ifdef _OPENMP
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>> fc;
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>> fx;
   const unsigned int nThreads = omp_get_max_threads();
-  // Let the first thread use the Fock matrix directly
   for (unsigned int i = 0; i < nThreads; ++i) {
-    fc.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-    fc[i]->setZero();
-    fx.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-    fx[i]->setZero();
+    fc.emplace_back(_basis);
+    fx.emplace_back(_basis);
   }
 
-#else
-  fc.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-  fc[0]->setZero();
-  fx.push_back(new FockMatrix<Options::SCF_MODES::RESTRICTED>(_basis));
-  fx[0]->setZero();
-#endif
-  /*
-   * Function which parses the integrals
-   */
-  auto distribute = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l,
-                        const double& integral, const unsigned& threadId) {
-    /*
-     * Permutations
-     */
-    double perm = 2.0;
-    perm *= (i == j) ? 0.5 : 1.0;
-    perm *= (k == l) ? 0.5 : 1.0;
-    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
+  auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
+    unsigned long ij = i * nBFs + j;
+    unsigned long kl = k * nBFs + l;
+    unsigned long ik = i * nBFs + k;
+    unsigned long il = i * nBFs + l;
+    unsigned long jl = j * nBFs + l;
+    unsigned long jk = j * nBFs + k;
+    if (integral != integral)
+      throw SerenityError("NAN detected in HF potential for 4-center integral");
+
+    auto Fc = fc[threadId].data();
+    auto Fx = fx[threadId].data();
+    auto D = densityMatrix.data();
 
     /*
-     * Coulomb
+     * Restricted Hartree-Fock:
+     * F(i,j) = [(ij|kl) - 0.5 * (ij|kl)] D(k,l)
+     *
+     * First, recall that we exploit the eigthfold integral symmetry in the looper
+     * so we can expect the above contraction to be performed eight times.
+     * However, both the density and Fock matrix are symmetric and so we can save
+     * some time by only performing half of the actually needed operations and
+     * recover the missing contribution by a symmetrization after the Fock build.
+     * This is why we have four contractions for the exchange and Coulomb matrix
+     * (actually only two because two of the four contractions are in turn
+     * identical so we end up with a factor of 2.0).
      */
-    const double coul = perm * integral;
-    *(fc[threadId]->data() + i * nBFs + j) += *(densityMatrix.data() + k * nBFs + l) * coul;
-    *(fc[threadId]->data() + k * nBFs + l) += *(densityMatrix.data() + i * nBFs + j) * coul;
-    /*
-     * Exchange
-     */
-    const double exc = perm * integral * 0.25 * _xRatio;
-    *(fx[threadId]->data() + j * nBFs + l) -= *(densityMatrix.data() + i * nBFs + k) * exc;
-    *(fx[threadId]->data() + j * nBFs + k) -= *(densityMatrix.data() + i * nBFs + l) * exc;
-    *(fx[threadId]->data() + i * nBFs + l) -= *(densityMatrix.data() + j * nBFs + k) * exc;
-    *(fx[threadId]->data() + i * nBFs + k) -= *(densityMatrix.data() + j * nBFs + l) * exc;
+
+    // Coulomb.
+    const double coul = 2.0 * integral;
+    *(Fc + ij) += *(D + kl) * coul;
+    *(Fc + kl) += *(D + ij) * coul;
+
+    // Exchange.
+    const double exc = 0.5 * _xRatio * integral;
+    *(Fx + ik) -= *(D + jl) * exc;
+    *(Fx + il) -= *(D + jk) * exc;
+    *(Fx + jk) -= *(D + il) * exc;
+    *(Fx + jl) -= *(D + ik) * exc;
   };
-  /*
-   * Detailed prescreening function
-   */
-  // Maximum absolute value in densityMatrix
-  const double maxDens = densityMatrix.lpNorm<Eigen::Infinity>();
-  auto prescreen = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l, const unsigned& nI,
-                       const unsigned& nJ, const unsigned& nK, const unsigned& nL, const double& schwartz) {
-    /*
-     * Early return for insignificance based on the largest element in the whole density matrix
-     */
-    if (maxDens * schwartz < _screening)
+
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax();
+  const auto maxDens = maxDensMat.maxCoeff();
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwartz) {
+    if (maxDens * schwartz < _screening) {
       return true;
-    double maxDBlock = densityMatrix.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>();
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
-    maxDBlock = std::max(maxDBlock, densityMatrix.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
-    if (maxDBlock * schwartz < _screening)
+    }
+    double maxDBlock = 2.0 * maxDensMat(i, j);
+    maxDBlock = std::max(maxDBlock, 2.0 * maxDensMat(k, l));
+    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(i, k));
+    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(i, l));
+    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(j, k));
+    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(j, l));
+    if (maxDBlock * schwartz < _screening) {
       return true;
-    /*
-     * Shell quadruple is significant.
-     */
+    }
     return false;
   };
   /*
-   * Construct the looper, which loops over all integrals
+   * We will use the prescreening threshold for the full matrix build to check the general Schwarz inequality.
+   * The density matrix-based prescreening is not affected by this non-adapted threshold between SCF iterations.
    */
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basis, _screening);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
   /*
    * Run
    */
-  looper.loopNoDerivative(distribute, prescreen);
-#ifdef _OPENMP
+  looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
   for (unsigned int i = 1; i < nThreads; ++i) {
-    *fc[0] += *fc[i];
-    *fx[0] += *fx[i];
-    delete fx[i];
-    delete fc[i];
+    fc[0] += fc[i];
+    fx[0] += fx[i];
   }
-#endif
-  // Symmetrizing
-  Eigen::MatrixXd& f_x = *fx[0];
-  Eigen::MatrixXd& f_c = *fc[0];
-  Eigen::MatrixXd temp_c = f_c + f_c.transpose();
-  Eigen::MatrixXd temp_x = f_x + f_x.transpose();
-  *_fullXpotential += temp_x;
-  F += temp_c + temp_x;
+
+  // Symmetrize.
+  Eigen::Ref<Eigen::MatrixXd> Fca = fc[0];
+  Eigen::Ref<Eigen::MatrixXd> Fxa = fx[0];
+  Eigen::MatrixXd tmp_c = Fca + Fca.transpose();
+  Eigen::MatrixXd tmp_x = Fxa + Fxa.transpose();
+  (*_fullXpotential) += tmp_x;
+  F += tmp_c + tmp_x;
 }
 
 template<>
 void HFPotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(FockMatrix<Options::SCF_MODES::UNRESTRICTED>& F,
                                                                 const DensityMatrix<Options::SCF_MODES::UNRESTRICTED>& densityMatrix) {
-  /*
-   * Thread safety issues; create one (partial) Fock matrix for each thread, sum up in the end.
-   */
-  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>*> fx;
-  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>*> fc;
-#ifdef _OPENMP
+  const unsigned int nBFs = _basis->getNBasisFunctions();
+
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>> fx;
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>> fc;
   const unsigned int nThreads = omp_get_max_threads();
-  // Let the first thread use the Fock matrix directly
   for (unsigned int i = 0; i < nThreads; ++i) {
-    fc.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-    fc[i]->alpha.setZero();
-    fc[i]->beta.setZero();
-    fx.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-    fx[i]->alpha.setZero();
-    fx[i]->beta.setZero();
+    fc.emplace_back(_basis);
+    fx.emplace_back(_basis);
   }
 
-#else
-  // Simply use the fock matrix directly
-  fc.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-  fc[0]->alpha.setZero();
-  fc[0]->beta.setZero();
-  fx.push_back(new FockMatrix<Options::SCF_MODES::UNRESTRICTED>(_basis));
-  fx[0]->alpha.setZero();
-  fx[0]->beta.setZero();
-#endif
-  /*
-   * Function which parses the integrals
-   */
-  auto distribute = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l,
-                        const double& integral, const unsigned& threadId) {
-    /*
-     * Permutations
-     */
-    double perm = 2.0;
-    perm *= (i == j) ? 0.5 : 1.0;
-    perm *= (k == l) ? 0.5 : 1.0;
-    perm *= (i == k) ? (j == l ? 0.5 : 1.0) : 1.0;
+  auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
+    unsigned long ij = i * nBFs + j;
+    unsigned long kl = k * nBFs + l;
+    unsigned long ik = i * nBFs + k;
+    unsigned long il = i * nBFs + l;
+    unsigned long jl = j * nBFs + l;
+    unsigned long jk = j * nBFs + k;
 
-    /*
-     * Coulomb
-     */
-    const double coul = perm * integral;
-    const double coul1 = (densityMatrix.alpha(k, l) + densityMatrix.beta(k, l)) * coul;
-    const double coul2 = (densityMatrix.alpha(i, j) + densityMatrix.beta(i, j)) * coul;
-    fc[threadId]->beta(i, j) += coul1;
-    fc[threadId]->beta(k, l) += coul2;
-    fc[threadId]->alpha(i, j) += coul1;
-    fc[threadId]->alpha(k, l) += coul2;
-    /*
-     * Exchange
-     */
-    const double exc = perm * integral * 0.5 * _xRatio;
-    const double exc1a = densityMatrix.alpha(i, k) * exc;
-    const double exc2a = densityMatrix.alpha(i, l) * exc;
-    const double exc3a = densityMatrix.alpha(j, k) * exc;
-    const double exc4a = densityMatrix.alpha(j, l) * exc;
-    fx[threadId]->alpha(j, l) -= exc1a;
-    fx[threadId]->alpha(j, k) -= exc2a;
-    fx[threadId]->alpha(i, l) -= exc3a;
-    fx[threadId]->alpha(i, k) -= exc4a;
-    const double exc1b = densityMatrix.beta(i, k) * exc;
-    const double exc2b = densityMatrix.beta(i, l) * exc;
-    const double exc3b = densityMatrix.beta(j, k) * exc;
-    const double exc4b = densityMatrix.beta(j, l) * exc;
-    fx[threadId]->beta(j, l) -= exc1b;
-    fx[threadId]->beta(j, k) -= exc2b;
-    fx[threadId]->beta(i, l) -= exc3b;
-    fx[threadId]->beta(i, k) -= exc4b;
+    auto Fca = fc[threadId].alpha.data();
+    auto Fcb = fc[threadId].beta.data();
+    auto Fxa = fx[threadId].alpha.data();
+    auto Fxb = fx[threadId].beta.data();
+
+    auto Da = densityMatrix.alpha.data();
+    auto Db = densityMatrix.beta.data();
+
+    // Coulomb.
+    double coul1 = 2.0 * (*(Da + kl) + *(Db + kl)) * integral;
+    double coul2 = 2.0 * (*(Da + ij) + *(Db + ij)) * integral;
+    *(Fca + ij) += coul1;
+    *(Fca + kl) += coul2;
+    *(Fcb + ij) += coul1;
+    *(Fcb + kl) += coul2;
+
+    // Exchange.
+    double exc = _xRatio * integral;
+    *(Fxa + ik) -= *(Da + jl) * exc;
+    *(Fxa + il) -= *(Da + jk) * exc;
+    *(Fxa + jk) -= *(Da + il) * exc;
+    *(Fxa + jl) -= *(Da + ik) * exc;
+
+    *(Fxb + ik) -= *(Db + jl) * exc;
+    *(Fxb + il) -= *(Db + jk) * exc;
+    *(Fxb + jk) -= *(Db + il) * exc;
+    *(Fxb + jl) -= *(Db + ik) * exc;
   };
-  /*
-   * Detailed prescreening function
-   */
-  // Maximum absolute value in densityMatrix
-  const double maxDens =
-      std::max(densityMatrix.alpha.lpNorm<Eigen::Infinity>(), densityMatrix.beta.lpNorm<Eigen::Infinity>());
-  auto prescreen = [&](const unsigned& i, const unsigned& j, const unsigned& k, const unsigned& l, const unsigned& nI,
-                       const unsigned& nJ, const unsigned& nK, const unsigned& nL, const double& schwartz) {
-    /*
-     * Early return for insignificance based on the largest element in the whole density matrix
-     */
-    if (maxDens * schwartz < _screening)
+
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  const double maxDens = maxDensMat.maxCoeff();
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwartz) {
+    if (maxDens * schwartz < _screening) {
       return true;
-    double maxDBlock = 0.0;
-    for_spin(densityMatrix) {
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, j, nI, nJ).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, k, nI, nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(i, l, nI, nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, k, nJ, nK).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(j, l, nJ, nL).lpNorm<Eigen::Infinity>());
-      maxDBlock = std::max(maxDBlock, densityMatrix_spin.block(k, l, nK, nL).lpNorm<Eigen::Infinity>());
-    };
-    if (maxDBlock * schwartz < _screening)
+    }
+    double maxDBlock = 2.0 * maxDensMat(i, j);
+    maxDBlock = std::max(maxDBlock, 2.0 * maxDensMat(k, l));
+    maxDBlock = std::max(maxDBlock, maxDensMat(i, k));
+    maxDBlock = std::max(maxDBlock, maxDensMat(i, l));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, k));
+    maxDBlock = std::max(maxDBlock, maxDensMat(j, l));
+    if (maxDBlock * schwartz < _screening) {
       return true;
-    /*
-     * Shell quadruple is significant.
-     */
+    }
     return false;
   };
+
   /*
-   * Construct looper for loop over all integrals
+   * We will use the prescreening threshold for the full matrix build to check the general Schwarz inequality.
+   * The density matrix-based prescreening is not affected by this non-adapted threshold between SCF iterations.
    */
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, _basis, _screening);
-  /*
-   * Run
-   */
-  looper.loopNoDerivative(distribute, prescreen);
-#ifdef _OPENMP
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
+  looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+
   for (unsigned int i = 1; i < nThreads; ++i) {
-    fc[0]->alpha += fc[i]->alpha;
-    fc[0]->beta += fc[i]->beta;
-    fx[0]->alpha += fx[i]->alpha;
-    fx[0]->beta += fx[i]->beta;
+    fc[0].alpha += fc[i].alpha;
+    fc[0].beta += fc[i].beta;
+    fx[0].alpha += fx[i].alpha;
+    fx[0].beta += fx[i].beta;
   }
-#endif
-  // Symmetrizing
-  Eigen::MatrixXd& f_x_a = fx[0]->alpha;
-  Eigen::MatrixXd& f_x_b = fx[0]->beta;
-  Eigen::MatrixXd& f_c_a = fc[0]->alpha;
-  Eigen::MatrixXd& f_c_b = fc[0]->beta;
 
-  Eigen::MatrixXd temp_c = f_c_a + f_c_a.transpose();
-  Eigen::MatrixXd temp_x = f_x_a + f_x_a.transpose();
-  F.alpha += temp_c + temp_x;
-  _fullXpotential->alpha += temp_x;
+  // Symmetrize.
+  Eigen::Ref<Eigen::MatrixXd> Fca = fc[0].alpha;
+  Eigen::Ref<Eigen::MatrixXd> Fxa = fx[0].alpha;
+  Eigen::Ref<Eigen::MatrixXd> Fcb = fc[0].beta;
+  Eigen::Ref<Eigen::MatrixXd> Fxb = fx[0].beta;
 
-  temp_c = f_c_b + f_c_b.transpose();
-  temp_x = f_x_b + f_x_b.transpose();
-  F.beta += temp_c + temp_x;
-  _fullXpotential->beta += temp_x;
-}
+  Eigen::MatrixXd tmp_c = Fca + Fca.transpose();
+  Eigen::MatrixXd tmp_x = Fxa + Fxa.transpose();
+  _fullXpotential->alpha += tmp_x;
+  F.alpha += tmp_c + tmp_x;
 
-template<Options::SCF_MODES SCFMode>
-Eigen::VectorXi HFPotential<SCFMode>::createBasisToAtomMap(std::shared_ptr<Serenity::AtomCenteredBasisController> basis) {
-  const unsigned int nBasisFunctions = basis->getNBasisFunctions();
-  const unsigned int nBasisFunctionsRed = basis->getReducedNBasisFunctions();
-  const auto basisIndicesRed = basis->getBasisIndicesRed();
-  Eigen::VectorXi shellMap(nBasisFunctionsRed);
-  Eigen::VectorXi bfMap(nBasisFunctions);
-  // Vector to check whether ALL basis function shells are assigned to an atom index
-  std::vector<bool> hasElementBeenSet(nBasisFunctionsRed, false);
-  for (unsigned int iAtom = 0; iAtom < basisIndicesRed.size(); ++iAtom) {
-    const unsigned int firstIndex = basisIndicesRed[iAtom].first;
-    const unsigned int endIndex = basisIndicesRed[iAtom].second;
-    for (unsigned int iShell = firstIndex; iShell < endIndex; ++iShell) {
-      shellMap[iShell] = iAtom;
-      hasElementBeenSet[iShell] = true;
-    }
-  }
-  // Check
-  for (bool x : hasElementBeenSet) {
-    if (not x)
-      throw SerenityError("HFPotential: Missed gradient element in gradient evaluation.");
-  }
-  for (unsigned int i = 0; i < nBasisFunctions; i++) {
-    bfMap[i] = shellMap[basis->reducedIndex(i)];
-  }
-  return bfMap;
+  tmp_c = Fcb + Fcb.transpose();
+  tmp_x = Fxb + Fxb.transpose();
+  _fullXpotential->beta += tmp_x;
+  F.beta += tmp_c + tmp_x;
 }
 
 template<>
@@ -392,7 +307,7 @@ Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
   auto densityMatrix = _dMatController->getDensityMatrix();
   auto dMatPtr = densityMatrix.data();
 
-  auto mapping = createBasisToAtomMap(systemController->getAtomCenteredBasisController());
+  auto mapping = systemController->getAtomCenteredBasisController()->getAtomIndicesOfBasis();
 
   const unsigned int nBFs = _basis->getNBasisFunctions();
 
@@ -406,8 +321,9 @@ Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
   std::vector<Eigen::MatrixXd> xPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
 #endif
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, _basis, 1E-10);
-
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 1, _basis, _incrementHelper->getPrescreeningThreshold());
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  const double maxDens = maxDensMat.maxCoeff();
   auto const looperFunction = [&](const unsigned int& i, const unsigned int& j, const unsigned int& a,
                                   const unsigned int& b, const Eigen::VectorXd& intValues, const unsigned int& threadID) {
     double perm = (i == j) ? 1.0 : 2.0;
@@ -449,9 +365,9 @@ Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
     xPriv[threadID].data()[2 * nAtoms + bAtom] += 0.25 * perm * xprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
   };
 
-  looper.loop(looperFunction);
+  looper.loop(looperFunction, maxDens);
 
-  Matrix<double> hfGrad(nAtoms, 3);
+  Eigen::MatrixXd hfGrad(nAtoms, 3);
   hfGrad.setZero();
 #ifdef _OPENMP
   // sum over all threads
@@ -463,7 +379,7 @@ Eigen::MatrixXd HFPotential<RESTRICTED>::getGeomGradients() {
   hfGrad += cPriv[0];
   hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return std::move(hfGrad);
+  return hfGrad;
 }
 
 template<>
@@ -476,7 +392,7 @@ Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
   auto dMatPtrA = densityMatrix.alpha.data();
   auto dMatPtrB = densityMatrix.beta.data();
 
-  auto mapping = createBasisToAtomMap(systemController->getAtomCenteredBasisController());
+  auto mapping = systemController->getAtomCenteredBasisController()->getAtomIndicesOfBasis();
 
   const unsigned int nBFs = _basis->getNBasisFunctions();
 
@@ -490,8 +406,9 @@ Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
   std::vector<Eigen::MatrixXd> xPriv(1, Eigen::MatrixXd::Zero(nAtoms, 3));
 #endif
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 1, _basis, 1E-10);
-
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 1, _basis, _incrementHelper->getPrescreeningThreshold());
+  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  const double maxDens = maxDensMat.maxCoeff();
   auto const looperFunction = [&](const unsigned int& i, const unsigned int& j, const unsigned int& a,
                                   const unsigned int& b, const Eigen::VectorXd& intValues, const unsigned int& threadID) {
     double perm = (i == j) ? 1.0 : 2.0;
@@ -537,9 +454,9 @@ Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
     xPriv[threadID].data()[2 * nAtoms + bAtom] += 0.5 * perm * xprefac * intValues.data()[11]; // 3 * 3 + 2 = (at, xyz)
   };
 
-  looper.loop(looperFunction);
+  looper.loop(looperFunction, maxDens);
 
-  Matrix<double> hfGrad(nAtoms, 3);
+  Eigen::MatrixXd hfGrad(nAtoms, 3);
   hfGrad.setZero();
 #ifdef _OPENMP
   // sum over all threads
@@ -551,7 +468,7 @@ Eigen::MatrixXd HFPotential<UNRESTRICTED>::getGeomGradients() {
   hfGrad += cPriv[0];
   hfGrad -= xPriv[0] * _xRatio;
 #endif
-  return std::move(hfGrad);
+  return hfGrad;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -559,6 +476,12 @@ FockMatrix<SCFMode>& HFPotential<SCFMode>::getXPotential() {
   if (_outOfDate)
     this->getMatrix();
   return *_fullXpotential;
+}
+
+template<Options::SCF_MODES SCFMode>
+HFPotential<SCFMode>::~HFPotential() {
+  if (_systemController.lock() && _clear4CenterCache)
+    _systemController.lock()->clear4CenterCache();
 }
 
 template class HFPotential<Options::SCF_MODES::RESTRICTED>;

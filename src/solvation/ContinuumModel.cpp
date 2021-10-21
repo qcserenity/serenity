@@ -93,7 +93,7 @@ const GridPotential<RESTRICTED>& ContinuumModel<SCFMode>::getPCMCharges() {
   if (!_pcmCharges) {
     if (!_K)
       decomposeCavityMatrix();
-    _pcmCharges = std::make_shared<GridPotential<RESTRICTED>>(_molecularSurface->getGridController());
+    _pcmCharges = std::make_shared<GridPotential<RESTRICTED>>(_molecularSurface);
     if (_environmentPotentials.size() > 0) {
       GridPotential<RESTRICTED> totalElectrostaticPotential = _activePotential->getPotential();
       for (auto envElecPot : _environmentPotentials)
@@ -107,7 +107,7 @@ const GridPotential<RESTRICTED>& ContinuumModel<SCFMode>::getPCMCharges() {
     }
     // Scaling for CPCM(COSMO)
     if (_settings.solverType == Options::PCM_SOLVER_TYPES::CPCM) {
-      double scaling = (_eps - 1) / (_eps + _settings.correction);
+      double scaling = this->getCPCMScaling();
       *_pcmCharges *= scaling;
     }
   }
@@ -144,6 +144,19 @@ void ContinuumModel<SCFMode>::decomposeCavityMatrix() {
     throw SerenityError("The PCM Solver chosen is not implemented yet. Please use CPCM or IEFPCM.");
   }
   Timings::timeTaken(" Tech. -      PCM Cavity Matirx");
+}
+
+template<Options::SCF_MODES SCFMode>
+const PCMSettings& ContinuumModel<SCFMode>::getPCMSettings() {
+  return _settings;
+}
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<MolecularSurfaceController> ContinuumModel<SCFMode>::getMolecularSurfaceController() {
+  return _molecularSurface;
+}
+template<Options::SCF_MODES SCFMode>
+double ContinuumModel<SCFMode>::getCPCMScaling() {
+  return (_eps - 1) / (_eps + _settings.correction);
 }
 
 template class ContinuumModel<Options::SCF_MODES::RESTRICTED>;

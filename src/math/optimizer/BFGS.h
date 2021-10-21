@@ -26,7 +26,6 @@
 #include <memory>
 
 namespace Serenity {
-using namespace std;
 
 /**
  * @class BFGS BFGS.h

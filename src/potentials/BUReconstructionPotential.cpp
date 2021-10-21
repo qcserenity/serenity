@@ -31,6 +31,8 @@
 #include "data/grid/SupersystemDensityOnGridController.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/Geometry.h"
+#include "integrals/OneIntControllerFactory.h"
+#include "integrals/wrappers/Libint.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/OptEffPotential.h"
 #include "settings/Settings.h"
@@ -74,7 +76,7 @@ double BUReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
   double energy = _supEnergy;
   auto& libint = Libint::getInstance();
   auto system = this->_system.lock();
-  auto kin = libint.compute1eInts(libint2::Operator::kinetic, system->getBasisController());
+  auto kin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, system->getBasisController());
   for_spin(P) {
     double kinE = P_spin.cwiseProduct(kin).sum();
     energy -= kinE;
@@ -82,7 +84,7 @@ double BUReconstructionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode
 
   for (auto weak : this->_envSystems) {
     auto sys = weak.lock();
-    auto kin = libint.compute1eInts(libint2::Operator::kinetic, sys->getBasisController());
+    auto kin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, sys->getBasisController());
     auto mat = sys->template getElectronicStructure<SCFMode>()->getDensityMatrix();
     for_spin(mat) {
       double kinE = mat_spin.cwiseProduct(kin).sum();
@@ -353,7 +355,7 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
    * Calculate energy from supersystem and subsystem orbitals
    */
 
-  auto supKin = libint.compute1eInts(libint2::Operator::kinetic, supSysBasisController);
+  auto supKin = libint.compute1eInts(LIBINT_OPERATOR::kinetic, supSysBasisController);
 
   _supEnergy = 0.0;
   int factor = 2;

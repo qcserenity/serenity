@@ -29,23 +29,22 @@
 #include "grid/GridController.h"                            //Access to the grid for the evaluations.
 
 namespace Serenity {
-using namespace std;
 
 DataOnGridWriter::DataOnGridWriter(const Settings& settings) : _settings(settings) {
 }
 
-void DataOnGridWriter::writeMatrixToGrid(const string& filename, shared_ptr<const Geometry> geometry,
+void DataOnGridWriter::writeMatrixToGrid(const std::string& filename, std::shared_ptr<const Geometry> geometry,
                                          const MatrixInBasis<RESTRICTED>& matrix) {
   auto basisController = matrix.getBasisController();
   this->writeMatrixToGrid(filename, geometry, basisController, matrix);
 }
 
-void DataOnGridWriter::writeMatrixToGrid(const string& filename, shared_ptr<const Geometry> geometry,
+void DataOnGridWriter::writeMatrixToGrid(const std::string& filename, std::shared_ptr<const Geometry> geometry,
                                          std::shared_ptr<BasisController> basisController, const Eigen::MatrixXd& matrix) {
   /*
    * define lambda function
    */
-  auto calcValuesOnGrid = [&basisController, &matrix, this](shared_ptr<GridController> gridController) -> Eigen::VectorXd {
+  auto calcValuesOnGrid = [&basisController, &matrix, this](std::shared_ptr<GridController> gridController) -> Eigen::VectorXd {
     auto basFuncOnGridController = BasisFunctionOnGridControllerFactory::produce(_settings, basisController, gridController);
     Eigen::VectorXd result;
     MatrixInBasis<RESTRICTED> tmp(basisController);
@@ -57,13 +56,13 @@ void DataOnGridWriter::writeMatrixToGrid(const string& filename, shared_ptr<cons
   writeFile(filename, geometry, calcValuesOnGrid);
 }
 
-void DataOnGridWriter::writeVectorSetToGrid(const std::vector<string>& filenames, shared_ptr<const Geometry> geometry,
-                                            shared_ptr<BasisController> basisController, Eigen::MatrixXd& inVectorSet) {
+void DataOnGridWriter::writeVectorSetToGrid(const std::vector<std::string>& filenames, std::shared_ptr<const Geometry> geometry,
+                                            std::shared_ptr<BasisController> basisController, Eigen::MatrixXd& inVectorSet) {
   assert((long int)(filenames.size()) == inVectorSet.cols());
   /*
    * define lambda function
    */
-  auto calcValuesOnGrid = [&basisController, &inVectorSet, this](shared_ptr<GridController> gridController) -> Eigen::MatrixXd {
+  auto calcValuesOnGrid = [&basisController, &inVectorSet, this](std::shared_ptr<GridController> gridController) -> Eigen::MatrixXd {
     // get useful data
     auto basFuncOnGridController = BasisFunctionOnGridControllerFactory::produce(_settings, basisController, gridController);
 
@@ -77,12 +76,12 @@ void DataOnGridWriter::writeVectorSetToGrid(const std::vector<string>& filenames
   writeFile(filenames, geometry, calcValuesOnGrid);
 }
 
-void DataOnGridWriter::writeFile(const string& filename, shared_ptr<const Geometry> geometry,
+void DataOnGridWriter::writeFile(const std::string& filename, std::shared_ptr<const Geometry> geometry,
                                  std::function<Eigen::VectorXd(std::shared_ptr<GridController>)> calcProperty) {
   /*
    * write header and generate Grid
    */
-  shared_ptr<GridController> plotGridController = this->writeHeaderAndCreateGrid(filename, geometry);
+  std::shared_ptr<GridController> plotGridController = this->writeHeaderAndCreateGrid(filename, geometry);
   /*
    * calc data
    */
@@ -93,7 +92,7 @@ void DataOnGridWriter::writeFile(const string& filename, shared_ptr<const Geomet
   this->writeData(filename, data);
 } /* writeFile */
 
-void DataOnGridWriter::writeFile(const std::vector<std::string>& filenames, shared_ptr<const Geometry> geometry,
+void DataOnGridWriter::writeFile(const std::vector<std::string>& filenames, std::shared_ptr<const Geometry> geometry,
                                  std::function<Eigen::MatrixXd(std::shared_ptr<GridController>)> calcProperties) {
   /*
    * write header and generate Grid
@@ -103,7 +102,6 @@ void DataOnGridWriter::writeFile(const std::vector<std::string>& filenames, shar
    * calc data
    */
   auto data = calcProperties(plotGridController);
-  assert(data.size() == (long int)(filenames.size()));
   /*
    * write data
    */

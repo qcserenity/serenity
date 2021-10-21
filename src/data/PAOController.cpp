@@ -51,4 +51,13 @@ void PAOController::constructPAOs() {
   }
 }
 
+const MatrixInBasis<RESTRICTED>& PAOController::getS_PAO() {
+  if (!_s_pao) {
+    _s_pao = std::make_unique<MatrixInBasis<RESTRICTED>>(_s->getBasisController());
+    const auto& paoCoefficients = this->getAllPAOs();
+    *_s_pao = paoCoefficients.transpose() * *_s * paoCoefficients;
+  }
+  return *_s_pao;
+}
+
 } /* namespace Serenity */

@@ -48,13 +48,20 @@ template<Options::SCF_MODES SCFMode>
 class ScalarOperatorToMatrixAdder {
  public:
   /**
-   * @param basisFunctionOnGridController
+   * @param basisFunctionOnGridController The basisFunctionOnGridController that concerns the matrix.
    * @param blockAveThreshold if the average contribution of a block of grid points is below
    *                          this threshold it is skipped for efficiency
    */
   ScalarOperatorToMatrixAdder(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
                               double blockAveThreshold);
 
+  /**
+   * @param basisFunctionOnGridControllerA The first basisFunctionOnGridController that concerns the matrix. Two are
+   * needed for projection embedding.
+   * @param basisFunctionOnGridControllerB The second basisFunctionOnGridController that concerns the matrix.
+   * @param blockAveThreshold if the average contribution of a block of grid points is below
+   *                          this threshold it is skipped for efficiency
+   */
   ScalarOperatorToMatrixAdder(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerA,
                               std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerB,
                               double blockAveThreshold);

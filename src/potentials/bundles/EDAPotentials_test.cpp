@@ -21,6 +21,7 @@
 #include "potentials/bundles/EDAPotentials.h"
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
+#include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutputStream.h" //Test only, remove me!
 #include "scf/Scf.h"
 #include "settings/Settings.h"
@@ -57,16 +58,16 @@ class EDAPotentialsTest : public ::testing::Test {
 
   static void SetUpTestCase() {
     auto& libint = Libint::getInstance();
-    libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-    libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
     auto& libint = Libint::getInstance();
-    libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-    libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+    libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   }
 
   /* The systems. */

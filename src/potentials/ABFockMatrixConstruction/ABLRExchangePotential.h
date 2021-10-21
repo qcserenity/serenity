@@ -22,7 +22,6 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
-#include "integrals/wrappers/Libint.h"
 #include "notification/ObjectSensitiveClass.h"
 #include "potentials/ABFockMatrixConstruction/ABPotential.h"
 
@@ -30,6 +29,7 @@ namespace Serenity {
 
 /* Forward declarations */
 class SystemController;
+class Libint;
 
 /**
  * @class ABExchangePotential ABLRExchangePotential.h
@@ -77,7 +77,7 @@ class ABLRExchangePotential : public ABPotential<SCFMode>,
   ///@brief The active system controller for the settings.
   std::weak_ptr<SystemController> _actSystem;
   ///@brief A Libint instance.
-  const std::shared_ptr<Libint> _libint = Libint::getSharedPtr();
+  const std::shared_ptr<Libint> _libint;
   ///@brief The outer diagonal block of the fock matrix.
   std::unique_ptr<SPMatrix<SCFMode>> _abPotential;
   ///@brief The density matrices which contribute to the potential.

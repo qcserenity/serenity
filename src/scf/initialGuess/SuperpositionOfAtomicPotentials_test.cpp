@@ -21,7 +21,6 @@
 /* Include Serenity Internal Headers */
 #include "scf/initialGuess/SuperpositionOfAtomicPotentials.h"
 #include "data/ElectronicStructure.h"
-#include "settings/Settings.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

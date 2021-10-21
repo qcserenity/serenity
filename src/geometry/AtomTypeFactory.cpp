@@ -28,11 +28,10 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
-map<string, shared_ptr<const AtomType>> AtomTypeFactory::_atomTypes;
+std::map<std::string, std::shared_ptr<const AtomType>> AtomTypeFactory::_atomTypes;
 
-shared_ptr<const AtomType> AtomTypeFactory::getAtomType(const string name) {
+std::shared_ptr<const AtomType> AtomTypeFactory::getAtomType(const std::string name) {
   std::string str = name;
   for (auto& c : str)
     c = toupper(c);
@@ -47,7 +46,7 @@ shared_ptr<const AtomType> AtomTypeFactory::getAtomType(const string name) {
       return _atomTypes.at(str);
     }
     else {
-      throw SerenityError((string) "There is no atom type defined with name " + name);
+      throw SerenityError((std::string) "There is no atom type defined with name " + name);
     }
   }
 }
@@ -61,18 +60,20 @@ shared_ptr<const AtomType> AtomTypeFactory::getAtomType(const string name) {
 // clang-format off
 #define NEW_ATOM_TYPE(NAME, ATOMIC_NUMBER, MASS)                                        \
         } else if (name == NAME ) {                                                     \
-          _atomTypes.insert(pair<string, shared_ptr<const AtomType> >(                  \
-          NAME, shared_ptr<const AtomType>(new AtomType(                                \
+          _atomTypes.insert(std::pair<std::string, std::shared_ptr<const AtomType> >(   \
+          NAME, std::shared_ptr<const AtomType>(new AtomType(                           \
           NAME,                                                                         \
           ATOMIC_NUMBER,                                                                \
           MASS,                                                                         \
           ELEMENTAL_BRAGG_SLATER_RADII[ATOMIC_NUMBER] * ANGSTROM_TO_BOHR,               \
           ELEMENTAL_VAN_DER_WAALS_RADII[ATOMIC_NUMBER] * ANGSTROM_TO_BOHR,              \
           ELEMENTAL_UFF_RADII[ATOMIC_NUMBER] * ANGSTROM_TO_BOHR,                        \
-          ELEMENT_OCCUPATIONS[ATOMIC_NUMBER]))));
+          NUMBER_OF_CORE_ELECTRONS[ATOMIC_NUMBER],                                      \
+          ELEMENT_OCCUPATIONS[ATOMIC_NUMBER],                                           \
+          CHEMICAL_HARDNESS[ATOMIC_NUMBER]))));
 // clang-format on
 
-void AtomTypeFactory::generateAtomType(string name) {
+void AtomTypeFactory::generateAtomType(std::string name) {
   /*
    * To define your own atom type look at the definition of the hydrogen atom type and make use
    * of tabulated data for the elements if appropriate (as is done in the macro above).
@@ -94,15 +95,17 @@ void AtomTypeFactory::generateAtomType(string name) {
     c = toupper(c);
 
   if (name.substr(name.length() - 1) == ":") {
-    auto atom = AtomTypeFactory::getAtomType(name.substr(0, name.length() - 1));
-    _atomTypes.insert(pair<string, shared_ptr<const AtomType>>(
-        name, std::make_shared<AtomType>(name, atom->getNuclearCharge(), 0.0, atom->getBraggSlaterRadius(),
-                                         atom->getVanDerWaalsRadius(), atom->getUFFRadius(), atom->getOccupations(), true)));
+    auto atomType = AtomTypeFactory::getAtomType(name.substr(0, name.length() - 1));
+    _atomTypes.insert(std::pair<std::string, std::shared_ptr<const AtomType>>(
+        name, std::make_shared<AtomType>(name, atomType->getNuclearCharge(), 0.0, atomType->getBraggSlaterRadius(),
+                                         atomType->getVanDerWaalsRadius(), atomType->getUFFRadius(), atomType->getNCoreElectrons(),
+                                         atomType->getOccupations(), atomType->getChemicalHardness(), true)));
   }
   else if (name == "H") {
-    _atomTypes.insert(pair<string, shared_ptr<const AtomType>>(
-        "H", shared_ptr<const AtomType>(new AtomType("H", 1, 1.00782503223, 0.25 * ANGSTROM_TO_BOHR, 1.20 * ANGSTROM_TO_BOHR,
-                                                     1.4430 * ANGSTROM_TO_BOHR, {{{ANGULAR_QUANTUM_NUMBER::s, 1}}}, false))));
+    _atomTypes.insert(std::pair<std::string, std::shared_ptr<const AtomType>>(
+        "H", std::shared_ptr<const AtomType>(new AtomType(
+                 "H", 1, 1.00782503223, 0.25 * ANGSTROM_TO_BOHR, 1.20 * ANGSTROM_TO_BOHR, 1.4430 * ANGSTROM_TO_BOHR, 0,
+                 {{{ANGULAR_QUANTUM_NUMBER::s, 1}}}, CHEMICAL_HARDNESS[1], false))));
     // 0.999 885
     NEW_ATOM_TYPE("HE", 2, 4.00260325413) // 0.999 998 66
     // 2nd row
@@ -239,7 +242,7 @@ void AtomTypeFactory::generateAtomType(string name) {
     NEW_ATOM_TYPE("T", 1, 3.0160492779)  // small
   }
   else {
-    throw SerenityError((string) "There is no atom type defined with name " + name);
+    throw SerenityError((std::string) "There is no atom type defined with name " + name);
   }
 }
 

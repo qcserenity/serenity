@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
 #include "basis/AtomCenteredBasisControllerFactory.h"
+#include "basis/Shell.h"
 #include "data/ElectronicStructure.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "geometry/Geometry.h"
@@ -215,7 +216,7 @@ inline void BasisSetTruncationAlgorithms::buildTruncatedBasis(Eigen::VectorXi im
       ++nDeleted;
     }
   }
-  _activeSystem->getGeometry()->printToFile(_activeSystem->getHDF5BaseName(), _activeSystem->getSettings().identifier);
+  _activeSystem->getGeometry()->printToFile(_activeSystem->getHDF5BaseName(), _activeSystem->getSystemIdentifier());
   // set new basis
   std::string label = _activeSystem->getAtomCenteredBasisController()->getBasisLabel();
   auto newBas =
@@ -223,7 +224,7 @@ inline void BasisSetTruncationAlgorithms::buildTruncatedBasis(Eigen::VectorXi im
                                                     _activeSystem->getSettings().basis.makeSphericalBasis, true, label,
                                                     999999, // No new ECP assignment
                                                     activeShells);
-  newBas->toHDF5(_activeSystem->getHDF5BaseName(), _activeSystem->getSettings().identifier);
+  newBas->toHDF5(_activeSystem->getHDF5BaseName(), _activeSystem->getSystemIdentifier());
   auto newAuxBas = std::make_shared<AtomCenteredBasisController>(
       _activeSystem->getGeometry(), _activeSystem->getSettings().basis.basisLibPath,
       _activeSystem->getSettings().basis.makeSphericalBasis, false, _activeSystem->getSettings().basis.auxJLabel);

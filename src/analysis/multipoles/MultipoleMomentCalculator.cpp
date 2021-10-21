@@ -21,6 +21,7 @@
 /* Include Class Header*/
 #include "analysis/multipoles/MultipoleMomentCalculator.h"
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"                         //Loop shells.
 #include "basis/BasisController.h"               //getBasis().
 #include "data/ElectronicStructure.h"            //getDensityMatrix().
 #include "data/matrices/DensityMatrix.h"         //.total().
@@ -57,10 +58,10 @@ MultipoleMomentCalculator::calculateMultipoleMoment(std::shared_ptr<SystemContro
 
   auto& libint = Libint::getInstance();
   if (highestOrder == 1) {
-    libint.initialize(libint2::Operator::emultipole1, 0, 2);
+    libint.initialize(LIBINT_OPERATOR::emultipole1, 0, 2);
   }
   else if (highestOrder == 2) {
-    libint.initialize(libint2::Operator::emultipole2, 0, 2);
+    libint.initialize(LIBINT_OPERATOR::emultipole2, 0, 2);
   }
 
   assert(highestOrder <= 2 && highestOrder >= 1 && "Only orders 1-2 supported for calculation of multipole moments!");
@@ -73,10 +74,10 @@ MultipoleMomentCalculator::calculateMultipoleMoment(std::shared_ptr<SystemContro
       auto shellB = basis[j]->getNContracted();
       Eigen::MatrixXd multiPoleInts;
       if (highestOrder == 1) {
-        libint.compute(libint2::Operator::emultipole1, 0, *basis[i], *basis[j], multiPoleInts);
+        libint.compute(LIBINT_OPERATOR::emultipole1, 0, *basis[i], *basis[j], multiPoleInts);
       }
       else if (highestOrder == 2) {
-        libint.compute(libint2::Operator::emultipole2, 0, *basis[i], *basis[j], multiPoleInts);
+        libint.compute(LIBINT_OPERATOR::emultipole2, 0, *basis[i], *basis[j], multiPoleInts);
       }
       /*
        * set vector size: libint will return a matrix containing
@@ -101,10 +102,10 @@ MultipoleMomentCalculator::calculateMultipoleMoment(std::shared_ptr<SystemContro
     }
   };
   if (highestOrder == 1) {
-    libint.finalize(libint2::Operator::emultipole1, 0, 2);
+    libint.finalize(LIBINT_OPERATOR::emultipole1, 0, 2);
   }
   else if (highestOrder == 2) {
-    libint.finalize(libint2::Operator::emultipole2, 0, 2);
+    libint.finalize(LIBINT_OPERATOR::emultipole2, 0, 2);
   }
   // Add nuclear part
   for (const auto& atom : geometry->getAtoms()) {

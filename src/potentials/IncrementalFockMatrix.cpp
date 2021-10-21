@@ -33,15 +33,13 @@ IncrementalFockMatrix<SCFMode>::IncrementalFockMatrix(std::shared_ptr<DensityMat
   : _densityMatrixController(densityMatrixController),
     _prescreeningThreshold(prescreeningThreshold),
     _prescreeningIncrementStart(prescreeningIncrementStart),
-    _prescreeningIncrementEnd(prescreeningIncrementEnd),
+    _prescreeningIncrementEnd(prescreeningIncrementEnd != 0 ? prescreeningIncrementEnd : prescreeningThreshold),
     _incrementSteps(incrementSteps),
     _outputString(outputString),
     _alwaysFullBuild(incrementSteps == 0) {
-  _oldDensityMatrix = std::make_shared<DensityMatrix<SCFMode>>(densityMatrixController->getDensityMatrix());
-  DensityMatrix<SCFMode>& oldP = *_oldDensityMatrix;
-  for_spin(oldP) {
-    oldP_spin.setZero();
-  };
+  auto basis = densityMatrixController->getDensityMatrix().getBasisController();
+  basis->addSensitiveObject(this->_self);
+  initializeOldDensityMatrix();
   if (_incrementSteps == 0) {
     _incrementSteps = 1;
     WarningTracker::printWarning((std::string) " WARNING: Incremental steps must at least be 1, set incremental steps "
@@ -60,15 +58,19 @@ unsigned int IncrementalFockMatrix<SCFMode>::getIncrementSteps() {
 }
 
 template<Options::SCF_MODES SCFMode>
-void IncrementalFockMatrix<SCFMode>::resetFockMatrix(FockMatrix<SCFMode>& f, double nextTreshold) {
+void IncrementalFockMatrix<SCFMode>::resetFockMatrix(std::vector<std::shared_ptr<FockMatrix<SCFMode>>> fs, double nextTreshold) {
   // No printing in the fist cycle.
   if (this->getCounter() != 0) {
     OutputControl::dOut << " ***** Reset Incremental Fock Matrix Build: " << _outputString << " *****" << std::endl;
     OutputControl::dOut << " ***** New Prescreening Threshold - " << nextTreshold << " ***** " << std::endl;
   }
-  for_spin(f) {
-    f_spin.setZero();
-  };
+  for (auto f_ptr : fs) {
+    *f_ptr = FockMatrix<SCFMode>(_densityMatrixController->getDensityMatrix().getBasisController());
+    auto& f = *f_ptr;
+    for_spin(f) {
+      f_spin.setZero();
+    };
+  }
 }
 template<Options::SCF_MODES SCFMode>
 double IncrementalFockMatrix<SCFMode>::getCurrentThreshold() {
@@ -88,7 +90,9 @@ double IncrementalFockMatrix<SCFMode>::getCurrentThreshold() {
 
 template<Options::SCF_MODES SCFMode>
 bool IncrementalFockMatrix<SCFMode>::updateDensityAndThreshold(DensityMatrix<SCFMode>& p, double& threshold,
-                                                               FockMatrix<SCFMode>& f) {
+                                                               std::vector<std::shared_ptr<FockMatrix<SCFMode>>> fs) {
+  if (!_oldDensityMatrix)
+    initializeOldDensityMatrix();
   // Calculate current threshold and the density matrix change
   DensityMatrix<SCFMode> deltaP = _densityMatrixController->getDensityMatrix() - *_oldDensityMatrix;
   // Check for zero-changes.
@@ -98,14 +102,15 @@ bool IncrementalFockMatrix<SCFMode>::updateDensityAndThreshold(DensityMatrix<SCF
     if (largestElement > _prescreeningIncrementEnd * 0.1)
       zeroChange = false;
   };
-  bool fullBuild = (_counter % _incrementSteps == 0 && not zeroChange && not _reachedFinalThreshold) || _alwaysFullBuild;
+  bool fullBuild = (_counter % _incrementSteps == 0 && not zeroChange && not _reachedFinalThreshold) ||
+                   _alwaysFullBuild || _basisChanged;
   double newThreshold = getCurrentThreshold();
   // Full build every few iterations for non-zero changes.
-  // Prevent full construction due to zero/unitary cahnge
+  // Prevent full construction due to zero/unitary change
   if (fullBuild) {
     // Full build. Reset Fock matrix, and assign default threshold and density matrix.
     p = _densityMatrixController->getDensityMatrix();
-    this->resetFockMatrix(f, newThreshold);
+    this->resetFockMatrix(fs, newThreshold);
     threshold = _prescreeningThreshold;
   }
   else {
@@ -117,7 +122,25 @@ bool IncrementalFockMatrix<SCFMode>::updateDensityAndThreshold(DensityMatrix<SCF
   *_oldDensityMatrix = _densityMatrixController->getDensityMatrix();
   if (not zeroChange)
     ++_counter;
+  _basisChanged = false;
   return fullBuild;
+}
+
+template<Options::SCF_MODES SCFMode>
+void IncrementalFockMatrix<SCFMode>::notify() {
+  // the basis set has changed! Reset everything.
+  _oldDensityMatrix = nullptr;
+  _counter = 0;
+  _basisChanged = true;
+}
+
+template<Options::SCF_MODES SCFMode>
+void IncrementalFockMatrix<SCFMode>::initializeOldDensityMatrix() {
+  _oldDensityMatrix = std::make_shared<DensityMatrix<SCFMode>>(_densityMatrixController->getDensityMatrix());
+  DensityMatrix<SCFMode>& oldP = *_oldDensityMatrix;
+  for_spin(oldP) {
+    oldP_spin.setZero();
+  };
 }
 
 template class IncrementalFockMatrix<Options::SCF_MODES::RESTRICTED>;

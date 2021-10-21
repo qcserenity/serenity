@@ -30,6 +30,7 @@
 #include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/Filesystem.h"
 #include "io/HDF5.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/Timing.h"
@@ -43,7 +44,6 @@
 #include <vector>
 
 namespace Serenity {
-using namespace std;
 
 Eigen::MatrixXd AtomicDensityGuessCalculator::performAtomInitialGuess(Settings settings, std::shared_ptr<Atom> atom) {
   Eigen::MatrixXd atomDensMat;
@@ -85,7 +85,7 @@ Eigen::MatrixXd AtomicDensityGuessCalculator::performAtomInitialGuess(Settings s
 }
 
 std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>
-AtomicDensityGuessCalculator::calculateInitialDensity(shared_ptr<SystemController> systemController,
+AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemController> systemController,
                                                       bool keepMinimalBasis, bool scale) {
   assert(systemController);
 
@@ -128,11 +128,11 @@ AtomicDensityGuessCalculator::calculateInitialDensity(shared_ptr<SystemControlle
   auto basisController = systemController->getBasisController();
 
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::overlap, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::overlap, 0, 2);
   // these two variables are needed in the outer scope
   Eigen::MatrixXd targetBasisOverlap = systemController->getOneElectronIntegralController()->getOverlapIntegrals();
 
-  auto newGuessDensity = unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>(
+  auto newGuessDensity = std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>(
       new DensityMatrix<Options::SCF_MODES::RESTRICTED>(keepMinimalBasis ? minimalBasisController : basisController));
   auto& newDens = *newGuessDensity;
   unsigned int blockstart = 0;
@@ -150,88 +150,60 @@ AtomicDensityGuessCalculator::calculateInitialDensity(shared_ptr<SystemControlle
     if (_atomDensities.find(atom->getAtomType()->getElementSymbol()) == _atomDensities.end()) {
       Eigen::MatrixXd atomDensMat;
       if (_scf == GUESSMODES::SCF_INPLACE || usesECPs) {
-        std::string pathRes = systemController->getSettings().path + atom->getAtomType()->getElementSymbol() +
-                              "_FREE/" + atom->getAtomType()->getElementSymbol() + "_FREE.dmat.res.h5";
-        std::string pathUnres = systemController->getSettings().path + atom->getAtomType()->getElementSymbol() +
-                                "_FREE/" + atom->getAtomType()->getElementSymbol() + "_FREE.dmat.unres.h5";
-        struct stat buffer;
+        std::string freeAtomName = atom->getAtomType()->getElementSymbol() + "_FREE";
+        std::string atomFilesPath = systemController->getSettings().path + freeAtomName + "/";
+        std::string pathRes = atomFilesPath + freeAtomName + ".dmat.res.h5";
+        std::string pathUnres = atomFilesPath + freeAtomName + ".dmat.unres.h5";
+        std::string settingsPath = atomFilesPath + freeAtomName + ".settings";
+
         // Check if inital guess files already exist
-        if (stat(pathRes.c_str(), &buffer) == 0) {
-          // Check if settings file has other basis than specified
-          string atomFilesPath = systemController->getSettings().path + atom->getAtomType()->getElementSymbol() +
-                                 "_FREE/" + atom->getAtomType()->getElementSymbol() + "_FREE";
-          char searchPattern[50];
-          ifstream settingsFile(atomFilesPath + ".settings");
-          while (settingsFile.good()) {
-            settingsFile >> searchPattern;
-            if (settingsFile.good() && strcmp(searchPattern, "LABEL") == 0) {
-              settingsFile >> searchPattern;
-              // If basis label is different remove files and rerun calculation with new basis
-              if (searchPattern != systemController->getSettings().basis.label) {
-                WarningTracker::printWarning(
-                    "WARNING: Basis mismatch in initial guess: Old initial guess files available!\n"
-                    "Using " +
-                        systemController->getSettings().basis.label + " instead of the old " + searchPattern +
-                        "!\n"
-                        "Initial guess is rerun using new basis set!",
-                    true);
-                std::remove((atomFilesPath + ".dmat.res.h5").c_str());
-                std::remove((atomFilesPath + ".energies.res").c_str());
-                std::remove((atomFilesPath + ".orbs.res.h5").c_str());
-                std::remove((atomFilesPath + ".settings").c_str());
-                std::remove((atomFilesPath + ".xyz").c_str());
-                atomDensMat = performAtomInitialGuess(systemController->getSettings(), atom);
-              }
+        struct stat buffer;
+        const bool resExists = stat(pathRes.c_str(), &buffer) == 0;
+        const bool unresExists = (stat(pathUnres.c_str(), &buffer) == 0);
+        const bool settingsExist = stat(settingsPath.c_str(), &buffer) == 0;
+        if ((resExists || unresExists) && settingsExist) {
+          // Check the settings of the old files.
+          // Constuct the settings from file.
+          std::ifstream settingsFile(settingsPath);
+          Settings oldSettings(settingsFile);
+          settingsFile.close();
+          const auto& newSettings = systemController->getSettings();
+          // Check if every thing as reqiured.
+          const bool labelIsFine = oldSettings.basis.label == newSettings.basis.label;
+          const bool angularIsFine = oldSettings.basis.makeSphericalBasis == newSettings.basis.makeSphericalBasis;
+          const bool basisSetLibIsFine = oldSettings.basis.basisLibPath == newSettings.basis.basisLibPath;
+          if (not labelIsFine || not angularIsFine || not basisSetLibIsFine) {
+            // Something did not match. Reconstruct!
+            WarningTracker::printWarning(
+                "WARNING: Old initial guess files were found on diks, but the basis label/library\n"
+                "         or angular momentum mode did not match the required settings!\n"
+                "         The old initial guess files will be deleted and replaced!",
+                true);
+            removeSystemFiles(atomFilesPath, freeAtomName);
+            atomDensMat = performAtomInitialGuess(systemController->getSettings(), atom);
+          }
+          else {
+            if (resExists) {
+              // Load old files.
+              HDF5::Filepath name(pathRes);
+              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+              HDF5::dataset_exists(file, "densityMatrix");
+              HDF5::load(file, "densityMatrix", atomDensMat);
+              file.close();
+            }
+            else {
+              Eigen::MatrixXd dummy;
+              HDF5::Filepath name(pathUnres);
+              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+              HDF5::dataset_exists(file, "densityMatrix_alpha");
+              HDF5::load(file, "densityMatrix_alpha", dummy);
+              atomDensMat = dummy;
+              HDF5::dataset_exists(file, "densityMatrix_beta");
+              HDF5::load(file, "densityMatrix_beta", dummy);
+              atomDensMat += dummy;
+              file.close();
             }
           }
-          settingsFile.close();
-          // No basis mismatch: Load HDF5 data
-          HDF5::Filepath name(pathRes);
-          HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-          HDF5::dataset_exists(file, "densityMatrix");
-          HDF5::load(file, "densityMatrix", atomDensMat);
-          file.close();
-        }
-        else if (stat(pathUnres.c_str(), &buffer) == 0) {
-          // Check if settings file has other basis than specified
-          string atomFilesPath = systemController->getSettings().path + atom->getAtomType()->getElementSymbol() +
-                                 "_FREE/" + atom->getAtomType()->getElementSymbol() + "_FREE";
-          char searchPattern[50];
-          ifstream settingsFile(atomFilesPath + ".settings");
-          while (settingsFile.good()) {
-            settingsFile >> searchPattern;
-            if (settingsFile.good() && strcmp(searchPattern, "LABEL") == 0) {
-              settingsFile >> searchPattern;
-              // If basis label is different remove files and rerun calculation with new basis
-              if (searchPattern != systemController->getSettings().basis.label) {
-                WarningTracker::printWarning(
-                    "WARNING: Basis mismatch in initial guess: Old initial guess files available!\n"
-                    "Using " +
-                        systemController->getSettings().basis.label + " instead of the old " + searchPattern +
-                        "!\n"
-                        "Initial guess is rerun using new basis set!",
-                    true);
-                std::remove((atomFilesPath + ".dmat.unres.h5").c_str());
-                std::remove((atomFilesPath + ".energies.unres").c_str());
-                std::remove((atomFilesPath + ".orbs.unres.h5").c_str());
-                std::remove((atomFilesPath + ".settings").c_str());
-                std::remove((atomFilesPath + ".xyz").c_str());
-                atomDensMat = performAtomInitialGuess(systemController->getSettings(), atom);
-              }
-            }
-          }
-          settingsFile.close();
-          // No basis mismatch: Load HDF5 data
-          Eigen::MatrixXd dummy;
-          HDF5::Filepath name(pathUnres);
-          HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-          HDF5::dataset_exists(file, "densityMatrix_alpha");
-          HDF5::load(file, "densityMatrix_alpha", dummy);
-          atomDensMat = dummy;
-          HDF5::dataset_exists(file, "densityMatrix_beta");
-          HDF5::load(file, "densityMatrix_beta", dummy);
-          atomDensMat += dummy;
-          file.close();
         }
         // If initial guess does not already exists, run atom calculations
         else {
@@ -264,7 +236,7 @@ AtomicDensityGuessCalculator::calculateInitialDensity(shared_ptr<SystemControlle
             systemController->getSettings().basis.firstECP, systemController->getSettings().basis.label);
         unsigned int nBasFunc = atomTargetBas->getNBasisFunctions();
         Eigen::MatrixXd overlapB = targetBasisOverlap.block(blockstart, blockstart, nBasFunc, nBasFunc);
-        auto overlapAB = libint.compute1eInts(libint2::Operator::overlap, atomMinBas, atomTargetBas);
+        auto overlapAB = libint.compute1eInts(LIBINT_OPERATOR::overlap, atomMinBas, atomTargetBas);
         // Calculate inverse of AO overlap integrals in basis B. Use SVD,
         // i.e. S_B = U * D * V^T, since overlapB could be ill-conditioned
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(overlapB, Eigen::ComputeThinU | Eigen::ComputeThinV);
@@ -290,7 +262,7 @@ AtomicDensityGuessCalculator::calculateInitialDensity(shared_ptr<SystemControlle
     blockstart += nBasFunc;
   } // for atom
 
-  libint.freeEngines(libint2::Operator::overlap, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::overlap, 0, 2);
 
   return newGuessDensity;
 }

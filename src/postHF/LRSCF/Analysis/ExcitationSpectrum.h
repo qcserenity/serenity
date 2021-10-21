@@ -22,30 +22,40 @@
 #define LRSCF_EXCITATIONSPECTRUM
 
 /* Include Serenity Internal Headers */
-#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
-#include "postHF/LRSCF/LRSCFController.h"
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h"
+#include "settings/LRSCFOptions.h"
+
+/* Include Std and External Headers */
+#include <Eigen/Dense>
+#include <memory>
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
+class DipoleIntegrals;
+
 /**
  * @class ExcitationSpectrum
  *
  * Prints the oscillator and rotatory strengths and corresponding transition dipole moments
  * for the excitation energies obtained earlier.
  */
+template<Options::SCF_MODES SCFMode>
 class ExcitationSpectrum {
  public:
   /**
    * @brief Calculates oscillator and rotatory strengths and transition dipole moments according to
    *        J. Am. Chem. Soc. 122, 1717 (2000)
+   * @param method The linear-response method in use.
    * @param dipoles All property integrals needed (electric length/velocity and magnetic).
-   * @param eigenvecors Eigenvectors of the response problem.
+   * @param eigenvectors Eigenvectors of the response problem.
    * @param eigenvalues Eigenvalues of the response problem.
+   * @param results A simple matrix to store eigenvalues, osc. and rot. strengths in.
+   * @param fileName A string for the name of the file in which transition moments are to be stored in.
    */
-  static void printSpectrum(const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
-                            const std::vector<Eigen::MatrixXd>& eigenvectors, const Eigen::VectorXd& eigenvalues);
+  static void printSpectrum(Options::LR_METHOD method, const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
+                            const std::vector<Eigen::MatrixXd>& eigenvectors, const Eigen::VectorXd& eigenvalues,
+                            Eigen::Ref<Eigen::MatrixXd> results, std::string fileName);
 };
 
 } /* namespace Serenity */

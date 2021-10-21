@@ -24,13 +24,9 @@
 /* Include Serenity Internal Headers */
 #include "data/grid/DensityOnGrid.h"
 #include "data/grid/GridPotential.h"
-#include "data/matrices/DensityMatrixController.h"
 #include "dft/Functional.h"
-#include "grid/GridController.h"
-#include "potentials/ExchangeInteractionPotential.h"
 #include "potentials/Potential.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
 /*forward declarations*/
@@ -45,6 +41,11 @@ template<class T>
 struct Gradient;
 class BasisFunctionOnGridController;
 class EnergyComponentController;
+class SystemController;
+template<Options::SCF_MODES SCFMode>
+class ExchangeInteractionPotential;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
 
 /**
  * @class NAddEnergyHelper NAddFuncPotential.h
@@ -120,8 +121,41 @@ class NAddFuncPotential : public Potential<SCFMode>,
                     std::pair<bool, std::vector<std::shared_ptr<EnergyComponentController>>> eCon =
                         {true, std::vector<std::shared_ptr<EnergyComponentController>>(0)},
                     bool evaluateEnergy = true, bool evaluateExactX = true, bool calculateSolvationEnergy = false);
+
+  /**
+   * @brief Constructor.
+   * @param system The system needed for its config.
+   * @param activeDMat The active density (controller) and  basis this
+   *                   potential is defined in.
+   * @param otherExactDmats The Density matrices of other exactly treated subsystems in mixed exact/approx embedding.
+   * @param BtoAProjections The projector to sort the exactly treated env density matrices
+   * @param envDMats The Density matrices of approximated treated subsystems
+   * @param grid The for the intermediate calculation on the grid.
+   * @param functional The functional to be used.
+   * @param eCon A pair of boolean an a list of EnergyComponentControllers.
+   *             The boolean describes if a XC (true) or kinetic functional
+   *             is tracked. The EnergyComponentControllers are used to store
+   *             the respective XC or kinetic energies of each subsystem when
+   *             they are evaluated via a functional on the supersystem grid.
+   *             This allows for the reuse of these subtracted energies across
+   *             multiple calculations in a freeze-and-thaw run.
+   *             Of this optional argument is not given, the subtracted energies
+   *             of environment systems are reevaluated in at the start of each
+   *             SCF run. This becomes costly for more than 50 subsystems (water),
+   *             or even earlier for bigger systems.
+   *             The active system controller has to be at position 0 in the vector.
+   */
+  NAddFuncPotential(std::shared_ptr<SystemController> system, std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat,
+                    std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> otherExactDmats,
+                    std::vector<std::shared_ptr<Eigen::SparseMatrix<double>>> BtoAProjections,
+                    std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
+                    std::shared_ptr<GridController> grid, Functional functional,
+                    std::pair<bool, std::vector<std::shared_ptr<EnergyComponentController>>> eCon =
+                        {true, std::vector<std::shared_ptr<EnergyComponentController>>(0)},
+                    bool evaluateEnergy = true, bool evaluateExactX = true, bool calculateSolvationEnergy = false);
+
   /// @brief Default destructor.
-  virtual ~NAddFuncPotential() = default;
+  ~NAddFuncPotential();
 
   /**
    * @brief Getter for the actual potential.
@@ -185,6 +219,7 @@ class NAddFuncPotential : public Potential<SCFMode>,
   std::weak_ptr<SystemController> _system;
   ///@brief The active density and basis this potential is defined in.
   std::shared_ptr<DensityMatrixController<SCFMode>> _actDMatController;
+  std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _otherExactDmats;
   ///@brief The environment densities
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDMatController;
   ///@brief The grid of the supersystem.
@@ -217,7 +252,6 @@ class NAddFuncPotential : public Potential<SCFMode>,
   bool _evaluateEnergy;
   ///@brief boolean to check if exact exchange interaction needs to be evaluated
   bool _evaluateExactX;
-
   bool _calculateSolvationEnergy;
 };
 

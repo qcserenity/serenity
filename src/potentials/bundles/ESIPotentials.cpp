@@ -175,7 +175,7 @@ FockMatrix<SCFMode> ESIPotentials<SCFMode>::getFockMatrix(const DensityMatrix<SC
     auto& libint = Libint::getInstance();
     for (unsigned int env = 0; env < _envDMats.size(); ++env) {
       auto envbasisController = _envDMats[env]->getDensityMatrix().getBasisController();
-      auto envInts = libint.compute1eInts(libint2::Operator::nuclear, envbasisController, _activeGeom->getAtoms());
+      auto envInts = libint.compute1eInts(LIBINT_OPERATOR::nuclear, envbasisController, _activeGeom->getAtoms());
       auto dmat = _envDMats[env]->getDensityMatrix();
       for_spin(dmat) {
         *_enAttr += envInts.cwiseProduct(dmat_spin).sum();

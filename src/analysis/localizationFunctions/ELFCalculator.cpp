@@ -34,6 +34,7 @@
 #include "grid/GridController.h"
 #include "io/CubeFileWriter.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <cmath>
 #include <vector>

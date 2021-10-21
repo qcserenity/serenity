@@ -1,6 +1,6 @@
 /**
  * @file serenity.cpp
- * @version 1.3.1
+ * @version 1.4.0
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include "io/IOOptions.h"
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/Task.h"
 #include <fstream>

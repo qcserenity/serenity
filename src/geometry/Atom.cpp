@@ -30,16 +30,15 @@
 #include <stdexcept>
 
 namespace Serenity {
-using namespace std;
 
-Atom::Atom(shared_ptr<const AtomType> atomType, const double x, const double y, const double z,
-           const pair<string, vector<shared_ptr<Shell>>> basisFunctions)
+Atom::Atom(std::shared_ptr<const AtomType> atomType, const double x, const double y, const double z,
+           const std::pair<std::string, std::vector<std::shared_ptr<Shell>>> basisFunctions)
   : Atom(atomType, x, y, z) {
   _primaryBasisLabel = basisFunctions.first;
   _associatedBasis.insert(basisFunctions);
 }
 
-Atom::Atom(shared_ptr<const AtomType> atomType, const double x, const double y, const double z)
+Atom::Atom(std::shared_ptr<const AtomType> atomType, const double x, const double y, const double z)
   : Point(x, y, z), _atomType(atomType), _gradientsUpToDate(false), _gradient{0.0, 0.0, 0.0}, _primaryBasisLabel("-") {
 }
 
@@ -51,26 +50,37 @@ unsigned int Atom::getNBasisFunctions() const {
   return this->getNBasisFunctions(_primaryBasisLabel);
 }
 
-unsigned int Atom::getNBasisFunctions(const string label) const {
+unsigned int Atom::getNBasisFunctions(const std::string label) const {
   if (_associatedBasis.size() > 0) {
     return _associatedBasis.at(label).size();
   }
   else {
-    throw SerenityError((string) "You are requesting a non-existent basis from an atom. Label: " + label);
+    throw SerenityError((std::string) "You are requesting a non-existent basis from an atom. Label: " + label);
   }
 }
 
-vector<shared_ptr<Shell>>& Atom::getBasisFunctions() {
+bool Atom::operator==(Atom rhs) {
+  bool same = true;
+  auto lhsName = this->getAtomType()->getName();
+  auto rhsName = rhs.getAtomType()->getName();
+  same = same && this->_atomType->getElementSymbol() == rhs.getAtomType()->getElementSymbol();
+  same = same && isEqual(this->_x, rhs.getX(), 5e-5);
+  same = same && isEqual(this->_y, rhs.getY(), 5e-5);
+  same = same && isEqual(this->_z, rhs.getZ(), 5e-5);
+  return same;
+}
+
+std::vector<std::shared_ptr<Shell>>& Atom::getBasisFunctions() {
   return this->getBasisFunctions(_primaryBasisLabel);
 }
 
-const vector<shared_ptr<Shell>>& Atom::getBasisFunctions() const {
+const std::vector<std::shared_ptr<Shell>>& Atom::getBasisFunctions() const {
   return this->getBasisFunctions(_primaryBasisLabel);
 }
 
-vector<shared_ptr<Shell>>& Atom::getBasisFunctions(const string label) {
+std::vector<std::shared_ptr<Shell>>& Atom::getBasisFunctions(const std::string label) {
   if (_associatedBasis.find(label) == _associatedBasis.end()) {
-    throw SerenityError((string) "You are requesting a non-existent basis from an atom. Label: " + label);
+    throw SerenityError((std::string) "You are requesting a non-existent basis from an atom. Label: " + label);
   }
   else {
     return _associatedBasis.at(label);
@@ -81,16 +91,16 @@ bool Atom::basisFunctionsExist(std::string label) {
   return !(_associatedBasis.find(label) == _associatedBasis.end());
 }
 
-const vector<shared_ptr<Shell>>& Atom::getBasisFunctions(const string label) const {
+const std::vector<std::shared_ptr<Shell>>& Atom::getBasisFunctions(const std::string label) const {
   if (_associatedBasis.size() > 0) {
     return _associatedBasis.at(label);
   }
   else {
-    throw SerenityError((string) "You are requesting a non-existent basis from an atom. Label: " + label);
+    throw SerenityError((std::string) "You are requesting a non-existent basis from an atom. Label: " + label);
   }
 }
 
-void Atom::addGrid(const pair<string, AtomGrid*> newGrid, const bool isPrimary) {
+void Atom::addGrid(const std::pair<std::string, AtomGrid*> newGrid, const bool isPrimary) {
   _grids.insert(newGrid);
   if (isPrimary) {
     _primaryGridLabel = newGrid.first;
@@ -101,7 +111,7 @@ AtomGrid* Atom::getGrid() {
   return getGrid(_primaryGridLabel);
 }
 
-AtomGrid* Atom::getGrid(const string label) {
+AtomGrid* Atom::getGrid(const std::string label) {
   return _grids.at(label);
 }
 
@@ -111,6 +121,9 @@ void Atom::setX(const double x) {
     for (auto& basisFunction : basis.second)
       basisFunction->setX(x);
   _gradientsUpToDate = false;
+  if (_corePotential) {
+    _corePotential->setPos(_x, _y, _z);
+  }
   notifyObjects();
 }
 
@@ -120,6 +133,9 @@ void Atom::setY(const double y) {
     for (auto& basisFunction : basis.second)
       basisFunction->setY(y);
   _gradientsUpToDate = false;
+  if (_corePotential) {
+    _corePotential->setPos(_x, _y, _z);
+  }
   notifyObjects();
 }
 
@@ -129,6 +145,9 @@ void Atom::setZ(const double z) {
     for (auto& basisFunction : basis.second)
       basisFunction->setZ(z);
   _gradientsUpToDate = false;
+  if (_corePotential) {
+    _corePotential->setPos(_x, _y, _z);
+  }
   notifyObjects();
 }
 
@@ -150,7 +169,7 @@ std::shared_ptr<libecpint::ECP> Atom::getCorePotential() const {
   return _corePotential;
 }
 void Atom::addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> newBasis,
-                    std::shared_ptr<libecpint::ECP> ecp, unsigned int nCoreElectrons) {
+                    std::shared_ptr<libecpint::ECP> ecp, unsigned int nECPElectrons) {
   // Make sure no primary basis has been specified before.
   if (_primaryBasisLabel != "-" and ecp->N != 0)
     throw SerenityError("Error: A set of effective core potential functions is supposed to be added to an atom which"
@@ -163,9 +182,13 @@ void Atom::addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> 
     _corePotential = ecp;
   }
   // Only change the number of core electrons if there was no ECP before.
-  if (_nCoreElectrons == 0)
-    _nCoreElectrons = nCoreElectrons;
-  notifyObjects();
+  if (_nECPElectrons == 0)
+    _nECPElectrons = nECPElectrons;
+  // TODO it may look logical to execute the notifyObjects() here, however,
+  // this is currently not possible, since this would happen during basis
+  // construction. At the current moment Serenity expects that the basis
+  // set is build in one go without any notifys deleting it mid construction.
+  // notifyObjects();
 }
 
 const Eigen::Vector3d& Atom::getGradient() const {

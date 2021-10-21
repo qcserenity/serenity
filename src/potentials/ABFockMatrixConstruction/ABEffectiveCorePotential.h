@@ -22,6 +22,7 @@
 #ifndef POTENTIALS_ABFOCKMATRIXCONSTRUCTION_ABEFFECTIVECOREPOTENTIAL_H_
 #define POTENTIALS_ABFOCKMATRIXCONSTRUCTION_ABEFFECTIVECOREPOTENTIAL_H_
 
+/* Include Serenity Internal Headers */
 #include "potentials/ABFockMatrixConstruction/ABPotential.h"
 
 namespace Serenity {

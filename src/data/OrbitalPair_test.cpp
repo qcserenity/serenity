@@ -20,6 +20,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/OrbitalPair.h"                           //To be tested.
+#include "io/HDF5.h"                                    //Read and write.
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //k-sets.
 #include "postHF/LocalCorrelation/KLOrbitalSet.h"       //kl-sets.
 #include "system/SystemController.h"                    //Test systems.
@@ -32,7 +33,7 @@ namespace Serenity {
 class OrbitalPairTest : public ::testing::Test {
  protected:
   OrbitalPairTest() {
-    _testPair = std::make_shared<OrbitalPair>(0, 0);
+    _testPair = std::make_shared<OrbitalPair>(0, 0, 3.33e-7, 1e-4, 1e-6);
     Eigen::MatrixXd dummyMatrix(2, 2);
     dummyMatrix << 0.6, 0.8, 1.7, 0.003;
     _testPair->toPAODomain = 0.06 * dummyMatrix;
@@ -45,11 +46,11 @@ class OrbitalPairTest : public ::testing::Test {
     _testPair->jc_ab.push_back(dummyMatrix);
     _testPair->ic_ab.push_back(dummyMatrix * dummyMatrix);
     _testPair->ic_ab.push_back(dummyMatrix);
-    auto ikPair = std::make_shared<OrbitalPair>(1, 0);
-    auto kkPair = std::make_shared<OrbitalPair>(1, 1);
-    auto zzPair = std::make_shared<OrbitalPair>(0, 0);
-    auto singles_k = std::make_shared<SingleSubstitution>(kkPair);
-    auto singles_0 = std::make_shared<SingleSubstitution>(zzPair);
+    auto ikPair = std::make_shared<OrbitalPair>(1, 0, 3.33e-7, 1e-4, 1e-6);
+    auto kkPair = std::make_shared<OrbitalPair>(1, 1, 3.33e-7, 1e-4, 1e-6);
+    auto zzPair = std::make_shared<OrbitalPair>(0, 0, 3.33e-7, 1e-4, 1e-6);
+    auto singles_k = std::make_shared<SingleSubstitution>(kkPair, 0.01);
+    auto singles_0 = std::make_shared<SingleSubstitution>(zzPair, 0.01);
     ikPair->singles_i = singles_0;
     ikPair->singles_j = singles_k;
     _testPair->singles_i = singles_0;
@@ -89,7 +90,7 @@ class OrbitalPairTest : public ::testing::Test {
 TEST_F(OrbitalPairTest, writeAndRead_minimum) {
   // Save the initial integral values.
   Eigen::MatrixXd ac_bd_00 = (*_testPair->ac_bd)(0, 0);
-  Eigen::MatrixXd ac_bd_10 = (*_testPair->ac_bd)(1, 0);
+  Eigen::MatrixXd ac_bd_10 = (*_testPair->ac_bd)(0, 1);
   Eigen::VectorXd ja_ik_0 = _testPair->coupledPairs[0]->ja_ik;
   Eigen::MatrixXd ia_jk_0 = _testPair->coupledPairs[0]->ia_jk;
   Eigen::MatrixXd ij_ak_0 = _testPair->coupledPairs[0]->ij_ak;
@@ -99,7 +100,10 @@ TEST_F(OrbitalPairTest, writeAndRead_minimum) {
   Eigen::MatrixXd jk_ca_0 = _testPair->coupledPairs[0]->jk_ca;
 
   // Write the integrals to a file and flush everything in memory.
-  _testPair->writeIntegralsToFile();
+  std::string fileName = "PairIntegrals.h5";
+  HDF5::H5File file(fileName.c_str(), H5F_ACC_TRUNC);
+  _testPair->writeIntegralsToFile(file);
+  file.close();
   _testPair->flushIntegrals();
   EXPECT_TRUE(!_testPair->ac_bd);
   EXPECT_EQ((unsigned int)_testPair->coupledPairs[0]->ia_kc.size(), 0);
@@ -107,10 +111,13 @@ TEST_F(OrbitalPairTest, writeAndRead_minimum) {
   EXPECT_EQ((unsigned int)_testPair->coupledPairs[0]->ja_kc.size(), 0);
   EXPECT_EQ((unsigned int)_testPair->coupledPairs[0]->jk_ca.size(), 0);
   // Load the integrals from disk and compare them to the initial integrals.
-  _testPair->loadIntegralsFromFile();
+  HDF5::Filepath name(fileName);
+  HDF5::H5File readFile(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  _testPair->loadIntegralsFromFile(readFile);
+  readFile.close();
   Eigen::MatrixXd diff = (*_testPair->ac_bd)(0, 0) - ac_bd_00;
   EXPECT_NEAR((double)diff.array().abs().sum(), 0.0, 1e-12);
-  diff = (*_testPair->ac_bd)(1, 0) - ac_bd_10;
+  diff = (*_testPair->ac_bd)(0, 1) - ac_bd_10;
   EXPECT_NEAR((double)diff.array().abs().sum(), 0.0, 1e-12);
   diff = ia_kc_0 - _testPair->coupledPairs[0]->ia_kc;
   EXPECT_NEAR((double)diff.array().abs().sum(), 0.0, 1e-12);
@@ -120,7 +127,7 @@ TEST_F(OrbitalPairTest, writeAndRead_minimum) {
   EXPECT_NEAR((double)diff.array().abs().sum(), 0.0, 1e-12);
   diff = jk_ca_0 - _testPair->coupledPairs[0]->jk_ca;
   EXPECT_NEAR((double)diff.array().abs().sum(), 0.0, 1e-12);
-  _testPair->deleteIntegrals();
+  std::remove(fileName.c_str());
 }
 
 } /* namespace Serenity */

@@ -43,16 +43,33 @@ class SupersystemDensityOnGridController : public DensityOnGridController<T>,
    *                                       of each of them
    */
   SupersystemDensityOnGridController(const std::vector<std::shared_ptr<DensityOnGridController<T>>>& subsystemDensOnGridControllers);
+  /**
+   * @brief Default destructor.
+   */
   virtual ~SupersystemDensityOnGridController();
-
+  /**
+   * @brief Getter for the density on the grid.
+   * @return The density on the grid.
+   */
   virtual const DensityOnGrid<T>& getDensityOnGrid() override final;
-
+  /**
+   * @brief Getter for the density gradient on the grid.
+   * @return The density gradient on the grid.
+   */
   virtual const Gradient<DensityOnGrid<T>>& getDensityGradientOnGrid() override final;
-
+  /**
+   * @brief Getter for the density Hessian on the grid.
+   * @return The density Hessian on the grid.
+   */
   virtual const Hessian<DensityOnGrid<T>>& getDensityHessianOnGrid() override final;
-
+  /**
+   * @brief Reset all cached quantities.
+   */
   virtual void notify() override final;
-
+  /**
+   * @brief Set a new highest derivative.
+   * @param newHighestDerivative The new highest derivative.
+   */
   virtual void setHighestDerivative(unsigned int newHighestDerivative) override final;
 
  private:

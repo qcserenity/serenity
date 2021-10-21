@@ -21,6 +21,7 @@
 #ifndef SETTINGS_LOCALIZATIONOPTIONS_H_
 #define SETTINGS_LOCALIZATIONOPTIONS_H_
 
+/* Include Serenity Internal Headers */
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -55,9 +56,20 @@ void resolve<ORBITAL_LOCALIZATION_ALGORITHMS>(std::string& value, ORBITAL_LOCALI
 /**************************************************************************************************/
 /*                                   Population Analysis                                          */
 /**************************************************************************************************/
-enum class POPULATION_ANALYSIS_ALGORITHMS { MULLIKEN = 0, HIRSHFELD = 1, IAO = 2, IAOShell = 3 };
+enum class POPULATION_ANALYSIS_ALGORITHMS { MULLIKEN = 0, HIRSHFELD = 1, IAO = 2, IAOShell = 3, BECKE = 4 };
 template<>
 void resolve<POPULATION_ANALYSIS_ALGORITHMS>(std::string& value, POPULATION_ANALYSIS_ALGORITHMS& field);
+
+/**************************************************************************************************/
+/*                                     DOS Macro Flags                                            */
+/**************************************************************************************************/
+/*
+ * These flags can be used to automatically select a set of DOS thresholds. The accuracy of the
+ * DOS orbital sets for relative energies is indicated by the flags name.
+ */
+enum class DOS_SETTINGS { LOOSE = 0, NORMAL = 1, TIGHT = 2, VERY_TIGHT = 3, EXTREME = 4 };
+template<>
+void resolve<DOS_SETTINGS>(std::string& value, DOS_SETTINGS& field);
 } /* namespace Options */
 } /* namespace Serenity */
 

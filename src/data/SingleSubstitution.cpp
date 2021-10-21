@@ -24,9 +24,11 @@
 
 namespace Serenity {
 
-SingleSubstitution::SingleSubstitution(std::shared_ptr<OrbitalPair> diagonalPair)
-  : i(diagonalPair->i), diagPair(diagonalPair) {
-  assert(diagPair->i == diagPair->j);
-};
+SingleSubstitution::SingleSubstitution(std::shared_ptr<OrbitalPair> diagonalPair, double singlesPNOScaling)
+  : i(diagonalPair->i), diagPair(diagonalPair), _pnoThreshold(diagonalPair->getPNOThreshold() * singlesPNOScaling){};
+
+double SingleSubstitution::getPNOThreshold() {
+  return _pnoThreshold;
+}
 
 } /* namespace Serenity */

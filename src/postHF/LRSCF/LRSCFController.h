@@ -24,17 +24,27 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
-#include "settings/Options.h"
-#include "system/SystemController.h"
-#include "tasks/LRSCFTask.h"
+#include "settings/BasisOptions.h"
 
 namespace Serenity {
 
+class SystemController;
+class GridController;
 namespace Options {
 enum class LRSCF_TYPE;
-}
+enum class LR_METHOD;
+} // namespace Options
+
+template<Options::SCF_MODES SCFMode>
+class XWFController;
+
+template<Options::SCF_MODES SCFMode>
+class RIIntegrals;
+
+struct Settings;
 
 struct LRSCFTaskSettings;
+
 /**
  * @class LRSCFController LRSCFController.h
  * @brief The LRSCFController holds the information about a particular\n
@@ -44,7 +54,7 @@ struct LRSCFTaskSettings;
  *        controlled by this controller. \n
  */
 template<Options::SCF_MODES SCFMode>
-class LRSCFController {
+class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFMode>> {
  public:
   /**
    * @brief Constructor
@@ -52,7 +62,7 @@ class LRSCFController {
    * @param system The system associated with the LRSCFController.
    * @param settings The LRSCFSettings.
    */
-  LRSCFController(std::shared_ptr<SystemController> system, LRSCFTaskSettings& settings);
+  LRSCFController(std::shared_ptr<SystemController> system, const LRSCFTaskSettings& settings);
 
   /**
    * @brief Default destructor.
@@ -72,16 +82,37 @@ class LRSCFController {
   SpinPolarizedData<SCFMode, unsigned int> getNVirtual();
 
   /**
-   * @brief Returns an occupation vector stored and modified in the LRSCFController.
-   * @return Occupation vector stored and modified in the LRSCFController.
+   * @brief Sets the number of occupied orbitals stored
    */
-  SpinPolarizedData<SCFMode, Eigen::VectorXd>& getOccupation();
+  void setNOccupied(SpinPolarizedData<SCFMode, unsigned int> nOcc);
+
+  /**
+   * @brief Sets the number of virtual orbitals stored
+   */
+  void setNVirtual(SpinPolarizedData<SCFMode, unsigned int> nVirt);
 
   /**
    * @brief Returns the reference CoefficientMatrix stored in the LRSCFController.
    * @return Reference CoefficientMatrix stored in the LRSCFController.
    */
   CoefficientMatrix<SCFMode>& getCoefficients();
+
+  /**
+   * @brief Returns the reference singles-transformed particle CoefficientMatrix stored in the LRSCFController.
+   * @return Reference singles-transformed particle CoefficientMatrix stored in the LRSCFController.
+   */
+  CoefficientMatrix<SCFMode>& getParticleCoefficients();
+
+  /**
+   * @brief Returns the reference singles-transformed hole CoefficientMatrix stored in the LRSCFController.
+   * @return Reference singles-transformed hole CoefficientMatrix stored in the LRSCFController.
+   */
+  CoefficientMatrix<SCFMode>& getHoleCoefficients();
+
+  /**
+   * @brief Sets the reference CoefficientMatrix stored in the LRSCFController.
+   */
+  void setCoefficients(CoefficientMatrix<SCFMode> coeff);
 
   /**
    * @brief Returns the grid controller.
@@ -96,22 +127,27 @@ class LRSCFController {
   SpinPolarizedData<SCFMode, Eigen::VectorXd> getEigenvalues();
 
   /**
+   * @brief Set the corresponding eigenvalues to the reference orbitals
+   */
+  void setEigenvalues(SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvalues);
+
+  /**
    * @brief Returns the controller of the AO basis which is used to express the MOs.
    * @return Controller of the AO basis which is used to express the MOs.
    */
-  std::shared_ptr<BasisController> getBasisController();
+  std::shared_ptr<BasisController> getBasisController(Options::BASIS_PURPOSES basisPurpose = Options::BASIS_PURPOSES::DEFAULT);
 
   /**
-   * @brief Returns the Fock matrix of the non-canonical reference orbitals.
-   * @return Fock matrix of the non-canonical reference orbitals.
+   * @brief Returns the MO Fock matrix of the reference orbitals.
+   * @return MO Fock matrix of the reference orbitals.
    */
-  std::shared_ptr<MatrixInBasis<SCFMode>> getFockNonCanon();
+  std::shared_ptr<SPMatrix<SCFMode>> getMOFockMatrix();
 
   /**
-   * @brief Set the Fock matrix for non-canonical orbitals.
-   * @param fockNonCanon Fock matrix of the non-canonical reference orbitals.
+   * @brief Returns true, if the MO Fock matrix is diagonal or not.
+   * @return MO Fock matrix diagonal or not.
    */
-  void setFockNonCanon(std::shared_ptr<MatrixInBasis<SCFMode>> fockNonCanon);
+  bool isMOFockMatrixDiagonal();
 
   /**
    * @brief Getter for system settings.
@@ -131,9 +167,15 @@ class LRSCFController {
 
   /**
    * @brief Returns the LRSCFTaskSettings.
-   * @return Settings of the LRSCFTask this Controller was created in.
+   * @return Settings of the LRSCFTask this controller was created in.
    */
   const LRSCFTaskSettings& getLRSCFSettings();
+
+  /**
+   * @brief Returns the underlying theoretical method for this LRSCFController (i.e. TDDFT or ADC2).
+   * @return Method enum for this controller.
+   */
+  Options::LR_METHOD getResponseMethod();
 
   /**
    * @brief Returns the eigenvectors corresponding to the excitation energies.
@@ -159,26 +201,6 @@ class LRSCFController {
                    std::shared_ptr<Eigen::VectorXd> eigenvalues, Options::LRSCF_TYPE type);
 
   /**
-   * @brief Restricts orbital space according to the user's input.
-   */
-  void editReference();
-
-  /**
-   * @brief Edit reference for exclude projection where the individual calculation is carried out in LRSCFTask.
-   * @param indexWhiteList New reference orbital indices.
-   * @param system The reference system.
-   * @param type The type of the underlying response calculation (iso, uncoupled or coupled).
-   */
-  void editReference(SpinPolarizedData<SCFMode, std::vector<unsigned int>> indexWhiteList, unsigned int system,
-                     Options::LRSCF_TYPE type);
-
-  /**
-   * @brief Returns the (spin-polarized) list of orbials indices included in the calculation.
-   * @return The (spin-polarized) list of orbials indices included in the calculation.
-   */
-  SpinPolarizedData<SCFMode, std::vector<unsigned int>> getReferenceOrbitals();
-
-  /**
    * @brief Sets the environment systems; Knowledge about the environment systems, Important for EOSigmaVector
    * @param envSystems The environment systems.
    */
@@ -190,23 +212,97 @@ class LRSCFController {
    */
   std::vector<std::shared_ptr<SystemController>> getEnvSystems();
 
+  /**
+   * @brief Edit reference for exclude projection where the individual calculation is carried out in LRSCFTask.
+   * @param indexWhiteList New reference orbital indices.
+   */
+  void editReference(SpinPolarizedData<SCFMode, std::vector<unsigned int>> indexWhiteList);
+
+  /**
+   * @brief Initializes an XWFController object to this LRSCFController.
+   */
+  void initializeXWFController();
+
+  /**
+   * @brief Returns the underlying XWFController calculator.
+   * @return A pointer to the underlyng XWFController calculator.
+   */
+  std::shared_ptr<XWFController<SCFMode>> getXWFController();
+
+  /**
+   * @brief Setup RI integral cache.
+   */
+  void initializeRIIntegrals(LIBINT_OPERATOR op, double mu, bool calcJia);
+
+  /**
+   * @brief The RI integral cache.
+   * @return RI integral cache.
+   */
+  std::shared_ptr<RIIntegrals<SCFMode>> getRIIntegrals(LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb);
+
+  /**
+   * @brief The RPA screening used for BSE calculations.
+   * @param eia The virtual-occupied orbital energy differences.
+   */
+  void calculateScreening(const Eigen::VectorXd& eia);
+
+  /**
+   * @brief Returns the RPA screening matrix in auxiliary basis.
+   * @return The RPA screening matrix in auxiliary basis.
+   */
+  std::shared_ptr<Eigen::MatrixXd> getScreeningAuxMatrix();
+
+  /**
+   * @brief Returns the environment screening.
+   * @return The environment approximate RPA screening.
+   */
+  std::shared_ptr<Eigen::MatrixXd> getEnvTrafo();
+
+  /**
+   * @brief Sets the cached inverse aux metric.
+   */
+  void setInverseMetric(std::shared_ptr<Eigen::MatrixXd> metric);
+
+  /**
+   * @brief Returns the cached inverse aux metric.
+   * @return The cached inverse aux metric.
+   */
+  std::shared_ptr<Eigen::MatrixXd> getInverseMetric();
+
+  /**
+   * @brief Sets the cached inverse erf aux metric.
+   */
+  void setInverseErfMetric(std::shared_ptr<Eigen::MatrixXd> metric);
+
+  /**
+   * @brief Returns the cached inverse erf aux metric.
+   * @return The cached inverse aux metric.
+   */
+  std::shared_ptr<Eigen::MatrixXd> getInverseErfMetric();
+
  private:
   // The system controller
   std::shared_ptr<SystemController> _system;
   // User defined LRSCF settings
-  LRSCFTaskSettings& _settings;
+  const LRSCFTaskSettings& _settings;
   // The environment systems
   std::vector<std::shared_ptr<SystemController>> _envSystems;
-  // A occupation vector for the set of reference orbitals
-  SpinPolarizedData<SCFMode, Eigen::VectorXi> _occupation;
-  // Non canocical fock matrix
-  std::shared_ptr<MatrixInBasis<SCFMode>> _fockNonCanon;
+  // Number of occupied orbitals
+  SpinPolarizedData<SCFMode, unsigned int> _nOcc;
+  // Number of virtual orbitals
+  SpinPolarizedData<SCFMode, unsigned int> _nVirt;
+  // Fock matrix in MO basis
+  std::shared_ptr<SPMatrix<SCFMode>> _fock;
   // List of orbital indices included in LRSCF calculation
   SpinPolarizedData<SCFMode, std::vector<unsigned int>> _indexWhiteList;
   // The grid used for numerical integration
   std::shared_ptr<GridController> _grid;
   // A set of reference orbitals
   CoefficientMatrix<SCFMode> _coefficients;
+  // A set of reference orbitals
+  CoefficientMatrix<SCFMode> _particleCoefficients;
+  // A set of reference orbitals
+  CoefficientMatrix<SCFMode> _holeCoefficients;
   // Corresponding orbital energies
   SpinPolarizedData<SCFMode, Eigen::VectorXd> _orbitalEnergies;
   // X (_excitationVectors[0]) and Y (_excitationVectors[1]) excitation vectors.
@@ -215,14 +311,21 @@ class LRSCFController {
   Options::LRSCF_TYPE _type;
   // Corresponding excitation energies
   std::shared_ptr<Eigen::VectorXd> _excitationEnergies;
-  // Cast user input into SpinPolarizedData to be used in a for_spin loop
-  SpinPolarizedData<SCFMode, std::vector<unsigned int>> getSet();
-  SpinPolarizedData<SCFMode, std::vector<unsigned int>> getExclude();
-
+  // load excitation vectors and excitation energies from HDF5
   void loadFromH5(Options::LRSCF_TYPE type);
+  // the underlying XWFController
+  std::shared_ptr<XWFController<SCFMode>> _xwfController;
+  // the conventional ri integrals associated with this controller
+  std::shared_ptr<RIIntegrals<SCFMode>> _riints;
+  // the erf ri integrals associated with this controller
+  std::shared_ptr<RIIntegrals<SCFMode>> _riErfints;
+  // screening matrix for BSE
+  std::shared_ptr<Eigen::MatrixXd> _screening;
+  // environment screening contribution BSE
+  std::shared_ptr<Eigen::MatrixXd> _envTransformation;
 
-  // Write indexwhitelist to H5 file
-  void indexToH5(Options::LRSCF_TYPE type);
+  std::shared_ptr<Eigen::MatrixXd> _inverseM;
+  std::shared_ptr<Eigen::MatrixXd> _inverseErfM;
 
 }; // class LRSCFController
 } // namespace Serenity

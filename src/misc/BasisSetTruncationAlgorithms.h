@@ -24,7 +24,6 @@
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrix.h"
 #include "settings/Options.h"
-
 /* Include Std and External Headers */
 #include <memory>
 

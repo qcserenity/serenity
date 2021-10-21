@@ -19,7 +19,6 @@
  */
 /* Include Class Header*/
 #include "misc/FaTConvergenceAccelerator.h"
-
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"

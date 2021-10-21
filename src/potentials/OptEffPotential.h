@@ -65,8 +65,8 @@ class OptEffPotential : public Potential<SCFMode> {
                   std::shared_ptr<BasisFunctionOnGridController> potBasFuncOnGridController,
                   std::shared_ptr<OneElectronIntegralController> oneEIntController,
                   std::shared_ptr<DensityOnGridCalculator<SCFMode>> densOnGridCalculator,
-                  const SpinPolarizedData<SCFMode, unsigned int>& nOccOrbs, const double smoothFactor = 0.0,
-                  const double singValThreshold = 0.0, const double exc = 0.0);
+                  const SpinPolarizedData<SCFMode, unsigned int>& nOccOrbs, const double smoothFactor = 1e-3,
+                  const double singValThreshold = 1e-5, const double exc = 0.0);
 
   virtual ~OptEffPotential() = default;
 

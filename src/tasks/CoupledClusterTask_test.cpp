@@ -22,7 +22,6 @@
 #include "tasks/CoupledClusterTask.h"
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
-#include "io/IOOptions.h"
 #include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
 #include "tasks/ScfTask.h"
@@ -33,8 +32,8 @@
 
 namespace Serenity {
 /**
- * @class PopAnalysisTaskTest
- * @brief Sets everything up for the tests of PopAnalysisTask.h/.cpp .
+ * @class CoupledClusterTaskTest
+ * @brief Sets everything up for the tests of CoupledClusterTaskTest.h/.cpp .
  */
 class CoupledClusterTaskTest : public ::testing::Test {
  protected:
@@ -59,7 +58,7 @@ TEST_F(CoupledClusterTaskTest, minimal) {
 }
 
 TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_TIGHT) {
-  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   iOOptions.timingsPrintLevel = 1;
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   ScfTask<RESTRICTED> scf(act);
@@ -111,7 +110,7 @@ TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_NORMAL) {
 }
 
 TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_LOOSE) {
-  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   iOOptions.timingsPrintLevel = 1;
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   ScfTask<RESTRICTED> scf(act);
@@ -131,7 +130,7 @@ TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_LOOSE) {
       act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::TRIPLES_CORRECTION);
   EXPECT_NEAR(-0.215378, ccsdCorrection, 1e-6);
   // Canonical: -0.00329571. However, this is only semi-canonical treatment!
-  EXPECT_NEAR(-0.003154, triplesCorrection, 1e-6);
+  EXPECT_NEAR(-0.003153, triplesCorrection, 1e-6);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   SystemController__TEST_SUPPLY::cleanUp();
 }

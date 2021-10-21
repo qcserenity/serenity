@@ -19,7 +19,6 @@
  */
 /* Include Serenity Internal Headers */
 #include "math/optimizer/BFGS.h"
-#include "math/VectorMaths.h"
 #include "math/optimizer/LBFGS.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -27,7 +26,6 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
 TEST(BFGSTest, BFGSConvergence) {
   auto f = [](const Eigen::VectorXd& vec) {

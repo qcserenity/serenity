@@ -23,99 +23,22 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
-#include "data/matrices/DensityMatrixController.h"
-#include "integrals/RI_J_IntegralController.h"
-#include "math/linearAlgebra/MatrixFunctions.h"
-#include "settings/Settings.h"
+#include "postHF/LRSCF/Tools/RIIntegrals.h"
 #include "system/SystemController.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 RIMP2<SCFMode>::RIMP2(std::shared_ptr<SystemController> systemController, const double ssScaling, const double osScaling)
-  : _systemController(systemController), _ssScaling(ssScaling), _osScaling(osScaling) {
-  assert(_systemController);
+  : _systemController(systemController), _Jia(nullptr), _sss(ssScaling), _oss(osScaling) {
 }
 
 template<Options::SCF_MODES SCFMode>
 double RIMP2<SCFMode>::calculateCorrection() {
   printSmallCaption("RI-MP2 Calculation");
 
-  auto es = _systemController->getElectronicStructure<SCFMode>();
-  auto basisController = _systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
-  auto auxBasisController = _systemController->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL);
-  CoefficientMatrix<SCFMode> coeff = es->getMolecularOrbitals()->getCoefficients();
-
-  if (_systemController->getSettings().basis.auxCLabel == "") {
-    printf("\n  Auxiliary Basis Set         : %15s\n\n", (_systemController->getSettings().basis.label + "-RI-C").c_str());
-  }
-  else {
-    printf("\n  Auxiliary Basis Set         : %15s\n\n", (_systemController->getSettings().basis.auxCLabel).c_str());
-  }
-  auto no = _systemController->getNOccupiedOrbitals<SCFMode>();
-  auto nv = _systemController->getNVirtualOrbitals<SCFMode>();
-  unsigned nb = basisController->getNBasisFunctions();
-  unsigned nx = auxBasisController->getNBasisFunctions();
-
-  double gbFactor = (double)sizeof(double) / (1024 * 1024 * 1024);
-
-  unsigned iSpin = 0;
-  for_spin(no, nv) {
-    if (iSpin == 0) {
-      printf("  Occupied Orbitals (alpha)   : %15i\n", no_spin);
-      printf("  Virtual Orbitals  (alpha)   : %15i\n", nv_spin);
-      printf("  Memory (ip|Q)     (alpha)   : %11.3f GiB\n\n", nx * no_spin * nb * gbFactor);
-    }
-    else {
-      printf("  Occupied Orbitals (beta)    : %15i\n", no_spin);
-      printf("  Virtual Orbitals  (beta)    : %15i\n", nv_spin);
-      printf("  Memory (ip|Q)     (beta)    : %11.3f GiB\n\n", nx * no_spin * nb * gbFactor);
-    }
-    ++iSpin;
-  };
-  printf("  Basis Functions             : %15i\n", nb);
-  printf("  Auxiliary Functions         : %15i\n\n", nx);
-
-  auto riints = std::make_shared<RI_J_IntegralController>(basisController, auxBasisController);
-  auto looper = std::make_shared<TwoElecThreeCenterIntLooper>(libint2::Operator::coulomb, 0, basisController,
-                                                              auxBasisController, 1E-10);
-
-  for_spin(coeff, _BiaQ, no, nv) {
-    _BiaQ_spin = Eigen::MatrixXd::Zero(no_spin * nb, nx);
-    auto biaptr = _BiaQ_spin.data();
-    auto coeffptr = coeff_spin.data();
-    Eigen::MatrixXd coeffVirtT = coeff_spin.rightCols(nv_spin).transpose();
-
-    auto distribute = [&](const unsigned mu, const unsigned nu, const unsigned Q, const double integral, const unsigned) {
-      unsigned long long offset = Q * no_spin * nb;
-      for (unsigned i = 0; i < no_spin; ++i) {
-        biaptr[offset + i * nb + mu] += coeffptr[i * nb + nu] * integral;
-        if (mu != nu) {
-          biaptr[offset + i * nb + nu] += coeffptr[i * nb + mu] * integral;
-        }
-      }
-    };
-
-    looper->loopNoDerivative(distribute);
-
-    for (unsigned Q = 0; Q < nx; ++Q) {
-      _BiaQ_spin.block(0, Q, no_spin * nv_spin, 1) =
-          coeffVirtT * Eigen::Map<Eigen::MatrixXd>(biaptr + Q * nb * no_spin, nb, no_spin);
-    }
-
-    // throw away useless info in Bia
-    _BiaQ_spin.conservativeResize(no_spin * nv_spin, nx);
-
-    // avoid temporary object for everything at once
-    for (unsigned i = 0; i < no_spin; ++i) {
-      _BiaQ_spin.middleRows(i * nv_spin, nv_spin) *= riints->getInverseMSqrt();
-    }
-  };
-
-  riints = nullptr;
-  looper = nullptr;
-
-  printf("  Done setting up (ia|Q) integrals.\n\n");
+  RIIntegrals<SCFMode> ri(_systemController);
+  _Jia = ri.getJiaPtr();
   return this->calculateEnergy();
 }
 
@@ -124,8 +47,8 @@ double RIMP2<UNRESTRICTED>::calculateEnergy() {
   auto no = _systemController->getNOccupiedOrbitals<UNRESTRICTED>();
   auto nv = _systemController->getNVirtualOrbitals<UNRESTRICTED>();
 
-  unsigned noa = no.alpha, nob = no.beta;
-  unsigned nva = nv.alpha, nvb = nv.beta;
+  long noa = no.alpha, nob = no.beta;
+  long nva = nv.alpha, nvb = nv.beta;
 
   auto e = _systemController->getElectronicStructure<UNRESTRICTED>()->getMolecularOrbitals()->getEigenvalues();
 
@@ -135,65 +58,73 @@ double RIMP2<UNRESTRICTED>::calculateEnergy() {
   Eigen::MatrixXd eVirta = Eigen::MatrixXd::Zero(nva, nva);
   eVirta.colwise() += e.alpha.tail(nva);
   eVirta.rowwise() += e.alpha.tail(nva).transpose();
-
-  for (unsigned i = 0; i < noa; ++i) {
-    for (unsigned j = i; j < noa; ++j) {
-      Eigen::MatrixXd iajb = _BiaQ.alpha.middleRows(i * nva, nva) * _BiaQ.alpha.middleRows(j * nva, nva).transpose();
-      Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nva, nva, e.alpha(i) + e.alpha(j)) - eVirta);
-      ssEnergy += (i == j ? 1.0 : 2.0) * (amp - amp.transpose()).cwiseProduct(iajb).sum();
-    }
-  }
-
   // beta
   Eigen::MatrixXd eVirtb = Eigen::MatrixXd::Zero(nvb, nvb);
   eVirtb.colwise() += e.beta.tail(nvb);
   eVirtb.rowwise() += e.beta.tail(nvb).transpose();
-
-  for (unsigned i = 0; i < nob; ++i) {
-    for (unsigned j = i; j < nob; ++j) {
-      Eigen::MatrixXd iajb = _BiaQ.beta.middleRows(i * nvb, nvb) * _BiaQ.beta.middleRows(j * nvb, nvb).transpose();
-      Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nvb, nvb, e.beta(i) + e.beta(j)) - eVirtb);
-      ssEnergy += (i == j ? 1.0 : 2.0) * (amp - amp.transpose()).cwiseProduct(iajb).sum();
-    }
-  }
-
   // mixed spin
   Eigen::MatrixXd eVirtab = Eigen::MatrixXd::Zero(nva, nvb);
   eVirtab.colwise() += e.alpha.tail(nva);
   eVirtab.rowwise() += e.beta.tail(nvb).transpose();
 
-  for (unsigned i = 0; i < noa; ++i) {
-    for (unsigned j = 0; j < nob; ++j) {
-      Eigen::MatrixXd iajb = _BiaQ.alpha.middleRows(i * nva, nva) * _BiaQ.beta.middleRows(j * nvb, nvb).transpose();
-      Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nva, nvb, e.alpha(i) + e.beta(j)) - eVirtab);
-      osEnergy += amp.cwiseProduct(iajb).sum();
+  Eigen::setNbThreads(1);
+#pragma omp parallel for reduction(+ : ssEnergy) schedule(dynamic)
+  for (long ij = 0; ij < noa * noa; ++ij) {
+    long i = ij / noa, j = ij % noa;
+    if (i > j) {
+      continue;
     }
+    Eigen::MatrixXd iajb = _Jia->alpha.middleRows(i * nva, nva) * _Jia->alpha.middleRows(j * nva, nva).transpose();
+    Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nva, nva, e.alpha(i) + e.alpha(j)) - eVirta);
+    ssEnergy += (i == j ? 1.0 : 2.0) * (amp - amp.transpose()).cwiseProduct(iajb).sum();
   }
+#pragma omp parallel for reduction(+ : ssEnergy) schedule(dynamic)
+  for (long ij = 0; ij < nob * nob; ++ij) {
+    long i = ij / nob, j = ij % nob;
+    if (i > j) {
+      continue;
+    }
+    Eigen::MatrixXd iajb = _Jia->beta.middleRows(i * nvb, nvb) * _Jia->beta.middleRows(j * nvb, nvb).transpose();
+    Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nvb, nvb, e.beta(i) + e.beta(j)) - eVirtb);
+    ssEnergy += (i == j ? 1.0 : 2.0) * (amp - amp.transpose()).cwiseProduct(iajb).sum();
+  }
+#pragma omp parallel for reduction(+ : osEnergy) schedule(dynamic)
+  for (long ij = 0; ij < noa * nob; ++ij) {
+    long i_a = ij / nob, j_b = ij % nob;
+    Eigen::MatrixXd iajb = _Jia->alpha.middleRows(i_a * nva, nva) * _Jia->beta.middleRows(j_b * nvb, nvb).transpose();
+    Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nva, nvb, e.alpha(i_a) + e.beta(j_b)) - eVirtab);
+    osEnergy += amp.cwiseProduct(iajb).sum();
+  }
+  Eigen::setNbThreads(0);
 
-  return 0.5 * _ssScaling * ssEnergy + _osScaling * osEnergy;
+  return 0.5 * _sss * ssEnergy + _oss * osEnergy;
 }
 
 template<>
 double RIMP2<RESTRICTED>::calculateEnergy() {
-  unsigned no = _systemController->getNOccupiedOrbitals<RESTRICTED>();
-  unsigned nv = _systemController->getNVirtualOrbitals<RESTRICTED>();
+  long no = _systemController->getNOccupiedOrbitals<RESTRICTED>();
+  long nv = _systemController->getNVirtualOrbitals<RESTRICTED>();
   auto e = _systemController->getElectronicStructure<RESTRICTED>()->getMolecularOrbitals()->getEigenvalues();
 
-  double ssEnergy = 0.0, osEnergy = 0.0;
+  double energy = 0.0;
   Eigen::MatrixXd eVirt = Eigen::MatrixXd::Zero(nv, nv);
   eVirt.colwise() += e.tail(nv);
   eVirt.rowwise() += e.tail(nv).transpose();
 
-  for (unsigned i = 0; i < no; ++i) {
-    for (unsigned j = i; j < no; ++j) {
-      Eigen::MatrixXd iajb = _BiaQ.middleRows(i * nv, nv) * _BiaQ.middleRows(j * nv, nv).transpose();
-      Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nv, nv, e(i) + e(j)) - eVirt);
-      ssEnergy += (i == j ? 1.0 : 2.0) * (amp - amp.transpose()).cwiseProduct(iajb).sum();
-      osEnergy += (i == j ? 1.0 : 2.0) * amp.cwiseProduct(iajb).sum();
+  Eigen::setNbThreads(1);
+#pragma omp parallel for reduction(+ : energy) schedule(dynamic)
+  for (long ij = 0; ij < no * no; ++ij) {
+    long i = ij / no, j = ij % no;
+    if (i > j) {
+      continue;
     }
+    Eigen::MatrixXd iajb = _Jia->middleRows(i * nv, nv) * _Jia->middleRows(j * nv, nv).transpose();
+    Eigen::MatrixXd amp = iajb.cwiseQuotient(Eigen::MatrixXd::Constant(nv, nv, e(i) + e(j)) - eVirt);
+    energy += (i == j ? 1.0 : 2.0) * ((_sss + _oss) * amp - _sss * amp.transpose()).cwiseProduct(iajb).sum();
   }
+  Eigen::setNbThreads(0);
 
-  return _ssScaling * ssEnergy + _osScaling * osEnergy;
+  return energy;
 }
 
 template class RIMP2<Options::SCF_MODES::RESTRICTED>;

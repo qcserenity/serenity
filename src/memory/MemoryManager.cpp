@@ -39,7 +39,6 @@
 #include <sys/types.h>
 
 namespace Serenity {
-using namespace std;
 
 MemoryManager::MemoryManager() : _softMaxiumMemory(-1) {
   if (getenv("SERENITY_MEMORY") != NULL) {
@@ -86,7 +85,7 @@ long long MemoryManager::getAvailableSystemMemory() {
 #elif __linux__ || __unix__ || __unix
 long long MemoryManager::getSerenityMemoryUsage() {
   // Will lock here and unlock on return
-  lock_guard<mutex> lock(_lock);
+  std::lock_guard<std::mutex> lock(_lock);
   /*
    * This works for linux only
    */

@@ -54,7 +54,10 @@ using namespace Serenity::Reflection;
  *   --oneCavity          All surface points have to be connected.
  *   --connectivityFactor Connectivitiy between surface points is determined by a distance cut off. The distance is
  *                        given by connectivityFactor * probeRadius
- *
+ *   --numberDensity      The number density of the solvent (number of particles per volume)
+ *   --temperature        The temperature of the ensemble.
+ *   --cavityFormation    Calculate the cavity formation energy using the scaled particle theory.
+ *   --cavityProbeRadius  The solvent probe radius to be used in the calculation of the cavity y formation.
  *
  */
 struct PCMSettings {
@@ -63,14 +66,14 @@ struct PCMSettings {
       cavity(Options::PCM_CAVITY_TYPES::DELLEY),
       scaling(true),
       radiiType(Options::PCM_ATOMIC_RADII_TYPES::BONDI),
-      minRadius(0.377), // 02.Angstrom
+      minRadius(0.377), // 0.2 Angstrom
       solverType(Options::PCM_SOLVER_TYPES::IEFPCM),
       solvent(Options::PCM_SOLVENTS::WATER),
       correction(0.0),
       probeRadius(1.0),
       eps(1.0),
       patchLevel(0),
-      minDistance(0.1),
+      minDistance(0.2),
       overlapFactor(0.7),
       cacheSize(128),
       lLarge(7),
@@ -78,13 +81,18 @@ struct PCMSettings {
       alpha(50.0),
       projectionCutOff(5.0),
       oneCavity(false),
-      connectivityFactor(2.0) {
+      connectivityFactor(2.0),
+      numberDensity(1.0),
+      temperature(298.15),
+      cavityFormation(false),
+      cavityProbeRadius(5.0) {
   }
   REFLECTABLE((bool)use, (Options::PCM_CAVITY_TYPES)cavity, (bool)scaling, (Options::PCM_ATOMIC_RADII_TYPES)radiiType,
               (double)minRadius, (Options::PCM_SOLVER_TYPES)solverType, (Options::PCM_SOLVENTS)solvent,
               (double)correction, (double)probeRadius, (double)eps, (int)patchLevel, (double)minDistance,
               (double)overlapFactor, (unsigned int)cacheSize, (unsigned int)lLarge, (unsigned int)lSmall, (double)alpha,
-              (double)projectionCutOff, (bool)oneCavity, (double)connectivityFactor)
+              (double)projectionCutOff, (bool)oneCavity, (double)connectivityFactor, (double)numberDensity,
+              (double)temperature, (bool)cavityFormation, (double)cavityProbeRadius)
  public:
   /**
    * @brief Parse the settings from the visitor to this object.

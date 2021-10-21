@@ -20,6 +20,7 @@
 #ifndef TWOELECTHREECENTERINTLOOPER_H_
 #define TWOELECTHREECENTERINTLOOPER_H_
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"
 #include "basis/BasisController.h"
 #include "integrals/wrappers/Libint.h"
 /* Include Std and External Headers */
@@ -46,11 +47,18 @@ class TwoElecThreeCenterIntLooper {
    *         for (unsigned int K=kRange.first;K < kRange.second;++K){
    *         }
    *        @endcode
+   * @param mu Range separation parameter if operator is erf_coulomb.
    */
-  TwoElecThreeCenterIntLooper(libint2::Operator op, const unsigned deriv, std::shared_ptr<BasisController> basis,
+  TwoElecThreeCenterIntLooper(LIBINT_OPERATOR op, const unsigned deriv, std::shared_ptr<BasisController> basis,
                               std::shared_ptr<BasisController> auxbasis, double prescreeningThreshold,
-                              std::pair<unsigned int, unsigned int> kRange = {0, 0})
-    : _op(op), _deriv(deriv), _basis(basis), _auxbasis(auxbasis), _prescreeningThreshold(prescreeningThreshold), _kRange(kRange) {
+                              std::pair<unsigned int, unsigned int> kRange = {0, 0}, double mu = 0.0)
+    : _op(op),
+      _deriv(deriv),
+      _basis(basis),
+      _auxbasis(auxbasis),
+      _prescreeningThreshold(prescreeningThreshold),
+      _kRange(kRange),
+      _mu(mu) {
   }
   /**
    * @brief Default destructor.
@@ -101,12 +109,15 @@ class TwoElecThreeCenterIntLooper {
    *
    * @param distribute The function to use each integral, see above for extended description.
    * @param prescreen A function to use for more detailed integral prescreening.
+   * @param maxD      Absolute maximum coefficient to be contracted with the integrals. Used to
+   *                  adjust the precision in case of absurdly large coefficients.
    */
   template<class Func, class PrescreenFunc>
-  __attribute__((always_inline)) inline void loop(Func distribute, PrescreenFunc prescreen) {
+  __attribute__((always_inline)) inline void loop(Func distribute, PrescreenFunc prescreen, double maxD = 1) {
     // intialize libint
     auto& libint = Libint::getInstance();
-    libint.initialize(_op, _deriv, 3);
+    libint.initialize(_op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
+                      maxD, std::max(_basis->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives()));
     auto& basis = _basis->getBasis();
     auto& auxbasis = _auxbasis->getBasis();
     const auto& shellPairs = _basis->getShellPairData();
@@ -153,7 +164,7 @@ class TwoElecThreeCenterIntLooper {
         /*
          * Optional advanced prescreening
          */
-        if (prescreen(_basis->extendedIndex(i), _basis->extendedIndex(j), nI, nJ, p.factor * k.factor)) {
+        if (prescreen(i, j, shellK, p.factor * k.factor)) {
           continue;
         }
         // calculate integrals
@@ -209,13 +220,15 @@ class TwoElecThreeCenterIntLooper {
    *
    * @param distribute The function to use each integral, see above for extended description.
    * @param prescreen A function to use for more detailed integral prescreening.
+   * @param maxD      Absolute maximum coefficient to be contracted with the integrals. Used to
+   *                  adjust the precision in case of absurdly large coefficients.
    */
   template<class Func, class PrescreenFunc>
-  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, PrescreenFunc prescreen) {
+  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, PrescreenFunc prescreen, double maxD = 1) {
     // intialize libint
     auto& libint = Libint::getInstance();
-    libint.initialize(_op, 0, 3);
-
+    libint.initialize(_op, 0, 3, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
+                      maxD, std::max(_basis->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives()));
     auto& basis = _basis->getBasis();
     auto& auxbasis = _auxbasis->getBasis();
     const auto& shellPairs = _basis->getShellPairData();
@@ -262,7 +275,7 @@ class TwoElecThreeCenterIntLooper {
         /*
          * Optional advanced prescreening
          */
-        if (prescreen(_basis->extendedIndex(i), _basis->extendedIndex(j), nI, nJ, p.factor * k.factor)) {
+        if (prescreen(i, j, shellK, p.factor * k.factor)) {
           continue;
         }
         // calculate integrals
@@ -307,9 +320,9 @@ class TwoElecThreeCenterIntLooper {
    * @param distribute The function to use each integral, see above for extended description.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loop(Func distribute) {
-    auto prescreen = [](const unsigned, const unsigned, const unsigned, const unsigned, const double) { return false; };
-    loop(distribute, prescreen);
+  __attribute__((always_inline)) inline void loop(Func distribute, double maxD = 1) {
+    auto prescreen = [](const unsigned, const unsigned, const unsigned, const double) { return false; };
+    loop(distribute, prescreen, maxD);
   }
 
   /**
@@ -318,16 +331,18 @@ class TwoElecThreeCenterIntLooper {
    *        No prescreening is being done here.
    *
    * @param distribute The function to use each integral, see above for extended description.
+   * @param maxD  Maximum coefficient to be contracted with the integrals. Used to adjust
+   *             the integral precision in case of absurdly large coefficients.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute) {
-    auto prescreen = [](const unsigned, const unsigned, const unsigned, const unsigned, const double) { return false; };
-    loopNoDerivative(distribute, prescreen);
+  __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, double maxD = 1) {
+    auto prescreen = [](const unsigned, const unsigned, const unsigned, const double) { return false; };
+    loopNoDerivative(distribute, prescreen, maxD);
   }
 
  private:
   /// @brief The kernel/operator as libint enum.
-  libint2::Operator _op;
+  LIBINT_OPERATOR _op;
   /// @brief The derivative level.
   unsigned _deriv;
   /// @brief The basis.
@@ -338,6 +353,8 @@ class TwoElecThreeCenterIntLooper {
   double _prescreeningThreshold;
   /// @brief The range for the K shells.
   std::pair<unsigned int, unsigned int> _kRange;
+  /// @brief Range separation parameter mu
+  double _mu;
 };
 } /* namespace Serenity */
 #endif /* TWOELECTHREECENTERINTLOOPER_H_ */

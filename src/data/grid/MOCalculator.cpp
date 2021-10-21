@@ -32,7 +32,6 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
 MOCalculator::MOCalculator(std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController)
   : _basisFuncOnGridController(basisFuncOnGridController) {

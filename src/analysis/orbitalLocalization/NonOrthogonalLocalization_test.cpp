@@ -32,7 +32,6 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
 class NonOrthogonalLocalizationTest : public ::testing::Test {
  protected:
@@ -47,7 +46,7 @@ TEST_F(NonOrthogonalLocalizationTest, testLocalizationRestricted) {
   // Perform SCF
   system->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   // Create a copy of the SCF orbitals
-  auto orbitals = make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
+  auto orbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
       *system->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>());
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients = orbitals->getCoefficients();
 
@@ -119,7 +118,7 @@ TEST_F(NonOrthogonalLocalizationTest, testLocalizationUnrestricted) {
   // Perform SCF
   system->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
   // Create a copy of the SCF orbitals
-  auto orbitals = make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(
+  auto orbitals = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(
       *system->getActiveOrbitalController<Options::SCF_MODES::UNRESTRICTED>());
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> coefficients = orbitals->getCoefficients();
 

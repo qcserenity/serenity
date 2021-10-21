@@ -21,8 +21,7 @@
 #ifndef GEOMETRY_MOLECULARSURFACEFACTORY_H_
 #define GEOMETRY_MOLECULARSURFACEFACTORY_H_
 /* Include Serenity Internal Headers */
-#include "geometry/MolecularSurfaceController.h"
-#include "misc/RememberingFactory.h"
+#include "geometry/MolecularSurface.h"
 #include "settings/PCMOptions.h"
 
 namespace Serenity {
@@ -30,38 +29,52 @@ namespace Serenity {
 struct PCMSettings;
 class Atom;
 class Geometry;
-
-class MolecularSurfaceFactory
-  : public RememberingFactory<MolecularSurfaceController, const std::shared_ptr<const Geometry>,
-                              Options::PCM_CAVITY_TYPES, Options::PCM_ATOMIC_RADII_TYPES, unsigned int, double, double,
-                              double, double, bool, unsigned int, unsigned int, double, double, bool, double> {
+/**
+ * @class
+ * @brief A factory to construct a molecular surface according to the given settings.
+ */
+class MolecularSurfaceFactory {
   MolecularSurfaceFactory() = default;
 
  public:
   virtual ~MolecularSurfaceFactory() = default;
-
-  static std::shared_ptr<MolecularSurfaceController>
+  /**
+   * @brief Produce a new molecular surface.
+   * @param geometry                         The molecular geometry.
+   * @param cavityType                       The type of cavity.
+   * @param radiiType                        The radii set.
+   * @param calveLevel                       Level of resolution increase at sphere intersections (GEPOL).
+   * @param minDistance                      Minimum tolerated distance between surface points.
+   * @param minRadius                        Minimum radius of any added sphere (GEPOL)
+   * @param solvRadius                       Radius of the solvent probe.
+   * @param overlapFactor                    Overlap ratio allowed for added spheres.
+   * @param scaling                          If true, atom radii are scaled by 1.2.
+   * @param sphericalAngularMomentum         Angular momentum for the Lebedev-spherical grids (DELLEY).
+   * @param smallSphericalAngularMomentum    Angular momentum for the Lebedev-spherical grids for H-atoms (DELLEY).
+   * @param alpha                            Sharpness paramenter for the DELLEY-surface.
+   * @param projectionCutOff                 Projection cut-off for the DELLEY-surface.
+   * @param oneCavity                        Remove cavity points that are not connected to the point with the most
+   *                                         extreme x-coordinate (DELLEY).
+   * @param connectivityFactor               Connection between grid points is established as a range cut-off. The
+   * threshold is given by connectivityFactor times solvRadius.
+   */
+  static std::unique_ptr<MolecularSurface>
   produce(std::shared_ptr<const Geometry> geometry, Options::PCM_CAVITY_TYPES cavityType,
           Options::PCM_ATOMIC_RADII_TYPES radiiType, unsigned int calveLevel, double minDistance, double minRadius,
           double solvRadius, double overlapFactor, bool scaling, unsigned int sphericalAngularMomentum,
           unsigned int smallSphericalAngularMomentum, double alpha, double projectionCutOff, bool oneCavity,
           double connectivityFactor);
-
-  static std::shared_ptr<MolecularSurfaceController> produce(std::shared_ptr<const Geometry> geometry,
-                                                             const PCMSettings& pcmSettings);
+  /**
+   * @brief Produce a new molecular surface.
+   * @param The geometry.
+   * @param The PCM settings.
+   */
+  static std::unique_ptr<MolecularSurface> produce(std::shared_ptr<const Geometry> geometry, const PCMSettings& pcmSettings);
 
  private:
-  std::unique_ptr<MolecularSurfaceController>
-  produceNew(std::shared_ptr<const Geometry> geometry, Options::PCM_CAVITY_TYPES cavityType,
-             Options::PCM_ATOMIC_RADII_TYPES radiiType, unsigned int calveLevel, double minDistance, double minRadius,
-             double solvRadius, double overlapFactor, bool scaling, unsigned int sphericalAngularMomentum,
-             unsigned int smallSphericalAngularMomentum, double alpha, double projectionCutOff, bool oneCavity,
-             double connectivityFactor) override final;
-
-  double getAtomRadius(std::shared_ptr<Atom> atom, Options::PCM_ATOMIC_RADII_TYPES radiiType, bool scaling);
+  // Helper function to select the right atom radius.
+  static double getAtomRadius(std::shared_ptr<Atom> atom, Options::PCM_ATOMIC_RADII_TYPES radiiType, bool scaling);
 };
-
-static std::unique_ptr<MolecularSurfaceFactory> _sufaceFactoryInstance;
 
 } /* namespace Serenity */
 

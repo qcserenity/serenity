@@ -20,17 +20,25 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/LRSCFController.h"
-
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
+#include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "geometry/Atom.h"
 #include "integrals/OneElectronIntegralController.h"
+#include "io/FormattedOutputStream.h" //Filtered output.
 #include "io/HDF5.h"
 #include "math/linearAlgebra/Orthogonalization.h"
+#include "postHF/LRSCF/Sigmavectors/RICC2/ADC2Sigmavector.h"
+#include "postHF/LRSCF/Sigmavectors/RICC2/CC2Sigmavector.h"
+#include "postHF/LRSCF/Sigmavectors/RICC2/XWFController.h"
 #include "postHF/LRSCF/Tools/Besley.h"
+#include "postHF/LRSCF/Tools/RIIntegrals.h"
+#include "postHF/MBPT/MBPT.h"
+#include "potentials/bundles/PotentialBundle.h"
 #include "settings/LRSCFOptions.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 
 /* Include Std and External Headers */
@@ -39,78 +47,121 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-LRSCFController<SCFMode>::LRSCFController(std::shared_ptr<SystemController> system, LRSCFTaskSettings& settings)
+LRSCFController<SCFMode>::LRSCFController(std::shared_ptr<SystemController> system, const LRSCFTaskSettings& settings)
   : _system(system),
     _settings(settings),
+    _nOcc(_system->getNOccupiedOrbitals<SCFMode>()),
+    _nVirt(_system->getNVirtualOrbitalsTruncated<SCFMode>()),
     _coefficients(_system->getActiveOrbitalController<SCFMode>()->getCoefficients()),
+    _particleCoefficients(_system->getActiveOrbitalController<SCFMode>()->getCoefficients()),
+    _holeCoefficients(_system->getActiveOrbitalController<SCFMode>()->getCoefficients()),
     _orbitalEnergies(_system->getActiveOrbitalController<SCFMode>()->getEigenvalues()),
-    _excitationVectors(nullptr) {
-  // Setup initial occupation vector corresponding to orbitals stored in system
-  auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
-  auto nVirt = _system->getNVirtualOrbitals<SCFMode>();
-  for_spin(_occupation, nOcc, nVirt) {
-    _occupation_spin = Eigen::VectorXi::Zero(nOcc_spin + nVirt_spin);
-    _occupation_spin.segment(0, nOcc_spin) = Eigen::VectorXi::Ones(nOcc_spin);
-    _occupation_spin *= (SCFMode == Options::SCF_MODES::RESTRICTED) ? 2 : 1;
-  };
-
-  // Creates Reference List of orbital indices
-  for_spin(_indexWhiteList, nOcc, nVirt) {
-    _indexWhiteList_spin.resize(nOcc_spin + nVirt_spin);
-    std::iota(std::begin(_indexWhiteList_spin), std::end(_indexWhiteList_spin), 0);
-  };
-
-  // Restricts orbital space according to the user's input and adjusts occupation vector
-  this->editReference();
+    _excitationVectors(nullptr),
+    _xwfController(nullptr),
+    _riints(nullptr),
+    _riErfints(nullptr),
+    _screening(nullptr),
+    _envTransformation(nullptr),
+    _inverseM(nullptr),
+    _inverseErfM(nullptr) {
+  Settings sysSettings = _system->getSettings();
+  if (sysSettings.load != "") {
+    _system->template getElectronicStructure<SCFMode>()->toHDF5(sysSettings.path + sysSettings.name, sysSettings.identifier);
+  }
 }
 
 template<Options::SCF_MODES SCFMode>
 std::shared_ptr<std::vector<Eigen::MatrixXd>> LRSCFController<SCFMode>::getExcitationVectors(Options::LRSCF_TYPE type) {
-  if (!_excitationVectors || _type != type)
-    loadFromH5(type);
+  if (!_excitationVectors || _type != type) {
+    this->loadFromH5(type);
+  }
   return _excitationVectors;
 }
 
 template<Options::SCF_MODES SCFMode>
 std::shared_ptr<Eigen::VectorXd> LRSCFController<SCFMode>::getExcitationEnergies(Options::LRSCF_TYPE type) {
-  if (!_excitationEnergies || _type != type)
-    loadFromH5(type);
+  if (!_excitationEnergies || _type != type) {
+    this->loadFromH5(type);
+  }
   return _excitationEnergies;
 }
 
 template<Options::SCF_MODES SCFMode>
 void LRSCFController<SCFMode>::loadFromH5(Options::LRSCF_TYPE type) {
-  try {
-    // Try to initialize from h5
-    std::string mode = (SCFMode == RESTRICTED) ? "res" : "unres";
-    std::string type_str =
-        (type == Options::LRSCF_TYPE::ISOLATED) ? ".iso" : (type == Options::LRSCF_TYPE::UNCOUPLED) ? ".fdeu" : ".fdec";
-    std::string fName = _system->getSettings().path + _system->getSettings().name + type_str + "_lrscf." + mode + ".h5";
-    HDF5::Filepath name(fName);
-    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  auto settings = _system->getSettings();
+
+  std::string tName;
+  if (type == Options::LRSCF_TYPE::ISOLATED) {
+    tName += "iso";
+  }
+  else if (type == Options::LRSCF_TYPE::UNCOUPLED) {
+    tName += "fdeu";
+  }
+  else {
+    tName += "fdec";
+  }
+
+  printSmallCaption("Loading " + tName + "-eigenpairs for: " + settings.name);
+
+  std::string path = (settings.load == "") ? settings.path : settings.load;
+  std::string fName = settings.name + "_lrscf.";
+
+  std::vector<Eigen::MatrixXd> XY(2);
+  Eigen::VectorXd eigenvalues;
+
+  auto loadEigenpairs = [&](std::string input) {
+    printf("\n   $  %-20s\n\n", input.c_str());
+
+    HDF5::H5File file(input.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     HDF5::dataset_exists(file, "X");
     HDF5::dataset_exists(file, "Y");
-    std::vector<Eigen::MatrixXd> XY(2);
+    HDF5::dataset_exists(file, "EIGENVALUES");
     HDF5::load(file, "X", XY[0]);
     HDF5::load(file, "Y", XY[1]);
-    HDF5::dataset_exists(file, "EIGENVALUES");
-    Eigen::VectorXd e;
-    HDF5::load(file, "EIGENVALUES", e);
+    HDF5::load(file, "EIGENVALUES", eigenvalues);
     file.close();
-    // Found solution vectors of type, reset _excitationEnergies and _excitationVectors
-    if (e.rows() != XY[0].cols())
-      throw SerenityError("The number of eigenvectors (X) and eigenvalues do not match!");
-    if (e.rows() != XY[1].cols())
-      throw SerenityError("The number of eigenvectors (Y) and eigenvalues do not match!");
-    _excitationVectors.reset();
-    _excitationEnergies.reset();
-    _excitationEnergies = std::make_shared<Eigen::VectorXd>(e);
+
+    unsigned nDimI = 0;
+    for_spin(_nOcc, _nVirt) {
+      nDimI += _nOcc_spin * _nVirt_spin;
+    };
+    if (XY[0].rows() != nDimI || XY[1].rows() != nDimI) {
+      throw SerenityError("The dimension of your loaded eigenpairs does not match with this response problem.");
+    }
+    if (eigenvalues.rows() != XY[0].cols()) {
+      throw SerenityError("The number of loaded eigenvectors and eigenvalues does not match.");
+    }
+
+    printf("  Found %3i eigenpairs.\n\n\n", (int)eigenvalues.rows());
+
+    _excitationEnergies = std::make_shared<Eigen::VectorXd>(eigenvalues);
     _excitationVectors = std::make_shared<std::vector<Eigen::MatrixXd>>(XY);
     _type = type;
-    printf("\nFound %4i excitation vectors in %20s with eigenvalues:\n", (unsigned int)e.rows(), fName.c_str());
+  };
+
+  if (_settings.method == Options::LR_METHOD::TDA || _settings.method == Options::LR_METHOD::TDDFT) {
+    fName += "tddft." + tName + (SCFMode == RESTRICTED ? ".res.h5" : ".unres.h5");
+  }
+  else {
+    fName += "cc2." + tName + (SCFMode == RESTRICTED ? ".res.h5" : ".unres.h5");
+  }
+
+  try {
+    loadEigenpairs(path + fName);
   }
   catch (...) {
-    throw SerenityError("Cannot find the excitation vectors and excitation energies from HDF5.");
+    if (settings.load != "") {
+      printf("  Could not find any. Instead\n");
+      try {
+        loadEigenpairs(settings.path + fName);
+      }
+      catch (...) {
+        throw SerenityError("Cannot find eigenpairs from h5: " + (settings.path + fName));
+      }
+    }
+    else {
+      throw SerenityError("Cannot find eigenpairs from h5: " + (path + fName));
+    }
   }
 }
 
@@ -121,44 +172,56 @@ void LRSCFController<SCFMode>::setSolution(std::shared_ptr<std::vector<Eigen::Ma
   _excitationEnergies = eigenvalues;
   _type = type;
   // write to h5
-  std::string mode = (SCFMode == RESTRICTED) ? "res" : "unres";
-  std::string type_str =
-      (type == Options::LRSCF_TYPE::ISOLATED) ? ".iso" : (type == Options::LRSCF_TYPE::UNCOUPLED) ? ".fdeu" : ".fdec";
-  std::string fName = _system->getSettings().path + _system->getSettings().name + type_str + "_lrscf." + mode + ".h5";
-  HDF5::H5File file(fName.c_str(), H5F_ACC_TRUNC);
-  HDF5::save_scalar_attribute(file, "ID", _system->getSettings().identifier);
-  HDF5::save(file, "X", (*eigenvectors)[0]);
-  if ((*eigenvectors).size() == 2 && !_settings.tda) {
-    HDF5::save(file, "Y", (*eigenvectors)[1]);
-  }
-  else if ((*eigenvectors).size() == 1 && _settings.tda) {
-    Eigen::MatrixXd zero = Eigen::MatrixXd::Zero((*eigenvectors)[0].rows(), (*eigenvectors)[0].cols());
-    HDF5::save(file, "Y", zero);
+  std::string fName = this->getSys()->getSystemPath() + this->getSys()->getSystemName() + "_lrscf.";
+  if (_settings.method == Options::LR_METHOD::TDA || _settings.method == Options::LR_METHOD::TDDFT) {
+    fName += "tddft.";
   }
   else {
-    assert(false);
+    fName += "cc2.";
+  }
+  if (type == Options::LRSCF_TYPE::ISOLATED) {
+    fName += "iso.";
+  }
+  else if (type == Options::LRSCF_TYPE::UNCOUPLED) {
+    fName += "fdeu.";
+  }
+  else {
+    fName += "fdec.";
+  }
+  fName += (SCFMode == RESTRICTED) ? "res." : "unres.";
+  fName += "h5";
+  HDF5::H5File file(fName.c_str(), H5F_ACC_TRUNC);
+  HDF5::save_scalar_attribute(file, "ID", _system->getSystemIdentifier());
+  HDF5::save(file, "X", (*eigenvectors)[0]);
+  if (this->getResponseMethod() == Options::LR_METHOD::TDA) {
+    Eigen::MatrixXd Y = Eigen::MatrixXd::Zero((*eigenvectors)[0].rows(), (*eigenvectors)[0].cols());
+    HDF5::save(file, "Y", Y);
+  }
+  else if (this->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+    HDF5::save(file, "Y", (*eigenvectors)[1]);
   }
   HDF5::save(file, "EIGENVALUES", (*eigenvalues));
   file.close();
 }
 
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, unsigned int> LRSCFController<SCFMode>::getNOccupied() {
-  SpinPolarizedData<SCFMode, unsigned int> nOcc;
-  for_spin(nOcc, _occupation) {
-    nOcc_spin = (SCFMode == Options::SCF_MODES::RESTRICTED) ? _occupation_spin.sum() / 2 : _occupation_spin.sum();
-  };
-  return nOcc;
+SpinPolarizedData<SCFMode, unsigned> LRSCFController<SCFMode>::getNOccupied() {
+  return _nOcc;
 }
 
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, unsigned int> LRSCFController<SCFMode>::getNVirtual() {
-  SpinPolarizedData<SCFMode, unsigned int> nVirt;
-  auto nOcc = this->getNOccupied();
-  for_spin(nVirt, nOcc, _occupation) {
-    nVirt_spin = _occupation_spin.size() - nOcc_spin;
-  };
-  return nVirt;
+SpinPolarizedData<SCFMode, unsigned> LRSCFController<SCFMode>::getNVirtual() {
+  return _nVirt;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setNOccupied(SpinPolarizedData<SCFMode, unsigned> nOcc) {
+  _nOcc = nOcc;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setNVirtual(SpinPolarizedData<SCFMode, unsigned> nVirt) {
+  _nVirt = nVirt;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -167,23 +230,90 @@ CoefficientMatrix<SCFMode>& LRSCFController<SCFMode>::getCoefficients() {
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<BasisController> LRSCFController<SCFMode>::getBasisController() {
-  return _coefficients.getBasisController();
+CoefficientMatrix<SCFMode>& LRSCFController<SCFMode>::getParticleCoefficients() {
+  if (_xwfController) {
+    auto& P = _xwfController->_P;
+    for_spin(P, _particleCoefficients) {
+      _particleCoefficients_spin = P_spin;
+    };
+  }
+  else {
+    _particleCoefficients = _coefficients;
+  }
+  return _particleCoefficients;
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<MatrixInBasis<SCFMode>> LRSCFController<SCFMode>::getFockNonCanon() {
-  return _fockNonCanon;
+CoefficientMatrix<SCFMode>& LRSCFController<SCFMode>::getHoleCoefficients() {
+  if (_xwfController) {
+    auto& H = _xwfController->_H;
+    for_spin(H, _holeCoefficients) {
+      _holeCoefficients_spin = H_spin;
+    };
+  }
+  else {
+    _holeCoefficients = _coefficients;
+  }
+  return _holeCoefficients;
 }
 
 template<Options::SCF_MODES SCFMode>
-void LRSCFController<SCFMode>::setFockNonCanon(std::shared_ptr<MatrixInBasis<SCFMode>> fockNonCanon) {
-  _fockNonCanon = fockNonCanon;
+void LRSCFController<SCFMode>::setCoefficients(CoefficientMatrix<SCFMode> coeff) {
+  _coefficients = coeff;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<BasisController> LRSCFController<SCFMode>::getBasisController(Options::BASIS_PURPOSES basisPurpose) {
+  return _system->getBasisController(basisPurpose);
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<SPMatrix<SCFMode>> LRSCFController<SCFMode>::getMOFockMatrix() {
+  if (!_system->template getElectronicStructure<SCFMode>()->checkFock()) {
+    throw SerenityError("lrscf: no fock matrix present in your system.");
+  }
+  auto fock = _system->template getElectronicStructure<SCFMode>()->getFockMatrix();
+  if (!_settings.rpaScreening) {
+    // since this doesn't really cost anything, each time the mo fock matrix is
+    // requested, it is built again to make sure the newest coefficients are used
+    for_spin(_coefficients, fock, _nOcc, _nVirt) {
+      unsigned nb = _nOcc_spin + _nVirt_spin;
+      fock_spin = (_coefficients_spin.leftCols(nb).transpose() * fock_spin * _coefficients_spin.leftCols(nb)).eval();
+    };
+  }
+  else {
+    for_spin(fock, _orbitalEnergies, _nOcc, _nVirt) {
+      Eigen::MatrixXd temp = _orbitalEnergies_spin.segment(0, _nOcc_spin + _nVirt_spin).asDiagonal();
+      fock_spin = temp;
+    };
+  }
+  _fock = std::make_shared<SPMatrix<SCFMode>>(fock);
+  return _fock;
+}
+
+template<Options::SCF_MODES SCFMode>
+bool LRSCFController<SCFMode>::isMOFockMatrixDiagonal() {
+  SPMatrix<SCFMode> fock = *this->getMOFockMatrix();
+  bool isDiagonal = true;
+  for_spin(fock) {
+    fock_spin.diagonal() -= fock_spin.diagonal();
+    isDiagonal = isDiagonal && std::fabs(fock_spin.sum()) < 1e-6;
+    if (std::fabs(fock_spin.sum()) > 1e-6)
+      OutputControl::nOut << " Absolute largest Fock matrix off-Diagonal element  "
+                          << fock_spin.array().abs().matrix().maxCoeff() << std::endl;
+  };
+
+  return isDiagonal;
 }
 
 template<Options::SCF_MODES SCFMode>
 SpinPolarizedData<SCFMode, Eigen::VectorXd> LRSCFController<SCFMode>::getEigenvalues() {
   return _orbitalEnergies;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setEigenvalues(SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvalues) {
+  _orbitalEnergies = eigenvalues;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -206,39 +336,9 @@ const LRSCFTaskSettings& LRSCFController<SCFMode>::getLRSCFSettings() {
   return _settings;
 }
 
-template<>
-SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<unsigned int>>
-LRSCFController<Options::SCF_MODES::RESTRICTED>::getSet() {
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<unsigned int>> set;
-  set = _settings.setAlpha;
-  return set;
-}
-
-template<>
-SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<unsigned int>>
-LRSCFController<Options::SCF_MODES::UNRESTRICTED>::getSet() {
-  auto set = makeUnrestrictedFromPieces<std::vector<unsigned int>>(_settings.setAlpha, _settings.setBeta);
-  return set;
-}
-
-template<>
-SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<unsigned int>>
-LRSCFController<Options::SCF_MODES::RESTRICTED>::getExclude() {
-  SpinPolarizedData<Options::SCF_MODES::RESTRICTED, std::vector<unsigned int>> exclude;
-  exclude = _settings.excludeAlpha;
-  return exclude;
-}
-
-template<>
-SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, std::vector<unsigned int>>
-LRSCFController<Options::SCF_MODES::UNRESTRICTED>::getExclude() {
-  auto exclude = makeUnrestrictedFromPieces<std::vector<unsigned int>>(_settings.excludeAlpha, _settings.excludeBeta);
-  return exclude;
-}
-
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, std::vector<unsigned int>> LRSCFController<SCFMode>::getReferenceOrbitals() {
-  return _indexWhiteList;
+Options::LR_METHOD LRSCFController<SCFMode>::getResponseMethod() {
+  return _settings.method;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -252,268 +352,162 @@ std::vector<std::shared_ptr<SystemController>> LRSCFController<SCFMode>::getEnvS
 }
 
 template<Options::SCF_MODES SCFMode>
-void LRSCFController<SCFMode>::editReference() {
-  auto set = this->getSet();
-  auto exclude = this->getExclude();
-  bool editReference = false;
-  for_spin(set, exclude) {
-    if (!set_spin.empty())
-      editReference = true;
-    if (!exclude_spin.empty())
-      editReference = true;
-  };
-  if (_settings.besleyAtoms > 0)
-    editReference = true;
-  if (!_settings.energyInclusion.empty())
-    editReference = true;
-  if (!_settings.energyExclusion.empty())
-    editReference = true;
-  if (_settings.localVirtualOrbitals != 0.0)
-    editReference = true;
-  if (_settings.envVirtualOrbitals != 0.0)
-    editReference = true;
-
-  // Orbitals will not be edited. Work with reference set from system.
-  if (!editReference)
-    return;
-
-  // Some variables needed
-  auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
-
-  // Restrict Orbitals according to Besley's criterion for occupied and virtual orbitals
-  if (_settings.besleyAtoms > 0) {
-    if (_settings.besleyCutoff.size() != 2)
-      throw SerenityError("Keyword besleyCutoff needs two arguments!");
-    Besley<SCFMode> besley(_system, _settings.besleyAtoms, _settings.besleyCutoff);
-    _indexWhiteList = besley.getWhiteList();
+void LRSCFController<SCFMode>::initializeXWFController() {
+  if (this->getResponseMethod() == Options::LR_METHOD::ADC2) {
+    _xwfController = std::make_shared<ADC2Sigmavector<SCFMode>>(this->shared_from_this());
   }
-
-  // Virtual Orbital Partitioning (located on the subsysten/ environment subsystem)
-  // or virtual orbitals located on the environment subsystem
-  if (_settings.localVirtualOrbitals != 0 || _settings.envVirtualOrbitals != 0) {
-    // Get atom indices for non-dummy atoms
-    auto atoms = _system->getAtoms();
-
-    // Calculate Overlap between Virtual MOs in basis of atoms of active subsystem and entire basis
-    auto nBasisFunc = _system->getBasisController()->getNBasisFunctions();
-    auto basisIndices = _system->getAtomCenteredBasisController()->getBasisIndices();
-    auto coeff = this->getCoefficients();
-    const auto& oneIntController = _system->getOneElectronIntegralController();
-    const auto& overlaps = oneIntController->getOverlapIntegrals();
-    auto nOccupied = this->getNOccupied();
-    auto nVirtual = this->getNVirtual();
-    // find the atom indices, which are not dummy
-    unsigned int counter = 0;
-    std::vector<unsigned int> index;
-    for (auto atom : atoms) {
-      if (atom->isDummy() == false) {
-        index.push_back(counter);
-      }
-      counter += 1;
-    }
-
-    // Entire Dimensions
-    for_spin(nOccupied, nVirtual, coeff, _indexWhiteList) {
-      _indexWhiteList_spin.clear();
-      for (unsigned int iOcc = 0; iOcc < nOccupied_spin; iOcc++) {
-        _indexWhiteList_spin.push_back(iOcc);
-      }
-      // ToDo: Assumes that the atoms of the subsystem are behind each other
-      unsigned int start = basisIndices[index[0]].first;
-      unsigned int end = basisIndices[index[index.size() - 1]].second;
-
-      Eigen::MatrixXd overlapMOModified = coeff_spin.block(start, nOccupied_spin, end - start, nVirtual_spin).transpose() *
-                                          overlaps.block(start, 0, end - start, nBasisFunc) *
-                                          coeff_spin.block(0, nOccupied_spin, nBasisFunc, nVirtual_spin);
-
-      for (unsigned int col = 0; col < overlapMOModified.cols(); col++) {
-        if (_settings.localVirtualOrbitals != 0)
-          if (overlapMOModified(col, col) > _settings.localVirtualOrbitals) {
-            _indexWhiteList_spin.push_back(col + nOccupied_spin);
-          }
-        if (_settings.envVirtualOrbitals != 0)
-          if ((1 - overlapMOModified(col, col)) >= _settings.envVirtualOrbitals) {
-            _indexWhiteList_spin.push_back(col + nOccupied_spin);
-          }
-      }
-    };
-  } /* Virtual Orbital Partitioning */
-
-  unsigned int iSpin = 0;
-  for_spin(_coefficients, _orbitalEnergies, _occupation, _indexWhiteList, set, exclude, nOcc) {
-    // Set cut off
-    if (!set_spin.empty()) {
-      _indexWhiteList_spin.clear();
-      if (!exclude_spin.empty())
-        throw SerenityError("Keywords 'set' and 'exclude' cannot be used at the same time!");
-      for (auto index : set_spin) {
-        _indexWhiteList_spin.push_back(index);
-      }
-    }
-
-    // Exclude cut off
-    if (!exclude_spin.empty()) {
-      if (!set_spin.empty())
-        throw SerenityError("Keywords 'set' and 'exclude' cannot be used at the same time!");
-      for (int index = _indexWhiteList_spin.size() - 1; index >= 0; --index) {
-        if (std::find(exclude_spin.begin(), exclude_spin.end(), index) != exclude_spin.end()) {
-          _indexWhiteList_spin.erase(_indexWhiteList_spin.begin() + index);
-        }
-      }
-    }
-
-    // Energy cut off
-    if (!_settings.energyExclusion.empty()) {
-      if (_settings.energyExclusion.size() % 2 != 0)
-        throw SerenityError("Keyword energyExclusion needs an even number of arguments!");
-      if (!(_settings.energyInclusion.empty()))
-        throw SerenityError("Keywords 'energyExclusion' and 'energyInclusion' cannot be used at the same time!");
-      for (int index = _indexWhiteList_spin.size() - 1; index >= 0; --index) {
-        for (unsigned int pair = 0; pair < _settings.energyExclusion.size(); pair += 2) {
-          if (_settings.energyExclusion[pair + 0] >= _settings.energyExclusion[pair + 1]) {
-            throw SerenityError("The first energyExclusion parameter must be smaller than the second!");
-          }
-          if (_orbitalEnergies_spin(_indexWhiteList_spin[index]) * HARTREE_TO_EV > _settings.energyExclusion[pair + 0] &&
-              _orbitalEnergies_spin(_indexWhiteList_spin[index]) * HARTREE_TO_EV < _settings.energyExclusion[pair + 1]) {
-            _indexWhiteList_spin.erase(_indexWhiteList_spin.begin() + index);
-          }
-        }
-      }
-    }
-
-    if (!_settings.energyInclusion.empty()) {
-      if (_settings.energyInclusion.size() % 2 != 0)
-        throw SerenityError("Keyword energyInclusion needs an even number of arguments!");
-      if (!(_settings.energyExclusion.empty()))
-        throw SerenityError("Keywords 'energyExclusion' and 'energyInclusion' cannot be used at the same time!");
-      for (int index = _indexWhiteList_spin.size() - 1; index >= 0; --index) {
-        bool removeIndex = true;
-        for (unsigned int pair = 0; pair < _settings.energyInclusion.size(); pair += 2) {
-          if (_settings.energyInclusion[pair + 0] >= _settings.energyInclusion[pair + 1]) {
-            throw SerenityError("The first energyExclusion parameter must be smaller than the second!");
-          }
-          if (_orbitalEnergies_spin(_indexWhiteList_spin[index]) * HARTREE_TO_EV > _settings.energyInclusion[pair + 0] &&
-              _orbitalEnergies_spin(_indexWhiteList_spin[index]) * HARTREE_TO_EV < _settings.energyInclusion[pair + 1]) {
-            removeIndex = false;
-            break;
-          }
-        }
-        // If the energy of the orbital with a given index is not found in any of the intervals, it gets removed from
-        // the list
-        if (removeIndex)
-          _indexWhiteList_spin.erase(_indexWhiteList_spin.begin() + index);
-      }
-    } /* Energy cut off */
-
-    // Update orbitals
-    auto oldCoefficients = _coefficients_spin;
-    auto oldOrbitalEnergies = _orbitalEnergies_spin;
-    _coefficients_spin.setZero();
-
-    // Adapt occupation vector and orbital energies
-    _occupation_spin.resize(_indexWhiteList_spin.size());
-    _orbitalEnergies_spin.resize(_indexWhiteList_spin.size());
-    _occupation_spin.setZero();
-
-    for (unsigned int iMO = 0; iMO < _indexWhiteList_spin.size(); ++iMO) {
-      _coefficients_spin.col(iMO) = oldCoefficients.col(_indexWhiteList_spin[iMO]);
-      _orbitalEnergies_spin(iMO) = oldOrbitalEnergies(_indexWhiteList_spin[iMO]);
-      _occupation_spin(iMO) =
-          (_indexWhiteList_spin[iMO] < nOcc_spin) ? ((SCFMode == Options::SCF_MODES::RESTRICTED) ? 2 : 1) : 0;
-    } /* Update orbitals */
-
-    // Print info
-    if (SCFMode == Options::SCF_MODES::RESTRICTED) {
-      printf("\n Reference orbitals : \n");
-    }
-    else {
-      printf("\n %s Reference orbitals : \n", (iSpin == 0) ? "Alpha" : "Beta");
-    }
-    for (unsigned int iMO = 0; iMO < _indexWhiteList_spin.size(); ++iMO) {
-      printf("%4i", _indexWhiteList_spin[iMO] + 1);
-      if ((iMO + 1) % 10 == 0)
-        printf("\n");
-    }
-    printf("\n");
-    iSpin += 1;
-  };
-
-  // Using isolated as default since it will not matter in this case
-  this->indexToH5(Options::LRSCF_TYPE::ISOLATED);
+  else {
+    _xwfController = std::make_shared<CC2Sigmavector<SCFMode>>(this->shared_from_this());
+  }
 }
 
-// Edit reference for exclude projection where the individual calculation is carried out in LRSCFTask
 template<Options::SCF_MODES SCFMode>
-void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vector<unsigned int>> indexWhiteList,
-                                             unsigned int system, Options::LRSCF_TYPE type) {
-  // Set new indices
-  _indexWhiteList = indexWhiteList;
-  // Some information
-  auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
-  // The new index list is referring to not earlier changed dimensions in the coefficient matrix
-  // Therefore is a reinitialization of the coefficients / orbital energies neccessary
-  _coefficients = _system->getActiveOrbitalController<SCFMode>()->getCoefficients();
-  _orbitalEnergies = _system->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+std::shared_ptr<XWFController<SCFMode>> LRSCFController<SCFMode>::getXWFController() {
+  return _xwfController;
+}
 
-  unsigned int iSpin = 0;
-  for_spin(_coefficients, _orbitalEnergies, _occupation, _indexWhiteList, nOcc) {
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::initializeRIIntegrals(LIBINT_OPERATOR op, double mu, bool calcJia) {
+  if (op == LIBINT_OPERATOR::coulomb) {
+    _riints = std::make_shared<RIIntegrals<SCFMode>>(this->shared_from_this(), op, mu, calcJia);
+  }
+  else if (op == LIBINT_OPERATOR::erf_coulomb) {
+    _riErfints = std::make_shared<RIIntegrals<SCFMode>>(this->shared_from_this(), op, mu, calcJia);
+  }
+  else {
+    throw SerenityError("This operator for RI integrals is not yet supported.");
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<RIIntegrals<SCFMode>> LRSCFController<SCFMode>::getRIIntegrals(LIBINT_OPERATOR op) {
+  if (op == LIBINT_OPERATOR::coulomb) {
+    return _riints;
+  }
+  else if (op == LIBINT_OPERATOR::erf_coulomb) {
+    return _riErfints;
+  }
+  else {
+    throw SerenityError("This operator for RI integrals is not yet supported.");
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::calculateScreening(const Eigen::VectorXd& eia) {
+  if (_riints != nullptr) {
+    printBigCaption("rpa screening");
+    auto& jia = *(_riints->getJiaPtr());
+    unsigned nAux = _riints->getNTransformedAuxBasisFunctions();
+    double prefactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 2.0 : 1.0;
+    Eigen::MatrixXd piPQ = Eigen::MatrixXd::Identity(nAux, nAux);
+    Eigen::VectorXd chi_temp = prefactor * (-2.0 / eia.array());
+    unsigned spincounter = 0;
+    for_spin(jia) {
+      piPQ -= jia_spin.transpose() * chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * jia_spin;
+      spincounter += jia_spin.rows();
+    };
+    if (_envSystems.size() > 0) {
+      if (_settings.nafThresh != 0) {
+        throw SerenityError(" NAF not supported with environmetnal screening!");
+      }
+      GWTaskSettings gwSettings;
+      gwSettings.environmentScreening = false;
+      gwSettings.integrationPoints = 0;
+      // sets the geometry of the active subsystem to evaluate integrals in the correct aux basis
+      _riints->setGeo(_system->getGeometry());
+      auto mbpt = std::make_shared<MBPT<SCFMode>>(_system, gwSettings, _envSystems, _riints, 0, 0);
+      auto envResponse = mbpt->environmentRespose();
+      Eigen::MatrixXd transformation;
+      auto proj = mbpt->calculateTransformation(transformation, envResponse);
+      _envTransformation = std::make_shared<Eigen::MatrixXd>(transformation * proj.transpose());
+      spincounter = 0;
+      for_spin(jia) {
+        auto piPQenv = (jia_spin * transformation).transpose() *
+                       chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * (jia_spin * transformation);
+        piPQ += proj * piPQenv * proj.transpose();
+        spincounter += jia_spin.rows();
+      };
+    }
+    piPQ = (piPQ.inverse()).eval();
+    _screening = std::make_shared<Eigen::MatrixXd>(piPQ);
+    printf(" .. done.\n\n");
+  }
+  else {
+    throw SerenityError("No RI integrals for screening initialized!");
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Eigen::MatrixXd> LRSCFController<SCFMode>::getScreeningAuxMatrix() {
+  return _screening;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Eigen::MatrixXd> LRSCFController<SCFMode>::getEnvTrafo() {
+  return _envTransformation;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setInverseMetric(std::shared_ptr<Eigen::MatrixXd> metric) {
+  _inverseM = metric;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Eigen::MatrixXd> LRSCFController<SCFMode>::getInverseMetric() {
+  return _inverseM;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setInverseErfMetric(std::shared_ptr<Eigen::MatrixXd> metric) {
+  _inverseErfM = metric;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Eigen::MatrixXd> LRSCFController<SCFMode>::getInverseErfMetric() {
+  return _inverseErfM;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vector<unsigned>> indexWhiteList) {
+  unsigned iSpin = 0;
+  for_spin(_coefficients, _orbitalEnergies, indexWhiteList, _nOcc, _nVirt) {
     // Update orbitals
     auto oldCoefficients = _coefficients_spin;
     auto oldOrbitalEnergies = _orbitalEnergies_spin;
     _coefficients_spin.setZero();
-
+    _nOcc_spin = 0;
+    _nVirt_spin = 0;
     // Adapt occupation vector and orbital energies
-    _occupation_spin.resize(_indexWhiteList_spin.size());
-    _orbitalEnergies_spin.resize(_indexWhiteList_spin.size());
-    _occupation_spin.setZero();
+    _orbitalEnergies_spin.resize(indexWhiteList_spin.size());
 
-    for (unsigned int iMO = 0; iMO < _indexWhiteList_spin.size(); ++iMO) {
-      _coefficients_spin.col(iMO) = oldCoefficients.col(_indexWhiteList_spin[iMO]);
-      _orbitalEnergies_spin(iMO) = oldOrbitalEnergies(_indexWhiteList_spin[iMO]);
-      _occupation_spin(iMO) =
-          (_indexWhiteList_spin[iMO] < nOcc_spin) ? ((SCFMode == Options::SCF_MODES::RESTRICTED) ? 2 : 1) : 0;
+    for (unsigned iMO = 0; iMO < indexWhiteList_spin.size(); ++iMO) {
+      _coefficients_spin.col(iMO) = oldCoefficients.col(indexWhiteList_spin[iMO]);
+      _orbitalEnergies_spin(iMO) = oldOrbitalEnergies(indexWhiteList_spin[iMO]);
+      if (indexWhiteList_spin[iMO] <= _nOcc_spin) {
+        _nOcc_spin += 1;
+      }
+      else {
+        _nVirt_spin += 1;
+      }
     } /* Update orbitals */
-
+    std::string system = _system->getSettings().name;
     // Print info
     if (SCFMode == Options::SCF_MODES::RESTRICTED) {
-      std::cout << " System: " << system + 1 << " \n";
+      std::cout << " System: " << system << " \n";
       printf(" NEW Reference orbitals : \n");
     }
     else {
-      std::cout << " System: " << system + 1 << " \n";
+      std::cout << " System: " << system << " \n";
       printf("%s NEW Reference orbitals : \n", (iSpin == 0) ? "Alpha" : "Beta");
     }
-    for (unsigned int iMO = 0; iMO < _indexWhiteList_spin.size(); ++iMO) {
-      printf("%4i", _indexWhiteList_spin[iMO] + 1);
+    for (unsigned iMO = 0; iMO < indexWhiteList_spin.size(); ++iMO) {
+      printf("%4i", indexWhiteList_spin[iMO] + 1);
       if ((iMO + 1) % 10 == 0)
         printf("\n");
     }
     printf("\n");
     iSpin += 1;
   };
-
-  this->indexToH5(type);
-}
-
-template<Options::SCF_MODES SCFMode>
-void LRSCFController<SCFMode>::indexToH5(Options::LRSCF_TYPE type) {
-  std::string mode = (SCFMode == RESTRICTED) ? "res" : "unres";
-  std::string type_str = (type == Options::LRSCF_TYPE::ISOLATED || type == Options::LRSCF_TYPE::UNCOUPLED) ? "" : ".fdec";
-  std::string name = _system->getSettings().path + _system->getSettings().name + type_str + ".lrscfSpace." + mode + ".h5";
-  HDF5::H5File file(name.c_str(), H5F_ACC_TRUNC);
-  HDF5::save_scalar_attribute(file, "ID", _system->getSettings().identifier);
-  unsigned int iCount = 0;
-  for_spin(_indexWhiteList) {
-    std::string spin = "alpha";
-    if (iCount > 0)
-      spin = "beta";
-    iCount += 1;
-
-    // Cannot use unsigned vector for Eigen::Map
-    std::vector<int> tmp(_indexWhiteList_spin.begin(), _indexWhiteList_spin.end());
-    EigenHDF5::save(file, spin, Eigen::VectorXi::Map(tmp.data(), tmp.size()));
-  };
-  file.close();
 }
 
 template class LRSCFController<Options::SCF_MODES::RESTRICTED>;

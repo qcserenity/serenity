@@ -31,13 +31,10 @@
 #include <vector> //std::vector
 
 namespace Serenity {
-
-typedef std::vector<std::shared_ptr<OrbitalPair>> OrbitalPairSet;
-
 /* Forward Declarations */
 class SystemController;
 class PAOController;
-class PAOSelecter;
+class PAOSelector;
 class PNOConstructor;
 class MO3CenterIntegralController;
 class QuasiCanonicalPAODomainConstructor;
@@ -45,11 +42,8 @@ class TNOConstructor;
 class OrbitalTriple;
 class DomainOverlapMatrixController;
 class SparseMapsController;
-
-/*
- * Flags for the PNO method that is used.
- */
-enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0 };
+class OrbitalPairSet;
+class OrbitalTripleSet;
 
 /**
  * @class LocalCorrelationSettings LocalCorrelationController.h
@@ -78,7 +72,7 @@ enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0 };
  * T_CutTNO\n singlesPNOFactor                        --- 0.03T_CutPNO see JCP 138, 034106 (2013) page 7\n
  *   orbitalToShellThreshold                 --- T_CutC\n
  *   mullikenThreshold                       --- T_CutMKN\n
- *   fockMatrixPreescreeningThreshold        --- F_Cut (LMP2 only)\n
+ *   fockMatrixPrescreeningThreshold        --- F_Cut (LMP2 only)\n
  *   crudeDomainFactor                       --- Factor for approximate aux.-domain construction in prescreening.
  *   crudeStrongTripFactor                   --- Factor for the aux.-domain construction of strong triples.
  *   crudeWeakTripFactor                     --- Factor for the aux.-domain construction of weak triples.
@@ -99,7 +93,15 @@ enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0 };
  *   useTriplesCoreScaling                   --- Use the pnoCoreScaling for triples that contain core-like orbtials.
  *   pnoSettings                             --- PNO macro setting (LOOSE,NORMAL,TIGHT)
  *   method                                  --- Local-correlation method used.
- * Some of the settings refer directly to JCTC 11, 1525-1539 (2015) and J. Chem. Phys. 143, 034108 (2015).
+ *   topDownReconstruction                   --- Enforce top-down ansatz for potential reconstruction.
+ *   linearScalingSigmaVector                --- Build the sigma vector in DLPNO-CCSD directly from PNO-based integrals.
+ *   extendedDomainScaling                   --- include additional pairs as close pairs in the sparse map / extended
+ *                                               domain construction.
+ *   enforceHFFockian                        ---  Enforce the use of the HF Fock operator..
+ *   reuseFockMatrix                         --- If true, we will try to read the Fock matrix form disk.
+ *   lowMemory                               --- Limit the number of 3-center integrals stored in memory and recalculate
+ * integrals more often. Some of the settings refer directly to JCTC 11, 1525-1539 (2015) and J. Chem. Phys. 143, 034108
+ * (2015).
  */
 struct LocalCorrelationSettings {
   LocalCorrelationSettings()
@@ -119,13 +121,13 @@ struct LocalCorrelationSettings {
       crudeDomainFactor(10.0),
       crudeStrongTripFactor(10),
       crudeWeakTripFactor(100),
-      fockMatrixPreescreeningThreshold(1e-5),
+      fockMatrixPrescreeningThresholdd(1e-5),
       doiNetThreshold(1e-7),
       paoOrthogonalizationThreshold(1e-6),
       paoNormalizationThreshold(1e-6),
-      maximumMemoryRatio(0.5),
+      maximumMemoryRatio(0.8),
       dumpIntegrals(false),
-      diisStartResidual(5e-2),
+      diisStartResidual(1.0),
       dampingFactor(0.4),
       dampingChange(0.1),
       finalDamping(0.0),
@@ -133,11 +135,15 @@ struct LocalCorrelationSettings {
       setFaiZero(true),
       pnoCoreScaling(0.01),
       useFrozenCore(false),
-      energyCutOff(-5.0),
       useTriplesCoreScaling(false),
       pnoSettings(Options::PNO_SETTINGS::NORMAL),
-      method(PNO_METHOD::DLPNO_CCSD),
-      topDownReconstruction(true) {
+      method(Options::PNO_METHOD::DLPNO_CCSD),
+      topDownReconstruction(true),
+      linearScalingSigmaVector(true),
+      extendedDomainScaling(1),
+      enforceHFFockian(false),
+      reuseFockMatrix(true),
+      lowMemory(false) {
   }
 
  public:
@@ -158,7 +164,7 @@ struct LocalCorrelationSettings {
               (double)mullikenThreshold,       // T_CutMKN
               (double)crudeDomainFactor,       // 100T_CutMKN see JCP 144, 024109 (2016) page 5
               (double)crudeStrongTripFactor, (double)crudeWeakTripFactor,
-              (double)fockMatrixPreescreeningThreshold, // F_Cut (LMP2 only)
+              (double)fockMatrixPrescreeningThresholdd, // F_Cut (LMP2 only)
               /** ====    GENERAL  PARAMETERS    ==== **/
               (double)doiNetThreshold,               // MnP truncation of DOIs
               (double)paoOrthogonalizationThreshold, // Threshold for the canonical PAO orthogonalization.
@@ -173,12 +179,19 @@ struct LocalCorrelationSettings {
               (bool)setFaiZero,                      // Force the F_ai block to be zero.
               (double)pnoCoreScaling,      // PNO threshold scaling for pairs/singles containing core-like orbitals.
               (bool)useFrozenCore,         // Use the frozen core approximation.
-              (double)energyCutOff,        // Energy cut of for assigning core-like orbitals.
               (bool)useTriplesCoreScaling, // Scale the TNO-threshold for triples containing core-like orbitals with
                                            // pnoCoreScaling.
               (Options::PNO_SETTINGS)pnoSettings, // The PNO-macro setting.
-              (PNO_METHOD)method, // Flag for the local-correlation method (LMP2, DLPNO-CCSD, DLPNO-CCSD(T0) ...)
-              (bool)topDownReconstruction // Enforce top-down ansatz for potential reconstruction.
+              (Options::PNO_METHOD)method, // Flag for the local-correlation method (LMP2, DLPNO-CCSD, DLPNO-CCSD(T0) ...)
+              (bool)topDownReconstruction,    // Enforce top-down ansatz for potential reconstruction.
+              (bool)linearScalingSigmaVector, // Build the sigma vector in DLPNO-CCSD directly from PNO-based integrals.
+              (double)extendedDomainScaling,  // include additional pairs as close pairs in the sparse map / extended
+                                              // domain construction.
+              (bool)enforceHFFockian,         // Enforce the use of the HF Fock operator.
+              (bool)reuseFockMatrix,          // If true, we will try to read the Fock matrix form disk.
+              (bool)lowMemory // Limit the number of 3-center integrals stored in memory and recalculate integrals more
+                              // often.
+
   )
   /** ==== FOCK MATRIX  CONSTRUCTION ==== **/
   EmbeddingSettings embeddingSettings;
@@ -199,6 +212,14 @@ struct LocalCorrelationSettings {
     }
     return false;
   }
+  // Resolve PNO-macro settings.
+  void resolvePNOSettings();
+
+ private:
+  // Check if a PNO setting was changed manually in the input.
+  void checkSetting(double& setting, double defaultValue);
+  // Check all PNO settings for manual changes.
+  void resolvePNOSettingsSet(const Eigen::VectorXd values);
 };
 
 /**
@@ -221,7 +242,10 @@ class LocalCorrelationController {
   LocalCorrelationController(std::shared_ptr<SystemController> system, LocalCorrelationSettings settings,
                              std::vector<std::shared_ptr<SystemController>> environmentSystems = {},
                              std::shared_ptr<FockMatrix<Options::SCF_MODES::RESTRICTED>> fockMatrix = nullptr,
-                             std::vector<std::shared_ptr<OrbitalPair>> initialPairs = {});
+                             std::vector<std::shared_ptr<OrbitalPair>> initialPairs = {},
+                             Eigen::VectorXd orbitalWiseMullikenThresholds = Eigen::VectorXd::Zero(0),
+                             Eigen::VectorXd orbitalToShellThresholds = Eigen::VectorXd::Zero(0),
+                             Eigen::VectorXd orbitalWiseDOIPAOThresholds = Eigen::VectorXd::Zero(0));
 
   /**
    * @brief Getter for the active system controller.
@@ -251,19 +275,33 @@ class LocalCorrelationController {
    * @brief Getter for the sparse maps controller.
    * @return The sparse maps controller.
    */
-  std::shared_ptr<SparseMapsController> getSparseMapController(bool closeOnly = false);
+  std::shared_ptr<SparseMapsController> getSparseMapController(bool closeOnly = true);
+  /**
+   * @brief Getter for the triples sparse maps controller.
+   * @return The sparse map controller.
+   */
+  std::shared_ptr<SparseMapsController> getTriplesSparseMapController();
   /**
    * @brief Getter for the linear scaling MO 3 center integral controller.
+   * @param closeOnly If true, only close orbital pairs are concidered in the sparse map construction for prescreening.
    * @return The MO 3 center integral controller.
    */
-  std::shared_ptr<MO3CenterIntegralController> getMO3CenterIntegralController(bool closeOnly = false);
+  std::shared_ptr<MO3CenterIntegralController> getMO3CenterIntegralController(bool closeOnly = true);
+  /**
+   * @brief Getter for the linear scaling MO 3 center integral controller for the triples.
+   * @return The MO 3 center integral controller.
+   */
+  std::shared_ptr<MO3CenterIntegralController> getTriplesMO3CenterIntegralController();
   /**
    * @brief Delete MO3 center integral controller to free some memory or initiate reconstruction upon
    *        call of the getter function.
    */
-  void removeMO3CenterIntegralControlle() {
-    _accurateMo3CenterIntegralController = nullptr;
-  }
+  void removeMO3CenterIntegralController();
+  /**
+   * @brief Delete approximate MO3 center integral controller to free some memory or initiate reconstruction upon
+   *        call of the getter function.
+   */
+  void removeApproximateMO3CenterIntegralController();
   /**
    * @brief Getter for the approximate linear scaling MO 3 center integral controller.
    * @return The MO 3 center integral controller.
@@ -281,25 +319,12 @@ class LocalCorrelationController {
    * @param type The orbital pair type.
    * @return The orbital pairs with the given type.
    */
-  std::vector<std::shared_ptr<OrbitalPair>> getOrbitalPairs(OrbitalPairTypes type) {
-    switch (type) {
-      case OrbitalPairTypes::CLOSE:
-        return _closeOrbitalPairs;
-      case OrbitalPairTypes::DISTANT_TRIPLES:
-        return _distantOrbitalPairsTriples;
-      case OrbitalPairTypes::DISTANT:
-        return _distantOrbitalPairs;
-      case OrbitalPairTypes::VERY_DISTANT:
-        return _veryDistantOrbitalPairs;
-    }
-    assert(false && "Case not handled in switch statement");
-    return _allOrbitalPairs;
-  }
+  std::vector<std::shared_ptr<OrbitalPair>> getOrbitalPairs(OrbitalPairTypes type);
 
   /**
    * @brief Default destructor.
    */
-  ~LocalCorrelationController() = default;
+  ~LocalCorrelationController();
   /**
    * @brief Construct k-sets for the close pairs.
    */
@@ -319,9 +344,11 @@ class LocalCorrelationController {
    * @brief Produces the quasi canonical PAO constructor.
    * @param ssScaling Same spin scaling factor.
    * @param osScaling Opposite spin scaling factor.
+   * @param clear     Clear integrals and amplitures after pair energy calculation.
    * @return The QCPAO constructor.
    */
-  std::shared_ptr<QuasiCanonicalPAODomainConstructor> produceQCPAOConstructor(double ssScaling = 1.0, double osScaling = 1.0);
+  std::shared_ptr<QuasiCanonicalPAODomainConstructor> produceQCPAOConstructor(double ssScaling = 1.0,
+                                                                              double osScaling = 1.0, bool clear = true);
   /**
    * @brief Produces the triple-natural orbital constructor.
    * @return The TNO constructor.
@@ -357,7 +384,13 @@ class LocalCorrelationController {
    *        all integrals of one set can be kept in memory simultaneously.
    * @return The close orbital pair sets.
    */
-  std::vector<OrbitalPairSet> getCloseOrbitalPairSets();
+  std::vector<std::shared_ptr<OrbitalPairSet>> getCloseOrbitalPairSets();
+  /**
+   * @brief Getter for the orbital triples sets (set-wise representation of the orbital triples).
+   *        This will trigger the construction of the fitting domains for the orbital triples!
+   * @return The orbital triple sets.
+   */
+  std::vector<std::shared_ptr<OrbitalTripleSet>> getOrbitalTripleSets();
 
   /**
    * @brief Build the singles for all close pairs.
@@ -392,7 +425,8 @@ class LocalCorrelationController {
   /**
    * @brief Getter for the triples. Note that this list will depend on the prescreening done
    *        by calling functions like selectDistantOrbitalPairs() and will be updated accordingly.
-   *        Thus a copy of the pointer list is parsed and not only a reference!
+   *        Thus a copy of the pointer list is parsed and not only a reference! Note that the triples may
+   *        not be fully initialized yet!
    * @return The triples.
    */
   std::vector<std::shared_ptr<OrbitalTriple>> getOrbitalTriples() {
@@ -406,6 +440,16 @@ class LocalCorrelationController {
    *         This will lead to the calculation of all overlap matrix integrals!
    */
   std::shared_ptr<DomainOverlapMatrixController> getDomainOverlapMatrixController();
+  /**
+   * @brief Set the orbital triples list to the given list.
+   * @param triples The triples.
+   */
+  void setOrbitalTriples(std::vector<std::shared_ptr<OrbitalTriple>> triples);
+
+  const Eigen::MatrixXd& getPairEnergyMatrix();
+  void writePairEnergies(std::string postfix = "");
+
+  std::string getPairIntegralFileName();
 
  private:
   // The active system controller.
@@ -424,16 +468,22 @@ class LocalCorrelationController {
   std::shared_ptr<Eigen::MatrixXi> _distantTriplesOrbitalPairIndices;
   std::shared_ptr<Eigen::MatrixXi> _distantOrbitalPairIndices;
   std::shared_ptr<Eigen::MatrixXi> _veryDistantOrbitalPairIndices;
+  std::shared_ptr<Eigen::MatrixXi> _sparseMapClosePairIndices;
   // The sparse maps controller.
   std::shared_ptr<SparseMapsController> _sparseMapsController;
+
+  std::shared_ptr<SparseMapsController> _triplesSparseMapsController;
   // The MO 3 center integral controller.
   std::shared_ptr<MO3CenterIntegralController> _accurateMo3CenterIntegralController;
   // An approximated version of the MO 3 center integral controller with smaller fitting domains.
   std::shared_ptr<MO3CenterIntegralController> _approximateMo3CenterIntegralController;
+  // The MO3 center integral controller for the triplet integrals.
+  std::shared_ptr<MO3CenterIntegralController> _tripletMo3CenterIntegralController;
   // List of all orbital pairs.
   std::vector<std::shared_ptr<OrbitalPair>> _allOrbitalPairs;
   // List of the close orbital pairs.
   std::vector<std::shared_ptr<OrbitalPair>> _closeOrbitalPairs;
+  std::vector<std::shared_ptr<OrbitalPair>> _sparseMapConstructionPairs;
   // List of the distant orbital pairs.
   std::vector<std::shared_ptr<OrbitalPair>> _distantOrbitalPairs = {};
   std::vector<std::shared_ptr<OrbitalPair>> _distantOrbitalPairsTriples = {};
@@ -450,7 +500,7 @@ class LocalCorrelationController {
   // Construct the fock matrix.
   void constructFockMatrix();
   // Produce the PAO selecter specified in the settings.
-  std::shared_ptr<PAOSelecter> producePAOSelecter();
+  std::shared_ptr<PAOSelector> producePAOSelector();
   // Prints information about the number of PAOs per orbital.
   void printPAOInfo(const std::shared_ptr<Eigen::SparseMatrix<int>> occupiedToPAOOrbitalMap);
   // Build a list of all orbital pairs within the system.
@@ -463,17 +513,69 @@ class LocalCorrelationController {
   // Constructs the orbita pair index map for the given orbital pair type.
   Eigen::MatrixXi buildOrbitalPairIndices(OrbitalPairTypes orbitalPairType);
   // The sets of close orbital pairs.
-  std::vector<OrbitalPairSet> _closeOrbitalPairSets;
+  std::vector<std::shared_ptr<OrbitalPairSet>> _closeOrbitalPairSets;
+  // The sets of orbital triples.
+  std::vector<std::shared_ptr<OrbitalTripleSet>> _orbitalTripleSets;
   // Map between occupied orbitals and PAOs.
   std::shared_ptr<SparseMap> _occupiedToPAOOrbitalMap;
-  // Resolve PNO-macro settings.
-  void resolvePNOSettings();
-  // Check if a PNO setting was changed manually in the input.
-  void checkSetting(double& setting, double defaultValue);
-  // Check all PNO settings for manual changes.
-  void resolvePNOSettingsSet(const Eigen::VectorXd values);
   // Print PNO-settings info to the output (depends on print level).
   void printSettings();
+  // Domain construction thresholds:
+  // Fitting domains.
+  Eigen::VectorXd _orbitalWiseMullikenThresholds;
+  // Coefficient truncation.
+  Eigen::VectorXd _orbitalToShellThresholds;
+  // PAO truncation.
+  Eigen::VectorXd _orbitalWiseDOIPAOThresholds;
+  // The matrix (occ x occ) of the pair energies.
+  std::shared_ptr<Eigen::MatrixXd> _pairEnergyMatrix;
+  // Name of the pair integrals file for CCSD.
+  std::string _pairIntegralFileName = "PairIntegrals.h5";
+  /**
+   * @brief Sort the orbital pairs/triples according to their fitting domain. Grouping orbital pairs/triples into
+   *        groups that have a similar fitting domain.
+   * @tparam OrbitalTuple OrbitalPair or OrbitalTriple.
+   * @param orbitalPairs The orbital tuples to be sorted.
+   * @return The sorted list of orbital tuples.
+   */
+  template<class OrbitalTuple>
+  std::vector<std::shared_ptr<OrbitalTuple>> sortOrbitalPairs(std::vector<std::shared_ptr<OrbitalTuple>> orbitalPairs);
+  /**
+   * @brief Set the extended fitting domains for the given list of orbital pairs.
+   * @param orbitalPairs The orbital pairs.
+   * @param occToK The fitting domain map (occ to aux. function).
+   */
+  void setExtendedAuxDomain(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs, const SparseMap& occToK);
+  /**
+   * @brief Extract (get and remove from list) the orbital pair from the given list with the maximum overlap in the
+   *        fitting domain as the given reference fitting domain.
+   * @tparam OrbitalTuple OrbitalPair or OrbitalTriple.
+   * @param orbitalPairs The list of orbital triples to extract from.
+   * @param referenceDomain The reference domain.
+   * @return The orbital tuple with the maximum overlap.
+   */
+  template<class OrbitalTuple>
+  std::shared_ptr<OrbitalTuple> extractOrbitalPairWithMaxOverlapDomain(std::vector<std::shared_ptr<OrbitalTuple>>& orbitalPairs,
+                                                                       const Eigen::VectorXi& referenceDomain);
+  /**
+   * @brief Extract (get and remove from list) all orbital tuples from the given list for which the fitting domain is
+   *        fully contained in the given reference fitting domain.
+   * @tparam OrbitalTuple OrbitalPair or OrbitalTriple.
+   * @param orbitalPairs The orbital truple list to extract from.
+   * @param referenceDomain The reference fitting domain.
+   * @return The list of orbital tuples fully contained.
+   */
+  template<class OrbitalTuple>
+  std::vector<std::shared_ptr<OrbitalTuple>>
+  extractOrbitalPairsFullyContained(std::vector<std::shared_ptr<OrbitalTuple>>& orbitalPairs,
+                                    const Eigen::VectorXi& referenceDomain);
+  /**
+   * @brief Get the overlap between two fitting domains.
+   * @param domainI The first domain.
+   * @param domainJ the second domain.
+   * @return The number aux. shells in the intersection of both domains.
+   */
+  int getDomainOverlap(const Eigen::VectorXi& domainI, const Eigen::SparseVector<int>& domainJ);
 };
 
 } /* namespace Serenity */

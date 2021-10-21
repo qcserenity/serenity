@@ -21,9 +21,10 @@
 #define SYSTEMCONTROLLER_H
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-#include "settings/BasisOptions.h"               //Default arguments.
-#include "settings/ElectronicStructureOptions.h" //RESTRICTED/UNRESTRICTED
-#include "settings/GridOptions.h"                //Default arguments.
+#include "dft/functionals/CompositeFunctionals.h" //XC Functionals
+#include "settings/BasisOptions.h"                //Default arguments.
+#include "settings/ElectronicStructureOptions.h"  //RESTRICTED/UNRESTRICTED
+#include "settings/GridOptions.h"                 //Default arguments.
 /* Include Std and External Headers */
 #include <memory>
 #include <vector>
@@ -38,6 +39,7 @@ class AtomCenteredBasisController;
 class OneElectronIntegralController;
 class GridController;
 class AtomCenteredGridController;
+class CDIntegralController;
 template<Options::SCF_MODES>
 class OrbitalController;
 template<Options::SCF_MODES>
@@ -51,6 +53,7 @@ class ScfTask;
 class MolecularSurfaceController;
 template<Options::SCF_MODES>
 class ElectrostaticPotentialOnGridController;
+class IntegralCachingController;
 /**
  * @class SystemController SystemController.h
  * @brief A quite complex class managing all data associated with a System
@@ -115,9 +118,18 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   void setSCFMode(Options::SCF_MODES mode);
   /**
+   * @brief Getter for the system SCFMode.
+   * @return The SCFMode.
+   */
+  Options::SCF_MODES getSCFMode();
+  /**
    * @returns the name of the controlled molecular system. It should be unique.
    */
   std::string getSystemName();
+  /**
+   * @param name the new name.
+   */
+  void setSystemName(std::string name);
   /**
    * @returns the id of the controlled molecular system.
    */
@@ -149,6 +161,19 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   void setSpin(int spin);
   /**
+   * @brief Sets the systems electric field.
+   * @param position the field vector
+   * @param fStrength the fieldstrength
+   * @param analytical the decider if field shall be determined analytically oder numerically
+   */
+  void setElectricField(std::vector<double> position, double fStrength, bool analytical, bool use);
+  /**
+   * @brief Sets the DFT XC functional of the system.
+   *
+   * @param XCfunc the XC functional.
+   */
+  void setXCfunctional(CompositeFunctionals::XCFUNCTIONALS XCfunc);
+  /**
    * TODO this should be determined automatically
    * @brief sets the type of the last SCF Calculation
    * @param mode SCF calculation type
@@ -174,8 +199,13 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   /// @returns the charge of the molecular system
   int getCharge() const;
+  /// @return the number of core electrons/non-valence electrons from the Geometry.
+  ///         This is NOT the information stored in the orbital controller!
+  unsigned int getNCoreElectrons() const;
   /// @returns the SCF type of the last SCF Calculation, i.e. restricted or unrestricted
   enum Options::SCF_MODES getLastSCFMode() const;
+  /// @returns The SCF type assigned in the system settings.
+  enum Options::SCF_MODES getSCFMode() const;
   /**
    * @returns The expectation value of the S_z-Operator, i.e. the excess of alpha electrons over
    *          beta electrons. May also be negative, i.e. there may also be more beta electrons than
@@ -196,7 +226,7 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    *           potentials are used (the ECPs reduce the effective nuclear charges and thus also
    *           the number of electrons).
    *
-   *  See also getNCoreElectrons() in Atom.h
+   *  See also getNECPElectrons() in Atom.h
    */
   template<Options::SCF_MODES T>
   SpinPolarizedData<T, unsigned int> getNElectrons() const;
@@ -206,6 +236,9 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
   /// @returns the number of virtual molecular orbitals
   template<Options::SCF_MODES T>
   SpinPolarizedData<T, unsigned int> getNVirtualOrbitals();
+  /// @returns the number of truncated virtual molecular orbitals (only inclusion of specific virtuals)
+  template<Options::SCF_MODES T>
+  SpinPolarizedData<T, unsigned int> getNVirtualOrbitalsTruncated();
 
   /**
    * @param   basisPurpose what you want to use the basis for. May have different specifications,
@@ -300,10 +333,14 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   template<Options::SCF_MODES SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES Theory>
   std::shared_ptr<PotentialBundle<SCFMode>> getPotentials(Options::GRID_PURPOSES grid = Options::GRID_PURPOSES::DEFAULT);
+  /**
+   *  @brief Getter for the Cholesky integral Controller of the system.
+   *  @returns The Cholesky integral controller.
+   */
+  std::shared_ptr<CDIntegralController> getCDIntegralController();
   /*
    * Setters
    */
-
   /// @param electronicStructure will be used in this System from now on
   template<Options::SCF_MODES T>
   void setElectronicStructure(std::shared_ptr<ElectronicStructure<T>>);
@@ -364,14 +401,29 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   void setSystemContinuumModelMode(bool newMode);
   /**
-   * @brief Forworded getter for _settings.pcm.use.
+   * @brief Forwarded getter for _settings.pcm.use.
    */
   bool getSystemContinuumModelMode();
+  /**
+   * @brief Setter for the electronic structure method.
+   * @param method The method.
+   */
+  void setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES method);
+  /**
+   * @brief Getter for the integral caching controller, i.e. the 4-center integral cache.
+   * @return The inegral caching controller.
+   */
+  std::shared_ptr<IntegralCachingController> getIntegralCachingController();
+  /**
+   * @brief Clear the integral caching controller.
+   */
+  void clear4CenterCache();
 
  private:
   void produceBasisController(Options::BASIS_PURPOSES basisPurpose) const;
   void produceGridController(Options::GRID_PURPOSES gridPurpose) const;
   void produceMolecularSurface();
+  void produceMolecularVanDerWaalsSurface();
   template<Options::SCF_MODES SCFMode>
   void produceElectrostaticPotentialOnMolecularSurfaceController(MOLECULAR_SURFACE_TYPES surfaceType);
 
@@ -382,6 +434,9 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
 
   std::unique_ptr<ScfTask<Options::SCF_MODES::RESTRICTED>> _restrictedScfTask;
   std::unique_ptr<ScfTask<Options::SCF_MODES::UNRESTRICTED>> _unrestrictedScfTask;
+
+  std::shared_ptr<CDIntegralController> _cdIntController;
+  std::shared_ptr<IntegralCachingController> _integralCachingController;
 };
 
 } /* namespace Serenity */

@@ -21,6 +21,8 @@
 /* Include Class Header*/
 #include "potentials/EffectiveCorePotential.h"
 /* Include Serenity Internal Headers */
+#include "basis/AtomCenteredBasisController.h"
+#include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
 #include "integrals/wrappers/Libecpint.h"
 #include "system/SystemController.h"
@@ -72,12 +74,15 @@ double EffectiveCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& 
 
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd EffectiveCorePotential<SCFMode>::getGeomGradients() {
-  if (_notZero)
-    assert(false && "No implementation for ECP gradients present.");
   auto system = _system.lock();
-  Eigen::MatrixXd gradient(system->getGeometry()->getAtoms().size(), 3);
-  gradient.setZero();
-  return gradient;
+  if (_notZero) {
+    auto densMatrix = system->template getElectronicStructure<SCFMode>()->getDensityMatrix().total();
+    auto acb = std::dynamic_pointer_cast<AtomCenteredBasisController>(this->_basis);
+    return Libecpint::computeECPGradientContribution(acb, _atoms, densMatrix);
+  }
+  else {
+    return Eigen::MatrixXd::Zero(system->getGeometry()->getAtoms().size(), 3);
+  }
 }
 
 template class EffectiveCorePotential<Options::SCF_MODES::RESTRICTED>;

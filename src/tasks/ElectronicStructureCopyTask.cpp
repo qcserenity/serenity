@@ -21,6 +21,7 @@
 #include "tasks/ElectronicStructureCopyTask.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisControllerFactory.h" //Target basis construction before orbital projection.
+#include "basis/Basis.h"                              //Shell-wise rotations.
 #include "basis/BasisController.h"                    //Access to the basis.
 #include "basis/SphericalHarmonicsRotations.h"        //Rotation of spherical harmonics.
 #include "data/ElectronicStructure.h"                 //Constructor.
@@ -268,6 +269,7 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
   const CoefficientMatrix<SCFMode>& sourceCoefficients =
       _sourceSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
   const auto& sourceEigenvalues = _sourceSystem->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+  const auto& sourceCoreOrbitals = _sourceSystem->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
   // Construct internal frame for the source system.
   const std::vector<Eigen::Vector3d> sourceFrame = getInternalFrame(_sourceSystem->getGeometry());
   // Rotate the Electronic structure of the source system into the Cartesian frame by rotating the Cartesian axes.
@@ -289,6 +291,8 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
         std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(targetBasisController));
     auto eigenvaluesPtr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
         new SpinPolarizedData<SCFMode, Eigen::VectorXd>(Eigen::VectorXd::Zero(nBasisFunctions)));
+    auto coreOrbitalsPtr =
+        std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Zero(nBasisFunctions));
     // Construct the internal frame of the target system.
     const std::vector<Eigen::Vector3d> targetFrame = getInternalFrame(targetSystem->getGeometry());
     // Rotate the source coefficients, expressed in the Cartesian frame to the target frame by rotating the Cartesian
@@ -300,6 +304,7 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
     if (targetSystemSettings.basis.label == sourceBasisLabel) {
       *rotatedCoefficientsPtr = rotateMatrixIntoTargetFrame(targetFrame, sourceCoeffInCartesian, targetBasisController);
       *eigenvaluesPtr = sourceEigenvalues;
+      *coreOrbitalsPtr = sourceCoreOrbitals;
     }
     else {
       // Project the orbitals.
@@ -309,6 +314,7 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
           rotateMatrixIntoTargetFrame(targetFrame, sourceCoeffInCartesian, sourceBasisController);
       CoefficientMatrix<SCFMode>& parseCoefficients = *rotatedCoefficientsPtr;
       SpinPolarizedData<SCFMode, Eigen::VectorXd>& parseEigenvalues = *eigenvaluesPtr;
+      SpinPolarizedData<SCFMode, Eigen::VectorXi>& parseCoreOrbitals = *coreOrbitalsPtr;
       auto translatedSourceBasis = AtomCenteredBasisControllerFactory::produce(
           targetSystem->getGeometry(), targetSystemSettings.basis.basisLibPath,
           targetSystemSettings.basis.makeSphericalBasis, false, targetSystemSettings.basis.firstECP, sourceBasisLabel);
@@ -316,12 +322,14 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
       Eigen::MatrixXd targetOverlap = targetSystem->getOneElectronIntegralController()->getOverlapIntegrals(); // libint.compute1eInts(
       Eigen::JacobiSVD<Eigen::MatrixXd> svd(targetOverlap, Eigen::ComputeThinU | Eigen::ComputeThinV);
       Eigen::MatrixXd overlapSourceTarget =
-          libint.compute1eInts(libint2::Operator::overlap, translatedSourceBasis, targetBasisController);
+          libint.compute1eInts(LIBINT_OPERATOR::overlap, translatedSourceBasis, targetBasisController);
       Eigen::MatrixXd projection = svd.solve(overlapSourceTarget);
-      for_spin(rotatedCoefficients, parseCoefficients, parseEigenvalues, sourceEigenvalues) {
+      for_spin(rotatedCoefficients, parseCoefficients, parseEigenvalues, sourceEigenvalues, parseCoreOrbitals,
+               sourceCoreOrbitals) {
         parseEigenvalues_spin = Eigen::VectorXd::Constant(nBasisFunctions, std::numeric_limits<double>::infinity());
         parseCoefficients_spin.leftCols(nParsed) = projection * rotatedCoefficients_spin.leftCols(nParsed);
         parseEigenvalues_spin.segment(0, nParsed) = sourceEigenvalues_spin.segment(0, nParsed);
+        parseCoreOrbitals_spin.segment(0, nParsed) = sourceCoreOrbitals_spin.segment(0, nParsed);
       };
     }
     if (settings.orthogonalize)
@@ -329,12 +337,12 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
                                 targetSystem->getOneElectronIntegralController()->getOverlapIntegrals());
     // Construct the new electronic structure of the target system and write it to disk.
     auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
-        std::move(rotatedCoefficientsPtr), targetBasisController, std::move(eigenvaluesPtr));
+        std::move(rotatedCoefficientsPtr), targetBasisController, std::move(eigenvaluesPtr), std::move(coreOrbitalsPtr));
     auto targetElectronicStructure =
         std::make_shared<ElectronicStructure<SCFMode>>(newOrbitalController, targetSystem->getOneElectronIntegralController(),
                                                        targetSystem->template getNOccupiedOrbitals<SCFMode>());
     targetSystem->template setElectronicStructure<SCFMode>(targetElectronicStructure);
-    targetElectronicStructure->toHDF5(targetSystem->getHDF5BaseName(), targetSystem->getSettings().identifier);
+    targetElectronicStructure->toHDF5(targetSystem->getHDF5BaseName(), targetSystem->getSystemIdentifier());
     OutputControl::nOut << " done" << std::endl;
   } // for targetSystem
   OutputControl::nOut << std::endl;

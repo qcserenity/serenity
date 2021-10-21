@@ -37,9 +37,11 @@ class SystemController;
 using namespace Serenity::Reflection;
 
 struct CoupledClusterTaskSettings {
-  CoupledClusterTaskSettings() : level(Options::CC_LEVEL::CCSD), maxCycles(100), normThreshold(1e-4) {
+  CoupledClusterTaskSettings()
+    : level(Options::CC_LEVEL::CCSD), maxCycles(100), normThreshold(1e-5), writePairEnergies(false) {
+    lcSettings.enforceHFFockian = true;
   }
-  REFLECTABLE((Options::CC_LEVEL)level, (unsigned int)maxCycles, (double)normThreshold)
+  REFLECTABLE((Options::CC_LEVEL)level, (unsigned int)maxCycles, (double)normThreshold, (bool)writePairEnergies)
  public:
   LocalCorrelationSettings lcSettings;
 };
@@ -71,7 +73,7 @@ class CoupledClusterTask : public Task {
       visit_each(c, v);
     }
     else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
     }
   }
 

@@ -73,7 +73,7 @@ class PlaneFileWriter : public DataOnGridWriter {
    * @param geometry the geometry of the system printed to the dat files
    * @return returns the grid controller from the plane grid
    */
-  std::shared_ptr<GridController> writeHeaderAndCreateGrid(std::vector<string> filenames,
+  std::shared_ptr<GridController> writeHeaderAndCreateGrid(std::vector<std::string> filenames,
                                                            std::shared_ptr<const Geometry> geometry) override final;
   /**
    * @brief Writes the data calculated on the plane grid to a dat file (file

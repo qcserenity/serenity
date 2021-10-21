@@ -35,7 +35,6 @@
 #include "tasks/FreezeAndThawTask.h"
 
 namespace Serenity {
-using namespace std;
 
 HessianTask::HessianTask(std::vector<std::shared_ptr<SystemController>> activeSystems,
                          std::vector<std::shared_ptr<SystemController>> passiveSystems)
@@ -73,17 +72,17 @@ void HessianTask::run() {
     /*
      * Choose gradient calculator
      */
-    unique_ptr<HessianCalculator> hessCalc;
+    std::unique_ptr<HessianCalculator> hessCalc;
     switch (settings.hessType) {
       case Options::HESSIAN_TYPES::NUMERICAL:
         if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
-          hessCalc = unique_ptr<HessianCalculator>(
+          hessCalc = std::unique_ptr<HessianCalculator>(
               new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Numerical Hessian Calculation");
         }
         else {
-          hessCalc =
-              unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+          hessCalc = std::unique_ptr<HessianCalculator>(
+              new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Seminumerical Hessian Calculation");
         }
 
@@ -101,30 +100,29 @@ void HessianTask::run() {
     /*
      * Choose gradient calculator
      */
-    unique_ptr<HessianCalculator> hessCalc;
+    std::unique_ptr<HessianCalculator> hessCalc;
     switch (settings.hessType) {
       case Options::HESSIAN_TYPES::NUMERICAL:
         if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
-          hessCalc = unique_ptr<HessianCalculator>(
+          hessCalc = std::unique_ptr<HessianCalculator>(
               new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
 
           throw SerenityError(
-              (string) "Fully numerical FaT Hessian not available! Please try a seminumerical calculation!");
+              (std::string) "Fully numerical FaT Hessian not available! Please try a seminumerical calculation!");
         }
         else {
-          hessCalc =
-              unique_ptr<HessianCalculator>(new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+          hessCalc = std::unique_ptr<HessianCalculator>(
+              new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Seminumerical Hessian Calculation");
         }
 
         break;
       case (Options::HESSIAN_TYPES::ANALYTICAL):
-        throw SerenityError((string) "Analytical Hessian NYI!");
+        throw SerenityError((std::string) "Analytical Hessian NYI!");
         break;
     }
-    hessCalc->calcFaTHessian(_activeSystems, _passiveSystems, settings.embedding.naddKinFunc,
-                             settings.embedding.naddXCFunc, settings.FaTmaxCycles, settings.FaTenergyConvThresh,
-                             settings.FaTgridCutOff, settings.dispersion);
+    hessCalc->calcFaTHessian(_activeSystems, _passiveSystems, settings.embedding, settings.FaTmaxCycles,
+                             settings.FaTenergyConvThresh, settings.FaTgridCutOff);
   }
 
   iOOptions.printSCFCycleInfo = info;

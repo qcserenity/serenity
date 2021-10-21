@@ -23,6 +23,7 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
+#include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
 #include "io/HDF5.h"
 #include "math/saddlepoint/Bofill.h"
@@ -35,7 +36,6 @@
 #include <Eigen/Dense>
 
 namespace Serenity {
-using namespace std;
 
 TSTask::TSTask(std::shared_ptr<SystemController> ts, const std::vector<std::shared_ptr<SystemController>> env)
   : _ts(ts), _env(env) {
@@ -52,15 +52,12 @@ void TSTask::run() {
     unsigned int nAtoms = system->getGeometry()->getNAtoms();
     assert(parameters.size() == 3 * nAtoms);
     assert(gradients.size() == 3 * nAtoms);
-
     Eigen::MatrixXd coordinates = Eigen::Map<const Eigen::MatrixXd>(parameters.data(), nAtoms, 3);
     system->getGeometry()->setCoordinates(coordinates);
-
     if (print) {
       system->getGeometry()->printToFile(system->getHDF5BaseName(), system->getSystemIdentifier());
       system->getGeometry()->updateTrajFile(system->getHDF5BaseName(), value, gradients.norm());
     }
-
     ScfTask<Options::SCF_MODES::RESTRICTED> scfTask(system);
     scfTask.run();
 
@@ -70,10 +67,8 @@ void TSTask::run() {
 
     auto tmp = system->getGeometry()->getGradients();
     gradients = Eigen::Map<const Eigen::VectorXd>(tmp.data(), nAtoms * 3);
-
     value = system->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy();
   };
-
   // prepare output and save engines
   const bool io1 = iOOptions.printSCFCycleInfo;
   const bool io2 = iOOptions.printSCFResults;
@@ -81,13 +76,12 @@ void TSTask::run() {
   iOOptions.printSCFResults = false;
   iOOptions.printGridInfo = false;
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 1, 4);
-
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 1, 4);
   /* o======================o
    * |  OPTIMIZATION MODES  |
    * o======================o */
@@ -115,7 +109,6 @@ void TSTask::run() {
     Eigen::MatrixXd normalModes(3 * nAtoms, nModes);
     HDF5::load(file, "normalModes", normalModes);
     file.close();
-
     std::unique_ptr<Eigen::VectorXd> guess;
     std::unique_ptr<Eigen::VectorXd> mode(new Eigen::VectorXd(normalModes.col(settings.normalmode - 1)));
     normalModes.resize(0, 0);
@@ -127,7 +120,6 @@ void TSTask::run() {
     guess.reset(new Eigen::VectorXd(Eigen::Map<const Eigen::VectorXd>(ts.data(), 3 * nAtoms)));
     Bofill bofill(*guess, 0.3, std::move(mode));
     bofill.optimize(getData);
-
     /* =======================
      *   LST/QST then Bofill
      * ======================= */
@@ -150,7 +142,6 @@ void TSTask::run() {
     if (!settings.lst) {
       guess.reset(new Eigen::VectorXd(Eigen::Map<const Eigen::VectorXd>(ts.data(), 3 * nAtoms)));
     }
-
     // Run LST/QST and gather final tangent
     std::unique_ptr<Eigen::VectorXd> tangent;
     if (!settings.lst) {
@@ -177,15 +168,14 @@ void TSTask::run() {
   else {
     assert(false && "The amount of systems given does not fit any TS optimization mode.");
   }
-
   // Free engines and reset output
   iOOptions.printSCFCycleInfo = io1;
   iOOptions.printSCFResults = io2;
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 1, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 1, 4);
 };
 } /* namespace Serenity */

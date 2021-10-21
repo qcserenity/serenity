@@ -64,26 +64,22 @@ TEST_F(ExchangeInteractionPotentialTest, H2_dimer_FockMatrix_Restricted) {
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
       systemControllerAct->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
 
-  ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemControllerAct, dMat, 1.0, 1E-10, 0.0, 0.0, 0, false);
+  ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemControllerAct, dMat, 1.0,
+                                                       basis->getPrescreeningThreshold(), 0.0, 0.0, 0, false);
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> FNoInt = coulPot.getMatrix();
 
   std::vector<std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>>> dMatAct;
   dMatAct.push_back(systemControllerAct->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController());
 
-  ExchangeInteractionPotential<Options::SCF_MODES::RESTRICTED> potential2(basis, dMatAct, 1.0, 1E-10);
+  ExchangeInteractionPotential<Options::SCF_MODES::RESTRICTED> potential2(basis, dMatAct, 1.0,
+                                                                          basis->getPrescreeningThreshold());
   CoulombInteractionPotential<Options::SCF_MODES::RESTRICTED> potential3(systemControllerAct, {systemControllerEnv},
                                                                          basis, dMatAct);
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> FInt = potential2.getMatrix();
   FockMatrix<Options::SCF_MODES::RESTRICTED> FInt2 = potential3.getMatrix();
   FockMatrix<Options::SCF_MODES::RESTRICTED> FInt3 = FInt + FInt2;
-
-  //        for_spin(FNoInt,FInt3){
-  //          std::cout << FNoInt_spin << std::endl;
-  //          std::cout << "-----" << std::endl;
-  //          std::cout << FInt3_spin << std::endl;
-  //        };
 
   EXPECT_NEAR(FNoInt(0, 0), FInt3(0, 0), 1e-5);
   EXPECT_NEAR(FNoInt(1, 0), FInt3(1, 0), 1e-5);
@@ -104,7 +100,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2_dimer_FockMatrix_Unrestricted) {
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMat =
       systemControllerAct->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController();
 
-  ERIPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemControllerAct, dMat, 1.0, 1E-10, 0.0, 0.0, 0, false);
+  ERIPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemControllerAct, dMat, 1.0,
+                                                         basis->getPrescreeningThreshold(), 0.0, 0.0, 0, false);
 
   FockMatrix<Options::SCF_MODES::UNRESTRICTED> FNoInt = coulPot.getMatrix();
 
@@ -112,7 +109,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2_dimer_FockMatrix_Unrestricted) {
   dMatAct.push_back(
       systemControllerAct->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController());
 
-  ExchangeInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential2(basis, dMatAct, 1.0, 1E-10);
+  ExchangeInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential2(basis, dMatAct, 1.0,
+                                                                            basis->getPrescreeningThreshold());
   CoulombInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential3(systemControllerAct, {systemControllerEnv},
                                                                            basis, dMatAct);
 
@@ -137,7 +135,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2_dimer_FockMatrix_Triplett) {
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMat =
       systemControllerAct->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController();
 
-  ERIPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemControllerAct, dMat, 1.0, 1E-10, 0.0, 0.0, 0, false);
+  ERIPotential<Options::SCF_MODES::UNRESTRICTED> coulPot(systemControllerAct, dMat, 1.0,
+                                                         basis->getPrescreeningThreshold(), 0.0, 0.0, 0, false);
 
   FockMatrix<Options::SCF_MODES::UNRESTRICTED> FNoInt = coulPot.getMatrix();
 
@@ -145,7 +144,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2_dimer_FockMatrix_Triplett) {
   dMatAct.push_back(
       systemControllerAct->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController());
 
-  ExchangeInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential2(basis, dMatAct, 1.0, 1E-10);
+  ExchangeInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential2(basis, dMatAct, 1.0,
+                                                                            basis->getPrescreeningThreshold());
   CoulombInteractionPotential<Options::SCF_MODES::UNRESTRICTED> potential3(systemControllerAct, {systemControllerEnv},
                                                                            basis, dMatAct);
 
@@ -169,7 +169,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2O_FockMatrix) {
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
       systemControllerWater->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
 
-  ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemControllerWater, dMat, 1.0, 1E-10, 0.0, 0.0, 0);
+  ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(systemControllerWater, dMat, 1.0,
+                                                       basis->getPrescreeningThreshold(), 0.0, 0.0, 0);
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> FNoInt = coulPot.getMatrix();
 
@@ -177,7 +178,8 @@ TEST_F(ExchangeInteractionPotentialTest, H2O_FockMatrix) {
   dMatAct.push_back(
       systemControllerWater->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController());
 
-  ExchangeInteractionPotential<Options::SCF_MODES::RESTRICTED> potential2(basis, dMatAct, 1.0, 1E-10);
+  ExchangeInteractionPotential<Options::SCF_MODES::RESTRICTED> potential2(basis, dMatAct, 1.0,
+                                                                          basis->getPrescreeningThreshold());
   CoulombInteractionPotential<Options::SCF_MODES::RESTRICTED> potential3(systemControllerAct, {systemControllerEnv},
                                                                          basis, dMatAct);
 

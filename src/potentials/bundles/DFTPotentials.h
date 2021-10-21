@@ -22,14 +22,20 @@
 #define POTENTIALS_BUNDLES_DFTPOTENTIALS_H_
 
 /* Include Serenity Internal Headers */
-#include "geometry/Geometry.h"
-#include "potentials/FuncPotential.h"
-#include "potentials/Potential.h"
 #include "potentials/bundles/PotentialBundle.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
+/* Forward Declarations */
+class Geometry;
+template<Options::SCF_MODES SCFMode>
+class Potential;
+template<Options::SCF_MODES SCFMode>
+class FuncPotential;
+template<Options::SCF_MODES SCFMode>
+class DensityMatrixController;
+
 /**
  * @class DFTPotentials DFTPotentials.h
  * @brief A class containing all the potentials relevant for a KS-DFT-SCF.
@@ -42,7 +48,7 @@ class DFTPotentials : public PotentialBundle<SCFMode> {
    * @param hcore                 The one electron potential.
    * @param J                     The Coulomb potential.
    * @param Vxc                   The exchange-correlation potential coming from a functional.
-   * @param                       The implicit solvent model.
+   * @param pcm                   The implicit solvent model.
    * @param geom                  The geometry.
    * @param dMatController        The density matrix controller.
    * @param prescreeningThreshold The integral prescreening threshold.

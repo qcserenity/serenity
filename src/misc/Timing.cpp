@@ -26,34 +26,33 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
-void printTime(const long int time, const string label) {
+void printTime(const long int time, const std::string label) {
   double timeTakenInSeconds = double(time) * 0.000000001;
   if (timeTakenInSeconds > 60.0) {
     int timeTakenInMinutes = (int)(timeTakenInSeconds / 60);
-    print((string) "Time taken for " + label + ": " + timeTakenInMinutes + ":" +
+    print((std::string) "Time taken for " + label + ": " + timeTakenInMinutes + ":" +
           (timeTakenInSeconds - (60 * timeTakenInMinutes)) + " min.");
   }
   else {
-    print((string) "Time taken for " + label + ": " + timeTakenInSeconds + " s.");
+    print((std::string) "Time taken for " + label + ": " + timeTakenInSeconds + " s.");
   }
   print("");
 }
 
-void takeTime(const string label) {
+void takeTime(const std::string label) {
   if (STARTING_TIMES.find(label) == STARTING_TIMES.end()) {
     timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     STARTING_TIMES.emplace(label, ts);
   }
   else {
-    cout << "Small error: You try to add a timer with a label which is already present." << endl;
-    cout << "Your label is " << label << "." << endl;
+    std::cout << "Small error: You try to add a timer with a label which is already present." << std::endl;
+    std::cout << "Your label is " << label << "." << std::endl;
   }
 }
 
-void timeTaken(const unsigned int printLevel, string label) {
+void timeTaken(const unsigned int printLevel, std::string label) {
   if (STARTING_TIMES.find(label) != STARTING_TIMES.end()) {
     timespec startingTime = STARTING_TIMES[label];
     timespec endTime;
@@ -64,24 +63,25 @@ void timeTaken(const unsigned int printLevel, string label) {
     STARTING_TIMES.erase(label);
   }
   else {
-    cout << "Small error: you want to print a timing of something of which there is no starting time stored." << endl;
-    cout << "Maybe you already printed its timing (which stops the timer)? The label is " << label << "." << endl;
+    std::cout << "Small error: you want to print a timing of something of which there is no starting time stored."
+              << std::endl;
+    std::cout << "Maybe you already printed its timing (which stops the timer)? The label is " << label << "." << std::endl;
   }
 }
 
-void Timings::takeTime(const string label) {
+void Timings::takeTime(const std::string label) {
   if (STARTING_TIMES.find(label) == STARTING_TIMES.end()) {
     timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     _tmpTimings.emplace(label, ts);
   }
   else {
-    cout << "Small error: You try to add a timer with a label which is already present." << endl;
-    cout << "Your label is " << label << "." << endl;
+    std::cout << "Small error: You try to add a timer with a label which is already present." << std::endl;
+    std::cout << "Your label is " << label << "." << std::endl;
   }
 }
 
-void Timings::timeTaken(string label) {
+void Timings::timeTaken(std::string label) {
   if (_tmpTimings.find(label) != _tmpTimings.end()) {
     timespec starttime = _tmpTimings[label];
     timespec time;
@@ -98,8 +98,9 @@ void Timings::timeTaken(string label) {
     _tmpTimings.erase(label);
   }
   else {
-    cout << "Small error: you want to print a timing of something of which there is no starting time stored." << endl;
-    cout << "Maybe you already printed its timing (which stops the timer)? The label is " << label << "." << endl;
+    std::cout << "Small error: you want to print a timing of something of which there is no starting time stored."
+              << std::endl;
+    std::cout << "Maybe you already printed its timing (which stops the timer)? The label is " << label << "." << std::endl;
   }
 }
 

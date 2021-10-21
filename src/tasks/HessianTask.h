@@ -42,7 +42,6 @@ struct HessianTaskSettings {
       numHessStepSize(0.001),
       numGradStepSize(0.001),
       printToFile(true),
-      dispersion(Options::DFT_DISPERSION_CORRECTIONS::NONE),
       FaTmaxCycles(50),
       FaTenergyConvThresh(1.0e-6),
       FaTexactNaddKin(false),
@@ -52,8 +51,8 @@ struct HessianTaskSettings {
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   }
   REFLECTABLE((Options::GRADIENT_TYPES)gradType, (Options::HESSIAN_TYPES)hessType, (double)numHessStepSize,
-              (double)numGradStepSize, (bool)printToFile, (Options::DFT_DISPERSION_CORRECTIONS)dispersion,
-              (int)FaTmaxCycles, (double)FaTenergyConvThresh, (bool)FaTexactNaddKin, (double)FaTgridCutOff)
+              (double)numGradStepSize, (bool)printToFile, (int)FaTmaxCycles, (double)FaTenergyConvThresh,
+              (bool)FaTexactNaddKin, (double)FaTgridCutOff)
  public:
   EmbeddingSettings embedding;
 };
@@ -87,7 +86,7 @@ class HessianTask : public Task {
       visit_each(c, v);
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
+      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
     }
   }
   /**
@@ -95,7 +94,7 @@ class HessianTask : public Task {
    *        - gradType: The type of the gradient. The following options are available:
    *          - NUMERICAL
    *          - ANALYTICAL (default)
-   *          - hessType: The type of the hessian. The following options are available:
+   *        - hessType: The type of the hessian. The following options are available:
    *          - NUMERICAL (default)
    *          - ANALYTICAL
    *        - numGradStepSize: The displacement step size used for construction of the numerical gradient (default 0.05)

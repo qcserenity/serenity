@@ -20,7 +20,6 @@
 #ifndef POSTSCF_LOCALIZATIONFUNCTIONS_SEDD_H_
 #define POSTSCF_LOCALIZATIONFUNCTIONS_SEDD_H_
 /* Include Serenity Internal Headers */
-//#include "settings/Options.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>

@@ -25,7 +25,6 @@
 #include <iostream>
 
 namespace Serenity {
-using namespace std;
 
 /**
  * @test

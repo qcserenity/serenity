@@ -24,6 +24,7 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "integrals/OneElectronIntegralController.h"
+#include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
 #include "parameters/Constants.h"
 #include "potentials/bundles/EDAPotentials.h"
@@ -47,9 +48,9 @@ EDATask<SCFMode>::EDATask(std::vector<std::shared_ptr<SystemController>> systems
 template<Options::SCF_MODES SCFMode>
 void EDATask<SCFMode>::run() {
   auto& libint = Libint::getInstance();
-  libint.keepEngines(libint2::Operator::coulomb, 0, 2);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 3);
-  libint.keepEngines(libint2::Operator::coulomb, 0, 4);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
 
   _systemA->getElectronicStructure<SCFMode>();
   _systemB->getElectronicStructure<SCFMode>();
@@ -108,9 +109,9 @@ void EDATask<SCFMode>::run() {
          _systemB->template getElectronicStructure<SCFMode>()->getEnergy();
     eInt = super->template getElectronicStructure<SCFMode>()->getEnergy() - e0;
   }
-  libint.freeEngines(libint2::Operator::coulomb, 0, 2);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 3);
-  libint.freeEngines(libint2::Operator::coulomb, 0, 4);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
 
   // Calculate and print final energies.
   double eMix(eInt + e0 - eESXEX - eESPL - eESXCT - eESXPLX + 2.0 * eESX + eESPL);

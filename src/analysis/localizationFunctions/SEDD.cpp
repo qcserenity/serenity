@@ -29,7 +29,6 @@
 #include "system/SystemController.h"
 
 namespace Serenity {
-using namespace std;
 
 template<Options::SCF_MODES SPIN>
 std::function<Eigen::VectorXd(std::shared_ptr<GridController>)>

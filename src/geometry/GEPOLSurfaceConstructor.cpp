@@ -21,6 +21,7 @@
 #include "geometry/GEPOLSurfaceConstructor.h"
 /* Include Serenity Internal Headers */
 #include "geometry/Atom.h"
+#include "geometry/MolecularSurface.h"
 #include "geometry/Point.h"
 #include "geometry/Sphere.h"
 #include "geometry/Triangle.h"
@@ -46,18 +47,22 @@ GEPOLSurfaceConstructor::GEPOLSurfaceConstructor(std::vector<Sphere> spheres, bo
 
 GEPOLSurfaceConstructor::~GEPOLSurfaceConstructor() = default;
 
-std::shared_ptr<GridController> GEPOLSurfaceConstructor::getSurfaceGrid() {
-  if (!_initialized)
+std::unique_ptr<MolecularSurface> GEPOLSurfaceConstructor::getMolecularSurface() {
+  if (!_initialized) {
     initializeSurface();
-  return _surfaceGrid;
+  }
+  if (!_surface)
+    throw SerenityError(
+        "ERROR: Logic error in GEPOL Surface construction. The molecular surface is not available any more!");
+  return std::move(_surface);
 }
 
 void GEPOLSurfaceConstructor::checkTriangleCenter(bool& withinSurface, bool& intersected, const Triangle& triangle,
-                                                  const double& effSolvRad) {
+                                                  const double& effSolvRad, const std::vector<Sphere>& spheres) {
   const Point& center = triangle.getCenter();
   withinSurface = false;
   intersected = false;
-  for (auto sphere : _spheres) {
+  for (auto sphere : spheres) {
     double dist = (center - sphere.getCenter()).distanceToOrigin();
     double cutOff = sphere.getRadius() + effSolvRad;
     if ((dist - cutOff) < -1e-9) {
@@ -76,16 +81,17 @@ void GEPOLSurfaceConstructor::checkTriangleCenter(bool& withinSurface, bool& int
   }
 }
 
-std::vector<Triangle> GEPOLSurfaceConstructor::patchIntersection(const Triangle& triangle, double effSolvRad, int patchLevel) {
+std::vector<Triangle> GEPOLSurfaceConstructor::patchIntersection(const Triangle& triangle, double effSolvRad,
+                                                                 int patchLevel, const std::vector<Sphere>& spheres) {
   std::vector<Triangle> triangles = {};
   bool withinSurface, intersected;
-  checkTriangleCenter(withinSurface, intersected, triangle, effSolvRad);
+  checkTriangleCenter(withinSurface, intersected, triangle, effSolvRad, spheres);
   if (withinSurface)
     return triangles;
   if (intersected and patchLevel > 0) {
     auto calvedTriangles = triangle.calve(true);
     for (auto tri : calvedTriangles) {
-      auto patchedTriangles = patchIntersection(tri, effSolvRad, patchLevel - 1);
+      auto patchedTriangles = patchIntersection(tri, effSolvRad, patchLevel - 1, spheres);
       for (auto patch : patchedTriangles)
         triangles.push_back(patch);
     }
@@ -96,20 +102,20 @@ std::vector<Triangle> GEPOLSurfaceConstructor::patchIntersection(const Triangle&
   return triangles;
 }
 
-void GEPOLSurfaceConstructor::buildSurface() {
+void GEPOLSurfaceConstructor::buildSurface(const std::vector<Sphere>& spheres) {
   std::vector<Triangle> allTriangles;
   std::vector<double> allRadii;
   std::vector<Point> allSphereCenters;
   std::vector<double> allAreas;
   double effSolvRad = (_isSAS) ? _solvRad : 0.0;
 
-  for (auto sphere : _spheres) {
+  for (auto sphere : spheres) {
     std::vector<Triangle> triangles = sphere.getSolventAccessibleSurface(effSolvRad);
     allTriangles.insert(allTriangles.end(), triangles.begin(), triangles.end());
   }
   std::vector<Triangle> screenedTriangles = {};
   for (auto triangle : allTriangles) {
-    auto patchedTriangles = patchIntersection(triangle, effSolvRad, _calveLevel);
+    auto patchedTriangles = patchIntersection(triangle, effSolvRad, _calveLevel, spheres);
     for (auto patch : patchedTriangles)
       screenedTriangles.push_back(patch);
   }
@@ -128,12 +134,12 @@ void GEPOLSurfaceConstructor::buildSurface() {
     if (nonClose)
       _molecularSurface.push_back(tri);
   }
-  std::unique_ptr<Eigen::Matrix3Xd> centerCoordinates(new Eigen::Matrix3Xd(3, _molecularSurface.size()));
-  std::unique_ptr<Eigen::VectorXd> triangleAreas(new Eigen::VectorXd(_molecularSurface.size()));
-  _normalVectors = std::make_unique<Eigen::Matrix3Xd>(3, _molecularSurface.size());
+  auto centerCoordinates = std::make_unique<Eigen::Matrix3Xd>(3, _molecularSurface.size());
+  auto triangleAreas = std::make_unique<Eigen::VectorXd>(_molecularSurface.size());
+  auto normalVectors = std::make_unique<Eigen::Matrix3Xd>(3, _molecularSurface.size());
   auto& coordinates = *centerCoordinates;
   auto& areas = *triangleAreas;
-  auto& normVectors = *_normalVectors;
+  auto& normVectors = *normalVectors;
   for (unsigned int i = 0; i < _molecularSurface.size(); ++i) {
     Triangle& triangle = _molecularSurface[i];
     const Point& center = triangle.getCenter();
@@ -143,72 +149,61 @@ void GEPOLSurfaceConstructor::buildSurface() {
     normVectors.col(i) = triangle.getNormVector();
     areas(i) = triangle.getArea(4);
   }
-  _surfaceGrid = std::make_shared<GridController>(
-      std::unique_ptr<Grid>(new Grid(std::move(centerCoordinates), std::move(triangleAreas))));
+  std::string label = (_isSAS) ? "GEPOL-SAS" : "GEPOL-SES";
+  // TODO  Keep track of the triangle centers ...
+  std::vector<std::pair<unsigned int, unsigned int>> sphereIndices = {};
+  std::vector<unsigned int> pointWiseIndicesOfSpheres = {};
+  _surface = std::make_unique<MolecularSurface>(std::move(centerCoordinates), std::move(triangleAreas),
+                                                std::move(normalVectors), label, sphereIndices,
+                                                pointWiseIndicesOfSpheres, _solvRad, spheres);
 }
 
-const std::vector<Triangle>& GEPOLSurfaceConstructor::getTriangles() {
-  if (!_initialized)
-    initializeSurface();
-  return _molecularSurface;
-}
-
-const std::vector<Sphere>& GEPOLSurfaceConstructor::getSpheres() {
-  if (!_initialized)
-    initializeSurface();
-  return _spheres;
-}
 void GEPOLSurfaceConstructor::initializeSurface() {
-  addSpheres(true);
-  addSpheres(false);
-  buildSurface();
+  auto spheres = _spheres;
+  addSpheres(true, spheres);
+  addSpheres(false, spheres);
+  buildSurface(spheres);
   _initialized = true;
 }
 
-const Eigen::Matrix3Xd& GEPOLSurfaceConstructor::getNormVectors() {
-  if (!_initialized)
-    initializeSurface();
-  return *_normalVectors;
-}
-
-void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
+void GEPOLSurfaceConstructor::addSpheres(bool coarse, std::vector<Sphere>& spheres) {
   while (true) {
     unsigned int nSpheresOld = 0;
-    unsigned int nSpheres = _spheres.size();
+    unsigned int nSpheres = spheres.size();
     for (unsigned int A = nSpheresOld; A < nSpheres; A++) {
       /*
        * Spheres with zero area do not contribute to
        * surface generation.
        */
-      if (_spheres[A].getSphereType() == SphereType::ZeroArea)
+      if (spheres[A].getSphereType() == SphereType::ZeroArea)
         continue;
       for (unsigned int B = 0; B < A; B++) {
         /*
          * Spheres with zero area do not contribute to
          * to surface generation.
          */
-        if (_spheres[B].getSphereType() == SphereType::ZeroArea)
+        if (spheres[B].getSphereType() == SphereType::ZeroArea)
           continue;
         /*
          * Get the data of the two spheres. Distinguish
          * between smaller and bigger sphere.
          */
-        double dist = _spheres[A].distanceTo(_spheres[B]);
+        double dist = spheres[A].distanceTo(spheres[B]);
         double smallRad = 0;
         double bigRad = 0;
         Point smallCenter(0, 0, 0);
         Point bigCenter(0, 0, 0);
-        if (_spheres[A].getRadius() <= _spheres[B].getRadius()) {
-          smallRad = _spheres[A].getRadius();
-          bigRad = _spheres[B].getRadius();
-          smallCenter = _spheres[A].getCenter();
-          bigCenter = _spheres[B].getCenter();
+        if (spheres[A].getRadius() <= spheres[B].getRadius()) {
+          smallRad = spheres[A].getRadius();
+          bigRad = spheres[B].getRadius();
+          smallCenter = spheres[A].getCenter();
+          bigCenter = spheres[B].getCenter();
         }
         else {
-          smallRad = _spheres[B].getRadius();
-          bigRad = _spheres[A].getRadius();
-          smallCenter = _spheres[B].getCenter();
-          bigCenter = _spheres[A].getCenter();
+          smallRad = spheres[B].getRadius();
+          bigRad = spheres[A].getRadius();
+          smallCenter = spheres[B].getCenter();
+          bigCenter = spheres[A].getCenter();
         }
         /*
          * Check if solvent can pass through pair of spheres.
@@ -285,7 +280,7 @@ void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
          * Check if the newSphere is valid by several criteria
          */
         for (unsigned C = 0; C < nSpheres; C++) {
-          Sphere otherSphere = _spheres[C];
+          Sphere otherSphere = spheres[C];
           dist = newSphere.distanceTo(otherSphere);
           /*
            * Boolean to check whether a sphere from the original
@@ -310,7 +305,7 @@ void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
            */
           if ((dist * dist) < ((smallRad - bigRad) * (smallRad - bigRad))) {
             if (markedToDeath)
-              _spheres[C].setSphereType(SphereType::Engulfed);
+              spheres[C].setSphereType(SphereType::Engulfed);
             else {
               save = false;
               break;
@@ -341,7 +336,7 @@ void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
           for (auto point : surfacePoints) {
             bool isOutsideSurface = true;
             for (unsigned C = 0; C < nSpheres; C++) {
-              Sphere otherSphere = _spheres[C];
+              Sphere otherSphere = spheres[C];
               /*
                * Check if point is within allowed distance (=sphereRadius+solvRadius).
                * If true, this point is within the surface.
@@ -373,7 +368,7 @@ void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
            * I am a merciful god.
            */
           if (!accessibleSurfaceContr and save)
-            _spheres.push_back(newSphere);
+            spheres.push_back(newSphere);
         }
       }
     }
@@ -386,14 +381,14 @@ void GEPOLSurfaceConstructor::addSpheres(bool coarse) {
      * Delete engulfed spheres.
      */
     unsigned int i = 0;
-    for (std::vector<Sphere>::iterator it = _spheres.begin(); it < _spheres.end(); ++it) {
-      if (_spheres[i].getSphereType() == SphereType::Engulfed) {
-        _spheres.erase(it);
+    for (std::vector<Sphere>::iterator it = spheres.begin(); it < spheres.end(); ++it) {
+      if (spheres[i].getSphereType() == SphereType::Engulfed) {
+        spheres.erase(it);
       }
       i++;
     }
     nSpheresOld = nSpheres;
-    nSpheres = _spheres.size();
+    nSpheres = spheres.size();
 
     /*
      * Check if new spheres were added. If not: Stop

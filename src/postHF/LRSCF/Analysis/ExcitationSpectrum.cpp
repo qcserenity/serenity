@@ -21,94 +21,154 @@
 #include "postHF/LRSCF/Analysis/ExcitationSpectrum.h"
 
 /* Include Serenity Internal Headers */
+#include "parameters/Constants.h"
+#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
+
+/* Include External Headers */
+#include <fstream>
+#include <iomanip>
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-void ExcitationSpectrum<SCFMode>::printSpectrum(const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
-                                                const std::vector<Eigen::MatrixXd>& eigenvectors,
-                                                const Eigen::VectorXd& eigenvalues) {
-  // Get dipole integrals
-  auto dip_l = dipoles->getLengths();
-  auto dip_v = dipoles->getVelocities();
-  auto dip_m = dipoles->getMagnetics();
+void ExcitationSpectrum<SCFMode>::printSpectrum(Options::LR_METHOD method,
+                                                const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
+                                                const std::vector<Eigen::MatrixXd>& densityMatrices,
+                                                const Eigen::VectorXd& eigenvalues, Eigen::Ref<Eigen::MatrixXd> results,
+                                                std::string fileName) {
+  // Get dipole integrals.
+  Eigen::MatrixXcd dip_l = std::complex<double>(1, 0) * (*dipoles->getLengths());
+  Eigen::MatrixXcd dip_v = std::complex<double>(0, 1) * (*dipoles->getVelocities());
+  Eigen::MatrixXcd dip_m = std::complex<double>(0, 1) * (*dipoles->getMagnetics());
 
-  // Calculate (X+Y) and (X-Y) excitation vector
-  Eigen::MatrixXd xpy = eigenvectors[0];
-  Eigen::MatrixXd xmy = eigenvectors[0];
-  if (eigenvectors.size() == 2) {
-    xpy += eigenvectors[1];
-    xmy -= eigenvectors[1];
+  unsigned nEigen = eigenvalues.size();
+
+  /**
+   * Transition strength matrices for each excitation
+   * Operators:
+   *   l = electric dipole (length)
+   *   p = electric dipole (velocity)
+   *   m = magnetic dipole
+   */
+  std::vector<Eigen::Matrix3d> S_ll(nEigen);
+  std::vector<Eigen::Matrix3d> S_lv(nEigen);
+  std::vector<Eigen::Matrix3d> S_vv(nEigen);
+  std::vector<Eigen::Matrix3d> S_lm(nEigen);
+  std::vector<Eigen::Matrix3d> S_vm(nEigen);
+
+  // Matrices to store transition moments in.
+  Eigen::MatrixXcd len_R, vel_R, mag_R;
+  Eigen::MatrixXcd len_L, vel_L, mag_L;
+
+  double factor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? std::sqrt(2) : 1.0;
+
+  // Calculate left and right transition moments.
+  if (method == Options::LR_METHOD::CC2 || method == Options::LR_METHOD::CISDINF) {
+    // <0|O|n>, O in (mu, p, m).
+    len_R = factor * dip_l.transpose() * densityMatrices[0];
+    vel_R = factor * dip_v.transpose() * densityMatrices[0] * eigenvalues.cwiseInverse().asDiagonal();
+    mag_R = factor / SPEEDOFLIGHT_AU * dip_m.transpose() * densityMatrices[0];
+
+    // <n|O|0>, O in (mu, p, m).
+    len_L = factor * densityMatrices[1].transpose() * dip_l;
+    vel_L = factor * eigenvalues.cwiseInverse().asDiagonal() * densityMatrices[1].transpose() * dip_v;
+    mag_L = factor / SPEEDOFLIGHT_AU * densityMatrices[1].transpose() * dip_m;
+  }
+  else {
+    // <0|O|n>, O in (mu, p, m).
+    len_R = factor * dip_l.adjoint() * densityMatrices[0];
+    vel_R = factor * dip_v.adjoint() * densityMatrices[1];
+    mag_R = factor / SPEEDOFLIGHT_AU * dip_m.adjoint() * densityMatrices[1];
+
+    // Write transition strengths to disk.
+    if (fileName != "") {
+      Eigen::MatrixXd exspectrum = Eigen::MatrixXd::Zero(10, nEigen);
+      exspectrum.row(0) = eigenvalues;
+      exspectrum.middleRows(1, 3) = len_R.real();
+      exspectrum.middleRows(4, 3) = vel_R.imag();
+      exspectrum.middleRows(7, 3) = mag_R.imag();
+
+      std::ofstream file(fileName + ".exspectrum.txt");
+      file << std::scientific << std::setprecision(15) << exspectrum;
+      file.close();
+    }
+
+    // Scale velocity transition moments.
+    vel_R *= eigenvalues.cwiseInverse().asDiagonal();
+
+    // <n|O|0>, O in (mu, p, m).
+    len_L = len_R.adjoint();
+    vel_L = vel_R.adjoint();
+    mag_L = mag_R.adjoint();
   }
 
-  const double factor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? std::sqrt(2) : 1.0;
-
-  // Transition dipole moments (<0|O|n>) where O in mu, p , m
-  Eigen::MatrixXd tdm_l = factor * xpy.transpose() * (*dip_l);
-  Eigen::MatrixXd tdm_v = factor * xmy.transpose() * (*dip_v);
-  Eigen::MatrixXd tdm_m = factor / SPEEDOFLIGHT_AU * xmy.transpose() * (*dip_m);
-  for (unsigned int iState = 0; iState < tdm_v.rows(); iState++)
-    tdm_v.row(iState) /= eigenvalues(iState);
-
-  // Oscillator and Rotatory Strenghts
-  Eigen::VectorXd os_l(eigenvalues.rows());
-  Eigen::VectorXd os_v(eigenvalues.rows());
-  Eigen::VectorXd rs_l(eigenvalues.rows());
-  Eigen::VectorXd rs_v(eigenvalues.rows());
-  for (unsigned int iState = 0; iState < tdm_l.rows(); ++iState) {
-    os_l(iState) = 2.0 / 3.0 * eigenvalues(iState) * tdm_l.row(iState).array().square().sum();
-    os_v(iState) = 2.0 / 3.0 * eigenvalues(iState) * tdm_v.row(iState).array().square().sum();
-    // R = Im<0|mu|n><n|m|0> = Im<0|mu|n>(<n|m|0>)^* = Im<0|mu|n>(-<0|m|n>)
-    rs_l(iState) = tdm_l.row(iState).dot(-tdm_m.row(iState));
-    rs_v(iState) = tdm_v.row(iState).dot(-tdm_m.row(iState));
+  // Calculate transition strengths.
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    S_ll[iEigen] = 0.5 * ((len_R.col(iEigen) * len_L.row(iEigen)) + (len_R.col(iEigen) * len_L.row(iEigen)).adjoint()).real();
+    S_lv[iEigen] = 0.5 * ((len_R.col(iEigen) * vel_L.row(iEigen)) + (vel_R.col(iEigen) * len_L.row(iEigen)).adjoint()).imag();
+    S_vv[iEigen] = 0.5 * ((vel_R.col(iEigen) * vel_L.row(iEigen)) + (vel_R.col(iEigen) * vel_L.row(iEigen)).adjoint()).real();
+    S_lm[iEigen] = 0.5 * ((len_R.col(iEigen) * mag_L.row(iEigen)) + (mag_R.col(iEigen) * len_L.row(iEigen)).adjoint()).imag();
+    S_vm[iEigen] = 0.5 * ((vel_R.col(iEigen) * mag_L.row(iEigen)) + (mag_R.col(iEigen) * vel_L.row(iEigen)).adjoint()).real();
   }
 
-  // Print spectra
-  printf("---------------------------------------------------------------------------------------\n");
+  // Oscillator and rotator strengths.
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    results(iEigen, 0) = eigenvalues(iEigen);
+    // Oscillator Strength (length)
+    results(iEigen, 1) = 2.0 / 3.0 * eigenvalues(iEigen) * S_ll[iEigen].trace();
+    // Oscillator Strength (velocity)
+    results(iEigen, 2) = 2.0 / 3.0 * eigenvalues(iEigen) * S_vv[iEigen].trace();
+    // Rotator Strength (length)
+    results(iEigen, 3) = S_lm[iEigen].trace();
+    // Rotator Strength (velocity)
+    results(iEigen, 4) = S_vm[iEigen].trace();
+  }
+
+  // print spectra
   printf("                          Absorption Spectrum (dipole-length)                          \n");
   printf("---------------------------------------------------------------------------------------\n");
-  printf(" state        energy        wavelength    fosc      mu**2     mu_x     mu_y     mu_z   \n");
-  printf("          (eV)      (cm-1)     (nm)       (au)     (au**2)    (au)     (au)     (au)   \n");
+  printf(" state       energy      wavelength        fosc          Sxx        Syy        Szz     \n");
+  printf("              (eV)          (nm)           (au)                    (au)                \n");
   printf("---------------------------------------------------------------------------------------\n");
-  for (unsigned int iState = 0; iState < eigenvalues.rows(); ++iState) {
-    printf(" %3i %10.4f %10.1f %8.1f %12.6f %9.4f %8.4f %8.4f %8.4f\n", iState + 1, eigenvalues(iState) * HARTREE_TO_EV,
-           eigenvalues(iState) * HARTREE_TO_OOCM, HARTREE_TO_NM / eigenvalues(iState), os_l(iState),
-           tdm_l.row(iState).array().square().sum(), tdm_l(iState, 0), tdm_l(iState, 1), tdm_l(iState, 2));
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    printf(" %3i %15.5f %12.1f %15.6f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), results(iEigen, 1), S_ll[iEigen](0, 0), S_ll[iEigen](1, 1),
+           S_ll[iEigen](2, 2));
   }
   printf("---------------------------------------------------------------------------------------\n");
   printf("                         Absorption Spectrum (dipole-velocity)                         \n");
   printf("---------------------------------------------------------------------------------------\n");
-  printf(" state        energy        wavelength    fosc      mu**2     mu_x     mu_y     mu_z   \n");
-  printf("          (eV)      (cm-1)     (nm)       (au)     (au**2)    (au)     (au)     (au)   \n");
+  printf(" state       energy      wavelength        fosc          Sxx        Syy        Szz     \n");
+  printf("              (eV)          (nm)           (au)                    (au)                \n");
   printf("---------------------------------------------------------------------------------------\n");
-  for (unsigned int iState = 0; iState < eigenvalues.rows(); ++iState) {
-    printf(" %3i %10.4f %10.1f %8.1f %12.6f %9.4f %8.4f %8.4f %8.4f\n", iState + 1, eigenvalues(iState) * HARTREE_TO_EV,
-           eigenvalues(iState) * HARTREE_TO_OOCM, HARTREE_TO_NM / eigenvalues(iState), os_v(iState),
-           tdm_v.row(iState).array().square().sum(), tdm_v(iState, 0), tdm_v(iState, 1), tdm_v(iState, 2));
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    printf(" %3i %15.5f %12.1f %15.6f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), results(iEigen, 2), S_vv[iEigen](0, 0), S_vv[iEigen](1, 1),
+           S_vv[iEigen](2, 2));
   }
   printf("---------------------------------------------------------------------------------------\n");
   printf("                              CD Spectrum (dipole-length)                              \n");
   printf("---------------------------------------------------------------------------------------\n");
-  printf(" state        energy        wavelength     R        mu**2     mu_x     mu_y     mu_z   \n");
-  printf("          (eV)      (cm-1)     (nm)    (1e-40cgs)  (au**2)    (au)     (au)     (au)   \n");
+  printf(" state       energy      wavelength         R            Sxx        Syy        Szz     \n");
+  printf("              (eV)          (nm)        (1e-40cgs)               (1e-40cgs)            \n");
   printf("---------------------------------------------------------------------------------------\n");
-  for (unsigned int iState = 0; iState < eigenvalues.rows(); ++iState) {
-    printf(" %3i %10.4f %10.1f %8.1f %12.4f %9.4f %8.4f %8.4f %8.4f\n", iState + 1, eigenvalues(iState) * HARTREE_TO_EV,
-           eigenvalues(iState) * HARTREE_TO_OOCM, HARTREE_TO_NM / eigenvalues(iState), AU_TO_CGS * rs_l(iState),
-           tdm_m.row(iState).array().square().sum(), tdm_m(iState, 0), tdm_m(iState, 1), tdm_m(iState, 2));
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    printf(" %3i %15.5f %12.1f %15.4f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), AU_TO_CGS * results(iEigen, 3), AU_TO_CGS * S_lm[iEigen](0, 0),
+           AU_TO_CGS * S_lm[iEigen](1, 1), AU_TO_CGS * S_lm[iEigen](2, 2));
   }
   printf("---------------------------------------------------------------------------------------\n");
   printf("                             CD Spectrum (dipole-velocity)                             \n");
   printf("---------------------------------------------------------------------------------------\n");
-  printf(" state        energy        wavelength     R        mu**2     mu_x     mu_y     mu_z   \n");
-  printf("          (eV)      (cm-1)     (nm)    (1e-40cgs)  (au**2)    (au)     (au)     (au)   \n");
+  printf(" state       energy      wavelength         R            Sxx        Syy        Szz     \n");
+  printf("              (eV)          (nm)        (1e-40cgs)               (1e-40cgs)            \n");
   printf("---------------------------------------------------------------------------------------\n");
-  for (unsigned int iState = 0; iState < eigenvalues.rows(); ++iState) {
-    printf(" %3i %10.4f %10.1f %8.1f %12.4f %9.4f %8.4f %8.4f %8.4f\n", iState + 1, eigenvalues(iState) * HARTREE_TO_EV,
-           eigenvalues(iState) * HARTREE_TO_OOCM, HARTREE_TO_NM / eigenvalues(iState), AU_TO_CGS * rs_v(iState),
-           tdm_m.row(iState).array().square().sum(), tdm_m(iState, 0), tdm_m(iState, 1), tdm_m(iState, 2));
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    printf(" %3i %15.5f %12.1f %15.4f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), AU_TO_CGS * results(iEigen, 4), AU_TO_CGS * S_vm[iEigen](0, 0),
+           AU_TO_CGS * S_vm[iEigen](1, 1), AU_TO_CGS * S_vm[iEigen](2, 2));
   }
-  printf("---------------------------------------------------------------------------------------\n\n\n");
+  printf("---------------------------------------------------------------------------------------\n");
 }
 
 template class ExcitationSpectrum<Options::SCF_MODES::RESTRICTED>;

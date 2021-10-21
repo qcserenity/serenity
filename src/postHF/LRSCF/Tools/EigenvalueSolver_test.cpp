@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Tools/EigenvalueSolver.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -56,7 +57,7 @@ TEST_F(EigenvalueSolverTest, TDA) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 1000, nEigen,
-                          Options::RESPONSE_PROBLEM::TDA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMMETRIC, sigmaVectorCalculator);
   Eigen::VectorXd itEigenvalues = solver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -97,7 +98,7 @@ TEST_F(EigenvalueSolverTest, TDDFT) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 1000, nEigen,
-                          Options::RESPONSE_PROBLEM::TDDFT, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMMETRIZED, sigmaVectorCalculator);
   Eigen::VectorXd itEigenvalues = solver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -139,7 +140,7 @@ TEST_F(EigenvalueSolverTest, RPA) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 1000, nEigen,
-                          Options::RESPONSE_PROBLEM::RPA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMPLECTIC, sigmaVectorCalculator);
   Eigen::VectorXd itEigenvalues = solver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -193,7 +194,7 @@ TEST_F(EigenvalueSolverTest, TDASubspaceCollapse) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 60, nEigen,
-                          Options::RESPONSE_PROBLEM::TDA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMMETRIC, sigmaVectorCalculator);
   Eigen::VectorXd itEigenvalues = solver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -231,12 +232,12 @@ TEST_F(EigenvalueSolverTest, TDAInitialGuess) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-3, 100, 1000, nEigen,
-                          Options::RESPONSE_PROBLEM::TDA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMMETRIC, sigmaVectorCalculator);
 
   auto guessPtr = std::make_shared<std::vector<Eigen::MatrixXd>>(solver.getEigenvectors());
 
   EigenvalueSolver guessSolver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 1000, nEigen,
-                               Options::RESPONSE_PROBLEM::TDA, sigmaVectorCalculator, guessPtr);
+                               Options::RESPONSE_ALGORITHM::SYMMETRIC, sigmaVectorCalculator, guessPtr);
   Eigen::VectorXd itEigenvalues = guessSolver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -277,7 +278,7 @@ TEST_F(EigenvalueSolverTest, RPASubspaceCollapse) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 60, nEigen,
-                          Options::RESPONSE_PROBLEM::RPA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMPLECTIC, sigmaVectorCalculator);
   Eigen::VectorXd itEigenvalues = solver.getEigenvalues();
 
   // Solve eigenvalue problem using Eigen
@@ -334,7 +335,7 @@ TEST_F(EigenvalueSolverTest, RPAInitialGuess) {
 
   // Solve for some eigenvalues
   EigenvalueSolver solver(false, nDimension, nEigen, diagonalElements, 1.0e-3, 100, 1000, nEigen,
-                          Options::RESPONSE_PROBLEM::RPA, sigmaVectorCalculator, nullptr);
+                          Options::RESPONSE_ALGORITHM::SYMPLECTIC, sigmaVectorCalculator);
 
   auto guessPtr = std::make_shared<std::vector<Eigen::MatrixXd>>(solver.getEigenvectors());
 
@@ -345,7 +346,7 @@ TEST_F(EigenvalueSolverTest, RPAInitialGuess) {
   (*guessPtr)[1] = (X - Y) / std::sqrt(2);
 
   EigenvalueSolver guessSolver(false, nDimension, nEigen, diagonalElements, 1.0e-8, 100, 1000, nEigen,
-                               Options::RESPONSE_PROBLEM::RPA, sigmaVectorCalculator, guessPtr);
+                               Options::RESPONSE_ALGORITHM::SYMPLECTIC, sigmaVectorCalculator, guessPtr);
 
   Eigen::VectorXd itEigenvalues = guessSolver.getEigenvalues();
 

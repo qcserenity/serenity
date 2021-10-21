@@ -56,7 +56,7 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
    * @param makePrimary           This switch will set the basis as the primary one in each atom.
    * @param firstECP              Nuclear charge threshold at which ECPs are used if available.
    */
-  AtomCenteredBasisController(std::shared_ptr<const Geometry> geometry, const std::string basisLibrary,
+  AtomCenteredBasisController(std::shared_ptr<Geometry> geometry, const std::string basisLibrary,
                               bool makeSphericalBasis, bool makePrimary, const std::string basisLabel = "",
                               int firstECP = 37, std::vector<Eigen::VectorXi> importantShells = {});
   virtual ~AtomCenteredBasisController() = default;
@@ -87,6 +87,24 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
     if (!_basis)
       produceBasis();
     return _basisIndicesRedOfAtom;
+  }
+  /**
+   * @brief Getter for the mapping of basis function to atom index.
+   * @return
+   */
+  inline const std::vector<unsigned int>& getAtomIndicesOfBasis() {
+    if (!_basis)
+      produceBasis();
+    return _atomIndicesOfBasisFunctions;
+  }
+  /**
+   * @brief Getter for the mapping of basis shell to atom index.
+   * @return
+   */
+  inline const std::vector<unsigned int>& getAtomIndicesOfBasisShells() {
+    if (!_basis)
+      produceBasis();
+    return _atomIndicesOfShells;
   }
   /**
    *  @returns the name of the basis
@@ -126,7 +144,7 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
   std::unique_ptr<Basis> produceBasisFunctionVector() override final;
   void postConstruction() override final;
 
-  std::shared_ptr<const Geometry> _geometry;
+  std::shared_ptr<Geometry> _geometry;
   const std::string _basisLibrary;
   const std::string _basisLabel;
   bool _makeSphericalBasis;
@@ -136,6 +154,8 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
 
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesOfAtom;
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesRedOfAtom;
+  std::vector<unsigned int> _atomIndicesOfBasisFunctions;
+  std::vector<unsigned int> _atomIndicesOfShells;
 
   void resetBasisLoadingData(const std::vector<Eigen::VectorXi>& importantShells = {});
 

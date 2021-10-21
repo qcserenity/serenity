@@ -38,9 +38,26 @@ struct LocalizationTaskSettings {
       alignExponent(4),
       useKineticAlign(false),
       splitValenceAndCore(false),
-      energyCutOff(-5.0){};
+      useEnergyCutOff(true),
+      energyCutOff(-5.0),
+      nCoreOrbitals(std::numeric_limits<unsigned int>::infinity()){};
   REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (unsigned int)maxSweeps, (unsigned int)alignExponent,
-              (bool)useKineticAlign, (bool)splitValenceAndCore, (double)energyCutOff)
+              (bool)useKineticAlign, (bool)splitValenceAndCore, (bool)useEnergyCutOff, (double)energyCutOff,
+              (unsigned int)nCoreOrbitals)
+ public:
+  /**
+   * @brief Parse the settings from the input an instance of this class.
+   * @param c The settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("LOC")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
 };
 /**
  * @class  LocalizationTask LocalizationTask.h
@@ -77,7 +94,10 @@ class LocalizationTask : public Task {
    *        - alignExponent : Exponent used in the orbital alignment.
    *        - useKineticAlign : Use the kinetic energy as an additional criterion for the orbital alignment.
    *        - splitValenceAndCore : Localize valence and core separately.
+   *        - useEnergyCutOff : Use an energy cut-off to determine core orbitals.
    *        - energyCutOff : Orbital eigenvalue threshold to select core orbitals.
+   *        - nCoreOrbitals : Use a predefined number of core orbitals.
+   *                          Needs useEnergyCutOff = false and splitValenceAndCore = true.
    */
   LocalizationTaskSettings settings;
 

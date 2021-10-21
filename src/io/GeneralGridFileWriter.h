@@ -76,7 +76,7 @@ class GeneralGridFileWriter : public DataOnGridWriter {
    * @param filename The base name of the cube file.
    * @param data The data which shall be printed to the cube file.
    */
-  void writeData(std::string filename, const Eigen::VectorXd& data) override final;
+  void writeData(std::string filename, const Eigen::VectorXd& data) override;
   ///@brief The grid controller.
   std::shared_ptr<GridController> _gridController;
 };

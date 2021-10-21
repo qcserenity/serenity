@@ -25,6 +25,7 @@
 #include "geometry/Geometry.h"
 #include "grid/GridControllerFactory.h"
 #include "integrals/Normalization.h"
+#include "math/Derivatives.h"
 #include "testsupply/BasisController__TEST_SUPPLY.h"
 #include "testsupply/GridController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -63,7 +64,7 @@ TEST_F(BasisFunctionOnGridControllerTest, TestBasisFunctionValuesAndDerivatives)
   EXPECT_EQ((unsigned int)4, testObject.getNGridPoints());
   EXPECT_EQ((unsigned int)0, testObject.getFirstIndexOfBlock(0));
   auto& basFuncData = testObject.getBlockOnGridData(0);
-  const Matrix<double>& values = basFuncData->functionValues;
+  const Eigen::MatrixXd& values = basFuncData->functionValues;
   ASSERT_EQ(values.cols(), basisController->getNBasisFunctions());
   ASSERT_EQ(values.rows(), (unsigned int)4);
   const auto& derivatives = *basFuncData->derivativeValues;

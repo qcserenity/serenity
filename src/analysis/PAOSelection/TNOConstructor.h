@@ -49,7 +49,6 @@ class TNOConstructor {
  public:
   /**
    * @brief Constructor.
-   * @param overlapMatrix The overlap matrix.
    * @param f The Fock matrix.
    * @param paoController The PAO controller.
    * @param paoOrthogonalizationThreshold The threshold for removing linear dependencies.
@@ -58,8 +57,7 @@ class TNOConstructor {
    * @param environmentSystems The environment systems.
    * @param levelShiftParameter The level-shift for the occupied environment orbitals.
    */
-  TNOConstructor(std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> overlapMatrix,
-                 std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
+  TNOConstructor(std::shared_ptr<const FockMatrix<Options::SCF_MODES::RESTRICTED>> f,
                  std::shared_ptr<PAOController> paoController, double paoOrthogonalizationThreshold, double tnoThreshold,
                  double coreScaling, std::vector<std::shared_ptr<SystemController>> environmentSystems = {},
                  double levelShiftParameter = 1e+6);
@@ -83,9 +81,7 @@ class TNOConstructor {
   // Constructs the overlap matrix between single-Pseudo NOs and ijk-external basis.
   Eigen::MatrixXd constructOverlapMatrix(std::shared_ptr<SingleSubstitution> single, const Eigen::MatrixXd& s_p_ijk);
   // The (shifted) Fock matrix.
-  Eigen::MatrixXd _f;
-  // The overlap matrix in AO basis.
-  std::shared_ptr<const MatrixInBasis<Options::SCF_MODES::RESTRICTED>> _S;
+  Eigen::MatrixXd _f_pao;
   // The PAO-Controller.
   std::shared_ptr<PAOController> _paoController;
   // The orthogonalization threshold for the linear dependencies.

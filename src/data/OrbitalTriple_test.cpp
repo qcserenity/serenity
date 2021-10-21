@@ -67,6 +67,7 @@ TEST_F(OrbitalTripleTest, calculateIntegralsAndEnergy) {
   DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100);
   localCCSD.calculateElectronicEnergyCorrections().sum();
 
+  localCorrelationController->getOrbitalTripleSets();
   std::vector<std::shared_ptr<OrbitalTriple>> triples = localCorrelationController->getOrbitalTriples();
 
   auto activeSystem = localCorrelationController->getActiveSystemController();
@@ -76,14 +77,14 @@ TEST_F(OrbitalTripleTest, calculateIntegralsAndEnergy) {
   // Make sure that the integrals are available in order to avoid any parallel construction of
   // the integral sets, since these functions are not thread save.
   Eigen::SparseVector<int> auxSuperDomain = Eigen::VectorXi::Constant(auxBasisController->getBasis().size(), 1).sparseView();
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
-  mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
+  const auto& iaK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
+  const auto& abK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
+  const auto& klK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
 
   MatrixInBasis<RESTRICTED> metric(auxBasisController);
   Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(metric);
 
-  TwoElecFourCenterIntLooper looper(libint2::Operator::coulomb, 0, basisController, 1E-10);
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, basisController, basisController->getPrescreeningThreshold());
   RegularRankFourTensor<double> eris(nBasisFunc);
   auto const storeERIS = [&eris](const unsigned int& a, const unsigned int& b, const unsigned int& i,
                                  const unsigned int& j, const Eigen::VectorXd& integral, const unsigned int threadId) {
@@ -101,7 +102,7 @@ TEST_F(OrbitalTripleTest, calculateIntegralsAndEnergy) {
   double triplesCorrection = 0.0;
   for (const auto triple : triples) {
     tnoConstructor->transformToTNOBasis(triple);
-    triple->calculateIntegrals(auxBasisController, mo3CenterIntegralController, metric);
+    triple->calculateIntegrals(auxBasisController, mo3CenterIntegralController, iaK, abK, klK, metric);
 
     // Reference:
     Eigen::MatrixXd R_00 = localCorrelationController->getPAOController()->getAllPAOs();
@@ -111,7 +112,7 @@ TEST_F(OrbitalTripleTest, calculateIntegralsAndEnergy) {
     const Eigen::MatrixXd tnoCoefficients = R_00 * triple->getTNOCoefficients();
     OutputControl::dOut << tnoCoefficients.rows() << "x" << tnoCoefficients.cols() << " NBasis " << nBasisFunc << std::endl;
     coeffs.block(0, 2, nBasisFunc, nBasisFunc - 2) = tnoCoefficients;
-    // Calculte fully transformed integrals
+    // Calculate fully transformed integrals
     Ao2MoTransformer aoToMo(basisController);
     RegularRankFourTensor<double> eris_copy = eris;
     RegularRankFourTensor<double> result(nBasisFunc, 0.0);
