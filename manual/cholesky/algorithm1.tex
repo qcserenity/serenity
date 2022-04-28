@@ -1,0 +1,65 @@
+\documentclass[11pt,a4paper]{article} \usepackage{float}
+\usepackage{amsmath,amsfonts,stmaryrd,pslatex,graphicx,subfigure,enumerate}
+\usepackage{mathtools}
+\usepackage{german}
+\usepackage{helvet}
+\usepackage{fancyheadings}
+\usepackage{cite}
+\usepackage[utf8]{inputenc}
+\usepackage[version=3]{mhchem}
+\usepackage{color,xcolor}
+\usepackage{braket}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+%======== SF Schriftart, Helvetica, wenn usepackage{helvet} ====================
+\renewcommand{\familydefault}{\sfdefault}
+\textheight=23 truecm
+\textwidth=16 truecm
+\voffset= -0.5 truein
+\hoffset= -0.5 truein
+
+\makeatletter
+\newenvironment{breakablealgorithm}
+{% \begin{breakablealgorithm}
+	\begin{center}
+		\refstepcounter{algorithm}% New algorithm
+		\hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+		\renewcommand{\caption}[2][\relax]{% Make a new \caption
+			{\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+			\ifx\relax##1\relax % #1 is \relax
+			\addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+			\else % #1 is not \relax
+			\addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+			\fi
+			\kern2pt\hrule\kern2pt
+		}
+	}{% \end{breakablealgorithm}
+		\kern2pt\hrule\relax% \@fs@post for \@fs@ruled
+	\end{center}
+}
+
+\begin{document}
+\pagenumbering{gobble}
+	
+\begin{algorithm}
+\caption{Cholesky Decomposition}
+\begin{algorithmic}[1]
+\Procedure{Direct,Pivoted Decomposition}{}
+\State $M$ \Comment Full matrix
+\State $\delta$ \Comment Decomposition threshold
+\State $D_q \gets M_{q,q}$ \Comment Get the diagonal
+\State $D_{\text{max}}\text{,} q_{\text{max}} \gets \text{max}(D)$ \Comment Find the maximum diagonal value and its index $q_{\text{max}}$
+\While {$D_{\text{max}} \geq \delta$}
+	\State $Q_{max} \gets \sqrt{\frac{1}{D_{\text{max}}}}$
+	\State $L \gets Q_{\text{max}} \ M_{q_{\text{max}}}$
+	\State $M \gets M - LL^T$
+	\State $D_q \gets M_{q,q}$
+	\State $D_{\text{max}}\text{,} q_{\text{max}} \gets \text{max}(D)$ \Comment Update the maximum diagonal value and its index $q_{\text{max}}$
+\EndWhile
+\EndProcedure	
+\end{algorithmic}
+\end{algorithm}
+
+
+\end{document}
