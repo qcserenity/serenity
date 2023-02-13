@@ -56,8 +56,8 @@ void VirtualOrbitalSelectionAlgorithms<SCFMode>::excludeProjection(CoefficientMa
     auto overlapAB =
         libint.compute1eInts(LIBINT_OPERATOR::overlap, _activeSystem->getBasisController(), envSys->getBasisController());
     SpinPolarizedData<SCFMode, Eigen::MatrixXd> overlapMO;
-    auto nOccEnv = envSys->getNOccupiedOrbitals<SCFMode>();
-    auto coefEnv = envSys->getActiveOrbitalController<SCFMode>()->getCoefficients();
+    auto nOccEnv = envSys->template getNOccupiedOrbitals<SCFMode>();
+    auto coefEnv = envSys->template getActiveOrbitalController<SCFMode>()->getCoefficients();
     // Calculate overlap Sia between occ env and virt act
     for_spin(nOccEnv, nOcc, coefEnv, coefs, overlapMO) {
       auto nBasisEnv = envSys->getBasisController()->getNBasisFunctions();
@@ -201,21 +201,23 @@ void VirtualOrbitalSelectionAlgorithms<SCFMode>::occupiedVirtualMixing(bool rela
   CoefficientMatrix<SCFMode> coefs(_activeSystem->getBasisController());
   SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenValues;
   // Env system 1
-  CoefficientMatrix<SCFMode> coefsEnv1 = _environmentSystems[0]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  CoefficientMatrix<SCFMode> coefsEnv1 =
+      _environmentSystems[0]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
   SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenValuesEnv1 =
-      _environmentSystems[0]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      _environmentSystems[0]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
   SpinPolarizedData<SCFMode, Eigen::VectorXi> coreOrbitalsEnv1 =
-      _environmentSystems[0]->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
+      _environmentSystems[0]->template getActiveOrbitalController<SCFMode>()->getOrbitalFlags();
   auto nBasisFuncEnv1 = _environmentSystems[0]->getBasisController()->getNBasisFunctions();
-  auto nOccEnv1 = _environmentSystems[0]->getNOccupiedOrbitals<SCFMode>();
+  auto nOccEnv1 = _environmentSystems[0]->template getNOccupiedOrbitals<SCFMode>();
   // Env system 2
-  CoefficientMatrix<SCFMode> coefsEnv2 = _environmentSystems[1]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  CoefficientMatrix<SCFMode> coefsEnv2 =
+      _environmentSystems[1]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
   SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenValuesEnv2 =
-      _environmentSystems[1]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      _environmentSystems[1]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
   SpinPolarizedData<SCFMode, Eigen::VectorXi> coreOrbitalsEnv2 =
-      _environmentSystems[1]->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
+      _environmentSystems[1]->template getActiveOrbitalController<SCFMode>()->getOrbitalFlags();
   auto nBasisFuncEnv2 = _environmentSystems[1]->getBasisController()->getNBasisFunctions();
-  auto nOccEnv2 = _environmentSystems[1]->getNOccupiedOrbitals<SCFMode>();
+  auto nOccEnv2 = _environmentSystems[1]->template getNOccupiedOrbitals<SCFMode>();
   // The charge of the new system needs to be adjusted with respect to subsystem 1 from which the occupied orbitals are
   // taken. Otherwise the wrong number of occ orbitals in that system is set
   const int charge = _environmentSystems[0]->getCharge();
@@ -236,7 +238,7 @@ void VirtualOrbitalSelectionAlgorithms<SCFMode>::occupiedVirtualMixing(bool rela
   auto eigenValue_ptr = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
       new SpinPolarizedData<SCFMode, Eigen::VectorXd>(eigenValues));
   auto coreOrbitals_ptr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(
-      _environmentSystems[0]->template getActiveOrbitalController<SCFMode>()->getCoreOrbitals());
+      _environmentSystems[0]->template getActiveOrbitalController<SCFMode>()->getOrbitalFlags());
   // Build new orbital controller
   _activeSystem->setDiskMode(true);
   auto orbitalSet = std::make_shared<OrbitalController<SCFMode>>(std::move(coefs_ptr), _activeSystem->getBasisController(),

@@ -49,8 +49,8 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
    */
   auto guessDensity(calculateInitialDensity(systemController));
 
-  auto guessOrbitals =
-      std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(guessDensity->getBasisController());
+  auto guessOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
+      guessDensity->getBasisController(), systemController->getNCoreElectrons() / 2);
   guessOrbitals->setCanOrthTh(systemController->getSettings().scf.canOrthThreshold);
   std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>> elecStruct(
       new ElectronicStructure<Options::SCF_MODES::RESTRICTED>(

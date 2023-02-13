@@ -288,7 +288,6 @@ void OrbitalTriple::calculateIntegrals(std::shared_ptr<BasisController> auxBasis
                                        const MO3CenterIntegrals& iaK, const MO3CenterIntegrals& abK,
                                        const MO3CenterIntegrals& klK, const MatrixInBasis<RESTRICTED>& coulombMetric) {
   if (!_integralsCalc) {
-    const auto& sparseMaps = mo3CenterIntegralController->getSparseMapsController();
     const Eigen::SparseVector<int>& fittingDomain = this->getFittingDomain();
     const Eigen::MatrixXd localBlock =
         SystemSplittingTools<RESTRICTED>::getMatrixBlockShellWise(coulombMetric, fittingDomain, fittingDomain);

@@ -75,19 +75,23 @@ class IAOPopulationCalculator {
    * @param B1 The basis controller of the system.
    * @param B2 The basis controller used for the IAO analysis.
    * @param geom The geometry.
+   * @param withVirtuals  If true, the populations for virtual orbitals are calculated up to the maximum size in the
+   *                      minimal IAO basis set.
    * @return The orbital populations on the system. No weighting for spin-polarization included.
    */
-  SPMatrix<SCFMode> static calculateAtomwiseOrbitalPopulations(const CoefficientMatrix<SCFMode>& C,
-                                                               const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
-                                                               const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs,
-                                                               std::shared_ptr<BasisController> B1,
-                                                               std::shared_ptr<AtomCenteredBasisController> B2,
-                                                               const std::shared_ptr<Geometry> geom);
+  SPMatrix<SCFMode> static calculateAtomwiseOrbitalPopulations(
+      const CoefficientMatrix<SCFMode>& C, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
+      const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs, std::shared_ptr<BasisController> B1,
+      std::shared_ptr<AtomCenteredBasisController> B2, const std::shared_ptr<Geometry> geom, bool withVirtuals = false);
   /**
    * @brief Calculates the IAO populations on each atom orbital wise.
+   * @param system        The system controller.
+   * @param withVirtuals  If true, the populations for virtual orbitals are calculated up to the maximum size in the
+   *                      minimal IAO basis set.
    * @return The orbital populations on the system. No weighting for spin-polarization included.
    */
-  SPMatrix<SCFMode> static calculateAtomwiseOrbitalPopulations(std::shared_ptr<SystemController> system);
+  SPMatrix<SCFMode> static calculateAtomwiseOrbitalPopulations(std::shared_ptr<SystemController> system,
+                                                               bool withVirtuals = false);
   /**
    * @brief Calculate the shellwise orbital populations.
    * @param C The coefficient matrix.
@@ -95,25 +99,32 @@ class IAOPopulationCalculator {
    * @param nOccOrbs The number of occupied orbitals.
    * @param B1 The basis controller of the system.
    * @param B2 The basis controller used for the IAO analysis.
+   * @param withVirtuals  If true, the populations for virtual orbitals are calculated up to the maximum size in the
+   *                      minimal IAO basis set.
    * @return The orbital populations.
    */
   SPMatrix<SCFMode> static calculateShellwiseOrbitalPopulations(const CoefficientMatrix<SCFMode>& C,
                                                                 const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
                                                                 const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs,
                                                                 std::shared_ptr<BasisController> B1,
-                                                                std::shared_ptr<AtomCenteredBasisController> B2);
+                                                                std::shared_ptr<AtomCenteredBasisController> B2,
+                                                                bool withVirtuals = false);
   /**
    * @brief Calculate the shellwise orbital populations.
-   * @param system The system controller.
+   * @param system        The system controller.
+   * @param withVirtuals  If true, the populations for virtual orbitals are calculated up to the maximum size in the
+   *                      minimal IAO basis set.
    * @return The orbital populations.
    */
-  SPMatrix<SCFMode> static calculateShellwiseOrbitalPopulations(std::shared_ptr<SystemController> system);
+  SPMatrix<SCFMode> static calculateShellwiseOrbitalPopulations(std::shared_ptr<SystemController> system,
+                                                                bool withVirtuals = false);
   /**
    * @brief Calculates the coefficients for the expansion of the orbitals in the IAO basis.
    * @param system The system controller.
    * @return The expansion coefficients in the IAO basis.
    */
-  std::pair<SPMatrix<SCFMode>, SPMatrix<SCFMode>> static getCIAOCoefficients(std::shared_ptr<SystemController> system);
+  std::pair<SPMatrix<SCFMode>, SPMatrix<SCFMode>> static getCIAOCoefficients(std::shared_ptr<SystemController> system,
+                                                                             bool withVirtuals);
   /**
    * @brief Calculates the coefficients for the expansion of the orbitals in the IAO basis.
    * @param C The coefficient matrix.
@@ -121,12 +132,13 @@ class IAOPopulationCalculator {
    * @param nOccOrbs The number of occupied orbitals.
    * @param B1 The basis controller of the system.
    * @param B2 The basis controller used for the IAO analysis.
+   * @param withVirtuals If true, the coefficients for the virtual orbitals are calculated as well.
    * @return The expansion coefficients in the IAO basis.
    */
   std::pair<SPMatrix<SCFMode>, SPMatrix<SCFMode>> static getCIAOCoefficients(
       const CoefficientMatrix<SCFMode>& C, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
       const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs, std::shared_ptr<BasisController> B1,
-      std::shared_ptr<BasisController> B2);
+      std::shared_ptr<BasisController> B2, bool withVirtuals = false);
   /**
    * @brief Calculates the orbital-wise 1S populations.
    * @param C The coefficient matrix.
@@ -149,6 +161,32 @@ class IAOPopulationCalculator {
    * @return The orbital populations.
    */
   SPMatrix<SCFMode> static calculate1SOrbitalPopulations(std::shared_ptr<SystemController> system);
+  /**
+   * @brief Reconstruct the virtual valence orbitals to exactly span the virtual space of the IAOs.
+   *        All remaining virtual orbitals are reconstructed by projection.
+   * @param C The coefficient matrix.
+   * @param S1 The orbital basis overlap integrals.
+   * @param nOccOrbs The number of occupied orbitals.
+   * @param B1 The basis controller of the system.
+   * @param B2 The basis controller used for the IAO analysis.
+   */
+  void static reconstructVirtualValenceOrbitalsInplace(CoefficientMatrix<SCFMode>& C,
+                                                       const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
+                                                       const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs,
+                                                       std::shared_ptr<BasisController> B1,
+                                                       std::shared_ptr<BasisController> B2);
+  /**
+   * @brief Check whether the IAOs span at least the space of the virtual valence orbitals and all occupied orbitals.
+   * @param C The coefficient matrix.
+   * @param S1 The orbital basis overlap integrals.
+   * @param nOccOrbs The number of occupied orbitals.
+   * @param B1 The basis controller of the system.
+   * @param B2 The basis controller used for the IAO analysis.
+   * @return True, if the IAOs span the space of the orbitals. Otherwise, false.
+   */
+  static bool iaosSpanOrbitals(const CoefficientMatrix<SCFMode>& C, const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,
+                               const SpinPolarizedData<SCFMode, unsigned int> nOccOrbs,
+                               std::shared_ptr<BasisController> B1, std::shared_ptr<BasisController> B2);
 };
 
 } /* namespace Serenity */

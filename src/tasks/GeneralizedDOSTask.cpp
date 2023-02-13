@@ -54,12 +54,12 @@ void GeneralizedDOSTask<SCFMode>::run() {
   OutputControl::vOut << "calculating orbital properties          ...";
   OutputControl::vOut.flush();
   // Prepare the DOS
-  const auto kinEnergies = calculateKineticEnergies(_supersystems);
   const auto populations = calculateOrbitalPopulations(_supersystems, settings.populationAlgorithm);
+  const auto kinEnergies = calculateKineticEnergies(_supersystems, this->getMaxNumberOfOrbitalsFromPopulations(populations));
   OutputControl::vnOut << " done" << std::endl;
   OutputControl::vOut << "comparing orbitals                      ...";
   OutputControl::vOut.flush();
-  const auto nOcc = _supersystems[0]->getNOccupiedOrbitals<SCFMode>();
+  const auto nOcc = _supersystems[0]->template getNOccupiedOrbitals<SCFMode>();
   DirectOrbitalSelection<SCFMode> dos(populations, kinEnergies, nOcc, settings.usePiBias, settings.biasThreshold,
                                       settings.biasAverage, settings.checkDegeneracies, settings.degeneracyFactor);
   OutputControl::vnOut << " done" << std::endl;
@@ -72,17 +72,20 @@ void GeneralizedDOSTask<SCFMode>::run() {
   }
 
   // Run the DOS.
-  auto finalAssignments =
+  _finalAssignments = std::make_unique<std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXi>>>();
+  *_finalAssignments =
       this->getIterativeAssignments(settings.similarityLocThreshold, settings.similarityKinEnergyThreshold, dos);
   OutputControl::vOut << "Splitting geometries into fragments     ...";
   OutputControl::vOut.flush();
-  splitGeometryIntoFragments(finalAssignments);
+  splitGeometryIntoFragments(*_finalAssignments);
   OutputControl::vnOut << " done" << std::endl;
-  // Split the final electronic structure based on the final assignements
-  splitElectronicStructureIntoFragments(finalAssignments);
+  // Split the final electronic structure based on the final assignments
+  splitElectronicStructureIntoFragments(*_finalAssignments);
   // Check if the result makes sense.
   if (not this->checkFinalOccupations())
     throw SerenityError("ERROR: GDOS detected an inconsistent orbital occupation for the given molecules.");
+  if (settings.writeGroupsToFile)
+    this->writeGroupsToFile();
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -114,7 +117,7 @@ void GeneralizedDOSTask<SCFMode>::checkInput() {
   // Check atom ordering
   auto firstGeom = _supersystems[0]->getGeometry();
   auto firstAtomList = firstGeom->getAtoms();
-  const auto& firstOccupations = _supersystems[0]->getNOccupiedOrbitals<SCFMode>();
+  const auto& firstOccupations = _supersystems[0]->template getNOccupiedOrbitals<SCFMode>();
   for (unsigned int sys = 1; sys < _supersystems.size(); ++sys) {
     auto atomList = _supersystems[sys]->getGeometry()->getAtoms();
     if (atomList.size() != firstAtomList.size())
@@ -124,7 +127,7 @@ void GeneralizedDOSTask<SCFMode>::checkInput() {
         throw SerenityError("The atoms have to be ordered in the same way for all structures!");
     }
     // Check the number of electrons in the subsystems
-    const auto& occupations = _supersystems[sys]->getNOccupiedOrbitals<SCFMode>();
+    const auto& occupations = _supersystems[sys]->template getNOccupiedOrbitals<SCFMode>();
     for_spin(firstOccupations, occupations) {
       if (firstOccupations_spin != occupations_spin)
         throw SerenityError("Inconsistent number of electrons along the reaction coordinate!");
@@ -152,7 +155,7 @@ void GeneralizedDOSTask<SCFMode>::checkInput() {
   }
   _nFragments = settings.similarityLocThreshold.size() + 1;
   if (_nFragments * _supersystems.size() > _allFragments.size())
-    throw SerenityError((std::string) "ERROR: GDOS expects" + std::to_string(_nFragments * _supersystems.size()) +
+    throw SerenityError((std::string) "ERROR: GDOS expects " + std::to_string(_nFragments * _supersystems.size()) +
                         " environments systems, but only " + std::to_string(_allFragments.size()) + " were provided!");
 }
 
@@ -179,18 +182,29 @@ GeneralizedDOSTask<SCFMode>::assignFragmentsToSupersystem(std::vector<std::share
 }
 
 template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, unsigned int>
+GeneralizedDOSTask<SCFMode>::getMaxNumberOfOrbitalsFromPopulations(const std::vector<SPMatrix<SCFMode>>& populations) {
+  SpinPolarizedData<SCFMode, unsigned int> nOrbitals(0);
+  const auto& populationZero = populations[0];
+  for_spin(populationZero, nOrbitals) {
+    nOrbitals_spin = populationZero_spin.cols();
+  };
+  return nOrbitals;
+}
+
+template<Options::SCF_MODES SCFMode>
 std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXd>>
-GeneralizedDOSTask<SCFMode>::calculateKineticEnergies(std::vector<std::shared_ptr<SystemController>> supersystems) {
+GeneralizedDOSTask<SCFMode>::calculateKineticEnergies(std::vector<std::shared_ptr<SystemController>> supersystems,
+                                                      SpinPolarizedData<SCFMode, unsigned int> nOrbitals) {
   std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXd>> kineticEnergies = {};
-  for (const auto system : supersystems) {
+  for (const auto& system : supersystems) {
     // Calculate the kinetic energies of the occupied orbitals
     const auto& coeff = system->getActiveOrbitalController<SCFMode>()->getCoefficients();
     auto kinIntegrals = system->getOneElectronIntegralController()->getKinIntegrals();
-    auto nOcc = system->getNOccupiedOrbitals<SCFMode>();
     SpinPolarizedData<SCFMode, Eigen::VectorXd> kin;
-    for_spin(nOcc, coeff, kin) {
-      kin_spin.resize(nOcc_spin);
-      for (unsigned int occI = 0; occI < nOcc_spin; ++occI) {
+    for_spin(nOrbitals, coeff, kin) {
+      kin_spin.resize(nOrbitals_spin);
+      for (unsigned int occI = 0; occI < nOrbitals_spin; ++occI) {
         const auto& coeffI = coeff_spin.col(occI);
         kin_spin[occI] = coeffI.transpose() * kinIntegrals * coeffI;
       } // for occI
@@ -214,19 +228,24 @@ GeneralizedDOSTask<SCFMode>::calculateOrbitalPopulations(std::vector<std::shared
           system->getAtomCenteredBasisController()->getBasisIndices());
     }
     else if (alg == Options::POPULATION_ANALYSIS_ALGORITHMS::IAO) {
-      orbitalPopulations = IAOPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(system);
+      orbitalPopulations = IAOPopulationCalculator<SCFMode>::calculateAtomwiseOrbitalPopulations(system, settings.mapVirtuals);
     }
     else if (alg == Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell) {
       // This is basically the square of the CIAO-coefficient summed over a shell.
-      orbitalPopulations = IAOPopulationCalculator<SCFMode>::calculateShellwiseOrbitalPopulations(system);
+      orbitalPopulations =
+          IAOPopulationCalculator<SCFMode>::calculateShellwiseOrbitalPopulations(system, settings.mapVirtuals);
     }
     else {
       throw SerenityError("The algorithm used for evaluating orbital-wise populations is not supported.");
     }
     SPMatrix<SCFMode> occPopulations;
-    const auto nOcc = system->getNOccupiedOrbitals<SCFMode>();
-    for_spin(occPopulations, orbitalPopulations, nOcc) {
-      occPopulations_spin = orbitalPopulations_spin.leftCols(nOcc_spin);
+    SpinPolarizedData<SCFMode, unsigned int> nOrbitals(system->getBasisController()->getNBasisFunctions());
+    if (!settings.mapVirtuals) {
+      nOrbitals = system->getNOccupiedOrbitals<SCFMode>();
+    }
+    for_spin(occPopulations, orbitalPopulations, nOrbitals) {
+      const unsigned int nMaxOrbitals = std::min(nOrbitals_spin, (unsigned int)orbitalPopulations_spin.cols());
+      occPopulations_spin = orbitalPopulations_spin.leftCols(nMaxOrbitals);
     };
     populations.push_back(occPopulations);
   } /* for sys : _supersystems */
@@ -292,14 +311,54 @@ GeneralizedDOSTask<SCFMode>::getIterativeAssignments(std::vector<double> locs, s
   OutputControl::vOut.flush();
   // Run the initial DOS. We will use this object to collect all future indices.
   // In the first iteration changed orbitals will have the index 0 and all other the index 1.
-  auto finalAssignments = dos.getOrbitalAssignments(locs[0], kins[0]);
+  std::vector<std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXi>>> lastMap;
+  std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXi>> finalAssignments;
+  double threshold = locs[0];
+  double virtThreshold = locs[0];
+  if (settings.bestMatchMapping && !settings.writeScores) {
+    finalAssignments = dos.getBestMatchAssignments(threshold, virtThreshold, lastMap,
+                                                   _supersystems[0]->template getNOccupiedOrbitals<SCFMode>(),
+                                                   settings.scoreEnd, settings.scoreStart);
+  }
+  else {
+    finalAssignments = dos.getOrbitalAssignments(locs[0], kins[0], lastMap);
+  }
+
+  // Keep track of the orbital groups during the assignment. The DOS algorithm will try to map
+  // orbitals between the systems, and we want to bring this mapping into a better representation.
+  // The DOS algorithm will not be able to map all orbitals between the systems. These initially
+  // selected orbitals constitute their own, initial orbital group.
+  const auto& nOcc = _supersystems[0]->template getNOccupiedOrbitals<SCFMode>();
+  auto initialGroups = DOSOrbitalGroup::orbitalGroupFromAssignment<SCFMode>(finalAssignments, 0);
+  for_spin(initialGroups, _orbitalGroups, nOcc) {
+    auto virtOrbitals = initialGroups_spin.splitOffVirtualOrbitals(nOcc_spin);
+    _orbitalGroups_spin.push_back(std::make_shared<DOSOrbitalGroup>(initialGroups_spin));
+    if (virtOrbitals.getNOrbitals())
+      _orbitalGroups_spin.push_back(std::make_shared<DOSOrbitalGroup>(virtOrbitals));
+  };
+  _unmappableOrbitalGroups = _orbitalGroups;
+  // Rerun the DOS with increasingly tighter thresholds.
   for (unsigned int iAssign = 1; iAssign < locs.size(); ++iAssign) {
     // Run the next assignment with the new thresholds.
-    const auto newAssignments = dos.getOrbitalAssignments(locs[iAssign], kins[iAssign]);
+    std::vector<std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXi>>> currentMap;
+    const auto newAssignments = dos.getOrbitalAssignments(locs[iAssign], kins[iAssign], currentMap);
     // Set the fragment indices for the orbitals assigned in this iteration to iAssign.
     setAssignIndices(finalAssignments, newAssignments, iAssign);
+    // Keep track of the orbital groups assigned just now.
+    auto newGroups = DOSOrbitalGroup::orbitalGroupsFromMapWithAssignment<SCFMode>(lastMap, finalAssignments[0], iAssign);
+    for_spin(newGroups, _orbitalGroups) {
+      _orbitalGroups_spin.insert(_orbitalGroups_spin.end(), newGroups_spin.begin(), newGroups_spin.end());
+    };
+    lastMap = currentMap;
   } // for iAssign
+  auto lastGroups = DOSOrbitalGroup::orbitalGroupsFromMapWithAssignment<SCFMode>(lastMap, finalAssignments[0], locs.size());
+  for_spin(lastGroups, _orbitalGroups) {
+    _orbitalGroups_spin.insert(_orbitalGroups_spin.end(), lastGroups_spin.begin(), lastGroups_spin.end());
+  };
   OutputControl::vnOut << " done" << std::endl;
+  if (settings.bestMatchMapping && !settings.writeScores)
+    OutputControl::nOut << "  Optimized (occupied) threshold " << threshold << "  (virtual) threshold " << virtThreshold
+                        << std::endl;
   return finalAssignments;
 }
 
@@ -369,11 +428,91 @@ template<Options::SCF_MODES SCFMode>
 void GeneralizedDOSTask<SCFMode>::writeMatrix(Eigen::MatrixXd scores, std::string fileName) {
   std::ofstream ofs;
   ofs.open(fileName, std::ofstream::out | std::ofstream::trunc);
-  for (const auto sys : _supersystems)
+  for (const auto& sys : _supersystems)
     ofs << sys->getSystemName() << " ";
   ofs << std::endl;
   ofs << scores << std::endl;
   ofs.close();
+}
+
+template<Options::SCF_MODES SCFMode>
+const SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>>&
+GeneralizedDOSTask<SCFMode>::getOrbitalGroups() {
+  bool isInitialized = true;
+  for_spin(_orbitalGroups) {
+    isInitialized = (_orbitalGroups_spin.size() > 0 && isInitialized) ? true : false;
+  };
+  if (not isInitialized)
+    this->run();
+  return _orbitalGroups;
+}
+
+template<Options::SCF_MODES SCFMode>
+const SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>>&
+GeneralizedDOSTask<SCFMode>::getUnmappableOrbitalGroups() {
+  this->getOrbitalGroups();
+  return _unmappableOrbitalGroups;
+}
+
+template<Options::SCF_MODES SCFMode>
+void GeneralizedDOSTask<SCFMode>::writeGroupSetToFile(std::string fileName,
+                                                      std::vector<std::shared_ptr<DOSOrbitalGroup>> groups) {
+  std::ofstream ofs;
+  ofs.open(fileName, std::ofstream::out | std::ofstream::trunc);
+  ofs << "Columns: System index, rows: orbitals in set as unordered list." << std::endl;
+  for (const auto& group : groups) {
+    if (group->getNOrbitals())
+      ofs << *group << std::endl;
+  }
+  ofs.close();
+}
+
+template<>
+void GeneralizedDOSTask<RESTRICTED>::writeGroupsToFile() {
+  const auto& orbitalGroups = this->getOrbitalGroups();
+  this->writeGroupSetToFile("orbital_groups.dat", orbitalGroups);
+}
+
+template<>
+void GeneralizedDOSTask<UNRESTRICTED>::writeGroupsToFile() {
+  const auto& orbitalGroups = this->getOrbitalGroups();
+  this->writeGroupSetToFile("orbital_groups.alpha.dat", orbitalGroups.alpha);
+  this->writeGroupSetToFile("orbital_groups.beta.dat", orbitalGroups.beta);
+}
+
+template<Options::SCF_MODES SCFMode>
+const std::vector<SpinPolarizedData<SCFMode, Eigen::SparseMatrix<int>>>&
+GeneralizedDOSTask<SCFMode>::getSuperToSubsystemOccSortingMatrices() {
+  if (!_superToSubsystemOccSortingMatrices) {
+    if (!_finalAssignments)
+      this->run();
+    _superToSubsystemOccSortingMatrices =
+        std::make_unique<std::vector<SpinPolarizedData<SCFMode, Eigen::SparseMatrix<int>>>>();
+    const unsigned int nSuper = _finalAssignments->size();
+
+    for (unsigned int iSuper = 0; iSuper < nSuper; ++iSuper) {
+      _superToSubsystemOccSortingMatrices->push_back(SpinPolarizedData<SCFMode, Eigen::SparseMatrix<int>>(0, 0));
+      const auto& assignment = (*_finalAssignments)[iSuper];
+      auto& sortingMatrix = (*_superToSubsystemOccSortingMatrices)[iSuper];
+      for_spin(assignment, sortingMatrix) {
+        std::vector<unsigned int> subsystemWiseCounter = {0};
+        for (unsigned int iSub = 1; iSub < _nFragments; ++iSub) {
+          subsystemWiseCounter.push_back((assignment_spin.array() < iSub).count());
+        }
+        const unsigned int nOcc = assignment_spin.size();
+        std::vector<Eigen::Triplet<int>> triplets;
+        for (unsigned int iOcc = 0; iOcc < nOcc; ++iOcc) {
+          auto& counter = subsystemWiseCounter[assignment_spin(iOcc)];
+          triplets.push_back(Eigen::Triplet<int>(counter, iOcc, 1));
+          counter++;
+        } // for iOcc
+        Eigen::SparseMatrix<int> newSortingMatrix(nOcc, nOcc);
+        newSortingMatrix.setFromTriplets(triplets.begin(), triplets.end());
+        sortingMatrix_spin = newSortingMatrix;
+      };
+    } // for iSuper
+  }
+  return *_superToSubsystemOccSortingMatrices;
 }
 
 template class GeneralizedDOSTask<Options::SCF_MODES::RESTRICTED>;

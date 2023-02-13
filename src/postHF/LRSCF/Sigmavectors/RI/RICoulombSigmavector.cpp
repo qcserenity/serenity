@@ -45,59 +45,25 @@ RICoulombSigmavector<SCFMode>::RICoulombSigmavector(std::vector<std::shared_ptr<
   : Sigmavector<SCFMode>(lrscf) {
 }
 
-template<>
-std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>>
-RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
-    unsigned int I, unsigned int J,
-    std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> densityMatrices) {
+template<Options::SCF_MODES SCFMode>
+std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
+RICoulombSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
+                                     std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> densityMatrices) {
   Timings::takeTime("LRSCF -   Sigmavector:   RI-J");
 
+  // Calculate shell-wise max coefficients in set of perturbed density matrices.
+  this->setShellWiseMaxDens(J, (*densityMatrices));
+  auto maxDensPtr = this->_maxDensMat.data();
+
   // Set dimensions for Fock like matrices.
-  auto fock = std::make_unique<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>>(this->_nSet);
+  auto fock = std::make_unique<std::vector<std::vector<MatrixInBasis<SCFMode>>>>(this->_nSet);
   for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
     for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
       (*fock)[iSet].emplace_back(this->_lrscf[I]->getBasisController());
     }
   }
 
-  // Thread safety.
-  unsigned nThreads = omp_get_max_threads();
-  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> fock_threads(nThreads);
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    fock_threads[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>(this->_nSet);
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        fock_threads[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
-      }
-    }
-  }
-
-  // Determine prescreening threshold.
-  double prescreeningThreshold = std::min(this->_lrscf[I]->getSysSettings().basis.integralThreshold,
-                                          this->_lrscf[J]->getSysSettings().basis.integralThreshold);
-
-  if (prescreeningThreshold == 0) {
-    double prescreenTresholdI = this->_lrscf[I]->getBasisController()->getPrescreeningThreshold();
-    double prescreenTresholdJ = this->_lrscf[J]->getBasisController()->getPrescreeningThreshold();
-    prescreeningThreshold = std::min(prescreenTresholdI, prescreenTresholdJ);
-  }
-
-  double maxDens = 0.0;
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      maxDens = std::max(maxDens, (*densityMatrices)[iSet][iGuess].array().abs().maxCoeff());
-    }
-  }
-  Eigen::MatrixXd maxDensBlocks = this->getShellWiseMaxDens(J, *densityMatrices);
-  auto maxDensPtr = maxDensBlocks.data();
-  // System I.
-  auto basisControllerI = this->_lrscf[I]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
-  unsigned nb_I = basisControllerI->getNBasisFunctions();
-  // System J.
-  auto basisControllerJ = this->_lrscf[J]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
-  unsigned nb_J = basisControllerJ->getNBasisFunctions();
-  unsigned nbs_J = basisControllerJ->getReducedNBasisFunctions();
-  // aux basis
+  // Auxiliary basis.
   auto basispurpose = Options::BASIS_PURPOSES::AUX_CORREL;
   if (this->_lrscf[I]->getLRSCFSettings().densFitJ == Options::DENS_FITS::ACD) {
     basispurpose = Options::BASIS_PURPOSES::ATOMIC_CHOLESKY;
@@ -105,9 +71,17 @@ RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
   else if (this->_lrscf[I]->getLRSCFSettings().densFitJ == Options::DENS_FITS::ACCD) {
     basispurpose = Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY;
   }
-  // Initialize aux basis controller
+
+  // System I.
+  auto basisControllerI = this->_lrscf[I]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
   auto auxBasisControllerI = this->_lrscf[I]->getBasisController(basispurpose);
+  unsigned nb_I = basisControllerI->getNBasisFunctions();
+
+  // System J.
+  auto basisControllerJ = this->_lrscf[J]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
   auto auxBasisControllerJ = this->_lrscf[J]->getBasisController(basispurpose);
+  unsigned nb_J = basisControllerJ->getNBasisFunctions();
+  unsigned nbs_J = basisControllerJ->getReducedNBasisFunctions();
 
   // Bases for looper.
   std::shared_ptr<BasisController> superBas = nullptr;
@@ -127,32 +101,51 @@ RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
   unsigned nx = superAuxBas->getNBasisFunctions();
   unsigned nxs = superAuxBas->getReducedNBasisFunctions();
 
+  // Thread safety.
+  std::vector<std::vector<std::vector<MatrixInBasis<RESTRICTED>>>> Fc(this->_nThreads);
+  for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+    Fc[iThread] = std::vector<std::vector<MatrixInBasis<RESTRICTED>>>(this->_nSet);
+    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+        Fc[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
+      }
+    }
+  }
+
+  // Use symmetry.
+  std::vector<std::vector<MatrixInBasis<RESTRICTED>>> D_sym(
+      this->_nSet, std::vector<MatrixInBasis<RESTRICTED>>(this->_nGuess, this->_lrscf[J]->getBasisController()));
+  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+      auto D = (*densityMatrices)[iSet][iGuess].total();
+      D_sym[iSet][iGuess] += D;
+      D_sym[iSet][iGuess] += D.transpose();
+    }
+  }
+
   // First contraction.
   std::vector<std::vector<Eigen::MatrixXd>> sumMat(this->_nSet);
   for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
     sumMat[iSet].resize(this->_nGuess);
     for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      sumMat[iSet][iGuess] = Eigen::MatrixXd::Zero(nx, nThreads);
+      sumMat[iSet][iGuess] = Eigen::MatrixXd::Zero(nx, this->_nThreads);
     }
   }
 
-  // Distribute function for first contraction.
   auto distribute1 = [&](unsigned i, unsigned j, unsigned P, double integral, unsigned threadId) {
     unsigned long ij = i * nb_J + j;
-    unsigned long ji = j * nb_J + i;
     double coul = (i == j ? 0.5 : 1.0) * integral;
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto D = (*densityMatrices)[iSet][iGuess].data();
-        sumMat[iSet][iGuess](P, threadId) += (D[ij] + D[ji]) * coul;
+        auto D = D_sym[iSet][iGuess].data();
+        sumMat[iSet][iGuess](P, threadId) += D[ij] * coul;
       }
     }
   };
 
-  // Prescreening function for first contraction.
   auto prescreen1 = [&](unsigned i, unsigned j, unsigned int, double schwarz) {
     unsigned long ij = i * nbs_J + j;
-    return (maxDensPtr[ij] * schwarz < prescreeningThreshold);
+    return (maxDensPtr[ij] * schwarz < this->_prescreeningThreshold);
   };
 
   // Perform first contraction.
@@ -160,7 +153,7 @@ RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
     riints->loopOver3CInts(distribute1, prescreen1);
   }
   else {
-    TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, basisControllerJ, superAuxBas, prescreeningThreshold);
+    TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, basisControllerJ, superAuxBas, this->_prescreeningThreshold);
     looper1.loopNoDerivative(distribute1, prescreen1);
   }
 
@@ -185,22 +178,18 @@ RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
   }
 
   // Second contraction.
-  // Distribute function for second contraction.
   auto distribute2 = [&](unsigned i, unsigned j, unsigned P, double integral, unsigned threadId) {
     unsigned long ij = i * nb_I + j;
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto F = fock_threads[threadId][iSet][iGuess].data();
-
-        // Only perform half the needed contractions and symmetrize afterwards.
+        auto F = Fc[threadId][iSet][iGuess].data();
         F[ij] += integral * coefficients[iSet][iGuess](P);
       }
     }
   };
 
-  // Prescreening function for second contraction.
   auto prescreen2 = [&](unsigned, unsigned, unsigned K, double schwarz) {
-    return (coeffMax(K) * schwarz < prescreeningThreshold);
+    return (coeffMax(K) * schwarz < this->_prescreeningThreshold);
   };
 
   // Perform second contraction.
@@ -208,209 +197,26 @@ RICoulombSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
     riints->loopOver3CInts(distribute2, prescreen2);
   }
   else {
-    TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, basisControllerI, superAuxBas, prescreeningThreshold);
+    TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, basisControllerI, superAuxBas, this->_prescreeningThreshold);
     looper2.loopNoDerivative(distribute2, prescreen2);
   }
 
   // Sum over threads.
   for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
     for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      Eigen::Ref<Eigen::MatrixXd> Fc = fock_threads[0][iSet][iGuess];
-      for (unsigned i = 1; i < nThreads; i++) {
-        Fc += fock_threads[i][iSet][iGuess];
+      auto& Fc0 = Fc[0][iSet][iGuess];
+      for (unsigned iThread = 1; iThread < this->_nThreads; ++iThread) {
+        Fc0 += Fc[iThread][iSet][iGuess];
       }
-      Eigen::MatrixXd Fc_sym = Fc + Fc.transpose();
-      // The diagonal was fine, so it needs to be halved.
-      Fc_sym.diagonal() *= 0.5;
-      (*fock)[iSet][iGuess] += Fc_sym;
-    }
-  }
 
-  Timings::timeTaken("LRSCF -   Sigmavector:   RI-J");
-  return fock;
-}
+      Eigen::MatrixXd F_sym = Fc0;
+      F_sym += Fc0.transpose();
 
-template<>
-std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>>
-RICoulombSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
-    unsigned int I, unsigned int J,
-    std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>> densityMatrices) {
-  Timings::takeTime("LRSCF -   Sigmavector:   RI-J");
-
-  // Set dimensions for Fock like matrices.
-  auto fock = std::make_unique<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>>(this->_nSet);
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      (*fock)[iSet].emplace_back(this->_lrscf[I]->getBasisController());
-    }
-  }
-
-  // Thread safety.
-  unsigned nThreads = omp_get_max_threads();
-  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> fock_threads(nThreads);
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    fock_threads[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>(this->_nSet);
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        fock_threads[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
-      }
-    }
-  }
-
-  // Determine prescreening threshold.
-  double prescreeningThreshold = std::min(this->_lrscf[I]->getSysSettings().basis.integralThreshold,
-                                          this->_lrscf[J]->getSysSettings().basis.integralThreshold);
-
-  if (prescreeningThreshold == 0) {
-    double prescreenTresholdI = this->_lrscf[I]->getBasisController()->getPrescreeningThreshold();
-    double prescreenTresholdJ = this->_lrscf[J]->getBasisController()->getPrescreeningThreshold();
-    prescreeningThreshold = std::min(prescreenTresholdI, prescreenTresholdJ);
-  }
-
-  double maxDens = 0.0;
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      maxDens = std::max(maxDens, (*densityMatrices)[iSet][iGuess].total().array().abs().maxCoeff());
-    }
-  }
-
-  Eigen::MatrixXd maxDensBlocks = this->getShellWiseMaxDens(J, *densityMatrices).total();
-  auto maxDensPtr = maxDensBlocks.data();
-  // System I.
-  auto basisControllerI = this->_lrscf[I]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
-  unsigned nb_I = basisControllerI->getNBasisFunctions();
-  // System J.
-  auto basisControllerJ = this->_lrscf[J]->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
-  unsigned nb_J = basisControllerJ->getNBasisFunctions();
-  unsigned nbs_J = basisControllerJ->getReducedNBasisFunctions();
-  // aux basis
-  auto basispurpose = Options::BASIS_PURPOSES::AUX_CORREL;
-  if (this->_lrscf[I]->getLRSCFSettings().densFitJ == Options::DENS_FITS::ACD) {
-    basispurpose = Options::BASIS_PURPOSES::ATOMIC_CHOLESKY;
-  }
-  else if (this->_lrscf[I]->getLRSCFSettings().densFitJ == Options::DENS_FITS::ACCD) {
-    basispurpose = Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY;
-  }
-  // Initialize aux basis controller
-  auto auxBasisControllerI = this->_lrscf[I]->getBasisController(basispurpose);
-  auto auxBasisControllerJ = this->_lrscf[J]->getBasisController(basispurpose);
-
-  // Bases for looper.
-  std::shared_ptr<BasisController> superBas = nullptr;
-  std::shared_ptr<BasisController> superAuxBas = nullptr;
-
-  if (I == J) {
-    superBas = basisControllerI;
-    superAuxBas = auxBasisControllerI;
-  }
-  else {
-    BasisFunctionMapper basisMapper(basisControllerI);
-    BasisFunctionMapper auxBasisMapper(auxBasisControllerI);
-    superBas = basisMapper.getCombinedBasis(basisControllerJ);
-    superAuxBas = auxBasisMapper.getCombinedBasis(auxBasisControllerJ);
-  }
-  auto riints = RI_J_IntegralControllerFactory::getInstance().produce(superBas, superAuxBas);
-  unsigned nx = superAuxBas->getNBasisFunctions();
-  unsigned nxs = superAuxBas->getReducedNBasisFunctions();
-
-  // First contraction.
-  std::vector<std::vector<Eigen::MatrixXd>> sumMat(this->_nSet);
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    sumMat[iSet].resize(this->_nGuess);
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      sumMat[iSet][iGuess] = Eigen::MatrixXd::Zero(nx, nThreads);
-    }
-  }
-
-  // Distribute function for first contraction.
-  auto distribute1 = [&](unsigned i, unsigned j, unsigned P, double integral, unsigned threadId) {
-    unsigned long ij = i * nb_J + j;
-    unsigned long ji = j * nb_J + i;
-    double coul = (i == j ? 0.5 : 1.0) * integral;
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto Da = (*densityMatrices)[iSet][iGuess].alpha.data();
-        auto Db = (*densityMatrices)[iSet][iGuess].beta.data();
-        sumMat[iSet][iGuess](P, threadId) += (Da[ij] + Da[ji] + Db[ij] + Db[ji]) * coul;
-      }
-    }
-  };
-
-  // Prescreening function for first contraction.
-  auto prescreen1 = [&](unsigned i, unsigned j, unsigned int, double schwarz) {
-    unsigned long ij = i * nbs_J + j;
-    return (maxDensPtr[ij] * schwarz < prescreeningThreshold);
-  };
-
-  // Perform first contraction.
-  if (I == J) {
-    riints->loopOver3CInts(distribute1, prescreen1);
-  }
-  else {
-    TwoElecThreeCenterIntLooper looper1(LIBINT_OPERATOR::coulomb, 0, basisControllerJ, superAuxBas, prescreeningThreshold);
-    looper1.loopNoDerivative(distribute1, prescreen1);
-  }
-
-  // Solve linear systems.
-  std::vector<std::vector<Eigen::VectorXd>> coefficients(this->_nSet);
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    coefficients[iSet].resize(this->_nGuess);
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      coefficients[iSet][iGuess] = riints->getLLTMetric().solve(sumMat[iSet][iGuess].rowwise().sum()).eval();
-    }
-  }
-
-  // Get max values for prescreening.
-  Eigen::VectorXd coeffMax = Eigen::VectorXd::Zero(nxs);
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      auto coeffs = superAuxBas->shellWiseAbsMax(coefficients[iSet][iGuess]);
-      for (unsigned iShell = 0; iShell < nxs; ++iShell) {
-        coeffMax(iShell) = std::max(coeffs(iShell), coeffMax(iShell));
-      }
-    }
-  }
-
-  // Second contraction.
-  // Distribute function for second contraction.
-  auto distribute2 = [&](unsigned i, unsigned j, unsigned P, double integral, unsigned threadId) {
-    unsigned long ij = i * nb_I + j;
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto F = fock_threads[threadId][iSet][iGuess].data();
-
-        // Only perform half the needed contractions and symmetrize afterwards.
-        F[ij] += integral * coefficients[iSet][iGuess](P);
-      }
-    }
-  };
-
-  // Prescreening function for second contraction.
-  auto prescreen2 = [&](unsigned, unsigned, unsigned K, double schwarz) {
-    return (coeffMax(K) * schwarz < prescreeningThreshold);
-  };
-
-  // Perform second contraction.
-  if (I == J) {
-    riints->loopOver3CInts(distribute2, prescreen2);
-  }
-  else {
-    TwoElecThreeCenterIntLooper looper2(LIBINT_OPERATOR::coulomb, 0, basisControllerI, superAuxBas, prescreeningThreshold);
-    looper2.loopNoDerivative(distribute2, prescreen2);
-  }
-
-  // Sum over threads.
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      Eigen::Ref<Eigen::MatrixXd> Fc = fock_threads[0][iSet][iGuess];
-      for (unsigned i = 1; i < nThreads; i++) {
-        Fc += fock_threads[i][iSet][iGuess];
-      }
-      Eigen::MatrixXd Fc_sym = Fc + Fc.transpose();
-      // The diagonal was fine, so it needs to be halved.
-      Fc_sym.diagonal() *= 0.5;
-      (*fock)[iSet][iGuess].alpha += Fc_sym;
-      (*fock)[iSet][iGuess].beta += Fc_sym;
+      auto& F = (*fock)[iSet][iGuess];
+      for_spin(F) {
+        F_spin = F_sym;
+        F_spin.diagonal() *= 0.5;
+      };
     }
   }
 

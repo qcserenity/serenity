@@ -60,9 +60,9 @@ void resolve<GAUGE>(std::string& value, GAUGE& field) {
 
 template<>
 void resolve<LR_METHOD>(std::string& value, LR_METHOD& field) {
-  static const std::map<std::string, LR_METHOD> m = {{"TDA", LR_METHOD::TDA},   {"TDDFT", LR_METHOD::TDDFT},
-                                                     {"CC2", LR_METHOD::CC2},   {"CISDINF", LR_METHOD::CISDINF},
-                                                     {"CISD", LR_METHOD::CISD}, {"ADC2", LR_METHOD::ADC2}};
+  static const std::map<std::string, LR_METHOD> m = {
+      {"CIS", LR_METHOD::TDA}, {"TDA", LR_METHOD::TDA},         {"RPA", LR_METHOD::TDDFT}, {"TDDFT", LR_METHOD::TDDFT},
+      {"CC2", LR_METHOD::CC2}, {"CISDINF", LR_METHOD::CISDINF}, {"CISD", LR_METHOD::CISD}, {"ADC2", LR_METHOD::ADC2}};
   check(m, value, field);
 }
 } /* namespace Options */

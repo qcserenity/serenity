@@ -126,7 +126,7 @@ class MolecularSurfaceController : public GridController, ObjectSensitiveClass<G
   /**
    * @brief The grid and any associated matrices will be deleted.
    */
-  void notify();
+  void notify() override;
   /**
    * @brief Getter for the underlying grid as a molecular surface.
    */

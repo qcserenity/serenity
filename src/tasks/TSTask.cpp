@@ -101,7 +101,7 @@ void TSTask::run() {
     /*
      * Load normal modes
      */
-    HDF5::H5File file(hessianpath.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::H5File file(hessianpath.c_str(), H5F_ACC_RDONLY);
     HDF5::dataset_exists(file, "normalModes");
 
     unsigned int nAtoms = _ts->getGeometry()->getNAtoms();

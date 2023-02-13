@@ -77,7 +77,9 @@ NonlinearEigenvalueSolver::NonlinearEigenvalueSolver(
   }
 
   _itStart = std::chrono::steady_clock::now();
-  _eigenvectors.colwise().normalize();
+  if (_method != Options::LR_METHOD::CISD) {
+    _eigenvectors.colwise().normalize();
+  }
   _guessVectors = _eigenvectors;
   _sigmaVectors = *_sigmaCalculator(_guessVectors, _eigenvalues);
 }
@@ -397,7 +399,7 @@ void NonlinearEigenvalueSolver::postProcessing() {
     printf("\n      CIS(Dinf) excitation energies    \n");
   }
   else if (_method == Options::LR_METHOD::CISD) {
-    printf("\n       CIS(D) excitation energies      \n");
+    printf("\n        CIS(D) energy corrections      \n");
   }
   else {
     printf("\n         CC2 excitation energies       \n");

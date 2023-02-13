@@ -130,7 +130,7 @@ TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_LOOSE) {
       act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::TRIPLES_CORRECTION);
   EXPECT_NEAR(-0.215378, ccsdCorrection, 1e-6);
   // Canonical: -0.00329571. However, this is only semi-canonical treatment!
-  EXPECT_NEAR(-0.003153, triplesCorrection, 1e-6);
+  EXPECT_NEAR(-0.0031526883, triplesCorrection, 1e-6);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   SystemController__TEST_SUPPLY::cleanUp();
 }

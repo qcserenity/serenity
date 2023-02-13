@@ -194,7 +194,7 @@ int getLibXCAlias(const BASIC_FUNCTIONALS& functional) {
       alias = XC_LDA_XC_1D_EHWLRG_3;
       break;
     case BASIC_FUNCTIONALS::XC_BN05:
-      alias = XC_LDA_XC_BN05;
+      alias = XC_HYB_LDA_XC_BN05;
       break;
     case BASIC_FUNCTIONALS::XC_GDSMFB:
       alias = XC_LDA_XC_GDSMFB;
@@ -381,15 +381,6 @@ int getLibXCAlias(const BASIC_FUNCTIONALS& functional) {
       break;
     case BASIC_FUNCTIONALS::X_LBM:
       alias = XC_GGA_X_LBM;
-      break;
-    case BASIC_FUNCTIONALS::X_LC2GAU:
-      alias = XC_GGA_X_LC2GAU;
-      break;
-    case BASIC_FUNCTIONALS::X_LCGAU:
-      alias = XC_GGA_X_LCGAU;
-      break;
-    case BASIC_FUNCTIONALS::X_LCGAU_CORE:
-      alias = XC_GGA_X_LCGAU_CORE;
       break;
     case BASIC_FUNCTIONALS::X_LG93:
       alias = XC_GGA_X_LG93;
@@ -749,7 +740,7 @@ int getLibXCAlias(const BASIC_FUNCTIONALS& functional) {
       alias = XC_GGA_XC_KT3;
       break;
     case BASIC_FUNCTIONALS::XC_LB07:
-      alias = XC_GGA_XC_LB07;
+      alias = XC_HYB_GGA_XC_LB07;
       break;
     case BASIC_FUNCTIONALS::XC_MOHLYP:
       alias = XC_GGA_XC_MOHLYP;

@@ -118,6 +118,7 @@ void export_Options(py::module& spy) {
       .value("IBO", ORBITAL_LOCALIZATION_ALGORITHMS::IBO)
       .value("ER", ORBITAL_LOCALIZATION_ALGORITHMS::EDMISTON_RUEDENBERG)
       .value("NO", ORBITAL_LOCALIZATION_ALGORITHMS::NON_ORTHOGONAL)
+      .value("ALIGN", ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN)
       .export_values();
   py::enum_<KIN_EMBEDDING_MODES>(spy, "KIN_EMBEDDING_MODES")
       .value("NONE", KIN_EMBEDDING_MODES::NONE)
@@ -130,5 +131,34 @@ void export_Options(py::module& spy) {
   py::enum_<GAUGE_ORIGIN>(spy, "GAUGE_ORIGIN")
       .value("CENTEROFMASS", GAUGE_ORIGIN::COM)
       .value("ORIGIN", GAUGE_ORIGIN::ORIGIN)
+      .export_values();
+  py::enum_<ORBITAL_FILE_TYPES>(spy, "ORBITAL_FILE_TYPES")
+      .value("SERENITY", ORBITAL_FILE_TYPES::SERENITY)
+      .value("TURBOMOLE", ORBITAL_FILE_TYPES::TURBOMOLE)
+      .value("MOLPRO", ORBITAL_FILE_TYPES::MOLPRO)
+      .value("MOLCAS", ORBITAL_FILE_TYPES::MOLCAS)
+      .export_values();
+  py::enum_<RESPONSE_ALGORITHM>(spy, "RESPONSE_ALGORITHM")
+      .value("SYMMETRIC", RESPONSE_ALGORITHM::SYMMETRIC)
+      .value("SYMMETRIZED", RESPONSE_ALGORITHM::SYMMETRIZED)
+      .value("SYMPLECTIC", RESPONSE_ALGORITHM::SYMPLECTIC)
+      .export_values();
+  py::enum_<LRSCF_TYPE>(spy, "LRSCF_TYPE")
+      .value("ISOLATED", LRSCF_TYPE::ISOLATED)
+      .value("UNCOUPLED", LRSCF_TYPE::UNCOUPLED)
+      .value("COUPLED", LRSCF_TYPE::COUPLED)
+      .export_values();
+  py::enum_<INTEGRAL_TYPE>(spy, "INTEGRAL_TYPE")
+      .value("NUMERICAL", INTEGRAL_TYPE::NUMERICAL)
+      .value("ANALYTICAL", INTEGRAL_TYPE::ANALYTICAL)
+      .export_values();
+  py::enum_<GAUGE>(spy, "GAUGE").value("LENGTH", GAUGE::LENGTH).value("VELOCITY", GAUGE::VELOCITY).export_values();
+  py::enum_<LR_METHOD>(spy, "LR_METHOD")
+      .value("TDA", LR_METHOD::TDA)
+      .value("TDDFT", LR_METHOD::TDDFT)
+      .value("CC2", LR_METHOD::CC2)
+      .value("CISDINF", LR_METHOD::CISDINF)
+      .value("CISD", LR_METHOD::CISD)
+      .value("ADC2", LR_METHOD::ADC2)
       .export_values();
 }

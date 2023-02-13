@@ -20,16 +20,16 @@
 /* Include Class Header*/
 #include "postHF/CC/DLPNO_CCSD_T0.h"
 /* Include Serenity Internal Headers */
-#include "analysis/PAOSelection/PNOConstructor.h" //PNO construction for distant orbital pairs.
-#include "analysis/PAOSelection/TNOConstructor.h" //TNO construction.
-#include "basis/Basis.h"                          //Aux basis size.
-#include "data/OrbitalTriple.h"                   //Orbital triple definition.
-#include "data/OrbitalTripleSet.h"
+#include "analysis/PAOSelection/PNOConstructor.h"                   //PNO construction for distant orbital pairs.
+#include "analysis/PAOSelection/TNOConstructor.h"                   //TNO construction.
+#include "basis/Basis.h"                                            //Aux basis size.
+#include "data/OrbitalTriple.h"                                     //Orbital triple definition.
+#include "data/OrbitalTripleSet.h"                                  //Set-wise representation of the orbital triples
 #include "data/matrices/MatrixInBasis.h"                            //Container for the aux. metric.
 #include "integrals/MO3CenterIntegralController.h"                  //Three center MO integrals.
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h" //Calculation of aux. metric.
 #include "io/FormattedOutputStream.h"                               //Filtered output.
-#include "misc/Timing.h"                                            //Timinigs.
+#include "misc/Timing.h"                                            //Timings.
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"     //Definition of the local correlation controller.
 #include "system/SystemController.h"                                //Aux. basis controller.
 /* Include Std and External Headers */
@@ -39,6 +39,13 @@ namespace Serenity {
 
 double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelationController> localCorrelationController) {
   takeTime("Semi-Canonical Triples Correction");
+  // Generate PNO basis for distant orbital pairs in case this was not done already. If it was, this will change nothing.
+  auto pnoConstructor = localCorrelationController->producePNOConstructor();
+  auto distantOrbitalPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT_TRIPLES);
+  pnoConstructor->transformToPNOBasis(distantOrbitalPairs);
+  // Update the orbital pair lists.
+  localCorrelationController->selectDistantOrbitalPairs();
+  // Get the orbital triples and print some basic information.
   auto orbitalTripleSets = localCorrelationController->getOrbitalTripleSets();
   auto activeSystem = localCorrelationController->getActiveSystemController();
   auto auxBasisController = activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL);
@@ -62,10 +69,6 @@ double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelation
   // Pre-calculate the coulomb metric.
   MatrixInBasis<RESTRICTED> metric(auxBasisController);
   Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(metric);
-  // Generate PNO basis for distant orbital pairs
-  auto pnoConstructor = localCorrelationController->producePNOConstructor();
-  auto distantOrbitalPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT_TRIPLES);
-  pnoConstructor->transformToPNOBasis(distantOrbitalPairs);
   double finalEnergy = 0.0;
   double averageNTNOs = 0;
   double averageNAux = 0;
@@ -141,7 +144,7 @@ double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelation
   timeTaken(1, "Semi-Canonical Triples Correction");
 
   // TMP
-  for (const auto triple : triples) {
+  for (const auto& triple : triples) {
     if (std::abs(triple->getTripleEnergy()) > 1e-2) {
       std::cout << triple->getI() << " " << triple->getJ() << " " << triple->getK() << "  " << triple->getTripleEnergy()
                 << std::endl;

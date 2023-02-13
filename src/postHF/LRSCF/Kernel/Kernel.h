@@ -26,6 +26,7 @@
 #include "data/grid/DensityMatrixDensityOnGridController.h"
 #include "dft/functionals/wrappers/PartialDerivatives.h"
 #include "math/Derivatives.h"
+#include "settings/GridOptions.h"
 
 namespace Serenity {
 
@@ -73,7 +74,7 @@ class Kernel {
    * @param settings The LRSCFTask settings.
    */
   Kernel(std::vector<std::shared_ptr<SystemController>> act, std::vector<std::shared_ptr<SystemController>> env,
-         const LRSCFTaskSettings& settings);
+         const LRSCFTaskSettings& settings, Options::GRID_PURPOSES gridFineness = Options::GRID_PURPOSES::DEFAULT);
 
   /**
    * @brief Destructor.

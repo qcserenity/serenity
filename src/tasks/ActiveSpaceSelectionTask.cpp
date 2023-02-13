@@ -24,7 +24,6 @@
 #include "settings/Settings.h"        //Subsystem contrution.
 #include "system/SystemController.h"  //Subsystem contrution.
 #include "tasks/GeneralizedDOSTask.h" //DOS procedure.
-#include "tasks/LocalizationTask.h"   //Orbital localization/alignment.
 #include "tasks/ScfTask.h"            //Initial SCF.
 
 namespace Serenity {
@@ -91,8 +90,6 @@ void ActiveSpaceSelectionTask<SCFMode>::run() {
   gdos.settings.prioFirst = true;
   gdos.settings.localizationThreshold = settings.localizationThreshold;
   gdos.settings.populationAlgorithm = settings.populationAlgorithm;
-  gdos.settings.checkDegeneracies = settings.checkDegeneracies;
-  gdos.settings.degeneracyFactor = settings.degeneracyFactor;
   gdos.settings.usePiBias = settings.usePiBias;
   gdos.settings.biasThreshold = settings.biasThreshold;
   gdos.settings.biasAverage = settings.biasAverage;
@@ -107,7 +104,7 @@ void ActiveSpaceSelectionTask<SCFMode>::prepareOrbitals() {
       scfTask.run();
     }
     else {
-      if (!sys->hasElectronicStructure<SCFMode>())
+      if (!sys->template hasElectronicStructure<SCFMode>())
         throw SerenityError(
             (std::string) "ERROR: No electronic structure available. However load=true was set! System " +
             sys->getSystemName());
@@ -115,8 +112,7 @@ void ActiveSpaceSelectionTask<SCFMode>::prepareOrbitals() {
   }   // for sys
   {
     LocalizationTask locTask(_supersystems[0]);
-    locTask.settings.locType = settings.locType;
-    locTask.settings.splitValenceAndCore = settings.splitValenceAndCore;
+    locTask.settings = settings.loc;
     locTask.run();
   }
 
@@ -125,8 +121,7 @@ void ActiveSpaceSelectionTask<SCFMode>::prepareOrbitals() {
 
   for (unsigned int i = 1; i < _supersystems.size(); ++i) {
     LocalizationTask locTask(_supersystems[i]);
-    locTask.settings.locType = settings.locType;
-    locTask.settings.splitValenceAndCore = settings.splitValenceAndCore;
+    locTask.settings = settings.loc;
     locTask.run();
   }
 }
@@ -135,10 +130,8 @@ template<Options::SCF_MODES SCFMode>
 void ActiveSpaceSelectionTask<SCFMode>::alignPiOrbitals() {
   for (unsigned int i = 1; i < _supersystems.size(); ++i) {
     LocalizationTask alignTask(_supersystems[i], {_supersystems[0]});
+    alignTask.settings = settings.loc;
     alignTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN;
-    alignTask.settings.useKineticAlign = settings.kineticAlign;
-    alignTask.settings.alignExponent = settings.alignExponent;
-    alignTask.settings.splitValenceAndCore = settings.splitValenceAndCore;
     alignTask.run();
   }
 }

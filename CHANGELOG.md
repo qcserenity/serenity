@@ -1,6 +1,61 @@
 Changelog
 ===============================
 
+Release 1.5.0 (13.02.2023)
+--------------------------
+
+### Technical Features
+
+- CMake: changed "native" to "x86-64" as the default option for the march compile flag
+
+#### Dependencies
+
+- Updates the default Libxc library to libecpint v6.1.0
+- Updates the default ECP library to libecpint v1.0.7
+- Updates the default GTest version to v1.13.0
+- Updates the default Pybind11 version to v2.10.3
+- Allow compilation without any downloads (SERENITY_DOWNLOAD_DEPENDENCIES=OFF)
+
+#### Bug Fixes
+
+- It is now possible to print GEPOL cavities to file.
+- Correction to the environmental screening in subsystem-based GW/BSE
+- Shifting procedure for not-included orbitals in G0W0/evGW
+
+### Functionalities
+
+#### Linear-Response Framework
+
+- Gauge-origin invariant electronic circular dichroism in the length gauge (Niklas Niemeyer)
+- Simplified subsystem TDDFT (Niklas Niemeyer)
+- Frozen-virtual, frozen-core and core-only approximations for LR methods (Niklas Niemeyer)
+- Interface to the laplace-minimax library (Niklas Niemeyer)
+- Laplace-transformation for N4-scaling spin-opposite scaled MP2/ADC(2)/CC2 (Niklas Niemeyer)
+- Double-hybrid TDDFT (CIS(D) correction) (Niklas Niemeyer)
+- Integral-direct TDDFT sigma vector rework (Niklas Niemeyer)
+- Arbitrary combination of couplings (tools/couple.py): FDEc, transition charges, dipole-dipole (Niklas Niemeyer)
+- Some performance improvements
+  * Adaptive prescreening based on residual norms
+  * Exchange and LR-exchange sigmavector contraction symmetry
+  * Numerical integration XC potential
+  * Numerical integration and kernel contraction
+- Experimental:
+  * Laplace-transform GW
+  * FDEc-BSE calculations possible without TDA
+
+#### General
+
+- The default for implicit solvation is now CPCM instead of IEF-PCM.
+- The ReadOrbitalsTask is now able to read Molpro-xml orbital files and
+  Molcas-HDF5 orbital files (Moritz Bensberg).
+- The ReadOrbitalsTask may now replace the orbital definition in a Molcas-HDF5
+  file by Serenity orbitals (Moritz Bensberg).
+- The unrelaxed density is now available for RI-MP2 and DLPNO-MP2 and can 
+  be used in embedding calculations (Lukas Lampe).
+- Valence virtual orbitals may now be mapped between structures with the DOS algorithm (Moritz Bensberg).
+- Valence virtual orbitals may now be localized with the IBO and orbital alignment schemes (Moritz Bensberg).
+- The DOS selection threshold may now be optimized automatically to provide a qualitative orbital map (Moritz Bensberg).
+
 Release 1.4.0 (21.10.2021)
 -------------------------------
 
@@ -45,7 +100,6 @@ Release 1.4.0 (21.10.2021)
 - Add cavity creation energy calculation from scaled particle
   theory (Moritz Bensberg).
 - Changed the default for "minDistance" in the PCM-input block from 0.1 to 0.2.
-
 
 #### Response Calculations
 - Restricted/unrestricted CC2/CIS(Dinf)/ADC(2) excitation energies
@@ -177,14 +231,17 @@ Release 1.3.0 (16.09.2020)
 Release 1.2.2 (31.10.2019)
 -------------------------------
 
-- Bug Fixes
+### Bug Fixes
+
   - Missing embedding settings in the Python wrapper
   - Generating directories in parallel runs
 
 Release 1.2.1 (27.09.2019)
 -------------------------------
 
-- Bug Fixes
+### Bug Fixes
+
+- Various smaller Bug Fixes
 
 Release 1.2.0 (13.09.2019)
 -------------------------------

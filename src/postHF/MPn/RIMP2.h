@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
+#include "data/matrices/DensityMatrix.h"
 #include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
@@ -57,6 +58,11 @@ class RIMP2 {
    * @return Returns the MP2 correction to the electronic energy.
    */
   double calculateCorrection();
+  /**
+   * @brief Calculates the unrelaxed density correction.
+   * @return Returns the RI-MP2 correction of the AO density matrix.
+   */
+  DensityMatrix<SCFMode> calculateDensityCorrection();
 
  private:
   /**

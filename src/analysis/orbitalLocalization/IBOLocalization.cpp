@@ -34,8 +34,8 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-IBOLocalization<SCFMode>::IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly)
-  : _system(systemController), _IAOsOnly(IAOsOnly){};
+IBOLocalization<SCFMode>::IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly, bool replaceVirtuals)
+  : _system(systemController), _IAOsOnly(IAOsOnly), _replaceVirtuals(replaceVirtuals){};
 
 template<Options::SCF_MODES SCFMode>
 void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
@@ -50,7 +50,7 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
    * this link contains the reprint with corrected formulas in the appendix:
    * http://www.theochem.uni-stuttgart.de/~knizia/bin/iao_preprint.pdf
    */
-  auto nOccOrbs = _system->getNOccupiedOrbitals<SCFMode>();
+  auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
   // Create new basis
   std::shared_ptr<AtomCenteredBasisController> minaoBasis = AtomCenteredBasisControllerFactory::produce(
       _system->getGeometry(), _system->getSettings().basis.basisLibPath,
@@ -63,23 +63,57 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
   auto B1 = _system->getBasisController(Options::BASIS_PURPOSES::DEFAULT);
   auto B2 = _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION);
 
+  bool localizeVirtuals = false;
+  for_spin(orbitalRange, nOcc) {
+    if (orbitalRange_spin.size() > 1) {
+      unsigned int maxIndex = *std::max_element(orbitalRange_spin.begin(), orbitalRange_spin.end());
+      if (maxIndex >= nOcc_spin)
+        localizeVirtuals = true;
+      if (maxIndex > B2->getNBasisFunctions())
+        throw SerenityError("The IBO localization basis is too small to localize the given orbital selection.");
+    }
+  };
+
   // coefficent matrix
   CoefficientMatrix<SCFMode> C = orbitals.getCoefficients();
   // Overlap integrals.
   const auto& S1 = _system->getOneElectronIntegralController()->getOverlapIntegrals();
+  /*
+   * The following few lines are needed for the localization of virtual orbitals only. In the
+   * case that the IAO basis set does not span the space of the virtual valence orbitals we must
+   * first reconstruct the orbitals to do so. Otherwise, the orbital localization may lead to
+   * non-orthogonal and non normalized virtual orbitals. In the case that "_replaceVirtuals" is
+   * false, we explicitly check if the virtual valence orbital space is fine and replace the
+   * virtual orbitals if required.
+   */
+  bool replaceVirtBeforeLoc =
+      localizeVirtuals &&
+      (_replaceVirtuals || !IAOPopulationCalculator<SCFMode>::iaosSpanOrbitals(
+                               C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
+                               _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
+                               _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION)));
+  if (replaceVirtBeforeLoc) {
+    IAOPopulationCalculator<SCFMode>::reconstructVirtualValenceOrbitalsInplace(
+        C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
+        _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
+        _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION));
+    orbitals.updateOrbitals(C, orbitals.getEigenvalues());
+  }
   // Coefficients in IAO basis
-  auto CIAOandOthoA = IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(C, S1, nOccOrbs, B1, B2);
+  auto CIAOandOthoA = IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(C, S1, nOcc, B1, B2, localizeVirtuals);
+
   auto& spinCIAO = CIAOandOthoA.first;
   const auto& spinOthoA = CIAOandOthoA.second;
 
-  for_spin(spinOthoA, spinCIAO, C, nOccOrbs, orbitalRange) {
+  for_spin(spinOthoA, spinCIAO, C, orbitalRange) {
     auto& CIAO = spinCIAO_spin;
+    const unsigned int nCIAOOrbs = CIAO.cols();
     const auto& othoA = spinOthoA_spin;
     if (_IAOsOnly) {
       /*
        * Stop here for IAOs
        */
-      C_spin.leftCols(nOccOrbs_spin) = othoA * CIAO;
+      C_spin.leftCols(nCIAOOrbs) = othoA * CIAO;
     }
     else {
       /*
@@ -88,6 +122,7 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
       bool converged = false;
 
       unsigned int cycle = 0;
+
       while (!converged) {
         ++cycle;
 
@@ -151,7 +186,7 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
         // Convergence Check
         if (fabs(gradient) <= 1e-8) {
           std::cout << "    Converged after " << cycle << " orbital rotation cycles." << std::endl << std::endl;
-          C_spin.leftCols(nOccOrbs_spin) = othoA * CIAO;
+          C_spin.leftCols(nCIAOOrbs) = othoA * CIAO;
           converged = true;
         }
         else if (cycle == maxSweeps) {
@@ -160,9 +195,17 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
           std::cout << "    ERROR: IBO procedure did not converged after " << cycle << " orbital rotation cycles."
                     << std::endl;
           std::cout << "           The orbitals will still be stored for error analysis." << std::endl;
-          C_spin.leftCols(nOccOrbs_spin) = othoA * CIAO;
+          C_spin.leftCols(nCIAOOrbs) = othoA * CIAO;
+
           converged = true;
         }
+        const double sanityCheck = (C_spin.leftCols(nCIAOOrbs).transpose() * S1 * C_spin.leftCols(nCIAOOrbs) -
+                                    Eigen::MatrixXd::Identity(nCIAOOrbs, nCIAOOrbs))
+                                       .array()
+                                       .abs()
+                                       .sum();
+        if (sanityCheck > 1e-6)
+          throw SerenityError("The orbitals are no longer orthogonal after IBO localization!");
       }
     } /* rotations while loop */
   };  /* spin loop */

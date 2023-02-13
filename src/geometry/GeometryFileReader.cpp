@@ -75,7 +75,7 @@ std::vector<std::unique_ptr<Geometry>> GeometryFileReader::readAllGeometries() {
       break;
     }
     else {
-      geometries.push_back(move(newGeometry));
+      geometries.push_back(std::move(newGeometry));
     }
   }
   if (!fileWasOpen)

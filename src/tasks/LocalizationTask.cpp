@@ -28,9 +28,8 @@
 #include "analysis/orbitalLocalization/PipekMezeyLocalization.h"
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
-#include "data/matrices/CoefficientMatrix.h"
-#include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
+#include "geometry/Geometry.h" //getNMinimalBasisFunctions()
 #include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutput.h"
 #include "io/FormattedOutputStream.h" //Filtered output streams.
@@ -39,8 +38,8 @@
 #include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <Eigen/StdVector>
+#include <algorithm> // std::max
 #include <iostream>
-#include <unsupported/Eigen/MatrixFunctions>
 
 namespace Serenity {
 
@@ -98,7 +97,7 @@ LocalizationTask::getValenceOrbitalIndices() {
   SpinPolarizedData<SCFMode, std::string> praefix = getOutputPraefix<SCFMode>();
   for_spin(valenceRange, praefix, nOcc) {
     OutputControl::vOut << praefix_spin << std::endl << "  ";
-    for (const auto orb : valenceRange_spin)
+    for (const auto& orb : valenceRange_spin)
       OutputControl::vOut << orb << " ";
     OutputControl::vOut << std::endl;
     OutputControl::nOut << "  Number of core-like orbitals: " << nOcc_spin - valenceRange_spin.size() << "  "
@@ -107,6 +106,60 @@ LocalizationTask::getValenceOrbitalIndices() {
   OutputControl::nOut << "  Core-like orbitals will be localized separately." << std::endl;
   OutputControl::nOut << "  Running orbital localization for valence orbitals." << std::endl;
   return std::make_pair(valenceRange, coreRange);
+}
+template<Options::SCF_MODES SCFMode>
+std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
+LocalizationTask::getVirtualValenceOrbitalIndices() {
+  const auto nOcc = _systemController->getNOccupiedOrbitals<SCFMode>();
+  const auto nBasisFunctions = _systemController->getBasisController()->getNBasisFunctions();
+  std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>> ranges;
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>>& valenceRange = ranges.first;
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>>& rydbergRange = ranges.second;
+  if (!settings.splitVirtuals and settings.locType != Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO) {
+    for_spin(nOcc, valenceRange) {
+      for (unsigned int iVirt = nOcc_spin; iVirt < nBasisFunctions; ++iVirt)
+        valenceRange_spin.push_back(iVirt);
+    };
+    return ranges;
+  }
+  if (settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO ||
+      settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN ||
+      settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::IAO) {
+    OutputControl::mOut << "  IBO localization is used. Ignoring any specifications for Rydberg orbitals and"
+                           " referencing\n  the IBO minamal basis set instead."
+                        << std::endl;
+    const int nMinimalBasisFunctions =
+        this->_systemController->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION)->getNBasisFunctions();
+    const int nBasisFunctions = this->_systemController->getBasisController()->getNBasisFunctions();
+    const unsigned int nRydbergOrbitals = std::max(0, nBasisFunctions - nMinimalBasisFunctions);
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setRydbergOrbitalsByNumber(nRydbergOrbitals);
+  }
+  else if (settings.useEnergyCutOff) {
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setRydbergOrbitalsByEnergyCutOff(
+        settings.virtualEnergyCutOff);
+  }
+  else if (settings.nRydbergOrbitals != std::numeric_limits<unsigned int>::infinity()) {
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setRydbergOrbitalsByNumber(settings.nRydbergOrbitals);
+  }
+  else {
+    this->_systemController->template getActiveOrbitalController<SCFMode>()->setRydbergOrbitalsByNumber(
+        this->_systemController->getGeometry()->getNMinimalBasisFunctions(true));
+  }
+  ranges = this->_systemController->template getActiveOrbitalController<SCFMode>()->getVirtualValenceOrbitalIndices(nOcc);
+  OutputControl::vOut << "The following orbitals have been identified as valence orbitals:" << std::endl;
+  SpinPolarizedData<SCFMode, std::string> praefix = getOutputPraefix<SCFMode>();
+  for_spin(valenceRange, praefix, rydbergRange) {
+    OutputControl::vOut << praefix_spin << std::endl << "  ";
+    for (const auto& orb : valenceRange_spin)
+      OutputControl::vOut << orb << " ";
+    OutputControl::vOut << std::endl;
+    OutputControl::nOut << "  Number of Rydberg-like orbitals: " << rydbergRange_spin.size() << "  " << praefix_spin
+                        << std::endl;
+    OutputControl::nOut << "  Number of virtual valence orbitals: " << valenceRange_spin.size() << "  " << praefix_spin
+                        << std::endl;
+  };
+  OutputControl::nOut << "  Rydberg-like orbitals will be localized separately or not at all." << std::endl;
+  return std::make_pair(valenceRange, rydbergRange);
 }
 template<Options::SCF_MODES T>
 void LocalizationTask::runByLastSCFMode() {
@@ -121,12 +174,12 @@ void LocalizationTask::runByLastSCFMode() {
       printSubSectionTitle("Running Pipek-Mezey Localization");
       break;
     case Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO:
-      localizationRoutine = std::make_shared<IBOLocalization<T>>(_systemController, false);
+      localizationRoutine = std::make_shared<IBOLocalization<T>>(_systemController, false, settings.replaceVirtuals);
       printSubSectionTitle("Running IBO Localization");
       break;
     case Options::ORBITAL_LOCALIZATION_ALGORITHMS::IAO:
       // TODO: Does this actually do anything? Projecting on the IAOs and back should not change the orbitals.
-      localizationRoutine = std::make_shared<IBOLocalization<T>>(_systemController, true);
+      localizationRoutine = std::make_shared<IBOLocalization<T>>(_systemController, true, settings.replaceVirtuals);
       printSubSectionTitle("Running IAO Localization");
       break;
     case Options::ORBITAL_LOCALIZATION_ALGORITHMS::EDMISTON_RUEDENBERG:
@@ -139,11 +192,11 @@ void LocalizationTask::runByLastSCFMode() {
       break;
     case Options::ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN:
       if (_templateSystem.size() == 0) {
-        throw SerenityError("Orbital alignment was requested without any template system.\
-                           Please specify a template system in the task input via the env keyword.");
+        throw SerenityError("Orbital alignment was requested without any template system.\n"
+                            "Please specify a template system in the task input via the env keyword.");
       }
-      localizationRoutine = std::make_shared<OrbitalAligner<T>>(_systemController, _templateSystem[0],
-                                                                settings.alignExponent, settings.useKineticAlign);
+      localizationRoutine = std::make_shared<OrbitalAligner<T>>(_systemController, _templateSystem[0], settings.alignExponent,
+                                                                settings.useKineticAlign, settings.replaceVirtuals);
       printSubSectionTitle("Running IBO-Like Orbital Alignment");
       break;
     case Options::ORBITAL_LOCALIZATION_ALGORITHMS::NONE:
@@ -159,6 +212,18 @@ void LocalizationTask::runByLastSCFMode() {
   if (settings.splitValenceAndCore) {
     OutputControl::nOut << "  Running orbital localization for core orbitals." << std::endl;
     localizationRoutine->localizeOrbitals(*orbitals, settings.maxSweeps, valenceAndCoreOrbitalIndices.second);
+  }
+  if (settings.localizeVirtuals) {
+    if (settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO ||
+        settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN ||
+        settings.locType == Options::ORBITAL_LOCALIZATION_ALGORITHMS::IAO) {
+      OutputControl::nOut << "  Running orbital localization for virtual orbitals." << std::endl;
+      auto virtualOrbitalRanges = this->template getVirtualValenceOrbitalIndices<T>();
+      localizationRoutine->localizeOrbitals(*orbitals, settings.maxSweeps, virtualOrbitalRanges.first);
+    }
+    else {
+      throw SerenityError("Virtual orbital localization is only implemented for the IBO localization scheme.");
+    }
   }
 
   DensityMatrixController<T> densMatContr(orbitals, _systemController->getNOccupiedOrbitals<T>());

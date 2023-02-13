@@ -51,7 +51,7 @@ class CartesianToSphericalTransformer {
   CartesianToSphericalTransformer();
 
   /* Worker functions */
-  // The normalization facotr N^S_lm
+  // The normalization factor N^S_lm
   // Implements eq. 6.4.49 p. 215 Helgaker, Jørgensen, Olsen
   static double norm(unsigned int l, unsigned int abs_m) {
     return sqrt(2 * factorial(l + abs_m) * factorial(l - abs_m) / ((abs_m == 0) ? 2 : 1)) / (intPow(2, abs_m) * factorial(l));

@@ -66,11 +66,7 @@ class ScalarOperatorToMatrixAdder {
                               std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerB,
                               double blockAveThreshold);
 
-  virtual ~ScalarOperatorToMatrixAdder() {
-#ifdef _OPENMP
-    omp_destroy_lock(&_lock);
-#endif
-  }
+  virtual ~ScalarOperatorToMatrixAdder() = default;
   /**
    * @brief Adds contributions from a scalar operator which is represented on a grid to a matrix.
    *        Generalized version for SPMatrix.
@@ -134,10 +130,6 @@ class ScalarOperatorToMatrixAdder {
                 std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
                 SPMatrix<SCFMode>& m_AB, const GridPotential<SCFMode>& scalarPart,
                 const Gradient<GridPotential<SCFMode>>& gradientPart);
-
-#ifdef _OPENMP
-  omp_lock_t _lock;
-#endif
 };
 
 } /* namespace Serenity */

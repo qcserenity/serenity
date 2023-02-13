@@ -110,7 +110,7 @@ class CoulombIntegralsOnGridController : public ObjectSensitiveClass<Grid> {
     const unsigned int nBlocks = _blockSizes.size();
     unsigned int blockEnd = nTotalSets;
     HDF5::Filepath name(_intFileBaseName);
-    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
     Eigen::setNbThreads(1);
     for (int iBlock = nBlocks - 1; iBlock >= 0; --iBlock) {
       unsigned int n = _blockSizes[iBlock];

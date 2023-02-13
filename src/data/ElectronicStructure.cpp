@@ -36,12 +36,13 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<OneElectronIntegralController> oneEIntController,
-                                                  const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals)
+                                                  const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
+                                                  const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons)
   : state(ES_STATE::INITIAL),
     _diskmode(false),
     _oneEIntController(oneEIntController),
     _nOccupiedOrbitals(nOccupiedOrbitals),
-    _molecularOrbitals(new OrbitalController<SCFMode>(oneEIntController->getBasisController())),
+    _molecularOrbitals(new OrbitalController<SCFMode>(oneEIntController->getBasisController(), nCoreElectrons)),
     _densityMatrixController(nullptr),
     _energyComponentController(new EnergyComponentController),
     _naddKinPotential(nullptr) {
@@ -51,12 +52,13 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<OneElectronInt
 template<Options::SCF_MODES SCFMode>
 ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<BasisController> basisController,
                                                   std::shared_ptr<const Geometry> geometry,
-                                                  const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals)
+                                                  const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
+                                                  const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons)
   : state(ES_STATE::INITIAL),
     _diskmode(false),
     _oneEIntController(OneIntControllerFactory::getInstance().produce(basisController, geometry)),
     _nOccupiedOrbitals(nOccupiedOrbitals),
-    _molecularOrbitals(new OrbitalController<SCFMode>(basisController)),
+    _molecularOrbitals(new OrbitalController<SCFMode>(basisController, nCoreElectrons)),
     _densityMatrixController(nullptr),
     _energyComponentController(new EnergyComponentController),
     _naddKinPotential(nullptr) {
@@ -195,7 +197,7 @@ void ElectronicStructure<SCFMode>::toHDF5(std::string fBaseName, std::string id)
 template<>
 void ElectronicStructure<Options::SCF_MODES::RESTRICTED>::fockFromHDF5(std::string fBaseName, std::string id) {
   HDF5::Filepath name(fBaseName + ".FockMatrix.res.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "FockMatrix");
   HDF5::attribute_exists(file, "ID");
   HDF5::check_attribute(file, "ID", id);
@@ -207,7 +209,7 @@ void ElectronicStructure<Options::SCF_MODES::RESTRICTED>::fockFromHDF5(std::stri
 template<>
 void ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>::fockFromHDF5(std::string fBaseName, std::string id) {
   HDF5::Filepath name(fBaseName + ".FockMatrix.unres.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "FockMatrix_alpha");
   HDF5::dataset_exists(file, "FockMatrix_beta");
   HDF5::attribute_exists(file, "ID");

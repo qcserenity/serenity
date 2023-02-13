@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Tools/IterativeSolver.h"
+#include "postHF/LRSCF/Tools/SigmaCalculator.h"
 
 namespace Serenity {
 
@@ -44,8 +45,6 @@ class ResponseSolver : public IterativeSolver {
  public:
   /**
    * @brief Constructor.
-   * @param nDimension Dimension of the TDDFT problem.
-   * @param nEigen Number of the lowest eigenvalues to be obtained.
    * @param diagonal Orbital-energy difference of the TDDFT problem.
    * @param convergenceCriterion If the norm of a residual vector of a root falls beneath this
    *        threshold, the root will be considered converged.
@@ -54,21 +53,16 @@ class ResponseSolver : public IterativeSolver {
    *        exceeds this threshold.
    * @param frequencies The frequencies to be solved for.
    * @param damping The implicitly imaginary damping factor (in eV).
-   * @param gauge The gauge (length or velocity) to determine the rhs to be used.
-   * @param lengths The electric dipole integrals in length-gauge.
-   * @param velocities The electric dipole integrals in velocity-gauge.
-   * @param magnetics The magnetic dipole integrals.
+   * @param rhs The right-hand side of the linear system.
    * @param sigmaCalculator A lambda to conveniently form response matrix -- guess vector products.\n
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
    * @param initialGuess The initial guess space might also be passed to the response solver.
    * @param writeToDisk A lambda function to store temporary iteration data to disk.
    */
   ResponseSolver(
-      unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion, unsigned maxIterations,
-      unsigned maxSubspaceDimension, std::vector<double>& frequencies, double damping, Options::GAUGE gauge,
-      const Eigen::MatrixXd& lengths, const Eigen::MatrixXd& velocities, const Eigen::MatrixXd& magnetics,
-      std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-      std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess = nullptr,
+      Eigen::VectorXd& diagonal, double convergenceCriterion, unsigned maxIterations, unsigned maxSubspaceDimension,
+      std::vector<double>& frequencies, double damping, std::vector<Eigen::MatrixXd> ppmq,
+      SigmaCalculator sigmaCalculator, std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess = nullptr,
       std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk = [](std::vector<Eigen::MatrixXd>&,
                                                                                             Eigen::VectorXd&) {});
 
@@ -117,14 +111,6 @@ class ResponseSolver : public IterativeSolver {
   bool _damped;
   ///@brief The number of frequencies.
   unsigned int _nFreqs;
-  ///@brief The gauge used for properties to be calculated (effectively determies the rhs).
-  Options::GAUGE _gauge;
-  ///@brief The electric dipole integrals in length-gauge.
-  const Eigen::MatrixXd _lengths;
-  ///@brief The electric dipole integrals in velocity-gauge.
-  const Eigen::MatrixXd _velocities;
-  ///@brief The magnetic dipole integrals.
-  const Eigen::MatrixXd _magnetics;
   ///@brief The right-hand sides.
   std::vector<Eigen::MatrixXd> _ppmq;
 

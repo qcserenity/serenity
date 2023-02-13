@@ -22,15 +22,21 @@
 #define LRSCF_KERNELSIGMAVECTOR
 
 /* Include Serenity Internal Headers */
-#include "data/grid/BasisFunctionOnGridControllerFactory.h"
-#include "postHF/LRSCF/Kernel/Kernel.h"
+#include "data/SpinPolarizedData.h"
+#include "data/grid/GridPotential.h"
+#include "math/Derivatives.h"
 #include "postHF/LRSCF/Sigmavectors/Sigmavector.h"
-#include "settings/Options.h"
+#include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
-#include <Eigen/Dense>
 #include <memory>
 
 namespace Serenity {
+
+class BasisFunctionOnGridController;
+
+template<Options::SCF_MODES SCFMode>
+class Kernel;
+
 /**
  * @class KernelSigmavector KernelSigmavector.h
  * @brief Calculates the Kernel Sigma Vector. Performs a numerical integration of the XC-kernel with the basisfunctions
@@ -54,39 +60,41 @@ class KernelSigmavector : public Sigmavector<SCFMode> {
    */
   KernelSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, std::vector<Eigen::MatrixXd> b,
                     std::shared_ptr<Kernel<SCFMode>> kernel);
+
+  /**
+   * @brief Destructor.
+   */
   virtual ~KernelSigmavector() = default;
 
  private:
-  // Function to calculate and return Fock-like matrix F_IJ
+  ///@brief Function to calculate and return Fock-like matrix F_IJ.
   std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
-  calcF(unsigned int I, unsigned int J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) final;
-  // Calculates
-  //          pbb = \sum_{kl} P_{k l} \phi_k \phi_l
-  // and
-  //          pnbb = \sum_{kl} P_{k l} \nabla(\phi_k \phi_l)
-  // Add weights!
-  // for each density matrix and contract with kernel
+  calcF(unsigned I, unsigned J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) final;
+
+  /**
+   * @brief Calculates (weighted)
+   *          pbb = \sum_{kl} P_{k l} \phi_k \phi_l
+   * and
+   *          pnbb = \sum_{kl} P_{k l} \nabla(\phi_k \phi_l)
+   * for each density matrix and contract with kernel.
+   */
   void contractKernel(std::vector<std::vector<MatrixInBasis<SCFMode>>>& dens,
                       std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
                       std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
-                      std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart, unsigned int I,
-                      unsigned int J);
-  // Performs the contraction of pbb/pnbb with the kernel stored on the grid
-  void contractBlock(const unsigned int iGridStart, const unsigned int blockSize,
-                     SpinPolarizedData<SCFMode, Eigen::VectorXd>& pbb,
-                     Gradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>>& pnbb, GridPotential<SCFMode>& scalarPart,
-                     Gradient<GridPotential<SCFMode>>& gradientPart, unsigned int I, unsigned int J);
-  // Performs numerical integration for GGAs
-  void numIntSigma(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& focklikeMatrix,
-                   std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-                   std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
-                   std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart, unsigned int I);
-  // Performs numerical integration for LDAs
-  void numIntSigma(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& focklikeMatrix,
-                   std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-                   std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart, unsigned int I);
+                      std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart, unsigned I, unsigned int J);
 
-  // Kernel object
+  ///@brief Performs the contraction of pbb/pnbb with the kernel stored on the grid.
+  void contractBlock(const unsigned iGridStart, const unsigned blockSize, SpinPolarizedData<SCFMode, Eigen::VectorXd>& pbb,
+                     Gradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>>& pnbb, GridPotential<SCFMode>& scalarPart,
+                     Gradient<GridPotential<SCFMode>>& gradientPart, unsigned I, unsigned J);
+
+  ///@brief Performs numerical integration.
+  void numericalIntegration(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& Fxc,
+                            std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+                            std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
+                            std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart, unsigned I);
+
+  ///@brief Underlying kernel object.
   std::shared_ptr<Kernel<SCFMode>> _kernel;
 
 }; // class KernelSigmavector

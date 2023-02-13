@@ -100,7 +100,7 @@ TEST_F(DensityMatrixControllerTest, Constructor_DensityMatrix_R) {
  */
 TEST_F(DensityMatrixControllerTest, Constructor_Orbitals_R) {
   auto nTest = std::make_shared<DensityMatrixControllerNotificationTest<Options::SCF_MODES::RESTRICTED>>();
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients = orbset->getCoefficients();
   coefficients(0, 0) = 0.2;
   coefficients(0, 1) = 0.9;
@@ -128,7 +128,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccVec_R) {
   DensityMatrixController<Options::SCF_MODES::RESTRICTED> controller(tRestrictedDensityMatrix);
   controller.addSensitiveObject(nTest);
 
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients = orbset->getCoefficients();
   coefficients(0, 0) = 0.1;
   coefficients(1, 0) = 0.9;
@@ -155,7 +155,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccOrbNumber_R) {
   DensityMatrixController<Options::SCF_MODES::RESTRICTED> controller(tRestrictedDensityMatrix);
   controller.addSensitiveObject(nTest);
 
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients = orbset->getCoefficients();
   coefficients(0, 0) = 0.1;
   coefficients(1, 0) = 0.9;
@@ -203,7 +203,7 @@ TEST_F(DensityMatrixControllerTest, MatrixSetter_R) {
 TEST_F(DensityMatrixControllerTest, NotifiedUpdate_R) {
   auto nTest = std::make_shared<DensityMatrixControllerNotificationTest<Options::SCF_MODES::RESTRICTED>>();
   EXPECT_FALSE(nTest->notified);
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(tBasisController, 0);
   // set initial coefficients
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> coefficients = orbset->getCoefficients();
   coefficients(0, 0) = 0.2;
@@ -262,7 +262,7 @@ TEST_F(DensityMatrixControllerTest, Constructor_DensityMatrix_U) {
  */
 TEST_F(DensityMatrixControllerTest, Constructor_Orbitals_U) {
   auto nTest = std::make_shared<DensityMatrixControllerNotificationTest<Options::SCF_MODES::UNRESTRICTED>>();
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> coefficients = orbset->getCoefficients();
   coefficients.alpha(0, 0) = 0.2;
   coefficients.alpha(0, 1) = 0.9;
@@ -298,7 +298,7 @@ TEST_F(DensityMatrixControllerTest, AttachOrbitalController_OccVec_U) {
   DensityMatrixController<Options::SCF_MODES::UNRESTRICTED> controller(tRestrictedDensityMatrix);
   controller.addSensitiveObject(nTest);
 
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> coefficients = orbset->getCoefficients();
   coefficients.alpha(0, 0) = 0.1;
   coefficients.alpha(1, 0) = 0.9;
@@ -362,7 +362,7 @@ TEST_F(DensityMatrixControllerTest, MatrixSetter_U) {
 TEST_F(DensityMatrixControllerTest, NotifiedUpdate_U) {
   auto nTest = std::make_shared<DensityMatrixControllerNotificationTest<Options::SCF_MODES::UNRESTRICTED>>();
   EXPECT_FALSE(nTest->notified);
-  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController);
+  auto orbset = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(tBasisController, 0);
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> coefficients = orbset->getCoefficients();
   // set initial coefficients
   coefficients.alpha(0, 0) = 0.2;

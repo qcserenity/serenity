@@ -71,7 +71,7 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemContr
   };
   auto orbs =
       std::make_shared<OrbitalController<SCFMode>>(std::move(coefficientMatrix), systemController->getBasisController(),
-                                                   std::move(eigenvalues), systemController->getNCoreElectrons());
+                                                   *eigenvalues, systemController->getNCoreElectrons());
   orbs->setCanOrthTh(systemController->getSettings().scf.canOrthThreshold);
   std::unique_ptr<ElectronicStructure<SCFMode>> elecStruct(new ElectronicStructure<SCFMode>(
       orbs, systemController->getOneElectronIntegralController(), systemController->getNOccupiedOrbitals<SCFMode>()));

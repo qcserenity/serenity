@@ -189,6 +189,7 @@ void FreezeAndThawTask<SCFMode>::run() {
       if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         FDETask<Options::SCF_MODES::RESTRICTED> task(activeSystem, passiveSystems);
         task.settings.embedding = settings.embedding;
+        task.settings.lcSettings = settings.lcSettings;
         task.settings.gridCutOff = settings.gridCutOff;
         task.settings.smallSupersystemGrid = settings.smallSupersystemGrid;
         task.settings.finalGrid = false;
@@ -196,10 +197,14 @@ void FreezeAndThawTask<SCFMode>::run() {
         task.settings.calculateSolvationEnergy = settings.calculateSolvationEnergy;
         task.settings.firstPassiveSystemIndex = _activeSystems.size() - 1;
         task.settings.embedding.dispersion = Options::DFT_DISPERSION_CORRECTIONS::NONE;
+        task.settings.mp2Type = settings.mp2Type;
         if (settings.gridCutOff < 0)
           task.setSuperSystemGrid(supersystemgrid);
         if (molecularSurfaceIsInitialized)
           task.settings.initializeSuperMolecularSurface = false;
+        if (settings.calculateUnrelaxedMP2Density.size() == _activeSystems.size()) {
+          task.settings.calculateUnrelaxedMP2Density = settings.calculateUnrelaxedMP2Density[nSystem];
+        }
         task.run();
         supersystemgrid = task.getSuperSystemGrid();
       }
@@ -317,7 +322,7 @@ void FreezeAndThawTask<SCFMode>::run() {
 
     Options::GRID_PURPOSES finalGridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    auto finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystems[0]->getSettings(), finalGridacc);
+    auto finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystems[0]->getSettings().grid, finalGridacc);
 
     auto xcfunc = resolveFunctional(settings.embedding.naddXCFunc);
     auto kinefunc = resolveFunctional(settings.embedding.naddKinFunc);
@@ -416,12 +421,12 @@ void FreezeAndThawTask<SCFMode>::cleanUp() {
     }
     // TODO: Remove this as soon as the destruction of the system controllers works properly.
     if (settings.embedding.pcm.use)
-      sys->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
+      sys->template getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
   }
   // TODO: Remove this as soon as the destruction of the system controllers works properly.
   if (settings.embedding.pcm.use) {
     for (auto sys : _passiveSystems) {
-      sys->getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
+      sys->template getElectrostaticPotentialOnMolecularSurfaceController<SCFMode>(MOLECULAR_SURFACE_TYPES::FDE)->cleanUpDisk();
     }
   }
 }

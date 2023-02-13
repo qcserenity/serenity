@@ -24,7 +24,8 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
-#include "integrals/looper/TwoElecThreeCenterIntLooper.h"
+#include "integrals/looper/TwoElecThreeCenterCalculator.h"
+#include "math/LaplaceMinimaxWrapper.h"
 #include "postHF/LRSCF/Tools/RIIntegrals.h"
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
@@ -43,17 +44,30 @@ XWFController<SCFMode>::XWFController(std::shared_ptr<LRSCFController<SCFMode>> 
     _nb(lrscf->getRIIntegrals()->getNBasisFunctions()),
     _nx(lrscf->getRIIntegrals()->getNTransformedAuxBasisFunctions()),
     _nxb(lrscf->getRIIntegrals()->getNAuxBasisFunctions()),
-    _nxs(lrscf->getRIIntegrals()->getNCachedAuxBasisFunctions()),
     _sss(lrscf->getLRSCFSettings().sss),
     _oss(lrscf->getLRSCFSettings().oss),
     _soss(_sss + _oss),
     _Jia(lrscf->getRIIntegrals()->getJiaPtr()),
     _Jij(lrscf->getRIIntegrals()->getJijPtr()),
-    _Jmn(lrscf->getRIIntegrals()->getJmnPtr()),
-    _looper(lrscf->getRIIntegrals()->getLooperPtr()),
+    _integrals(lrscf->getRIIntegrals()->getIntegralPtr()),
     _xwfModel(lrscf->getLRSCFSettings().method),
     _settings(lrscf->getLRSCFSettings()),
     _prescreeningThreshold(lrscf->getBasisController()->getPrescreeningThreshold()) {
+  if (_settings.ltconv != 0.0 || !_settings.frequencies.empty()) {
+    // Use Laplace Transformation to avoid N5 steps.
+    double LUMO = +std::numeric_limits<double>::infinity();
+    double HOMO = -std::numeric_limits<double>::infinity();
+    double HUMO = -std::numeric_limits<double>::infinity();
+    double LOMO = +std::numeric_limits<double>::infinity();
+    for_spin(_e, _no, _nv) {
+      LUMO = std::min(_e_spin(_no_spin), LUMO);
+      HOMO = std::max(_e_spin(_no_spin - 1), HOMO);
+      HUMO = std::max(_e_spin(_no_spin + _nv_spin - 1), HUMO);
+      LOMO = std::min(_e_spin(0), LOMO);
+    };
+    getMinimaxRoots(_roots, _weights, 2 * (LUMO - HOMO), 2 * (HUMO - LOMO),
+                    _settings.ltconv == 0 ? _settings.conv : _settings.ltconv);
+  }
 }
 
 template<>
@@ -624,6 +638,7 @@ void XWFController<SCFMode>::reorderTensor(Eigen::Ref<Eigen::MatrixXd> Yia, unsi
 
 template<Options::SCF_MODES SCFMode>
 void XWFController<SCFMode>::performRITransformation(Eigen::MatrixXd& Yia, unsigned no, bool transposeRITrafo) {
+  Timings::takeTime("Exc. State WF -     RI Transform");
   unsigned blockSize = Yia.rows() / no;
   bool naf = _nx < _nxb;
 
@@ -644,11 +659,13 @@ void XWFController<SCFMode>::performRITransformation(Eigen::MatrixXd& Yia, unsig
   if (!transposeRITrafo && naf) {
     Yia.conservativeResize(Yia.rows(), _nx);
   }
+  Timings::timeTaken("Exc. State WF -     RI Transform");
 } /* this->performRITransformation() restricted/unrestricted */
 
 template<Options::SCF_MODES SCFMode>
 Eigen::VectorXd XWFController<SCFMode>::getJ2GContribution(double* YiaPtr, double* JijPtr,
                                                            Eigen::Ref<Eigen::VectorXd> guessVector, bool fromLeft, int iSpin) {
+  Timings::takeTime("Exc. State WF -     J2G Contrib.");
   // declarations
   unsigned _nv = (iSpin > 0) ? _nv_a : _nv_b;
   unsigned _no = (iSpin > 0) ? _no_a : _no_b;
@@ -667,20 +684,15 @@ Eigen::VectorXd XWFController<SCFMode>::getJ2GContribution(double* YiaPtr, doubl
   Eigen::VectorXd sigmaVector = Eigen::VectorXd::Zero(_nv * _no);
   Eigen::Map<Eigen::MatrixXd> sigma(sigmaVector.data(), _nv, _no);
   Eigen::Map<Eigen::MatrixXd> guess(guessVector.data(), _nv, _no);
-  Eigen::MatrixXd auxTrafo = _riTrafo;
 
   unsigned nThreads = omp_get_max_threads();
   Eigen::MatrixXd Gia = Eigen::MatrixXd::Zero(_nb * _no, _nxb);
-  Eigen::ArrayXd Eta = Eigen::ArrayXd::Zero(nThreads * _nb * _no);
-
-  double* GiaPtr = Gia.data();
-  double* EtaPtr = Eta.data();
-  double* JmnPtr = _Jmn->data();
+  Eigen::MatrixXd Eta = Eigen::MatrixXd::Zero(_nb * _no, nThreads);
 
   // contractions
   if (YiaPtr) {
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> gia(GiaPtr + Q * _nb * _no, _nb, _no);
+      Eigen::Map<Eigen::MatrixXd> gia(Gia.col(Q).data(), _nb, _no);
       Eigen::Map<Eigen::MatrixXd> yia(YiaPtr + Q * _nv * _no, _nv, _no);
       gia.noalias() += coeffB * yia;
     }
@@ -688,67 +700,40 @@ Eigen::VectorXd XWFController<SCFMode>::getJ2GContribution(double* YiaPtr, doubl
   if (JijPtr) {
     if (fromLeft) {
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> gia(GiaPtr + Q * _nb * _no, _nb, _no);
+        Eigen::Map<Eigen::MatrixXd> gia(Gia.col(Q).data(), _nb, _no);
         Eigen::Map<Eigen::MatrixXd> jij(JijPtr + Q * _no * _no, _no, _no);
         gia.noalias() -= coeffB * (guess * jij.transpose());
       }
     }
     else {
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> gia(GiaPtr + Q * _nb * _no, _nb, _no);
+        Eigen::Map<Eigen::MatrixXd> gia(Gia.col(Q).data(), _nb, _no);
         Eigen::Map<Eigen::MatrixXd> jij(JijPtr + Q * _no * _no, _no, _no);
         gia.noalias() -= coeffB * guess * jij;
       }
     }
   }
 
+  Timings::timeTaken("Exc. State WF -     J2G Contrib.");
   this->performRITransformation(Gia, _no, true);
-
-  // loop over all cached (mn|P)
-#pragma omp parallel
-  {
-    size_t indexP;
-    size_t offset1 = omp_get_thread_num() * _no * _nb;
-#pragma omp for schedule(dynamic)
-    for (size_t P = 0; P < _nxs; ++P) {
-      size_t offset2 = P * _nb * _no;
-      indexP = P * _nb * (_nb + 1) / 2;
-      for (size_t nu = 0; nu < _nb; ++nu) {
-        for (size_t mu = nu; mu < _nb; ++mu, ++indexP) {
-          double& integral = JmnPtr[indexP];
-          if (std::abs(integral) > _prescreeningThreshold) {
-            for (size_t i = 0; i < _no; ++i) {
-              EtaPtr[offset1 + i * _nb + mu] += GiaPtr[offset2 + i * _nb + nu] * integral;
-              if (mu != nu) {
-                EtaPtr[offset1 + i * _nb + nu] += GiaPtr[offset2 + i * _nb + mu] * integral;
-              }
-            } /* i */
-          }   /* prescreen */
-        }     /* mu */
-      }       /* nu */
-    }         /* P */
-  }           /* parallel region */
+  Timings::takeTime("Exc. State WF -     J2G Contrib.");
 
   // loop over the rest
-  if (_nxs < _nxb) {
-    auto loopFunc = [&](unsigned mu, unsigned nu, size_t P, double integral, size_t threadId) {
-      size_t offset1 = threadId * _no * _nb;
-      size_t offset2 = P * _nb * _no;
-      for (unsigned i = 0; i < _no; ++i) {
-        EtaPtr[offset1 + i * _nb + mu] += GiaPtr[offset2 + i * _nb + nu] * integral;
-        if (mu != nu)
-          EtaPtr[offset1 + i * _nb + nu] += GiaPtr[offset2 + i * _nb + mu] * integral;
-      }
-    };
-    _looper->loopNoDerivative(loopFunc);
-  }
+  auto distribute = [&](Eigen::Map<Eigen::MatrixXd> AO, size_t P, unsigned iThread) {
+    Eigen::Map<Eigen::MatrixXd> eta(Eta.col(iThread).data(), _nb, _no);
+    Eigen::Map<Eigen::MatrixXd> gia(Gia.col(P).data(), _nb, _no);
+    eta.noalias() += AO * gia;
+  };
+
+  _integrals->loop(distribute);
 
   // sum over threads
   for (size_t iThread = 0; iThread < nThreads; ++iThread) {
-    Eigen::Map<Eigen::MatrixXd> eta(EtaPtr + iThread * _nb * _no, _nb, _no);
+    Eigen::Map<Eigen::MatrixXd> eta(Eta.col(iThread).data(), _nb, _no);
     sigma.noalias() += coeffA.transpose() * eta;
   }
 
+  Timings::timeTaken("Exc. State WF -     J2G Contrib.");
   return sigmaVector;
 } /* this->getJ2GContribution() restricted/unrestricted */
 
@@ -788,78 +773,34 @@ void XWFController<SCFMode>::performTransformation(Eigen::MatrixXd& Xia, Eigen::
   Eigen::Map<Eigen::MatrixXd> coeffB(coeffBPtr + _nb * _no, _nb, _nv);
 
   Eigen::Map<Eigen::MatrixXd> trafo(trafoVector.data(), _nv, _no);
-  Eigen::MatrixXd auxTrafo = _riTrafo;
   Eigen::MatrixXd eta = coeffB * trafo;
-  Xia = Eigen::MatrixXd::Zero(_nb * _no, _nxb);
 
-  double* etaptr = eta.data();
-  double* xiaptr = Xia.data();
-  double* JmnPtr = _Jmn->data();
+  Xia.resize(_nb * _no, _nxb);
 
-  // contractions
+  auto distribute = [&](Eigen::Map<Eigen::MatrixXd> AO, unsigned long P, unsigned) {
+    Eigen::Map<Eigen::MatrixXd> xia(Xia.col(P).data(), _nb, _no);
+    xia.noalias() = AO * eta;
+  };
 
-  // loop over all cached (mn|P)
-#pragma omp parallel
-  {
-    size_t indexP;
-#pragma omp for schedule(dynamic)
-    for (size_t P = 0; P < _nxs; ++P) {
-      size_t offset = P * _nb * _no;
-      indexP = P * _nb * (_nb + 1) / 2;
-      for (size_t nu = 0; nu < _nb; ++nu) {
-        for (size_t mu = nu; mu < _nb; ++mu, ++indexP) {
-          double& integral = JmnPtr[indexP];
-          if (std::abs(integral) > _prescreeningThreshold) {
-            for (size_t i = 0; i < _no; ++i) {
-              size_t col = i * _nb;
-              xiaptr[offset + col + mu] += etaptr[col + nu] * integral;
-              if (mu != nu) {
-                xiaptr[offset + col + nu] += etaptr[col + mu] * integral;
-              }
-            } /* i */
-          }   /* prescreen */
-        }     /* mu */
-      }       /* nu */
-    }         /* P */
-  }           /* parallel region */
-
-  // loop over the rest
-  if (_nxs < _nxb) {
-    auto loopFunc = [&](unsigned mu, unsigned nu, size_t P, double integral, size_t) {
-      size_t offset = P * _nb * _no;
-      for (size_t i = 0; i < _no; ++i) {
-        size_t col = i * _nb;
-        xiaptr[offset + col + mu] += etaptr[col + nu] * integral;
-        if (mu != nu) {
-          xiaptr[offset + col + nu] += etaptr[col + mu] * integral;
-        }
-      }
-    };
-    _looper->loopNoDerivative(loopFunc);
-  }
-
-  Eigen::MatrixXd virtT = coeffA.rightCols(_nv).transpose();
-  for (size_t P = 0; P < _nxb; ++P) {
-    Eigen::Map<Eigen::MatrixXd> xia(Xia.data() + P * _nb * _no, _nv, _no);
-    xia = virtT * Eigen::Map<Eigen::MatrixXd>(Xia.data() + P * _nb * _no, _nb, _no);
-  }
-
-  // throw away useless information
-  Xia.conservativeResize(_nv * _no, _nxb);
-
+  _integrals->loop(distribute);
   this->performRITransformation(Xia, _no);
 
   // Jij contribution
   for (size_t Q = 0; Q < _nx; ++Q) {
     Eigen::Map<Eigen::MatrixXd> jij(JijPtr + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> xia(Xia.data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> xia_b(Xia.col(Q).data(), _nb, _no);
+    Eigen::Map<Eigen::MatrixXd> xia_v(Xia.col(Q).data(), _nv, _no);
+    xia_v = coeffA.rightCols(_nv).transpose() * xia_b;
+
     if (fromLeft) {
-      xia.noalias() -= trafo * jij.transpose();
+      xia_v.noalias() -= trafo * jij.transpose();
     }
     else {
-      xia.noalias() -= trafo * jij;
+      xia_v.noalias() -= trafo * jij;
     }
   }
+
+  Xia.conservativeResize(_nv * _no, _nx);
   Timings::timeTaken("Exc. State WF -    Int-Transform");
 } /* this->performTransformation() restricted/unrestricted */
 
@@ -881,9 +822,9 @@ void XWFController<RESTRICTED>::transformIntegrals() {
   (*_Bij) = (*_Jij);
   (*_Bia) += (*_Jia);
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-    Eigen::Map<Eigen::MatrixXd> bia(_Bia->data() + Q * _nv * _no, _nv, _no);
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
+    Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bia(_Bia->col(Q).data(), _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
     bij.noalias() += jia.transpose() * sgl;
     bia.noalias() -= sgl * jia.transpose() * sgl;
   }
@@ -915,15 +856,15 @@ void XWFController<UNRESTRICTED>::transformIntegrals() {
   _Bij->beta = _Jij->beta;
   _Bia->beta += _Jia->beta;
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> bia_a(_Bia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bia_a(_Bia->alpha.col(Q).data(), _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
     bij_a.noalias() += jia_a.transpose() * sgl_a;
     bia_a.noalias() -= sgl_a * jia_a.transpose() * sgl_a;
 
-    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> bia_b(_Bia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bia_b(_Bia->beta.col(Q).data(), _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
     bij_b.noalias() += jia_b.transpose() * sgl_b;
     bia_b.noalias() -= sgl_b * jia_b.transpose() * sgl_b;
   }
@@ -980,13 +921,27 @@ void XWFController<RESTRICTED>::calculateGroundstate() {
     else {
       // Yia only needs to be calculated once
       _Yia.setZero();
-      for (size_t i = 0; i < _no; ++i) {
-        for (size_t j = i; j < _no; ++j) {
-          Eigen::MatrixXd tij = this->getAmplitudes(i, j);
-          _Yia.middleRows(i * _nv, _nv).noalias() += tij * _Jia->middleRows(j * _nv, _nv);
-          if (i != j) {
-            _Yia.middleRows(j * _nv, _nv).noalias() += tij.transpose() * _Jia->middleRows(i * _nv, _nv);
+      if (_settings.ltconv == 0) {
+        for (size_t i = 0; i < _no; ++i) {
+          for (size_t j = i; j < _no; ++j) {
+            Eigen::MatrixXd tij = this->getAmplitudes(i, j);
+            _Yia.middleRows(i * _nv, _nv).noalias() += tij * _Jia->middleRows(j * _nv, _nv);
+            if (i != j) {
+              _Yia.middleRows(j * _nv, _nv).noalias() += tij.transpose() * _Jia->middleRows(i * _nv, _nv);
+            }
           }
+        }
+      }
+      else {
+        for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+          Eigen::VectorXd param(_nv * _no);
+          for (size_t i = 0, ia = 0; i < _no; ++i) {
+            for (size_t a = _no; a < _no + _nv; ++a, ++ia) {
+              param(ia) = std::exp(-(_e(a) - _e(i)) * _roots(iRoot));
+            }
+          }
+          Eigen::MatrixXd QP = (*_Jia).transpose() * param.asDiagonal() * (*_Jia);
+          _Yia.noalias() -= _oss * _weights(iRoot) * param.asDiagonal() * (*_Jia) * QP;
         }
       }
       _P = _C;
@@ -1019,6 +974,7 @@ void XWFController<RESTRICTED>::calculateGroundstate() {
   if (_xwfModel == Options::LR_METHOD::CC2) {
     printf("    Final CC2 energy (a.u.): %18.10f\n", _corrEnergy);
   }
+  printf("\n");
 } /* this->calculateGroundstate() restricted */
 
 template<>
@@ -1075,37 +1031,59 @@ void XWFController<UNRESTRICTED>::calculateGroundstate() {
       this->calculateResidual();
     }
     else {
-      // alpha
-      for (size_t i = 0; i < _no_a; ++i) {
-        for (size_t j = i; j < _no_a; ++j) {
-          Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
-          _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
-          if (i != j) {
-            _Yia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+      if (_settings.ltconv == 0) {
+        // alpha
+        for (size_t i = 0; i < _no_a; ++i) {
+          for (size_t j = i; j < _no_a; ++j) {
+            Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
+            _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
+            if (i != j) {
+              _Yia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+            }
+          }
+        }
+
+        // beta
+        for (size_t i = 0; i < _no_b; ++i) {
+          for (size_t j = i; j < _no_b; ++j) {
+            Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
+            _Yia.beta.middleRows(i * _nv_b, _nv_b).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+            if (i != j) {
+              _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+            }
+          }
+        }
+
+        // mixed
+        for (size_t i = 0; i < _no_a; ++i) {
+          for (size_t j = 0; j < _no_b; ++j) {
+            Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
+            _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+            _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
           }
         }
       }
-
-      // beta
-      for (size_t i = 0; i < _no_b; ++i) {
-        for (size_t j = i; j < _no_b; ++j) {
-          Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
-          _Yia.beta.middleRows(i * _nv_b, _nv_b).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
-          if (i != j) {
-            _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+      else {
+        for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+          Eigen::VectorXd param_a(_nv_a * _no_a);
+          for (size_t i = 0, ia = 0; i < _no_a; ++i) {
+            for (size_t a = _no_a; a < _no_a + _nv_a; ++a, ++ia) {
+              param_a(ia) = std::exp(-(_e.alpha(a) - _e.alpha(i)) * _roots(iRoot));
+            }
           }
+          Eigen::VectorXd param_b(_nv_b * _no_b);
+          for (size_t j = 0, jb = 0; j < _no_b; ++j) {
+            for (size_t b = _no_b; b < _no_b + _nv_b; ++b, ++jb) {
+              param_b(jb) = std::exp(-(_e.beta(b) - _e.beta(j)) * _roots(iRoot));
+            }
+          }
+          Eigen::MatrixXd QP_a = _Jia->alpha.transpose() * param_a.asDiagonal() * _Jia->alpha;
+          Eigen::MatrixXd QP_b = _Jia->beta.transpose() * param_b.asDiagonal() * _Jia->beta;
+
+          _Yia.alpha.noalias() -= _oss * _weights(iRoot) * param_a.asDiagonal() * _Jia->alpha * QP_b;
+          _Yia.beta.noalias() -= _oss * _weights(iRoot) * param_b.asDiagonal() * _Jia->beta * QP_a;
         }
       }
-
-      // mixed
-      for (size_t i = 0; i < _no_a; ++i) {
-        for (size_t j = 0; j < _no_b; ++j) {
-          Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
-          _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
-          _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
-        }
-      }
-
       for_spin(_C, _P, _H) {
         _P_spin = _C_spin;
         _H_spin = _C_spin;
@@ -1143,6 +1121,7 @@ void XWFController<UNRESTRICTED>::calculateGroundstate() {
   if (_xwfModel == Options::LR_METHOD::CC2) {
     printf("    Final CC2 energy (a.u.): %18.10f\n", _corrEnergy);
   }
+  printf("\n");
 } /* this->calculateGroundstate() unrestricted */
 
 template<>
@@ -1185,9 +1164,11 @@ void XWFController<RESTRICTED>::initialize() {
   this->calculateGroundstate();
   Timings::timeTaken("Exc. State WF -     Ground State");
 
-  Timings::takeTime("Exc. State WF -   E-Intermediate");
-  this->calculateE();
-  Timings::timeTaken("Exc. State WF -   E-Intermediate");
+  if (_settings.nEigen > 0) {
+    Timings::takeTime("Exc. State WF -   E-Intermediate");
+    this->calculateE();
+    Timings::timeTaken("Exc. State WF -   E-Intermediate");
+  }
 } /* this->initialize() restricted */
 
 template<>
@@ -1253,9 +1234,11 @@ void XWFController<UNRESTRICTED>::initialize() {
   this->calculateGroundstate();
   Timings::timeTaken("Exc. State WF -     Ground State");
 
-  Timings::takeTime("Exc. State WF -   E-Intermediate");
-  this->calculateE();
-  Timings::timeTaken("Exc. State WF -   E-Intermediate");
+  if (_settings.nEigen > 0) {
+    Timings::takeTime("Exc. State WF -   E-Intermediate");
+    this->calculateE();
+    Timings::timeTaken("Exc. State WF -   E-Intermediate");
+  }
 } /* this->initialize() unrestricted */
 
 template<>

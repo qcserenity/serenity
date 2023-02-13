@@ -46,16 +46,28 @@ void SimplifiedTDDFT<SCFMode>::setupSimplifiedTDDFT() {
   printBigCaption("Simplified TDDFT");
 
   unsigned nSub = _lrscf.size();
-  for (unsigned I = 0; I < nSub; ++I) {
-    auto sysI = _lrscf[I]->getSys();
-    for (unsigned J = I; J < nSub; ++J) {
-      auto sysJ = _lrscf[J]->getSys();
 
-      // First things first
-      auto nAtoms = sysI->getNAtoms();
-      auto geom = sysI->getGeometry()->getAtoms();
-      auto no = _lrscf[I]->getNOccupied();
-      auto nv = _lrscf[I]->getNVirtual();
+  _hfExchangeRatio.resize(nSub);
+
+  _gammaK.resize(nSub);
+  _gammaJ.resize(nSub);
+
+  _Jij.resize(nSub);
+  _Jai.resize(nSub);
+  _Jab.resize(nSub);
+
+  for (unsigned I = 0; I < nSub; ++I) {
+    _gammaK[I].resize(nSub);
+    _gammaJ[I].resize(nSub);
+
+    auto sysI = _lrscf[I]->getSys();
+    auto nAtomsI = sysI->getNAtoms();
+    auto geomI = sysI->getGeometry()->getAtoms();
+
+    for (unsigned J = 0; J < nSub; ++J) {
+      auto sysJ = _lrscf[J]->getSys();
+      auto nAtomsJ = sysJ->getNAtoms();
+      auto geomJ = sysJ->getGeometry()->getAtoms();
 
       double a1 = 1.42, a2 = 0.48;
       double b1 = 0.20, b2 = 1.83;
@@ -77,109 +89,143 @@ void SimplifiedTDDFT<SCFMode>::setupSimplifiedTDDFT() {
       // Source: sTDA github Oct 2021 (manual)
       Functional func = CompositeFunctionals::resolveFunctional(funcEnum);
       if (funcEnum == CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP) {
-        _hfExchangeRatio = 0.38;
+        if (I == J) {
+          _hfExchangeRatio[I] = 0.38;
+        }
         alpha = 0.90;
         beta = 1.86;
       }
       else if (funcEnum == CompositeFunctionals::XCFUNCTIONALS::LCBLYP) {
-        _hfExchangeRatio = 0.53;
+        if (I == J) {
+          _hfExchangeRatio[I] = 0.53;
+        }
         alpha = 4.50;
         beta = 8.00;
       }
       else if (funcEnum == CompositeFunctionals::XCFUNCTIONALS::WB97) {
-        _hfExchangeRatio = 0.61;
+        if (I == J) {
+          _hfExchangeRatio[I] = 0.61;
+        }
         alpha = 4.41;
         beta = 8.00;
       }
       else if (funcEnum == CompositeFunctionals::XCFUNCTIONALS::WB97X) {
-        _hfExchangeRatio = 0.56;
+        if (I == J) {
+          _hfExchangeRatio[I] = 0.56;
+        }
         alpha = 4.58;
         beta = 8.00;
       }
       else if (funcEnum == CompositeFunctionals::XCFUNCTIONALS::WB97X_D) {
-        _hfExchangeRatio = 0.51;
+        if (I == J) {
+          _hfExchangeRatio[I] = 0.51;
+        }
         alpha = 4.51;
         beta = 8.00;
       }
       else {
-        _hfExchangeRatio = func.getHfExchangeRatio();
-        alpha = a1 + a2 * _hfExchangeRatio;
-        beta = b1 + b2 * _hfExchangeRatio;
+        if (I == J) {
+          _hfExchangeRatio[I] = func.getHfExchangeRatio();
+        }
+        alpha = a1 + a2 * _hfExchangeRatio[I];
+        beta = b1 + b2 * _hfExchangeRatio[I];
       }
 
       std::string funcString;
       Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(funcString, funcEnum);
+      if (I == J) {
+        printf("    Intra-subsystem :  %2i\n", I + 1);
+        printf("   - - - - - - - - - - - - - - - - - - -\n");
+        printf("    ax         : %-10.4f\n", _hfExchangeRatio[I]);
+      }
+      else {
+        printf("    Inter-subsystem :  %2i %2i\n", I + 1, J + 1);
+      }
+      printf("   - - - - - - - - - - - - - - - - - - -\n");
       printf("    Functional : %-20s\n", funcString.c_str());
-      printf("    ax         : %-10.4f\n", _hfExchangeRatio);
       printf("    alpha      : %-10.4f\n", alpha);
-      printf("    beta       : %-10.4f\n\n", beta);
+      printf("    beta       : %-10.4f\n", beta);
+      printf("   -------------------------------------\n");
 
-      Eigen::MatrixXd gammaK(nAtoms, nAtoms);
-      Eigen::MatrixXd gammaJ(nAtoms, nAtoms);
-      for (unsigned iAtomA = 0; iAtomA < nAtoms; ++iAtomA) {
-        for (unsigned iAtomB = 0; iAtomB < nAtoms; ++iAtomB) {
-          double hardA = geom[iAtomA]->getChemicalHardness();
-          double hardB = geom[iAtomB]->getChemicalHardness();
-          double avgHard = (hardA + hardB) / 2.0;
-          double atomDist = distance(*geom[iAtomA], *geom[iAtomB]);
+      auto& gammaK = _gammaK[I][J];
+      auto& gammaJ = _gammaJ[I][J];
+      gammaK.resize(nAtomsI, nAtomsJ);
+      gammaJ.resize(nAtomsI, nAtomsJ);
+      for (unsigned iAtomA = 0; iAtomA < nAtomsI; ++iAtomA) {
+        for (unsigned iAtomB = 0; iAtomB < nAtomsJ; ++iAtomB) {
+          double avgHard = (geomI[iAtomA]->getChemicalHardness() + geomJ[iAtomB]->getChemicalHardness()) / 2.0;
+          double dist = distance(*geomI[iAtomA], *geomJ[iAtomB]);
 
-          gammaK(iAtomA, iAtomB) = std::pow(1.0 / (std::pow(atomDist, alpha) + std::pow(avgHard, -alpha)), 1.0 / alpha);
+          gammaK(iAtomA, iAtomB) = std::pow(1.0 / (std::pow(dist, alpha) + std::pow(avgHard, -alpha)), 1.0 / alpha);
           gammaJ(iAtomA, iAtomB) =
-              std::pow(1.0 / (std::pow(atomDist, beta) + std::pow(_hfExchangeRatio * avgHard, -beta)), 1.0 / beta);
+              std::pow(1.0 / (std::pow(dist, beta) + std::pow(_hfExchangeRatio[I] * avgHard, -beta)), 1.0 / beta);
         }
       }
-
-      // Integrals will be calculated as (pq|rs) = <Q_pq|G|Q_rs>.
-      // To save half the multiplications, factorize G = sqrt(G)sqrt(G) and
-      // the integral above thus as (pq|rs) = <T_pq|T_rs> where T = Q * sqrt(G).
-      Eigen::MatrixXd sqrtK = mSqrt_Sym(gammaK);
-      Eigen::MatrixXd sqrtJ = mSqrt_Sym(gammaJ);
-      Eigen::MatrixXd sqrtS = mSqrt_Sym(sysI->getOneElectronIntegralController()->getOverlapIntegrals());
-
-      auto& C = _lrscf[I]->getCoefficients();
-      auto indices = sysI->getAtomCenteredBasisController()->getBasisIndices();
-      for_spin(no, nv, C, _Jij, _Jai, _Jab) {
-        Eigen::MatrixXd L = sqrtS * C_spin;
-        Eigen::MatrixXd Qij(no_spin * no_spin, nAtoms);
-        Eigen::MatrixXd Qai(nv_spin * no_spin, nAtoms);
-        Eigen::MatrixXd Qab(nv_spin * nv_spin, nAtoms);
-        for (unsigned iAtom = 0; iAtom < nAtoms; ++iAtom) {
-          unsigned start = indices[iAtom].first;
-          unsigned stopAfter = indices[iAtom].second - indices[iAtom].first;
-          Eigen::Ref<Eigen::MatrixXd> Li = L.block(start, 0, stopAfter, no_spin);
-          Eigen::Ref<Eigen::MatrixXd> La = L.block(start, no_spin, stopAfter, nv_spin);
-          Eigen::MatrixXd Lij = Li.transpose() * Li;
-          Eigen::MatrixXd Lai = La.transpose() * Li;
-          Eigen::MatrixXd Lab = La.transpose() * La;
-          Qij.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lij.data(), Lij.size());
-          Qai.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lai.data(), Lai.size());
-          Qab.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lab.data(), Lab.size());
-        }
-        _Jai_spin = Qai * sqrtK;
-        _Jij_spin = Qij * sqrtJ;
-        _Jab_spin = Qab * sqrtJ;
-      };
     }
+  }
+
+  // Calculate charges (resembling three-center integrals).
+  for (unsigned I = 0; I < nSub; ++I) {
+    Eigen::MatrixXd sqrtS = mSqrt_Sym(_lrscf[I]->getSys()->getOneElectronIntegralController()->getOverlapIntegrals());
+
+    auto& C = _lrscf[I]->getCoefficients();
+    auto indices = _lrscf[I]->getSys()->getAtomCenteredBasisController()->getBasisIndices();
+    auto nAtoms = _lrscf[I]->getSys()->getNAtoms();
+
+    auto no = _lrscf[I]->getNOccupied();
+    auto nv = _lrscf[I]->getNVirtual();
+
+    auto& Jij = _Jij[I];
+    auto& Jai = _Jai[I];
+    auto& Jab = _Jab[I];
+    for_spin(no, nv, C, Jij, Jai, Jab) {
+      Eigen::MatrixXd L = sqrtS * C_spin;
+      Jij_spin.resize(no_spin * no_spin, nAtoms);
+      Jai_spin.resize(nv_spin * no_spin, nAtoms);
+      Jab_spin.resize(nv_spin * nv_spin, nAtoms);
+      for (unsigned iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        unsigned start = indices[iAtom].first;
+        unsigned stopAfter = indices[iAtom].second - indices[iAtom].first;
+        Eigen::Ref<Eigen::MatrixXd> Li = L.block(start, 0, stopAfter, no_spin);
+        Eigen::Ref<Eigen::MatrixXd> La = L.block(start, no_spin, stopAfter, nv_spin);
+        Eigen::MatrixXd Lij = Li.transpose() * Li;
+        Eigen::MatrixXd Lai = La.transpose() * Li;
+        Eigen::MatrixXd Lab = La.transpose() * La;
+        Jij_spin.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lij.data(), Lij.size());
+        Jai_spin.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lai.data(), Lai.size());
+        Jab_spin.col(iAtom) = Eigen::Map<Eigen::VectorXd>(Lab.data(), Lab.size());
+      }
+    };
   }
 }
 
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, Eigen::MatrixXd>& SimplifiedTDDFT<SCFMode>::getJij() {
+std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& SimplifiedTDDFT<SCFMode>::getJij() {
   return _Jij;
 }
 
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, Eigen::MatrixXd>& SimplifiedTDDFT<SCFMode>::getJai() {
+std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& SimplifiedTDDFT<SCFMode>::getJai() {
   return _Jai;
 }
 
 template<Options::SCF_MODES SCFMode>
-SpinPolarizedData<SCFMode, Eigen::MatrixXd>& SimplifiedTDDFT<SCFMode>::getJab() {
+std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& SimplifiedTDDFT<SCFMode>::getJab() {
   return _Jab;
 }
 
 template<Options::SCF_MODES SCFMode>
-double SimplifiedTDDFT<SCFMode>::getHFExchangeRatio() {
+std::vector<std::vector<Eigen::MatrixXd>>& SimplifiedTDDFT<SCFMode>::getGammaK() {
+  return _gammaK;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<std::vector<Eigen::MatrixXd>>& SimplifiedTDDFT<SCFMode>::getGammaJ() {
+  return _gammaJ;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<double> SimplifiedTDDFT<SCFMode>::getHFExchangeRatio() {
   return _hfExchangeRatio;
 }
 

@@ -309,7 +309,7 @@ void FDEETCalculator::calcTransDensMatsDisk(const std::vector<Eigen::MatrixXd>& 
       std::vector<Eigen::MatrixXd> temp(2, Eigen::MatrixXd::Zero(superSystem->getBasisController()->getNBasisFunctions(),
                                                                  superSystem->getBasisController()->getNBasisFunctions()));
       HDF5::Filepath name(pathUnres);
-      HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
       HDF5::dataset_exists(file, "densityMatrix_alpha");
       HDF5::load(file, "densityMatrix_alpha", temp[0]);
       HDF5::dataset_exists(file, "densityMatrix_beta");
@@ -438,7 +438,7 @@ void FDEETCalculator::calcHamiltonianDisk(std::shared_ptr<SystemController> supe
       std::vector<Eigen::MatrixXd> temp(2, Eigen::MatrixXd::Zero(superSystem->getBasisController()->getNBasisFunctions(),
                                                                  superSystem->getBasisController()->getNBasisFunctions()));
       HDF5::Filepath name(pathUnres);
-      HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
       HDF5::dataset_exists(file, "densityMatrix_alpha");
       HDF5::load(file, "densityMatrix_alpha", temp[0]);
       HDF5::dataset_exists(file, "densityMatrix_beta");

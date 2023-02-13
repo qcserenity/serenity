@@ -107,7 +107,7 @@ void LocalMP2InteractionCalculator::buildOrbitalPairs() {
     OutputControl::nOut << "  Please ensure that core orbitals have been localized independently!\n";
     OutputControl::nOut << "  This may lead to artifacts in the core-orbital selection otherwise.\n";
   }
-  const auto& coreOrbitals = _supersystem->getActiveOrbitalController<RESTRICTED>()->getCoreOrbitals();
+  const auto& coreOrbitals = _supersystem->getActiveOrbitalController<RESTRICTED>()->getOrbitalFlags();
   const double pnoCoreThreshold = _lcSettings.pnoThreshold * _lcSettings.pnoCoreScaling;
   for (unsigned int iOcc = 0; iOcc < nOccSup; ++iOcc) {
     bool iIsCore = coreOrbitals(iOcc);

@@ -30,7 +30,7 @@
 
 namespace Serenity {
 
-class Settings;
+struct Settings;
 struct EmbeddingSettings;
 
 /**

@@ -27,7 +27,7 @@
 /* Include Std and External Headers */
 
 namespace Serenity {
-class TwoElecThreeCenterIntLooper;
+class TwoElecThreeCenterCalculator;
 /**
  * @class XWFController XWFController.h
  * @brief Base class for ADC(2), CIS(D) and CC2 sigma vectors.\n
@@ -41,8 +41,8 @@ class TwoElecThreeCenterIntLooper;
  * corrected in the cheat sheet that I have added to the Serenity manual.
  *   -- Niklas.
  *
- * [1] C. Hättig, F. Weigend, J. Chem. Phys. 2000, 113, 5154–5161.
- * [2] C. Hättig, A. Köhn, J. Chem. Phys. 2002, 117, 6939–6951.
+ * [1] C. Hättig, F. Weigend, J. Chem. Phys. 2000, 113, 5154-5161.
+ * [2] C. Hättig, A. Köhn, J. Chem. Phys. 2002, 117, 6939-6951.
  *
  */
 template<Options::SCF_MODES SCFMode>
@@ -162,11 +162,14 @@ class XWFController {
   ///@brief Number of actual auxiliary functions.
   unsigned _nxb;
 
-  ///@brief Number of cached auxiliary integral sets.
-  unsigned _nxs;
-
   ///@brief Same-spin and opposite-spin scaling (and, for convenience, the sum of both).
   double _sss, _oss, _soss;
+
+  ///@brief Laplace Transformation roots.
+  Eigen::VectorXd _roots;
+
+  ///@brief Laplace Transformation weights.
+  Eigen::VectorXd _weights;
 
   ///@brief A transformation vector.
   Eigen::VectorXd _trafoVector;
@@ -185,9 +188,6 @@ class XWFController {
 
   ///@brief Integral lists (ij|Q).
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jij;
-
-  ///@brief Integral lists (mn|P).
-  std::shared_ptr<Eigen::MatrixXd> _Jmn;
 
   ///@brief Singles-transformed integral lists (ia|Q).
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Bia;
@@ -223,7 +223,7 @@ class XWFController {
   Eigen::MatrixXd _eVirtab;
 
   ///@brief Looper for RI integrals.
-  std::shared_ptr<TwoElecThreeCenterIntLooper> _looper;
+  std::shared_ptr<TwoElecThreeCenterCalculator> _integrals;
 
   ///@brief Enum for underlying XWF method.
   Options::LR_METHOD _xwfModel;

@@ -160,7 +160,8 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
       rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().basis.densityFitting, abAuxBasisController,
       envAuxBasis);
   // Build A+B grid controller
-  std::shared_ptr<GridController> grid_AB = GridControllerFactory::produce(combinedGeometry, activeSystem->getSettings());
+  std::shared_ptr<GridController> grid_AB =
+      GridControllerFactory::produce(combinedGeometry, activeSystem->getSettings().grid);
   std::shared_ptr<ABPotential<SCFMode>> activeExchangeCorrelation;
   if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
     auto actDensityMatrixController = {activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController()};

@@ -20,7 +20,9 @@
 /* Include Class Header*/
 #include "postHF/MPn/LocalMP2.h"
 /* Include Serenity Internal Headers */
+#include "data/ElectronicStructure.h"                               //ElectronicStructure
 #include "data/OrbitalController.h"                                 //Coefficients
+#include "data/PAOController.h"                                     //PAOController
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h" //Integral transformation
 #include "io/FormattedOutput.h"                                     //Captions etc.
 #include "io/FormattedOutputStream.h"                               //Filtered output streams.
@@ -47,9 +49,14 @@ void LocalMP2::generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair
   const Eigen::MatrixXd occCoefficients =
       activeSystem->getActiveOrbitalController<scfMode>()->getCoefficients().leftCols(nOcc);
   printSmallCaption("Integral Calculation");
+  std::shared_ptr<QuasiCanonicalPAODomainConstructor> pnoConstructor;
+  if (_localCorrelationController->getSettings().method == Options::PNO_METHOD::SC_MP2) {
+    pnoConstructor = _localCorrelationController->produceQCPAOConstructor(settings.ssScaling, settings.osScaling, true);
+  }
+  else {
+    pnoConstructor = _localCorrelationController->producePNOConstructor(settings.ssScaling, settings.osScaling);
+  }
   if (settings.useFourCenterIntegrals) {
-    std::shared_ptr<PNOConstructor> pnoConstructor =
-        _localCorrelationController->producePNOConstructor(settings.ssScaling, settings.osScaling);
     Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
         activeSystem->getBasisController(),
         activeSystem->getActiveOrbitalController<RESTRICTED>()->getCoefficients().leftCols(
@@ -57,12 +64,12 @@ void LocalMP2::generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair
         _localCorrelationController->getPAOController(), orbitalPairs, pnoConstructor);
   }
   else {
-    std::shared_ptr<PNOConstructor> pnoConstructor =
-        _localCorrelationController->producePNOConstructor(settings.ssScaling, settings.osScaling);
     Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
         activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
         _localCorrelationController->getMO3CenterIntegralController(), orbitalPairs, pnoConstructor);
   }
+  _localCorrelationController->removeMO3CenterIntegralController();
+  _localCorrelationController->selectDistantOrbitalPairs();
   _localCorrelationController->buildOrbitalPairCouplingMap();
   double scMP2Energy = calculateEnergy(orbitalPairs, veryDistantPairs).sum();
   unsigned int nPNOsTot = 0;
@@ -82,12 +89,17 @@ void LocalMP2::generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair
                       << std::endl;
   OutputControl::nOut << "-----------------------------------------------------" << std::endl;
   OutputControl::nOut << std::scientific;
+  OutputControl::nOut.flush();
+}
+
+void LocalMP2::setDomainOverlapMatrixController(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs) {
   OutputControl::nOut << "  Calculating overlap matrices                           ...";
   OutputControl::nOut.flush();
+  const auto domainOverlapMatrixController = _localCorrelationController->getDomainOverlapMatrixController();
   for (auto& pair : orbitalPairs) {
-    pair->setOverlapMatrixController(_localCorrelationController->getDomainOverlapMatrixController());
+    pair->setOverlapMatrixController(domainOverlapMatrixController);
     for (auto& kSet : pair->coupledPairs)
-      kSet->setOverlapMatrixController(_localCorrelationController->getDomainOverlapMatrixController());
+      kSet->setOverlapMatrixController(domainOverlapMatrixController);
   }
   OutputControl::nOut << " done" << std::endl;
 }
@@ -197,12 +209,15 @@ Eigen::VectorXd LocalMP2::calculateEnergy(std::vector<std::shared_ptr<OrbitalPai
                                           std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs) {
   double localMP2PairEnergies = 0;
   for (const auto& pair : closePairs) {
-    double ssEnergy =
-        (pair->i == pair->j ? 1.0 : 2.0) * ((pair->t_ij - pair->t_ij.transpose()).array() * pair->k_ij.array()).sum();
-    double osEnergy = (pair->i == pair->j ? 1.0 : 2.0) * (pair->t_ij.array() * pair->k_ij.array()).sum();
-    double pairEnergy = settings.ssScaling * ssEnergy + settings.osScaling * osEnergy;
+    double pairEnergy = pair->scMP2PairEnergy;
+    if (_localCorrelationController->getSettings().method != Options::PNO_METHOD::SC_MP2) {
+      double ssEnergy =
+          (pair->i == pair->j ? 1.0 : 2.0) * ((pair->t_ij - pair->t_ij.transpose()).array() * pair->k_ij.array()).sum();
+      double osEnergy = (pair->i == pair->j ? 1.0 : 2.0) * (pair->t_ij.array() * pair->k_ij.array()).sum();
+      pairEnergy = settings.ssScaling * ssEnergy + settings.osScaling * osEnergy;
+      pair->lMP2PairEnergy = pairEnergy + pair->deltaPNO;
+    }
     localMP2PairEnergies += pairEnergy;
-    pair->lMP2PairEnergy = pairEnergy + pair->deltaPNO;
   }
   double dipoleContribution = 0.0;
   for (const auto& pair : veryDistantPairs) {
@@ -232,7 +247,8 @@ Eigen::VectorXd LocalMP2::calculateEnergyCorrection(std::vector<std::shared_ptr<
       closePairs.push_back(pair);
     }
   } // for pair
-  optimizeAmplitudes(closePairs, veryDistantPairs);
+  if (_localCorrelationController->getSettings().method != Options::PNO_METHOD::SC_MP2)
+    optimizeAmplitudes(closePairs, veryDistantPairs);
   return calculateEnergy(closePairs, veryDistantPairs);
 }
 
@@ -242,8 +258,74 @@ Eigen::VectorXd LocalMP2::calculateEnergyCorrection() {
   auto distantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT);
   orbitalPairs.insert(orbitalPairs.end(), distantPairs.begin(), distantPairs.end());
   generateExchangeIntegrals(orbitalPairs, veryDistantPairs);
-  optimizeAmplitudes(orbitalPairs, veryDistantPairs);
+  if (_localCorrelationController->getSettings().method != Options::PNO_METHOD::SC_MP2) {
+    setDomainOverlapMatrixController(orbitalPairs);
+    optimizeAmplitudes(orbitalPairs, veryDistantPairs);
+  }
   return calculateEnergy(orbitalPairs, veryDistantPairs);
+}
+
+DensityMatrix<RESTRICTED> LocalMP2::calculateDensityCorrection() {
+  takeTime("Unrelaxed MP2 density");
+
+  _localCorrelationController->selectDistantOrbitalPairs();
+  auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
+  auto distantPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT);
+  orbitalPairs.insert(orbitalPairs.end(), distantPairs.begin(), distantPairs.end());
+  std::vector<OrbitalPairTypes> types = {OrbitalPairTypes::CLOSE, OrbitalPairTypes::DISTANT};
+  _localCorrelationController->initializeSingles(types);
+
+  unsigned nOcc = _localCorrelationController->getActiveSystemController()->getNOccupiedOrbitals<RESTRICTED>();
+  unsigned nVirt = _localCorrelationController->getActiveSystemController()->getNVirtualOrbitals<RESTRICTED>();
+  const auto domainOverlapMatrixController = _localCorrelationController->getDomainOverlapMatrixController();
+
+  // occupied block in MO
+  Eigen::MatrixXd dOcc = Eigen::MatrixXd::Zero(nOcc, nOcc);
+  auto singles = _localCorrelationController->getSingles();
+  for (auto& single : singles) {
+    for (auto& ik : single->orbitalPairs) {
+      auto pair_ik = ik.lock();
+      unsigned i = (pair_ik->i == single->i ? pair_ik->j : pair_ik->i);
+      const Eigen::MatrixXd& t_ik = (pair_ik->i == single->i ? pair_ik->t_ij.transpose() : pair_ik->t_ij);
+      for (auto& jk : single->orbitalPairs) {
+        auto pair_jk = jk.lock();
+        unsigned j = (pair_jk->i == single->i ? pair_jk->j : pair_jk->i);
+        if (i < j)
+          continue;
+        const Eigen::MatrixXd& t_jk = (pair_jk->i == single->i ? pair_jk->t_ij.transpose() : pair_jk->t_ij);
+        const std::shared_ptr<Eigen::MatrixXd> S = domainOverlapMatrixController->getS(pair_jk, pair_ik);
+        const Eigen::MatrixXd t_jk_in_ik = S->transpose() * t_jk * (*S);
+        double dOcc_ij = (i == j ? 0.5 : 1.0) *
+                         (2.0 * t_ik.cwiseProduct(t_jk_in_ik.transpose()) - 4.0 * t_ik.cwiseProduct(t_jk_in_ik)).sum();
+        dOcc(i, j) += dOcc_ij;
+        dOcc(j, i) += dOcc_ij;
+      } // for pair jk
+    }   // for pair ik
+  }     // for single k
+
+  // virtual block in AO
+  Eigen::MatrixXd dVirtAO = Eigen::MatrixXd::Zero(nOcc + nVirt, nOcc + nVirt);
+  for (auto& pair : orbitalPairs) {
+    const Eigen::MatrixXd dVirtPNO =
+        (pair->i == pair->j ? 1.0 : 2.0) *
+        (2.0 * pair->t_ij * pair->t_ij.transpose() - pair->t_ij * pair->t_ij -
+         pair->t_ij.transpose() * pair->t_ij.transpose() + 2.0 * pair->t_ij.transpose() * pair->t_ij);
+    const Eigen::MatrixXd coeff = (Eigen::MatrixXd)_localCorrelationController->getPAOController()->getAllPAOs() *
+                                  pair->domainProjection.transpose() * pair->toPAODomain;
+    dVirtAO += coeff * dVirtPNO * coeff.transpose();
+  }
+
+  // AO density correction
+  DensityMatrix<RESTRICTED> densityCorrection(_localCorrelationController->getActiveSystemController()->getBasisController());
+  auto coefficients = _localCorrelationController->getActiveSystemController()
+                          ->getElectronicStructure<RESTRICTED>()
+                          ->getMolecularOrbitals()
+                          ->getCoefficients();
+  densityCorrection += dVirtAO + coefficients.leftCols(nOcc) * dOcc * coefficients.transpose().topRows(nOcc);
+
+  timeTaken(0, "Unrelaxed MP2 density");
+
+  return densityCorrection;
 }
 
 } /* namespace Serenity */

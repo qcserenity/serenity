@@ -35,7 +35,7 @@ void LRSCFAnalysis<SCFMode>::printDominantContributions(const std::vector<std::s
                   lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT;
 
   Eigen::MatrixXd contributions;
-  if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
+  if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA || lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISD) {
     contributions = eigenvectors[0].cwiseProduct(eigenvectors[0]);
   }
   else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {

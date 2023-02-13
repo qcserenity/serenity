@@ -42,10 +42,16 @@ class OrbitalTriple;
 
 struct WavefunctionEmbeddingTaskSettings {
   WavefunctionEmbeddingTaskSettings()
-    : normThreshold(1e-5), maxCycles(100), fullDecomposition(false), fromFragments(false), accurateInteraction(true) {
+    : normThreshold(1e-5),
+      maxCycles(100),
+      fullDecomposition(false),
+      fromFragments(false),
+      accurateInteraction(true),
+      writePairEnergies(false) {
     loc.splitValenceAndCore = true;
   }
-  REFLECTABLE((double)normThreshold, (unsigned int)maxCycles, (bool)fullDecomposition, (bool)fromFragments, (bool)accurateInteraction)
+  REFLECTABLE((double)normThreshold, (unsigned int)maxCycles, (bool)fullDecomposition, (bool)fromFragments,
+              (bool)accurateInteraction, (bool)writePairEnergies)
  public:
   std::vector<LocalCorrelationSettings> lcSettings;
   SystemSplittingTaskSettings split;
@@ -156,6 +162,10 @@ class WavefunctionEmbeddingTask : public Task {
    */
   double getTotalEnergy();
 
+  std::shared_ptr<LocalCorrelationController> getLocalCorrelationController();
+
+  //  const Eigen::SparseMatrix<int>& getSuperToSubsystemOccSortingMatrices();
+
  private:
   // The supersystem controller.
   std::shared_ptr<SystemController> _supersystem;
@@ -202,7 +212,7 @@ class WavefunctionEmbeddingTask : public Task {
    * @brief Build the orbital pairs with their specific thresholds.
    * @return The orbital pair list.
    */
-  std::vector<std::shared_ptr<OrbitalPair>> buildOrbialPairs(unsigned int iSys, unsigned int jSys);
+  std::vector<std::shared_ptr<OrbitalPair>> buildOrbitalPairs(unsigned int iSys, unsigned int jSys);
   /**
    * @brief Assign the orbital triples to the triples lists above.
    * @param localCorrelationController The central local correlation controller.
@@ -225,6 +235,13 @@ class WavefunctionEmbeddingTask : public Task {
   void buildIntegralThresholdVectors();
 
   std::unique_ptr<double> _totalEnergy;
+
+  std::shared_ptr<LocalCorrelationController> _localCorrelationController;
+
+  void checkForMP2Run();
+  bool _useMP2Calculator = false;
+  bool _useCCCalculator = false;
+  bool _onlyNone = false;
 };
 
 } /* namespace Serenity */

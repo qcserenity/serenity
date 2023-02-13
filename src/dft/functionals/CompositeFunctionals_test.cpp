@@ -37,7 +37,7 @@ namespace Serenity {
 namespace CompositeFunctionals {
 
 TEST(CompositeFunctionalsTest, ResolveEnum_Functional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     if (getImplementation[i] == IMPLEMENTATIONS::EITHER_OR) {
@@ -64,7 +64,7 @@ TEST(CompositeFunctionalsTest, ResolveEnum_Functional) {
 }
 
 TEST(CompositeFunctionalsTest, ResolveEnum_XCFunctional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     if (getPurpose[i] != PURPOSES::EXCHANGE_CORRELATION) {
@@ -95,7 +95,7 @@ TEST(CompositeFunctionalsTest, ResolveEnum_XCFunctional) {
 }
 
 TEST(CompositeFunctionalsTest, ResolveEnum_KinFunctional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     if (getPurpose[i] != PURPOSES::KINETIC) {
@@ -127,7 +127,7 @@ TEST(CompositeFunctionalsTest, ResolveEnum_KinFunctional) {
 
 #ifdef SERENITY_USE_LIBXC
 TEST(CompositeFunctionalsTest, ResolveEnum_Functional_LibXC) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     if (getImplementation[i] == IMPLEMENTATIONS::LIBXC || getImplementation[i] == IMPLEMENTATIONS::EITHER_OR) {
@@ -142,7 +142,7 @@ TEST(CompositeFunctionalsTest, ResolveEnum_Functional_LibXC) {
 
 #ifdef SERENITY_USE_XCFUN
 TEST(CompositeFunctionalsTest, ResolveEnum_Functional_XCFun) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     if (getImplementation[i] == IMPLEMENTATIONS::XCFUN || getImplementation[i] == IMPLEMENTATIONS::EITHER_OR) {
@@ -156,7 +156,7 @@ TEST(CompositeFunctionalsTest, ResolveEnum_Functional_XCFun) {
 #endif /* SERENITY_USE_XCFUN */
 
 TEST(CompositeFunctionalsTest, ResolveString_Functional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     auto func = static_cast<FUNCTIONALS>(i);
     std::string dummy;
@@ -168,7 +168,7 @@ TEST(CompositeFunctionalsTest, ResolveString_Functional) {
 }
 
 TEST(CompositeFunctionalsTest, ResolveString_XCFunctional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     if (getPurpose[i] != PURPOSES::EXCHANGE_CORRELATION) {
       continue;
@@ -183,7 +183,7 @@ TEST(CompositeFunctionalsTest, ResolveString_XCFunctional) {
 }
 
 TEST(CompositeFunctionalsTest, ResolveString_KinFunctional) {
-  const unsigned int nFuncs = 56;
+  const unsigned int nFuncs = 57;
   for (unsigned int i = 0; i < nFuncs; i++) {
     if (getPurpose[i] != PURPOSES::KINETIC) {
       continue;

@@ -161,6 +161,8 @@ TEST_F(FXDTaskTest, FXD2) {
   LRSCFTask<SCFMode> lrscf({hene});
   lrscf.settings.nEigen = 8;
   lrscf.settings.method = Options::LR_METHOD::TDA;
+  lrscf.settings.grid.smallGridAccuracy = 7;
+  lrscf.settings.grid.accuracy = 7;
   lrscf.run();
   auto lrscfContr = lrscf.getLRSCFControllers();
   // FXD

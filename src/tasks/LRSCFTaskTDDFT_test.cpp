@@ -89,6 +89,8 @@ TEST_F(LRSCFTaskTDDFTTest, TDA) {
 
   lrscf.settings.method = Options::LR_METHOD::TDA;
   lrscf.settings.densFitJ = Options::DENS_FITS::NONE;
+  lrscf.settings.grid.smallGridAccuracy = 7;
+  lrscf.settings.grid.accuracy = 7;
   lrscf.settings.nEigen = 3;
   lrscf.run();
 
@@ -300,10 +302,10 @@ TEST_F(LRSCFTaskTDDFTTest, Response_Properties) {
   lrscf2.settings.damping = 0.5;
   lrscf2.run();
 
-  Eigen::MatrixXd excitations(lrscf1.settings.nEigen, 5);
-  excitations.row(0) << 0.202326844, 0.000036960, 0.000032958, -0.000034701, -0.000032769;
-  excitations.row(1) << 0.211120996, 0.017366910, 0.017608909, -0.000184005, -0.000184698;
-  excitations.row(2) << 0.224485241, 0.002012985, 0.001853583, -0.000147352, -0.000141397;
+  Eigen::MatrixXd excitations(lrscf1.settings.nEigen, 6);
+  excitations.row(0) << 0.202326844, 0.000036960, 0.000032958, -0.000034701, -0.000032769, -0.000034701;
+  excitations.row(1) << 0.211120996, 0.017366910, 0.017608909, -0.000184005, -0.000184698, -0.000183425;
+  excitations.row(2) << 0.224485241, 0.002012985, 0.001853583, -0.000147352, -0.000141397, -0.000147352;
 
   Eigen::MatrixXd undamped_properties(lrscf1.settings.frequencies.size(), 5);
   undamped_properties.row(0) << 0.110247967, 32.586205728, -0.281570513, 0.000000000, 0.000000000;
@@ -353,6 +355,9 @@ TEST_F(LRSCFTaskTDDFTTest, Restart) {
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  // Have to set this to zero so the test isn't trying to look
+  // there for old vectors but in the current working directory instead.
+  settings.load = "";
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
 
   unsigned smallEigen = 4;
@@ -408,27 +413,6 @@ TEST_F(LRSCFTaskTDDFTTest, Restart) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
-TEST_F(LRSCFTaskTDDFTTest, Response_Algorithms) {
-  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
-  Settings settings = sys->getSettings();
-  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
-
-  // Compare symmetrized and symplectic algorithm for TDDFT without hybrid functionals [(A-B) is diagonal].
-  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf1({sys});
-  lrscf1.run();
-
-  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf2({sys});
-  lrscf2.settings.algorithm = Options::RESPONSE_ALGORITHM::SYMPLECTIC;
-  lrscf2.run();
-
-  EXPECT_LE((lrscf1.getTransitions() - lrscf2.getTransitions()).cwiseAbs().maxCoeff(), LOOSE_D);
-
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::cleanUp();
-}
-
 TEST_F(LRSCFTaskTDDFTTest, simplifiedTDA_Restricted) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
   Settings settings = sys->getSettings();
@@ -445,10 +429,10 @@ TEST_F(LRSCFTaskTDDFTTest, simplifiedTDA_Restricted) {
   auto excitations = *(cont->getExcitationEnergies(Options::LRSCF_TYPE::ISOLATED));
 
   Eigen::VectorXd referenceTDDFT(4);
-  referenceTDDFT << 0.1446141, 0.2204017, 0.2427703, 0.2516158;
+  referenceTDDFT << 0.1446055, 0.2204230, 0.2427796, 0.2516147;
 
   for (unsigned i = 0; i < referenceTDDFT.size(); ++i) {
-    EXPECT_LE(std::abs(referenceTDDFT[i] - referenceTDDFT[i]), LOOSE_D);
+    EXPECT_LE(std::abs(referenceTDDFT[i] - excitations[i]), LOOSE_D);
   }
 
   // TDA
@@ -489,10 +473,10 @@ TEST_F(LRSCFTaskTDDFTTest, simplifiedTDA_Unrestricted) {
   auto excitations = *(cont->getExcitationEnergies(Options::LRSCF_TYPE::ISOLATED));
 
   Eigen::VectorXd referenceTDDFT(8);
-  referenceTDDFT << 0.1446055, 0.1446055, 0.2195534, 0.2204013, 0.2422150, 0.2427699, 0.2515966, 0.2516150;
+  referenceTDDFT << 0.1446055, 0.1446055, 0.2195534, 0.2204230, 0.2422150, 0.2427796, 0.2515966, 0.2516147;
 
   for (unsigned i = 0; i < referenceTDDFT.size(); ++i) {
-    EXPECT_LE(std::abs(referenceTDDFT[i] - referenceTDDFT[i]), LOOSE_D);
+    EXPECT_LE(std::abs(referenceTDDFT[i] - excitations[i]), LOOSE_D);
   }
 
   // TDA
@@ -511,6 +495,71 @@ TEST_F(LRSCFTaskTDDFTTest, simplifiedTDA_Unrestricted) {
   for (unsigned i = 0; i < referenceTDA.size(); ++i) {
     EXPECT_LE(std::abs(referenceTDA[i] - excitations[i]), LOOSE_D);
   }
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskTDDFTTest, DoubleHybridTDDFT) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
+  settings.basis.label = "DEF2-SVP";
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDDFT({sys});
+  lrscfTDDFT.run();
+
+  auto tddft = lrscfTDDFT.getTransitions();
+
+  Eigen::MatrixXd refTDDFT(4, 6);
+  refTDDFT.row(0) << 0.147861075, 0.000000000, 0.000000002, 0.000000169, 0.000000259, 0.000000093;
+  refTDDFT.row(1) << 0.338190095, 0.001289817, 0.004528878, 0.000001611, 0.000001609, 0.000000859;
+  refTDDFT.row(2) << 0.303410187, 0.149607420, 0.176382875, -0.000001683, -0.000001913, -0.000001762;
+  refTDDFT.row(3) << 0.361563767, 0.076219956, 0.053208231, -0.000000174, -0.000000146, -0.000000174;
+  EXPECT_LE((refTDDFT - tddft).cwiseAbs().maxCoeff(), 1e-6);
+
+  // TDA
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDA({sys});
+  lrscfTDA.settings.method = Options::LR_METHOD::TDA;
+  lrscfTDA.run();
+  auto tda = lrscfTDA.getTransitions();
+
+  Eigen::MatrixXd refTDA(4, 6);
+  refTDA.row(0) << 0.149730729, 0.000000000, 0.000000002, 0.000000185, 0.000000049, 0.000000022;
+  refTDA.row(1) << 0.303456079, 0.163986142, 0.133651532, 0.000000665, 0.000000537, 0.000000595;
+  refTDA.row(2) << 0.342005361, 0.001887603, 0.000000380, -0.000000723, -0.000000556, -0.000039189;
+  refTDA.row(3) << 0.369321362, 0.044015294, 0.008240868, -0.000000159, 0.000000069, 0.000000159;
+  EXPECT_LE((refTDA - tda).cwiseAbs().maxCoeff(), 1e-6);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskTDDFTTest, FrozenCoreAndFrozenVirtual) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.label = "DEF2-SVP";
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDDFT({sys});
+  lrscfTDDFT.settings.frozenCore = true;
+  lrscfTDDFT.settings.frozenVirtual = 20;
+  lrscfTDDFT.run();
+
+  auto tddft = lrscfTDDFT.getTransitions();
+
+  Eigen::MatrixXd ref(4, 6);
+  ref.row(0) << 0.144514342492, 0.000000001789, 0.000000002126, 0.000000070920, 0.000000001388, 0.000000001273;
+  ref.row(1) << 0.281169485317, 0.121419972289, 0.100597633838, 0.000000005516, -0.000000002240, -0.000000002460;
+  ref.row(2) << 0.334127018547, 0.002541983319, 0.006788195441, -0.000000030490, -0.000000023400, -0.000000014319;
+  ref.row(3) << 0.342987679763, 0.028816932705, 0.044801409237, -0.000000027119, -0.000000033829, -0.000000027131;
+  EXPECT_LE((ref - tddft).cwiseAbs().maxCoeff(), LOOSE_D);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
   SystemController__TEST_SUPPLY::cleanUp();

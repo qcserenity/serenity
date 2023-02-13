@@ -96,34 +96,25 @@ void printRunStartInfo() {
   /**
    * FIXME works only for Linux
    */
+  printSmallCaption("Program Info");
+  std::cout << "    Version           :   1.5.0" << std::endl;
+
+#ifndef GIT_BRANCH
+#define GIT_BRANCH "UNKNOWN"
+#endif
+  std::cout << "    Git Branch        :   " << GIT_BRANCH << std::endl << std::endl;
+
   printSmallCaption("Program started");
-  std::cout << std::endl;
-  std::cout << "    "
-            << "Time:   " << dateAndTime << std::endl;
-  std::cout << "    "
-            << "Version:           1.4.0" << std::endl;
-  {
-    std::string hostName;
-    if (getenv("HOSTNAME") != NULL) {
-      hostName = getenv("HOSTNAME");
-    }
-    else {
-      hostName = "HOSTNAME UNKNOWN";
-    }
-    std::cout << "    "
-              << "On:                " << hostName << std::endl;
-  }
+  std::cout << "    Time              :   " << dateAndTime << std::endl;
+  std::cout << "    By                :   " << getenv("USER") << std::endl;
+  std::string hostName = (getenv("HOSTNAME") != NULL) ? getenv("HOSTNAME") : "HOSTNAME UNKNOWN";
+  std::cout << "    On                :   " << hostName << std::endl << std::endl;
 
 #ifdef _OPENMP
-  std::cout << "    "
-            << "Cores:             " << omp_get_max_threads() << std::endl;
+  std::cout << "    Threads           :   " << omp_get_max_threads() << std::endl;
 #endif
-  std::cout << "    "
-            << "Soft Memory Limit: " << MemoryManager::getInstance()->getAvailableSystemMemory() / (1024 * 1024)
-            << " MB for dynamically stored data." << std::endl;
-  std::cout << "    "
-            << "By:                " << getenv("USER") << std::endl;
-  std::cout << std::endl;
+  size_t mem = MemoryManager::getInstance()->getAvailableSystemMemory() / (1024 * 1024);
+  std::cout << "    Memory Limit      :   " << mem << " MB" << std::endl;
 }
 
 void printRunEndInfo() {

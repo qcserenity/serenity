@@ -52,6 +52,7 @@ TEST_F(OrbitalAlignerTest, testLocalizationRestricted) {
   LocalizationTask alignTask(system, {templateSystem});
   alignTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::ALIGN;
   alignTask.settings.splitValenceAndCore = true;
+  alignTask.settings.localizeVirtuals = true;
   alignTask.run();
   auto popsTem = IAOPopulationCalculator<scfMode>::calculateShellwiseOrbitalPopulations(templateSystem);
   auto popsSys = IAOPopulationCalculator<scfMode>::calculateShellwiseOrbitalPopulations(system);
@@ -103,7 +104,7 @@ TEST_F(OrbitalAlignerTest, test_kineticAlign) {
 
   SpinPolarizedData<scfMode, Eigen::VectorXi> dummyVector;
   dummyVector = Eigen::VectorXi::Constant(5, 1);
-  OrbitalAligner<scfMode> aligner(system, templateSystem, 4, false);
+  OrbitalAligner<scfMode> aligner(system, templateSystem, 4, false, false);
   aligner.alignOrbitals(*system->getActiveOrbitalController<scfMode>(), dummyVector, dummyVector, 100000, 1e-7);
   auto popsTem = IAOPopulationCalculator<scfMode>::calculateShellwiseOrbitalPopulations(templateSystem);
   auto popsSys = IAOPopulationCalculator<scfMode>::calculateShellwiseOrbitalPopulations(system);
@@ -117,7 +118,7 @@ TEST_F(OrbitalAlignerTest, test_kineticAlign) {
   Eigen::VectorXd kinDiff = templateEnergies - systemEnergies;
   EXPECT_LE(diff.array().abs().sum(), 2e-1);
 
-  OrbitalAligner<scfMode> secondAligner(system, templateSystem, 4, true);
+  OrbitalAligner<scfMode> secondAligner(system, templateSystem, 4, true, false);
   secondAligner.alignOrbitals(*system->getActiveOrbitalController<scfMode>(), dummyVector, dummyVector, 100000, 1e-7);
   coeff_template = templateSystem->getActiveOrbitalController<RESTRICTED>()->getCoefficients();
   coeff = system->getActiveOrbitalController<RESTRICTED>()->getCoefficients();

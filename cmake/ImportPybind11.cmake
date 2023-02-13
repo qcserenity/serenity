@@ -9,7 +9,7 @@ function(import_pybind11)
   download_project(
     PROJ pybind11
     GIT_REPOSITORY      https://github.com/pybind/pybind11.git
-    GIT_TAG             v2.2.4
+    GIT_TAG             v2.10.3
     QUIET
   )
 

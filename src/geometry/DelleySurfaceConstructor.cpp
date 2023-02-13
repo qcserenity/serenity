@@ -48,7 +48,7 @@ DelleySurfaceConstructor::DelleySurfaceConstructor(std::vector<Sphere> spheres, 
   double eM4 = exp(-4);
   _a = 6.0 / 4.0 * _alpha * eM4;
   _b = -5.0 / 16.0 * eM4 * _alpha * _alpha;
-  for (const auto sphere : _spheres)
+  for (const auto& sphere : _spheres)
     getUnitSphere(sphere.getAngularMomentum());
   calculateCylinderRadiiAndParameters();
 }

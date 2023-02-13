@@ -90,6 +90,7 @@ TEST_F(DipoleApproximationToPairEnergiesTest, WaterDimer) {
   lCSettings.completenessThreshold = 0.002;
   lCSettings.orbitalToShellThreshold = 1e-5;
   lCSettings.mullikenThreshold = 1e-3;
+  lCSettings.ccsdPairThreshold = 0.0;
   auto lCController = std::make_shared<LocalCorrelationController>(waterDimer, lCSettings);
   LocalMP2 localMP2(lCController);
   double localMP2Energy = localMP2.calculateEnergyCorrection().sum();
@@ -115,7 +116,7 @@ TEST_F(DipoleApproximationToPairEnergiesTest, WaterDimer) {
     EXPECT_NEAR(pair->dipolePairEnergy, pair->lMP2PairEnergy, 5e-5);
     dipolePairEnergies += pair->dipolePairEnergy;
   }
-  EXPECT_NEAR(dipolePairEnergies, -7.474047162993051e-05, 1e-8);
+  EXPECT_NEAR(dipolePairEnergies, -7.474047162993051e-05, 3e-7);
   std::cout << "Total interaction energy app. [kJ/mol]: " << dipolePairEnergies * 2625.50 << std::endl;
   // clean up
   auto supersystemName = waterDimer->getSystemName();

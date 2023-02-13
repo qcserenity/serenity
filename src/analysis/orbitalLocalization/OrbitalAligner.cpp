@@ -37,8 +37,12 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 OrbitalAligner<SCFMode>::OrbitalAligner(std::shared_ptr<SystemController> systemController,
                                         std::shared_ptr<SystemController> templateSystem, unsigned int exponent,
-                                        bool kineticAlign)
-  : _system(systemController), _templateSystem(templateSystem), _exponent(exponent), _kineticAlign(kineticAlign) {
+                                        bool kineticAlign, bool replaceVirtuals)
+  : _system(systemController),
+    _templateSystem(templateSystem),
+    _exponent(exponent),
+    _kineticAlign(kineticAlign),
+    _replaceVirtuals(replaceVirtuals) {
   // Some sanity checks.
   assert(_system);
   assert(_templateSystem);
@@ -65,14 +69,23 @@ void OrbitalAligner<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbit
                                                SpinPolarizedData<SCFMode, std::vector<unsigned int>> orbitalRange) {
   SpinPolarizedData<SCFMode, Eigen::VectorXi> optSys;
   SpinPolarizedData<SCFMode, Eigen::VectorXi> optTem;
-  auto nOcc = _system->getNOccupiedOrbitals<SCFMode>();
-  auto nOccTem = _templateSystem->getNOccupiedOrbitals<SCFMode>();
-  for_spin(optSys, optTem, nOcc, orbitalRange, nOccTem) {
-    optSys_spin = Eigen::VectorXi::Zero(nOcc_spin);
-    optTem_spin = Eigen::VectorXi::Zero(nOccTem_spin);
+
+  auto nOrbitals = _system->getNOccupiedOrbitals<SCFMode>();
+  _localizeVirtuals = false;
+  for_spin(orbitalRange, nOrbitals) {
+    if (orbitalRange_spin.size() > 1) {
+      unsigned int maxIndex = *std::max_element(orbitalRange_spin.begin(), orbitalRange_spin.end());
+      if (maxIndex >= nOrbitals_spin) {
+        _localizeVirtuals = true;
+        nOrbitals_spin = maxIndex + 1;
+      }
+    }
+  };
+
+  for_spin(optSys, optTem, orbitalRange, nOrbitals) {
+    optSys_spin = Eigen::VectorXi::Zero(nOrbitals_spin);
+    optTem_spin = Eigen::VectorXi::Zero(nOrbitals_spin);
     for (const auto orb : orbitalRange_spin) {
-      if (orb >= nOccTem_spin)
-        break;
       optSys_spin(orb) = 1;
       optTem_spin(orb) = 1;
     }
@@ -163,8 +176,29 @@ void OrbitalAligner<SCFMode>::alignOrbitals(OrbitalController<SCFMode>& orbitals
   auto densMatCont = _system->getElectronicStructure<SCFMode>()->getDensityMatrixController();
   densMatCont->updateDensityMatrix();
   DensityMatrix<SCFMode> oldP = densMatCont->getDensityMatrix();
-  auto pops_ref = IAOPopulationCalculator<SCFMode>::calculateShellwiseOrbitalPopulations(_templateSystem);
-  auto CIAO_othoA = IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(_system);
+  /*
+   * The following few lines are needed for the localization of virtual orbitals only. In the
+   * case that the IAO basis set does not span the space of the virtual valence orbitals we must
+   * first reconstruct the orbitals to do so. Otherwise, the orbital localization may lead to
+   * non-orthogonal and non normalized virtual orbitals. In the case that "_replaceVirtuals" is
+   * false, we explicitly check if the virtual valence orbital space is fine and replace the
+   * virtual orbitals if required.
+   */
+  bool replaceVirtBeforeLoc =
+      _localizeVirtuals &&
+      (_replaceVirtuals || !IAOPopulationCalculator<SCFMode>::iaosSpanOrbitals(
+                               C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
+                               _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
+                               _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION)));
+  if (replaceVirtBeforeLoc) {
+    IAOPopulationCalculator<SCFMode>::reconstructVirtualValenceOrbitalsInplace(
+        C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
+        _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
+        _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION));
+    orbitals.updateOrbitals(C, orbitals.getEigenvalues());
+  }
+  auto CIAO_othoA = IAOPopulationCalculator<SCFMode>::getCIAOCoefficients(_system, _localizeVirtuals);
+  auto pops_ref = IAOPopulationCalculator<SCFMode>::calculateShellwiseOrbitalPopulations(_templateSystem, _localizeVirtuals);
   SPMatrix<SCFMode>& CIAO = CIAO_othoA.first;
   SPMatrix<SCFMode>& othoA = CIAO_othoA.second;
   auto minao = _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION);
@@ -305,7 +339,15 @@ void OrbitalAligner<SCFMode>::alignOrbitals(OrbitalController<SCFMode>& orbitals
         break;
       }
     } // while !converged
-  };  /* spin loop */
+    const Eigen::MatrixXd S1 = _system->getOneElectronIntegralController()->getOverlapIntegrals();
+    const double sanityCheck =
+        (C_spin.leftCols(nOcc).transpose() * S1 * C_spin.leftCols(nOcc) - Eigen::MatrixXd::Identity(nOcc, nOcc))
+            .array()
+            .abs()
+            .sum();
+    if (sanityCheck > 1e-6)
+      throw SerenityError("The orbitals are no longer orthogonal after orbital alignment!");
+  }; /* spin loop */
 
   orbitals.updateOrbitals(C, orbitals.getEigenvalues());
   densMatCont->updateDensityMatrix();

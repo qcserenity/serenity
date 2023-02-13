@@ -29,7 +29,7 @@
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
-class Settings;
+struct Settings;
 struct EmbeddingSettings;
 /**
  * @class

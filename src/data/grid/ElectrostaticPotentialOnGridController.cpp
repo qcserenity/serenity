@@ -204,7 +204,7 @@ void ElectrostaticPotentialOnGridController<SCFMode>::toHDF5() {
 template<Options::SCF_MODES SCFMode>
 void ElectrostaticPotentialOnGridController<SCFMode>::fromHDF5() {
   HDF5::Filepath name(_fBaseName + ".elecPotGrid.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "electrostaticPotential");
   HDF5::load(file, "electrostaticPotential", *_electrostaticPotential);
   file.close();

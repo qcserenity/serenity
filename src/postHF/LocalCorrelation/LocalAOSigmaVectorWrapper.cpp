@@ -86,10 +86,9 @@ LocalAOSigmaVectorWrapper::getSigmaVector_AO_AO(std::shared_ptr<SystemController
   const MatrixInBasis<RESTRICTED> p = calculatePerturbedDensityMatrix(system, singles, paoController, testRun);
   std::vector<std::vector<MatrixInBasis<RESTRICTED>>> p_set = {{p}};
   // Note: The way the sigma vectors are defined makes this here quite awkward ...
-  auto p_ptr1 = std::unique_ptr<std::vector<std::vector<MatrixInBasis<RESTRICTED>>>>(
-      new std::vector<std::vector<MatrixInBasis<RESTRICTED>>>(p_set));
-  auto p_ptr2 = std::unique_ptr<std::vector<std::vector<MatrixInBasis<RESTRICTED>>>>(
-      new std::vector<std::vector<MatrixInBasis<RESTRICTED>>>(p_set));
+  auto p_ptr1 = std::make_unique<std::vector<std::vector<MatrixInBasis<RESTRICTED>>>>(p_set);
+  auto p_ptr2 = std::make_unique<std::vector<std::vector<MatrixInBasis<RESTRICTED>>>>(p_set);
+
   // I split the construction and calculation of the sigma vector up, because the compliler becomes confused otherwise.
   // It would try to cast the MatrixInBasis to an Eigen::MatrixXd and then realize that it can not reconstruct a
   // MatrixInBasis from an Eigen::MatrixXd ...

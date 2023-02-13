@@ -22,16 +22,15 @@
 #include "postHF/LRSCF/Sigmavectors/KernelSigmavector.h"
 
 /* Include Serenity Internal Headers */
+#include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
-#include "math/linearAlgebra/MatrixFunctions.h"
 #include "misc/HelperFunctions.h"
 #include "misc/Timing.h"
+#include "misc/WarningTracker.h"
+#include "postHF/LRSCF/Kernel/Kernel.h"
 #include "postHF/LRSCF/LRSCFController.h"
 /* Include Std and External Headers */
-#include <unistd.h>
-#include <Eigen/Core>
 #include <Eigen/Dense>
-#include <iomanip>
 
 namespace Serenity {
 
@@ -43,7 +42,7 @@ KernelSigmavector<SCFMode>::KernelSigmavector(std::vector<std::shared_ptr<LRSCFC
 
 template<Options::SCF_MODES SCFMode>
 std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
-KernelSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
+KernelSigmavector<SCFMode>::calcF(unsigned I, unsigned J,
                                   std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> densityMatrices) {
   Timings::takeTime("LRSCF -   Sigmavector: Kernel");
 
@@ -71,80 +70,74 @@ KernelSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
     }
   }
 
+  if (!_kernel) {
+    WarningTracker::printWarning("A kernel sigma vector was requested with no kernel present.", true);
+    return fock;
+  }
+
   // Thread safety.
-  unsigned nThreads = omp_get_max_threads();
-  std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>> fock_threads(nThreads);
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    fock_threads[iThread] = std::vector<std::vector<MatrixInBasis<SCFMode>>>(this->_nSet);
+  std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>> Fxc(this->_nThreads);
+  for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+    Fxc[iThread] = std::vector<std::vector<MatrixInBasis<SCFMode>>>(this->_nSet);
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        fock_threads[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
+        Fxc[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
       }
     }
   }
 
-  // Return zero if kernel is nullptr
-  if (!_kernel)
-    return fock;
-
-  // GGA or not
   bool gga = _kernel->isGGA();
-  // Dervative Level required depends on the adiabatic functional
-  unsigned int derivativeLevel = (gga) ? 1 : 0;
-  // BasisfunctionOnGridController:
-  std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerI = nullptr;
-  std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerJ = nullptr;
+  unsigned derivativeLevel = (gga) ? 1 : 0;
+
+  std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerI;
+  std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridControllerJ;
 
   basisFunctionOnGridControllerI = BasisFunctionOnGridControllerFactory::produce(
       this->_kernel->getBlocksize(I), this->_kernel->getbasFuncRadialThreshold(I), derivativeLevel,
       this->_lrscf[I]->getBasisController(), _kernel->getGridController());
-  // Two controller needed if the Sigma Vector of two different subsystems is calculated
-  if (I != J) {
+
+  if (I == J) {
+    basisFunctionOnGridControllerJ = basisFunctionOnGridControllerI;
+  }
+  else {
     basisFunctionOnGridControllerJ = BasisFunctionOnGridControllerFactory::produce(
         this->_kernel->getBlocksize(J), this->_kernel->getbasFuncRadialThreshold(J), derivativeLevel,
         this->_lrscf[J]->getBasisController(), _kernel->getGridController());
   }
-  // Initialize scalar and gradient part for integration
+
   std::vector<std::vector<GridPotential<SCFMode>>> scalarContr(this->_nSet);
-  for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
       scalarContr[iSet].emplace_back(_kernel->getGridController());
     }
   }
+
   std::vector<std::vector<Gradient<GridPotential<SCFMode>>>> gradientContr(this->_nSet);
   if (gga) {
-    for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
         gradientContr[iSet].emplace_back(makeGradient<GridPotential<SCFMode>>(_kernel->getGridController()));
       }
     }
   }
 
-  // Contract kernel with density and basis functions and adds nummerical integration weights
-  Timings::takeTime("LRSCF -    Kernel Contraction");
-  if (I == J) {
-    contractKernel((*densityMatrices), basisFunctionOnGridControllerI, scalarContr, gradientContr, I, J);
-  }
-  else {
-    contractKernel((*densityMatrices), basisFunctionOnGridControllerJ, scalarContr, gradientContr, I, J);
-  }
-  Timings::timeTaken("LRSCF -    Kernel Contraction");
+  Timings::takeTime("LRSCF -   Kernel: Contraction");
+  this->contractKernel((*densityMatrices), basisFunctionOnGridControllerJ, scalarContr, gradientContr, I, J);
+  Timings::timeTaken("LRSCF -   Kernel: Contraction");
 
-  Timings::takeTime("LRSCF - Numerical Integration");
-  // Nummerical Integration
-  if (gga) {
-    numIntSigma(fock_threads, basisFunctionOnGridControllerI, scalarContr, gradientContr, I);
-  }
-  else {
-    numIntSigma(fock_threads, basisFunctionOnGridControllerI, scalarContr, I);
-  }
-  Timings::timeTaken("LRSCF - Numerical Integration");
+  Timings::takeTime("LRSCF -   Kernel: Num. Integ.");
+  this->numericalIntegration(Fxc, basisFunctionOnGridControllerI, scalarContr, gradientContr, I);
+  Timings::timeTaken("LRSCF -   Kernel: Num. Integ.");
 
   // Sum over threads.
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
+  for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        (*fock)[iSet][iGuess] += fock_threads[iThread][iSet][iGuess];
+        auto& F = (*fock)[iSet][iGuess];
+        auto& fxc = Fxc[iThread][iSet][iGuess];
+        for_spin(F, fxc) {
+          F_spin += fxc_spin;
+        };
       }
     }
   }
@@ -160,332 +153,269 @@ void KernelSigmavector<SCFMode>::contractKernel(std::vector<std::vector<MatrixIn
                                                 std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
                                                 std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart,
                                                 unsigned int I, unsigned int J) {
-  // Number of grid blocks
-  const unsigned int nBlocks = basisFunctionOnGridController->getNBlocks();
-  // Number of basis functions
-  const unsigned int nBasisFunc = basisFunctionOnGridController->getNBasisFunctions();
+  unsigned nBlocks = basisFunctionOnGridController->getNBlocks();
+  unsigned nb = basisFunctionOnGridController->getNBasisFunctions();
   bool gga = _kernel->isGGA();
-  // Set threads for Eigen in parrallel region
   Eigen::setNbThreads(1);
 
-#pragma omp parallel
-  {
-#pragma omp for schedule(dynamic)
-    for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
-      // calculate data for this block
-      const auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
-      // function values for each grid point/ basis function combination (Dimension: nPoints x nBasisFunctions)
-      Eigen::MatrixXd& basisFunctionValues = blockData->functionValues;
-      // gradient values for each grid point/ basis function combination (Dimension: 3 * nPoints x nBasisFunctions)
-      const auto& gradBasisFunctionValues = blockData->derivativeValues;
-      // number of grid points in this block
-      const unsigned int blockSize = blockData->functionValues.rows();
-      // Get first index of this Block
-      const unsigned int iGridStart = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
-      // weights for numerical integration
-      const Eigen::VectorXd& weights = basisFunctionOnGridController->getGridController()->getWeights();
-      // Negligible vector 1: uniportant 0: important
-      const Eigen::VectorXi& negligible = blockData->negligible;
-      // calculate projector for non neglible basis functions
-      const auto projector = constructProjectionMatrix(negligible);
-      // Project into smaller basis
-      const Eigen::MatrixXd basisFuncProj = basisFunctionValues * projector;
-      Eigen::MatrixXd gradBasisFuncProj_x;
-      Eigen::MatrixXd gradBasisFuncProj_y;
-      Eigen::MatrixXd gradBasisFuncProj_z;
-      if (gga) {
-        gradBasisFuncProj_x = gradBasisFunctionValues->x * projector;
-        gradBasisFuncProj_y = gradBasisFunctionValues->y * projector;
-        gradBasisFuncProj_z = gradBasisFunctionValues->z * projector;
+#pragma omp parallel for schedule(dynamic)
+  for (unsigned iBlock = 0; iBlock < nBlocks; ++iBlock) {
+    auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
+    auto& funcValues = blockData->functionValues;
+    auto& gradValues = blockData->derivativeValues;
+    unsigned size = blockData->functionValues.rows();
+    unsigned start = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
+    auto& weights = basisFunctionOnGridController->getGridController()->getWeights();
+    auto projector = constructProjectionMatrix(blockData->negligible);
+
+    Eigen::MatrixXd funcProj = funcValues * projector;
+    Eigen::MatrixXd gradProjx;
+    Eigen::MatrixXd gradProjy;
+    Eigen::MatrixXd gradProjz;
+    if (gga) {
+      gradProjx = gradValues->x * projector;
+      gradProjy = gradValues->y * projector;
+      gradProjz = gradValues->z * projector;
+    }
+
+    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+        SpinPolarizedData<SCFMode, Eigen::VectorXd> pbb(size);
+        Gradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>> pnbb =
+            makeGradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>>((gga) ? size : 0);
+
+        auto& p = dens[iSet][iGuess];
+        SpinPolarizedData<SCFMode, Eigen::MatrixXd> pb(size, nb);
+        for_spin(p, pb, pbb) {
+          pb_spin = (p_spin.transpose() + p_spin) * funcProj.transpose();
+          pbb_spin = 0.5 * (funcProj * pb_spin).diagonal();
+          pbb_spin = pbb_spin.cwiseProduct(weights.segment(start, size));
+        };
+
+        if (gga) {
+          auto& pnbbx = pnbb.x;
+          auto& pnbby = pnbb.y;
+          auto& pnbbz = pnbb.z;
+          for_spin(pb, pnbbx, pnbby, pnbbz) {
+            pnbbx_spin = (gradProjx * pb_spin).diagonal();
+            pnbby_spin = (gradProjy * pb_spin).diagonal();
+            pnbbz_spin = (gradProjz * pb_spin).diagonal();
+            pnbbx_spin = pnbbx_spin.cwiseProduct(weights.segment(start, size));
+            pnbby_spin = pnbby_spin.cwiseProduct(weights.segment(start, size));
+            pnbbz_spin = pnbbz_spin.cwiseProduct(weights.segment(start, size));
+          };
+        }
+        this->contractBlock(start, size, pbb, pnbb, scalarPart[iSet][iGuess], gradientPart[iSet][iGuess], I, J);
       }
+    }
+  }
+  Eigen::setNbThreads(0);
+}
 
-      for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
-        for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-          SpinPolarizedData<SCFMode, Eigen::VectorXd> pbb(blockSize);
-          Gradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>> pnbb =
-              makeGradient<SpinPolarizedData<SCFMode, Eigen::VectorXd>>((gga) ? blockSize : 0);
-          // contract basis functions with density of guess vector iGuess
-          auto& p = dens[iSet][iGuess];
-          SpinPolarizedData<SCFMode, Eigen::MatrixXd> pb(blockSize, nBasisFunc);
-          for_spin(p, pb, pbb) {
-            pb_spin.setZero();
-            // This needs to be done twice because the density matrix is not symmetric
-            pb_spin = basisFuncProj * (p_spin.transpose() + p_spin);
-            pbb_spin = 0.5 * basisFuncProj.cwiseProduct(pb_spin).rowwise().sum();
-            // Now contract with weights
-            pbb_spin = pbb_spin.cwiseProduct(weights.segment(iGridStart, blockSize));
+template<Options::SCF_MODES SCFMode>
+void KernelSigmavector<SCFMode>::numericalIntegration(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& Fxc,
+                                                      std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+                                                      std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
+                                                      std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart,
+                                                      unsigned int I) {
+  const unsigned int nBlocks = basisFunctionOnGridController->getNBlocks();
+  double blockAveThreshold = _kernel->getblockAveThreshold(I);
+  bool gga = _kernel->isGGA();
+
+  Eigen::setNbThreads(1);
+  if (gga) {
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
+      unsigned iThread = omp_get_thread_num();
+      auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
+      auto& funcValues = blockData->functionValues;
+      auto& gradValues = blockData->derivativeValues;
+      unsigned start = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
+      unsigned size = blockData->functionValues.rows();
+      auto projector = constructProjectionMatrix(blockData->negligible);
+
+      Eigen::MatrixXd funcProj = funcValues * projector;
+      Eigen::MatrixXd gradProjx = gradValues->x * projector;
+      Eigen::MatrixXd gradProjy = gradValues->y * projector;
+      Eigen::MatrixXd gradProjz = gradValues->z * projector;
+
+      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+          auto& F = Fxc[iThread][iSet][iGuess];
+
+          auto& S = scalarPart[iSet][iGuess];
+          auto& X = gradientPart[iSet][iGuess].x;
+          auto& Y = gradientPart[iSet][iGuess].y;
+          auto& Z = gradientPart[iSet][iGuess].z;
+
+          double average = 0.0;
+          for_spin(S, X, Y, Z) {
+            average += S_spin.segment(start, size).cwiseAbs().sum();
+            average += X_spin.segment(start, size).cwiseAbs().sum();
+            average += Y_spin.segment(start, size).cwiseAbs().sum();
+            average += Z_spin.segment(start, size).cwiseAbs().sum();
           };
-          if (gga) {
-            auto& pnbbx = pnbb.x;
-            auto& pnbby = pnbb.y;
-            auto& pnbbz = pnbb.z;
-            for_spin(pb, pnbbx, pnbby, pnbbz) {
-              pnbbx_spin = gradBasisFuncProj_x.cwiseProduct(pb_spin).rowwise().sum();
-              pnbbx_spin = pnbbx_spin.cwiseProduct(weights.segment(iGridStart, blockSize));
-              pnbby_spin = gradBasisFuncProj_y.cwiseProduct(pb_spin).rowwise().sum();
-              pnbby_spin = pnbby_spin.cwiseProduct(weights.segment(iGridStart, blockSize));
-              pnbbz_spin = gradBasisFuncProj_z.cwiseProduct(pb_spin).rowwise().sum();
-              pnbbz_spin = pnbbz_spin.cwiseProduct(weights.segment(iGridStart, blockSize));
-            };
+
+          if (average / size < blockAveThreshold) {
+            continue;
           }
-          // Contract with kernel (Note that restricted and unrestricted cannot be handled in
-          // a single function since there is not yet a for_spin looper function for DoublySpinPolarized data)
-          contractBlock(iGridStart, blockSize, pbb, pnbb, scalarPart[iSet][iGuess], gradientPart[iSet][iGuess], I, J);
-        } /* Loop over iGuess */
-      }   /* Loop over iSet */
-    }     /* Loop over iBlock */
+
+          for_spin(F, S, X, Y, Z) {
+            Eigen::MatrixXd tmp = 0.5 * S_spin.segment(start, size).asDiagonal() * funcProj;
+            tmp.noalias() += X_spin.segment(start, size).asDiagonal() * gradProjx;
+            tmp.noalias() += Y_spin.segment(start, size).asDiagonal() * gradProjy;
+            tmp.noalias() += Z_spin.segment(start, size).asDiagonal() * gradProjz;
+            Eigen::MatrixXd tmp2 = funcProj.transpose() * tmp;
+            F_spin.noalias() += projector * (tmp2 + tmp2.transpose()) * projector.transpose();
+          };
+        }
+      }
+    }
   }
-  // reset threads for Eigen
-  Eigen::setNbThreads(0);
-}
+  else {
+#pragma omp parallel for schedule(dynamic)
+    for (unsigned iBlock = 0; iBlock < nBlocks; ++iBlock) {
+      unsigned iThread = omp_get_thread_num();
+      auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
+      auto& funcValues = blockData->functionValues;
+      unsigned size = blockData->functionValues.rows();
+      unsigned start = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
+      auto projector = constructProjectionMatrix(blockData->negligible);
 
-template<Options::SCF_MODES SCFMode>
-void KernelSigmavector<SCFMode>::numIntSigma(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& focklikeMatrix,
-                                             std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-                                             std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart, unsigned int I) {
-  // Number of grid blocks
-  const unsigned int nBlocks = basisFunctionOnGridController->getNBlocks();
-  // Block average threshold
-  double blockAveThreshold = _kernel->getblockAveThreshold(I);
-  // Set threads for Eigen in parrallel region
-  Eigen::setNbThreads(1);
-#pragma omp parallel
-  {
-    // ThreadID
-    const unsigned int threadID = omp_get_thread_num();
-#pragma omp for schedule(dynamic)
-    for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
-      // calculate data for this block
-      const auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
-      // function values for each grid point/ basis function combination (Dimension: nPoints x nBasisFunctions)
-      Eigen::MatrixXd& basisFunctionValues = blockData->functionValues;
-      // number of grid points in this block
-      const unsigned int blockSize = blockData->functionValues.rows();
-      // Get first index of this Block
-      const unsigned int iGridStart = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
-      // Negligible vector 1: uniportant 0: important
-      const Eigen::VectorXi& negligible = blockData->negligible;
-      // calculate projector for non neglible basis functions
-      const auto projector = constructProjectionMatrix(negligible);
-      // Project into smaller basis
-      const Eigen::MatrixXd basisFuncProj = basisFunctionValues * projector;
-      for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
-        for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-          // Initialize data
-          const GridPotential<SCFMode>& scalarpart = scalarPart[iSet][iGuess];
-          auto& f = focklikeMatrix[threadID][iSet][iGuess];
+      Eigen::MatrixXd funcProj = funcValues * projector;
 
-          for_spin(f, scalarpart) {
-            const Eigen::VectorXd scalar = scalarpart_spin.segment(iGridStart, blockSize);
-            // Test of significance
-            double average = scalar.cwiseAbs().sum();
-            average /= blockSize;
-            if (average < blockAveThreshold)
+      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+          auto& S = scalarPart[iSet][iGuess];
+          auto& F = Fxc[iThread][iSet][iGuess];
+
+          for_spin(F, S) {
+            double average = S_spin.segment(start, size).cwiseAbs().sum() / size;
+            if (average < blockAveThreshold) {
               return;
-            // Evaluate quantities
-            Eigen::MatrixXd temp = (basisFuncProj.array().colwise() * scalar.array()).matrix().transpose() * basisFuncProj;
-
-            f_spin += projector * temp * projector.transpose();
+            }
+            Eigen::MatrixXd tmp = S_spin.segment(start, size).asDiagonal() * funcProj;
+            Eigen::MatrixXd tmp2 = funcProj.transpose() * tmp;
+            F_spin.noalias() += projector * tmp2 * projector.transpose();
           };
-        } /*End Guess*/
-      }   /*End Set*/
-    }     /*End Block*/
-  }       /*End Parallel*/
-  // reset threads for Eigen
+        }
+      }
+    }
+  }
   Eigen::setNbThreads(0);
-  return;
-}
-
-template<Options::SCF_MODES SCFMode>
-void KernelSigmavector<SCFMode>::numIntSigma(std::vector<std::vector<std::vector<MatrixInBasis<SCFMode>>>>& focklikeMatrix,
-                                             std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-                                             std::vector<std::vector<GridPotential<SCFMode>>>& scalarPart,
-                                             std::vector<std::vector<Gradient<GridPotential<SCFMode>>>>& gradientPart,
-                                             unsigned int I) {
-  // Number of grid blocks
-  const unsigned int nBlocks = basisFunctionOnGridController->getNBlocks();
-  // Block average threshold
-  double blockAveThreshold = _kernel->getblockAveThreshold(I);
-  // Set threads for Eigen in parrallel region
-  Eigen::setNbThreads(1);
-#pragma omp parallel
-  {
-    // ThreadID
-    const unsigned int threadID = omp_get_thread_num();
-#pragma omp for schedule(dynamic)
-    for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
-      // calculate data for this block
-      const auto& blockData = basisFunctionOnGridController->getBlockOnGridData(iBlock);
-      // function values for each grid point/ basis function combination (Dimension: nPoints x nBasisFunctions)
-      const Eigen::MatrixXd& basisFunctionValues = blockData->functionValues;
-      // gradient values for each grid point/ basis function combination (Dimension: 3 * nPoints x nBasisFunctions)
-      const auto& gradBasisFunctionValues = blockData->derivativeValues;
-      // number of grid points in this block
-      const unsigned int blockSize = blockData->functionValues.rows();
-      // Get first index of this Block
-      const unsigned int iGridStart = basisFunctionOnGridController->getFirstIndexOfBlock(iBlock);
-      // Negligible vector 1: uniportant 0: important
-      const Eigen::VectorXi& negligible = blockData->negligible;
-      // calculate projector for non neglible basis functions
-      const auto projector = constructProjectionMatrix(negligible);
-      // Project into smaller basis
-      const Eigen::MatrixXd basisFuncProj = basisFunctionValues * projector;
-      const Eigen::MatrixXd gradBasisFuncProj_x = gradBasisFunctionValues->x * projector;
-      const Eigen::MatrixXd gradBasisFuncProj_y = gradBasisFunctionValues->y * projector;
-      const Eigen::MatrixXd gradBasisFuncProj_z = gradBasisFunctionValues->z * projector;
-
-      for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
-        for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-          // Initialize data
-          const GridPotential<SCFMode>& scalarpart = scalarPart[iSet][iGuess];
-          const GridData<SCFMode>& gradientPartX = gradientPart[iSet][iGuess].x;
-          const GridData<SCFMode>& gradientPartY = gradientPart[iSet][iGuess].y;
-          const GridData<SCFMode>& gradientPartZ = gradientPart[iSet][iGuess].z;
-
-          auto& f = focklikeMatrix[threadID][iSet][iGuess];
-
-          for_spin(f, scalarpart, gradientPartX, gradientPartY, gradientPartZ) {
-            // Test of significance
-            double average = scalarpart_spin.segment(iGridStart, blockSize).cwiseAbs().sum();
-            average += gradientPartX_spin.segment(iGridStart, blockSize).cwiseAbs().sum();
-            average += gradientPartY_spin.segment(iGridStart, blockSize).cwiseAbs().sum();
-            average += gradientPartZ_spin.segment(iGridStart, blockSize).cwiseAbs().sum();
-            average /= blockSize;
-            if (average < blockAveThreshold)
-              return;
-            // Evaluate quantities
-            Eigen::MatrixXd temp = basisFuncProj.array().colwise() * scalarpart_spin.segment(iGridStart, blockSize).array();
-            temp +=
-                2.0 * (gradBasisFuncProj_x.array().colwise() * gradientPartX_spin.segment(iGridStart, blockSize).array() +
-                       gradBasisFuncProj_y.array().colwise() * gradientPartY_spin.segment(iGridStart, blockSize).array() +
-                       gradBasisFuncProj_z.array().colwise() * gradientPartZ_spin.segment(iGridStart, blockSize).array())
-                          .matrix();
-            Eigen::MatrixXd temp2 = basisFuncProj.transpose() * temp;
-            temp2 = symmetrize(temp2);
-            // Project back into bigger basis
-            f_spin += projector * temp2 * projector.transpose();
-          };
-        } /*End Guess*/
-      }   /*End Set*/
-    }     /*End Block*/
-  }       /*End Parallel*/
-  // reset threads for Eigen
-  Eigen::setNbThreads(0);
-  return;
 }
 
 template<>
-void KernelSigmavector<Options::SCF_MODES::RESTRICTED>::contractBlock(
-    const unsigned int iGridStart, const unsigned int blockSize,
-    SpinPolarizedData<Options::SCF_MODES::RESTRICTED, Eigen::VectorXd>& pbb,
-    Gradient<SpinPolarizedData<Options::SCF_MODES::RESTRICTED, Eigen::VectorXd>>& pnbb,
-    GridPotential<Options::SCF_MODES::RESTRICTED>& scalarPart,
-    Gradient<GridPotential<Options::SCF_MODES::RESTRICTED>>& gradientPart, unsigned int I, unsigned int J) {
-  auto ppptr = _kernel->getPP(I, J, blockSize, iGridStart);
+void KernelSigmavector<RESTRICTED>::contractBlock(const unsigned int start, const unsigned int size,
+                                                  SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& pbb,
+                                                  Gradient<SpinPolarizedData<RESTRICTED, Eigen::VectorXd>>& pnbb,
+                                                  GridPotential<RESTRICTED>& scalarPart,
+                                                  Gradient<GridPotential<RESTRICTED>>& gradientPart, unsigned int I,
+                                                  unsigned int J) {
+  auto ppptr = _kernel->getPP(I, J, size, start);
   auto& pp = (*ppptr);
-  scalarPart.segment(iGridStart, blockSize) += pp.cwiseProduct(pbb);
-  // scalarPart.segment(iGridStart, blockSize) += pp.segment(iGridStart,blockSize).cwiseProduct(pbb);
+  scalarPart.segment(start, size) += pp.cwiseProduct(pbb);
   if (_kernel->isGGA()) {
-    auto pgptr = _kernel->getPG(I, J, blockSize, iGridStart);
-    auto ggptr = _kernel->getGG(I, J, blockSize, iGridStart);
+    auto pgptr = _kernel->getPG(I, J, size, start);
+    auto ggptr = _kernel->getGG(I, J, size, start);
     auto& pg = (*pgptr);
     auto& gg = (*ggptr);
-    scalarPart.segment(iGridStart, blockSize) += pg.x.cwiseProduct(pnbb.x);
-    scalarPart.segment(iGridStart, blockSize) += pg.y.cwiseProduct(pnbb.y);
-    scalarPart.segment(iGridStart, blockSize) += pg.z.cwiseProduct(pnbb.z);
-    gradientPart.x.segment(iGridStart, blockSize) += pg.x.cwiseProduct(pbb);
-    gradientPart.y.segment(iGridStart, blockSize) += pg.y.cwiseProduct(pbb);
-    gradientPart.z.segment(iGridStart, blockSize) += pg.z.cwiseProduct(pbb);
-    gradientPart.x.segment(iGridStart, blockSize) += gg.xx.cwiseProduct(pnbb.x);
-    gradientPart.x.segment(iGridStart, blockSize) += gg.xy.cwiseProduct(pnbb.y);
-    gradientPart.x.segment(iGridStart, blockSize) += gg.xz.cwiseProduct(pnbb.z);
-    gradientPart.y.segment(iGridStart, blockSize) += gg.xy.cwiseProduct(pnbb.x);
-    gradientPart.y.segment(iGridStart, blockSize) += gg.yy.cwiseProduct(pnbb.y);
-    gradientPart.y.segment(iGridStart, blockSize) += gg.yz.cwiseProduct(pnbb.z);
-    gradientPart.z.segment(iGridStart, blockSize) += gg.xz.cwiseProduct(pnbb.x);
-    gradientPart.z.segment(iGridStart, blockSize) += gg.yz.cwiseProduct(pnbb.y);
-    gradientPart.z.segment(iGridStart, blockSize) += gg.zz.cwiseProduct(pnbb.z);
+    scalarPart.segment(start, size) += pg.x.cwiseProduct(pnbb.x);
+    scalarPart.segment(start, size) += pg.y.cwiseProduct(pnbb.y);
+    scalarPart.segment(start, size) += pg.z.cwiseProduct(pnbb.z);
+    gradientPart.x.segment(start, size) += pg.x.cwiseProduct(pbb);
+    gradientPart.y.segment(start, size) += pg.y.cwiseProduct(pbb);
+    gradientPart.z.segment(start, size) += pg.z.cwiseProduct(pbb);
+    gradientPart.x.segment(start, size) += gg.xx.cwiseProduct(pnbb.x);
+    gradientPart.x.segment(start, size) += gg.xy.cwiseProduct(pnbb.y);
+    gradientPart.x.segment(start, size) += gg.xz.cwiseProduct(pnbb.z);
+    gradientPart.y.segment(start, size) += gg.xy.cwiseProduct(pnbb.x);
+    gradientPart.y.segment(start, size) += gg.yy.cwiseProduct(pnbb.y);
+    gradientPart.y.segment(start, size) += gg.yz.cwiseProduct(pnbb.z);
+    gradientPart.z.segment(start, size) += gg.xz.cwiseProduct(pnbb.x);
+    gradientPart.z.segment(start, size) += gg.yz.cwiseProduct(pnbb.y);
+    gradientPart.z.segment(start, size) += gg.zz.cwiseProduct(pnbb.z);
   }
 }
 
 template<>
-void KernelSigmavector<Options::SCF_MODES::UNRESTRICTED>::contractBlock(
-    const unsigned int iGridStart, const unsigned int blockSize,
-    SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>& pbb,
-    Gradient<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXd>>& pnbb,
-    GridPotential<Options::SCF_MODES::UNRESTRICTED>& scalarPart,
-    Gradient<GridPotential<Options::SCF_MODES::UNRESTRICTED>>& gradientPart, unsigned int I, unsigned int J) {
-  auto ppptr = _kernel->getPP(I, J, blockSize, iGridStart);
+void KernelSigmavector<UNRESTRICTED>::contractBlock(const unsigned int start, const unsigned int size,
+                                                    SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& pbb,
+                                                    Gradient<SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>>& pnbb,
+                                                    GridPotential<UNRESTRICTED>& scalarPart,
+                                                    Gradient<GridPotential<UNRESTRICTED>>& gradientPart, unsigned int I,
+                                                    unsigned int J) {
+  auto ppptr = _kernel->getPP(I, J, size, start);
   auto& pp = (*ppptr);
-  scalarPart.alpha.segment(iGridStart, blockSize) += pp.aa.cwiseProduct(pbb.alpha);
-  scalarPart.alpha.segment(iGridStart, blockSize) += pp.ab.cwiseProduct(pbb.beta);
-  scalarPart.beta.segment(iGridStart, blockSize) += pp.bb.cwiseProduct(pbb.beta);
-  scalarPart.beta.segment(iGridStart, blockSize) += pp.ab.cwiseProduct(pbb.alpha);
+  scalarPart.alpha.segment(start, size) += pp.aa.cwiseProduct(pbb.alpha);
+  scalarPart.alpha.segment(start, size) += pp.ab.cwiseProduct(pbb.beta);
+  scalarPart.beta.segment(start, size) += pp.bb.cwiseProduct(pbb.beta);
+  scalarPart.beta.segment(start, size) += pp.ab.cwiseProduct(pbb.alpha);
   if (_kernel->isGGA()) {
-    auto pgptr = _kernel->getPG(I, J, blockSize, iGridStart);
-    auto ggptr = _kernel->getGG(I, J, blockSize, iGridStart);
+    auto pgptr = _kernel->getPG(I, J, size, start);
+    auto ggptr = _kernel->getGG(I, J, size, start);
     auto& pg = (*pgptr);
     auto& gg = (*ggptr);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.x.aa.cwiseProduct(pnbb.x.alpha);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.y.aa.cwiseProduct(pnbb.y.alpha);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.z.aa.cwiseProduct(pnbb.z.alpha);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.x.ab.cwiseProduct(pnbb.x.beta);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.y.ab.cwiseProduct(pnbb.y.beta);
-    scalarPart.alpha.segment(iGridStart, blockSize) += pg.z.ab.cwiseProduct(pnbb.z.beta);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.x.ba.cwiseProduct(pnbb.x.alpha);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.y.ba.cwiseProduct(pnbb.y.alpha);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.z.ba.cwiseProduct(pnbb.z.alpha);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.x.bb.cwiseProduct(pnbb.x.beta);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.y.bb.cwiseProduct(pnbb.y.beta);
-    scalarPart.beta.segment(iGridStart, blockSize) += pg.z.bb.cwiseProduct(pnbb.z.beta);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += pg.x.aa.cwiseProduct(pbb.alpha);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += pg.y.aa.cwiseProduct(pbb.alpha);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += pg.z.aa.cwiseProduct(pbb.alpha);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += pg.x.ba.cwiseProduct(pbb.beta);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += pg.y.ba.cwiseProduct(pbb.beta);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += pg.z.ba.cwiseProduct(pbb.beta);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += pg.x.ab.cwiseProduct(pbb.alpha);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += pg.y.ab.cwiseProduct(pbb.alpha);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += pg.z.ab.cwiseProduct(pbb.alpha);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += pg.x.bb.cwiseProduct(pbb.beta);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += pg.y.bb.cwiseProduct(pbb.beta);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += pg.z.bb.cwiseProduct(pbb.beta);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xx.aa.cwiseProduct(pnbb.x.alpha);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xy.aa.cwiseProduct(pnbb.y.alpha);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xz.aa.cwiseProduct(pnbb.z.alpha);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xx.ab.cwiseProduct(pnbb.x.beta);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xy.ab.cwiseProduct(pnbb.y.beta);
-    gradientPart.x.alpha.segment(iGridStart, blockSize) += gg.xz.ab.cwiseProduct(pnbb.z.beta);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xx.bb.cwiseProduct(pnbb.x.beta);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xy.bb.cwiseProduct(pnbb.y.beta);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xz.bb.cwiseProduct(pnbb.z.beta);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xx.ba.cwiseProduct(pnbb.x.alpha);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xy.ba.cwiseProduct(pnbb.y.alpha);
-    gradientPart.x.beta.segment(iGridStart, blockSize) += gg.xz.ba.cwiseProduct(pnbb.z.alpha);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.xy.aa.cwiseProduct(pnbb.x.alpha);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.yy.aa.cwiseProduct(pnbb.y.alpha);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.yz.aa.cwiseProduct(pnbb.z.alpha);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.xy.ab.cwiseProduct(pnbb.x.beta);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.yy.ab.cwiseProduct(pnbb.y.beta);
-    gradientPart.y.alpha.segment(iGridStart, blockSize) += gg.yz.ab.cwiseProduct(pnbb.z.beta);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.xy.bb.cwiseProduct(pnbb.x.beta);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.yy.bb.cwiseProduct(pnbb.y.beta);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.yz.bb.cwiseProduct(pnbb.z.beta);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.xy.ba.cwiseProduct(pnbb.x.alpha);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.yy.ba.cwiseProduct(pnbb.y.alpha);
-    gradientPart.y.beta.segment(iGridStart, blockSize) += gg.yz.ba.cwiseProduct(pnbb.z.alpha);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.xz.aa.cwiseProduct(pnbb.x.alpha);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.yz.aa.cwiseProduct(pnbb.y.alpha);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.zz.aa.cwiseProduct(pnbb.z.alpha);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.xz.ab.cwiseProduct(pnbb.x.beta);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.yz.ab.cwiseProduct(pnbb.y.beta);
-    gradientPart.z.alpha.segment(iGridStart, blockSize) += gg.zz.ab.cwiseProduct(pnbb.z.beta);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.xz.bb.cwiseProduct(pnbb.x.beta);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.yz.bb.cwiseProduct(pnbb.y.beta);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.zz.bb.cwiseProduct(pnbb.z.beta);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.xz.ba.cwiseProduct(pnbb.x.alpha);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.yz.ba.cwiseProduct(pnbb.y.alpha);
-    gradientPart.z.beta.segment(iGridStart, blockSize) += gg.zz.ba.cwiseProduct(pnbb.z.alpha);
+    scalarPart.alpha.segment(start, size) += pg.x.aa.cwiseProduct(pnbb.x.alpha);
+    scalarPart.alpha.segment(start, size) += pg.y.aa.cwiseProduct(pnbb.y.alpha);
+    scalarPart.alpha.segment(start, size) += pg.z.aa.cwiseProduct(pnbb.z.alpha);
+    scalarPart.alpha.segment(start, size) += pg.x.ab.cwiseProduct(pnbb.x.beta);
+    scalarPart.alpha.segment(start, size) += pg.y.ab.cwiseProduct(pnbb.y.beta);
+    scalarPart.alpha.segment(start, size) += pg.z.ab.cwiseProduct(pnbb.z.beta);
+    scalarPart.beta.segment(start, size) += pg.x.ba.cwiseProduct(pnbb.x.alpha);
+    scalarPart.beta.segment(start, size) += pg.y.ba.cwiseProduct(pnbb.y.alpha);
+    scalarPart.beta.segment(start, size) += pg.z.ba.cwiseProduct(pnbb.z.alpha);
+    scalarPart.beta.segment(start, size) += pg.x.bb.cwiseProduct(pnbb.x.beta);
+    scalarPart.beta.segment(start, size) += pg.y.bb.cwiseProduct(pnbb.y.beta);
+    scalarPart.beta.segment(start, size) += pg.z.bb.cwiseProduct(pnbb.z.beta);
+    gradientPart.x.alpha.segment(start, size) += pg.x.aa.cwiseProduct(pbb.alpha);
+    gradientPart.y.alpha.segment(start, size) += pg.y.aa.cwiseProduct(pbb.alpha);
+    gradientPart.z.alpha.segment(start, size) += pg.z.aa.cwiseProduct(pbb.alpha);
+    gradientPart.x.alpha.segment(start, size) += pg.x.ba.cwiseProduct(pbb.beta);
+    gradientPart.y.alpha.segment(start, size) += pg.y.ba.cwiseProduct(pbb.beta);
+    gradientPart.z.alpha.segment(start, size) += pg.z.ba.cwiseProduct(pbb.beta);
+    gradientPart.x.beta.segment(start, size) += pg.x.ab.cwiseProduct(pbb.alpha);
+    gradientPart.y.beta.segment(start, size) += pg.y.ab.cwiseProduct(pbb.alpha);
+    gradientPart.z.beta.segment(start, size) += pg.z.ab.cwiseProduct(pbb.alpha);
+    gradientPart.x.beta.segment(start, size) += pg.x.bb.cwiseProduct(pbb.beta);
+    gradientPart.y.beta.segment(start, size) += pg.y.bb.cwiseProduct(pbb.beta);
+    gradientPart.z.beta.segment(start, size) += pg.z.bb.cwiseProduct(pbb.beta);
+    gradientPart.x.alpha.segment(start, size) += gg.xx.aa.cwiseProduct(pnbb.x.alpha);
+    gradientPart.x.alpha.segment(start, size) += gg.xy.aa.cwiseProduct(pnbb.y.alpha);
+    gradientPart.x.alpha.segment(start, size) += gg.xz.aa.cwiseProduct(pnbb.z.alpha);
+    gradientPart.x.alpha.segment(start, size) += gg.xx.ab.cwiseProduct(pnbb.x.beta);
+    gradientPart.x.alpha.segment(start, size) += gg.xy.ab.cwiseProduct(pnbb.y.beta);
+    gradientPart.x.alpha.segment(start, size) += gg.xz.ab.cwiseProduct(pnbb.z.beta);
+    gradientPart.x.beta.segment(start, size) += gg.xx.bb.cwiseProduct(pnbb.x.beta);
+    gradientPart.x.beta.segment(start, size) += gg.xy.bb.cwiseProduct(pnbb.y.beta);
+    gradientPart.x.beta.segment(start, size) += gg.xz.bb.cwiseProduct(pnbb.z.beta);
+    gradientPart.x.beta.segment(start, size) += gg.xx.ba.cwiseProduct(pnbb.x.alpha);
+    gradientPart.x.beta.segment(start, size) += gg.xy.ba.cwiseProduct(pnbb.y.alpha);
+    gradientPart.x.beta.segment(start, size) += gg.xz.ba.cwiseProduct(pnbb.z.alpha);
+    gradientPart.y.alpha.segment(start, size) += gg.xy.aa.cwiseProduct(pnbb.x.alpha);
+    gradientPart.y.alpha.segment(start, size) += gg.yy.aa.cwiseProduct(pnbb.y.alpha);
+    gradientPart.y.alpha.segment(start, size) += gg.yz.aa.cwiseProduct(pnbb.z.alpha);
+    gradientPart.y.alpha.segment(start, size) += gg.xy.ab.cwiseProduct(pnbb.x.beta);
+    gradientPart.y.alpha.segment(start, size) += gg.yy.ab.cwiseProduct(pnbb.y.beta);
+    gradientPart.y.alpha.segment(start, size) += gg.yz.ab.cwiseProduct(pnbb.z.beta);
+    gradientPart.y.beta.segment(start, size) += gg.xy.bb.cwiseProduct(pnbb.x.beta);
+    gradientPart.y.beta.segment(start, size) += gg.yy.bb.cwiseProduct(pnbb.y.beta);
+    gradientPart.y.beta.segment(start, size) += gg.yz.bb.cwiseProduct(pnbb.z.beta);
+    gradientPart.y.beta.segment(start, size) += gg.xy.ba.cwiseProduct(pnbb.x.alpha);
+    gradientPart.y.beta.segment(start, size) += gg.yy.ba.cwiseProduct(pnbb.y.alpha);
+    gradientPart.y.beta.segment(start, size) += gg.yz.ba.cwiseProduct(pnbb.z.alpha);
+    gradientPart.z.alpha.segment(start, size) += gg.xz.aa.cwiseProduct(pnbb.x.alpha);
+    gradientPart.z.alpha.segment(start, size) += gg.yz.aa.cwiseProduct(pnbb.y.alpha);
+    gradientPart.z.alpha.segment(start, size) += gg.zz.aa.cwiseProduct(pnbb.z.alpha);
+    gradientPart.z.alpha.segment(start, size) += gg.xz.ab.cwiseProduct(pnbb.x.beta);
+    gradientPart.z.alpha.segment(start, size) += gg.yz.ab.cwiseProduct(pnbb.y.beta);
+    gradientPart.z.alpha.segment(start, size) += gg.zz.ab.cwiseProduct(pnbb.z.beta);
+    gradientPart.z.beta.segment(start, size) += gg.xz.bb.cwiseProduct(pnbb.x.beta);
+    gradientPart.z.beta.segment(start, size) += gg.yz.bb.cwiseProduct(pnbb.y.beta);
+    gradientPart.z.beta.segment(start, size) += gg.zz.bb.cwiseProduct(pnbb.z.beta);
+    gradientPart.z.beta.segment(start, size) += gg.xz.ba.cwiseProduct(pnbb.x.alpha);
+    gradientPart.z.beta.segment(start, size) += gg.yz.ba.cwiseProduct(pnbb.y.alpha);
+    gradientPart.z.beta.segment(start, size) += gg.zz.ba.cwiseProduct(pnbb.z.alpha);
   }
 }
 

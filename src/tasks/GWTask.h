@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "geometry/Geometry.h"
 #include "postHF/LRSCF/LRSCFController.h"
+#include "settings/BasisOptions.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/MBPTOptions.h"
 #include "settings/Reflection.h"
@@ -57,7 +58,11 @@ struct GWTaskSettings {
       freq({}),
       damping(0.2),
       gap(false),
-      environmentScreening(true) {
+      environmentScreening(true),
+      ltconv(0),
+      frozenCore(false),
+      coreOnly(false),
+      densFitCache(Options::DENS_FITS::RI) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
@@ -67,7 +72,8 @@ struct GWTaskSettings {
               (unsigned int)padePoints, (double)fermiShift, (double)derivativeShift, (double)imagShift, (double)gridCutOff,
               (bool)evGW, (unsigned int)evGWcycles, (bool)diis, (unsigned int)diisMaxStore, (double)ConvergenceThreshold,
               (double)nafThresh, (bool)subsystemAuxillaryBasisOnly, (std::vector<unsigned int>)hybrid,
-              (std::vector<double>)freq, (double)damping, (bool)gap, (bool)environmentScreening)
+              (std::vector<double>)freq, (double)damping, (bool)gap, (bool)environmentScreening, (double)ltconv,
+              (bool)frozenCore, (bool)coreOnly, (Options::DENS_FITS)densFitCache)
  public:
   EmbeddingSettings embedding;
 };
@@ -136,6 +142,9 @@ class GWTask : public Task {
    * occupied and virtual orbitals not included in the GW caclulation by the gap of change of the highest/lowest
    * included occupied/virtual orbital -environmentScreening: Whether environmental screening is included in an embedded
    * GW/dRPA calculation
+   * - ltconv:  Convergence criterion for num. int with Laplace transformation.
+   * - frozenCore: Whether frozenCore approximation is used or not
+   * - coreOnly:  Whether only core orbitals are taken into account
    */
   GWTaskSettings settings;
   /// @brief The active systems

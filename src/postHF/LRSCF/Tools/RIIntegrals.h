@@ -24,9 +24,9 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "integrals/wrappers/Libint.h"
+#include "settings/BasisOptions.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/LRSCFOptions.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -40,6 +40,7 @@ class LRSCFController;
 
 class SystemController;
 class TwoElecThreeCenterIntLooper;
+class TwoElecThreeCenterCalculator;
 class Geometry;
 class BasisController;
 
@@ -76,7 +77,7 @@ class RIIntegrals {
    */
   RIIntegrals(std::shared_ptr<SystemController> sys, LIBINT_OPERATOR op = LIBINT_OPERATOR::coulomb, double mu = 0.0,
               bool calcJia = true, unsigned pStart = 0, unsigned pEnd = 0, double nafThresh = 0.0,
-              std::shared_ptr<Geometry> geo = nullptr);
+              std::shared_ptr<Geometry> geo = nullptr, Options::DENS_FITS densFitCache = Options::DENS_FITS::RI);
 
   /**
    * @brief Destructor.
@@ -119,12 +120,6 @@ class RIIntegrals {
   unsigned getNAuxBasisFunctions();
 
   /**
-   * @brief Returns the number of auxiliary basis functions for which AO integrals are stored.
-   * @return The number of auxiliary basis functions for which AO integrals are stored.
-   */
-  unsigned getNCachedAuxBasisFunctions();
-
-  /**
    * @brief Returns (ij|Q) integral pointer.
    * @return The (ij|Q) integral pointer.
    */
@@ -143,22 +138,22 @@ class RIIntegrals {
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> getJpqPtr();
 
   /**
-   * @brief Returns (mn|P) integral pointer (cached AO integrals).
-   * @return The (mn|P) integral pointer (cached AO integrals).
-   */
-  std::shared_ptr<Eigen::MatrixXd> getJmnPtr();
-
-  /**
-   * @brief Returns the auxiliary transformation matrix [sqrt(V^-1) * NAF].
-   * @return The auxiliary transformation matrix [sqrt(V^-1) * NAF].
+   * @brief Returns the auxiliary transformation matrix [sqrt(V^-1/2) * NAF].
+   * @return The auxiliary transformation matrix [sqrt(V^-1/2) * NAF].
    */
   std::shared_ptr<Eigen::MatrixXd> getAuxTrafoPtr();
+
+  /**
+   * @brief Returns the auxiliary metrix matrix [V].
+   * @return The auxiliary transformation matrix [V].
+   */
+  std::shared_ptr<Eigen::MatrixXd> getAuxMetricPtr();
 
   /**
    * @brief Returns the 3c-looper for those integrals which are not stored.
    * @return The 3c-looper for those integrals which are not stored.
    */
-  std::shared_ptr<TwoElecThreeCenterIntLooper> getLooperPtr();
+  std::shared_ptr<TwoElecThreeCenterCalculator> getIntegralPtr();
 
   /**
    * @brief Returns true if all 3c-MO integrals are stored.
@@ -239,9 +234,6 @@ class RIIntegrals {
   ///@brief Number of actual auxiliary functions (e.g. after NAF approx).
   unsigned long _nx;
 
-  ///@brief Number of cached auxiliary functions for which AO integrals are stored.
-  unsigned long _nxs;
-
   ///@brief Start custom MO index.
   unsigned long _pStart;
 
@@ -263,14 +255,14 @@ class RIIntegrals {
   ///@brief Integral lists (pq|Q).
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jpq = nullptr;
 
-  ///@brief Integral lists (mn|P).
-  std::shared_ptr<Eigen::MatrixXd> _Jmn = nullptr;
-
   ///@brief [V^{-1/2}] [* naf-matrix].
   std::shared_ptr<Eigen::MatrixXd> _auxTrafo = nullptr;
 
+  ///@brief [V^{1}] [* naf-matrix].
+  std::shared_ptr<Eigen::MatrixXd> _metric = nullptr;
+
   ///@brief Looper for RI integrals.
-  std::shared_ptr<TwoElecThreeCenterIntLooper> _looper = nullptr;
+  std::shared_ptr<TwoElecThreeCenterCalculator> _integrals = nullptr;
 
   ///@brief Basis controller.
   std::shared_ptr<BasisController> _basContr = nullptr;

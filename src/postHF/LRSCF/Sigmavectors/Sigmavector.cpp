@@ -23,8 +23,11 @@
 #include "basis/Basis.h"
 #include "data/OrbitalPair.h"
 #include "data/PAOController.h"
+#include "io/FormattedOutputStream.h"
+#include "memory/MemoryManager.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "settings/LRSCFOptions.h"
+#include "settings/Settings.h"
 #include "tasks/LRSCFTask.h"
 /* Include Serenity Internal Headers */
 #include "misc/Timing.h"
@@ -37,25 +40,25 @@ Sigmavector<SCFMode>::Sigmavector(std::vector<std::shared_ptr<LRSCFController<SC
   // Construct guess vectors for each subsystem for easier access (b holds guess vectors of total system,
   // i.e. the full subsystem response problem).
   _b.resize(_nSet);
-  for (unsigned int iSet = 0; iSet < _nSet; ++iSet) {
+  for (unsigned iSet = 0; iSet < _nSet; ++iSet) {
     _b[iSet].resize(_nSub);
-    unsigned int iCount = 0;
-    for (unsigned int I = 0; I < _nSub; ++I) {
+    unsigned iCount = 0;
+    for (unsigned I = 0; I < _nSub; ++I) {
       // Get position of guess vector for subsystem I
       auto nOccI = _lrscf[I]->getNOccupied();
       auto nVirtI = _lrscf[I]->getNVirtual();
-      unsigned int nDimI = 0;
+      unsigned nDimI = 0;
       for_spin(nOccI, nVirtI) {
         nDimI += nOccI_spin * nVirtI_spin;
         iCount += nOccI_spin * nVirtI_spin;
       };
-      unsigned int iStartI = iCount - nDimI;
+      unsigned iStartI = iCount - nDimI;
       _b[iSet][I] = b[iSet].block(iStartI, 0, nDimI, _nGuess);
     }
   }
   // Set dimensions for sigma vector and null
   _sigma.resize(b.size());
-  for (unsigned int iSet = 0; iSet < _nSet; ++iSet) {
+  for (unsigned iSet = 0; iSet < _nSet; ++iSet) {
     _sigma[iSet].resize(b[iSet].rows(), _nGuess);
     _sigma[iSet].setZero();
   }
@@ -67,10 +70,9 @@ Sigmavector<SCFMode>::Sigmavector(std::vector<std::shared_ptr<LRSCFController<SC
 }
 
 template<Options::SCF_MODES SCFMode>
-std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> Sigmavector<SCFMode>::calcP(unsigned int J) {
+std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> Sigmavector<SCFMode>::calcP(unsigned J) {
   Timings::takeTime("LRSCF -  AO-MO transformation");
-  std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J(
-      new std::vector<std::vector<MatrixInBasis<SCFMode>>>(_nSet));
+  auto P_J = std::make_unique<std::vector<std::vector<MatrixInBasis<SCFMode>>>>(_nSet);
   auto C = _lrscf[J]->getCoefficients();
   auto no = _lrscf[J]->getNOccupied();
   auto nv = _lrscf[J]->getNVirtual();
@@ -92,7 +94,7 @@ std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> Sigmavector<SC
 }
 
 template<Options::SCF_MODES SCFMode>
-void Sigmavector<SCFMode>::addToSigma(unsigned int I, unsigned int iStartI,
+void Sigmavector<SCFMode>::addToSigma(unsigned I, unsigned iStartI,
                                       std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> F_I) {
   Timings::takeTime("LRSCF -  AO-MO transformation");
   auto C = _lrscf[I]->getCoefficients();
@@ -151,24 +153,47 @@ void Sigmavector<SCFMode>::calcSigma() {
 
       auto P_J = calcP(J);
 
-      // Simple significance screening.
-      double maxDens = 0.0;
-      for (unsigned iSet = 0; iSet < _nSet; ++iSet) {
-        for (unsigned iGuess = 0; iGuess < _nGuess; ++iGuess) {
-          maxDens = std::max(maxDens, (*P_J)[iSet][iGuess].total().array().abs().maxCoeff());
+      // Determine prescreening threshold.
+      _prescreeningThreshold = std::min(this->_lrscf[I]->getSysSettings().basis.integralThreshold,
+                                        this->_lrscf[J]->getSysSettings().basis.integralThreshold);
+
+      if (_prescreeningThreshold == 0) {
+        double prescreenTresholdI = this->_lrscf[I]->getBasisController()->getPrescreeningThreshold();
+        double prescreenTresholdJ = this->_lrscf[J]->getBasisController()->getPrescreeningThreshold();
+        _prescreeningThreshold = std::min(prescreenTresholdI, prescreenTresholdJ);
+      }
+
+      // Make prescreening threshold adaptive.
+      double minGuessVectorNorm = 0.0;
+      if (_lrscf[J]->getLRSCFSettings().adaptivePrescreening) {
+        for (unsigned iSet = 0; iSet < _nSet; ++iSet) {
+          minGuessVectorNorm = std::max(_b[iSet][J].colwise().norm().maxCoeff(), minGuessVectorNorm);
         }
+        double startScreening = -std::log10(_lrscf[I]->getLRSCFSettings().conv) + 3;
+        double adaptive = startScreening - std::log10(minGuessVectorNorm);
+        _prescreeningThreshold = std::max(std::pow(10, -adaptive), _prescreeningThreshold);
       }
 
-      // A simple check to see if this block is even populated with data.
-      if (maxDens < 1e-8) {
-        continue;
-      }
+      // Restrict number of Fock matrix copies for integral-direct algorithms.
+      size_t nb_I = _lrscf[I]->getBasisController()->getNBasisFunctions();
+      size_t memDemand = nb_I * nb_I * _nGuess * _nSet * sizeof(double);
+      size_t available = 0.8 * MemoryManager::getInstance()->getAvailableSystemMemory();
 
-      // Detailed significance screening.
-      // ToDo: It happens that a guess vector in the set of guess vectors is significant while others
-      //      are not. Insignificant guess vectors should be excluded from the set of guess vectors
-      //      and their sigma vector should be set to zero.
+      unsigned nFock = available / memDemand;
+      _nThreads = std::min(nFock, _maxThreads);
+      if (_nThreads < _maxThreads) {
+        OutputControl::nOut << "   Maximum Threads            : " << _maxThreads << std::endl;
+        OutputControl::nOut << "   Used Threads               : " << _nThreads << std::endl;
+        OutputControl::nOut << "   Number of Fock matrices    : " << _nGuess * _nSet << std::endl;
+        OutputControl::nOut << "   Memory demand for max (GB) : "
+                            << (nb_I * nb_I * _nGuess * _nSet * sizeof(double) * _maxThreads) / 1e9 << std::endl;
+        OutputControl::nOut << "   Actual memory demand  (GB) : "
+                            << (nb_I * nb_I * _nGuess * _nSet * sizeof(double) * _nThreads) / 1e9 << std::endl;
+      }
+      omp_set_num_threads(_nThreads);
       auto F_IJ = this->calcF(I, J, std::move(P_J));
+      omp_set_num_threads(_maxThreads);
+
       this->addToSigma(I, iStartI, std::move(F_IJ));
     }
   }
@@ -178,13 +203,13 @@ void Sigmavector<SCFMode>::calcSigma() {
 template<Options::SCF_MODES SCFMode>
 std::vector<MatrixInBasis<SCFMode>> Sigmavector<SCFMode>::getPerturbedFockMatrix() {
   // Calculate matrix vector product M_IJ*b_J for each set.
-  unsigned int iCount = 0;
+  unsigned iCount = 0;
   if (_nSub > 1)
     throw SerenityError("More than one subsystem not supported!");
 
   auto nOccI = _lrscf[0]->getNOccupied();
   auto nVirtI = _lrscf[0]->getNVirtual();
-  unsigned int nDimI = 0;
+  unsigned nDimI = 0;
   for_spin(nOccI, nVirtI) {
     nDimI += nOccI_spin * nVirtI_spin;
     iCount += nOccI_spin * nVirtI_spin;
@@ -193,8 +218,8 @@ std::vector<MatrixInBasis<SCFMode>> Sigmavector<SCFMode>::getPerturbedFockMatrix
 
   // Simple significance screening.
   double maxDens = 0.0;
-  for (unsigned int iSet = 0; iSet < _nSet; ++iSet) {
-    for (unsigned int iGuess = 0; iGuess < _nGuess; ++iGuess) {
+  for (unsigned iSet = 0; iSet < _nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < _nGuess; ++iGuess) {
       auto& P = (*P_J)[iSet][iGuess];
       for_spin(P) {
         maxDens = std::max(maxDens, P_spin.array().abs().maxCoeff());
@@ -211,7 +236,7 @@ std::vector<MatrixInBasis<SCFMode>> Sigmavector<SCFMode>::getPerturbedFockMatrix
 
   auto perturbedFockMatrix = (*F_IJ)[0];
   if ((*F_IJ).size() > 1) {
-    for (unsigned int iState = 0; iState < perturbedFockMatrix.size(); iState++) {
+    for (unsigned iState = 0; iState < perturbedFockMatrix.size(); iState++) {
       perturbedFockMatrix[iState] += (*F_IJ)[1][iState];
     }
   }
@@ -219,58 +244,23 @@ std::vector<MatrixInBasis<SCFMode>> Sigmavector<SCFMode>::getPerturbedFockMatrix
   return perturbedFockMatrix;
 }
 
-template<>
-SPMatrix<Options::SCF_MODES::RESTRICTED> Sigmavector<Options::SCF_MODES::RESTRICTED>::getShellWiseMaxDens(
-    unsigned J, std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>& densityMatrices) {
-  SPMatrix<Options::SCF_MODES::RESTRICTED> shellWiseMaxDens;
+template<Options::SCF_MODES SCFMode>
+void Sigmavector<SCFMode>::setShellWiseMaxDens(unsigned J, std::vector<std::vector<MatrixInBasis<SCFMode>>>& densityMatrices) {
   const auto& basis = this->_lrscf[J]->getBasisController()->getBasis();
   unsigned nShells = basis.size();
-  shellWiseMaxDens = SPMatrix<Options::SCF_MODES::RESTRICTED>(Eigen::MatrixXd::Zero(nShells, nShells));
-  for (unsigned iShell = 0; iShell < nShells; ++iShell) {
-    unsigned nI = basis[iShell]->size();
-    unsigned iStart = this->_lrscf[J]->getBasisController()->extendedIndex(iShell);
-    for (unsigned jShell = 0; jShell < nShells; ++jShell) {
-      unsigned nJ = basis[jShell]->size();
-      unsigned jStart = this->_lrscf[J]->getBasisController()->extendedIndex(jShell);
-      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-          auto& densityMatrix = densityMatrices[iSet][iGuess];
-          double thisMax = densityMatrix.block(iStart, jStart, nI, nJ).lpNorm<Eigen::Infinity>();
-          shellWiseMaxDens(iShell, jShell) = std::max(shellWiseMaxDens(iShell, jShell), thisMax);
+  _maxDensMat = Eigen::MatrixXd::Zero(nShells, nShells);
+
+  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+      auto blockMax = densityMatrices[iSet][iGuess].shellWiseAbsMax().total();
+      for (unsigned iShell = 0; iShell < nShells; ++iShell) {
+        for (unsigned jShell = 0; jShell < nShells; ++jShell) {
+          _maxDensMat(iShell, jShell) = std::max(_maxDensMat(iShell, jShell), blockMax(iShell, jShell));
         }
       }
     }
   }
-
-  return shellWiseMaxDens;
-}
-
-template<>
-SPMatrix<Options::SCF_MODES::UNRESTRICTED> Sigmavector<Options::SCF_MODES::UNRESTRICTED>::getShellWiseMaxDens(
-    unsigned J, std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>& densityMatrices) {
-  SPMatrix<Options::SCF_MODES::UNRESTRICTED> shellWiseMaxDens;
-  const auto& basis = this->_lrscf[J]->getBasisController()->getBasis();
-  unsigned nShells = basis.size();
-  shellWiseMaxDens = SPMatrix<Options::SCF_MODES::UNRESTRICTED>(Eigen::MatrixXd::Zero(nShells, nShells));
-  for (unsigned iShell = 0; iShell < nShells; ++iShell) {
-    unsigned nI = basis[iShell]->size();
-    unsigned iStart = this->_lrscf[J]->getBasisController()->extendedIndex(iShell);
-    for (unsigned jShell = 0; jShell < nShells; ++jShell) {
-      unsigned nJ = basis[jShell]->size();
-      unsigned jStart = this->_lrscf[J]->getBasisController()->extendedIndex(jShell);
-      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-          auto& densityMatrix = densityMatrices[iSet][iGuess];
-          double alphaMax = densityMatrix.alpha.block(iStart, jStart, nI, nJ).lpNorm<Eigen::Infinity>();
-          double betaMax = densityMatrix.beta.block(iStart, jStart, nI, nJ).lpNorm<Eigen::Infinity>();
-          shellWiseMaxDens.alpha(iShell, jShell) = std::max(shellWiseMaxDens.alpha(iShell, jShell), alphaMax);
-          shellWiseMaxDens.beta(iShell, jShell) = std::max(shellWiseMaxDens.beta(iShell, jShell), betaMax);
-        }
-      }
-    }
-  }
-
-  return shellWiseMaxDens;
+  _maxDens = _maxDensMat.lpNorm<Eigen::Infinity>();
 }
 
 template class Sigmavector<Options::SCF_MODES::RESTRICTED>;

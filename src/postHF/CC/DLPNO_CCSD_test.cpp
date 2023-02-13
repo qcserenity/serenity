@@ -389,12 +389,37 @@ TEST_F(DLPNO_CCSDTest, PhenolEmbedded_dftOrbitals) {
   dftEmbeddedLocalCorrelationTask.settings.lcSettings.enforceHFFockian = true;
   dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.useProjectedOccupiedOrbitals = true;
   dftEmbeddedLocalCorrelationTask.settings.normThreshold = 1e-5;
   dftEmbeddedLocalCorrelationTask.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD;
   dftEmbeddedLocalCorrelationTask.settings.split.systemPartitioning = Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD;
   dftEmbeddedLocalCorrelationTask.run();
   double ccsdEnergy = act->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
   EXPECT_NEAR(ccsdEnergy, -0.22491401778086129, 1e-5);
+  std::string name = "TMP_Supersystem";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DLPNO_CCSDTest, PhenolEmbedded_projectedOccupiedOrbitals) {
+  SystemController__TEST_SUPPLY::cleanUp();
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::OHPhenol_Def2_SVP_Act, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PhenylPhenol_Def2_SVP_Env, true);
+  act->setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES::DFT);
+  env->setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES::DFT);
+  std::vector<std::shared_ptr<SystemController>> tmp = {env};
+  DFTEmbeddedLocalCorrelationTask dftEmbeddedLocalCorrelationTask(act, tmp);
+  dftEmbeddedLocalCorrelationTask.settings.fromSupersystem = true;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.enforceHFFockian = true;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.embeddingSettings.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  dftEmbeddedLocalCorrelationTask.settings.normThreshold = 1e-5;
+  dftEmbeddedLocalCorrelationTask.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD;
+  dftEmbeddedLocalCorrelationTask.settings.split.systemPartitioning = Options::SYSTEM_SPLITTING_ALGORITHM::POPULATION_THRESHOLD;
+  dftEmbeddedLocalCorrelationTask.run();
+  double ccsdEnergy = act->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+  EXPECT_NEAR(ccsdEnergy, -0.2202521621686124, 1e-5);
   std::string name = "TMP_Supersystem";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUp();

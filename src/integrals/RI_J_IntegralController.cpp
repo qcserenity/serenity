@@ -131,8 +131,7 @@ void RI_J_IntegralController::cache3CInts() {
   long long memPerBlock = (!twoBasisMode) ? nBFs_A * (nBFs_A + 1) / 2 * sizeof(double)
                                           : nBFs_A * _basisControllerB->getNBasisFunctions() * sizeof(double);
   long long freeMem = memManager->getAvailableSystemMemory();
-  unsigned long long nBlocks = 0.5 * freeMem / memPerBlock; // keep 50 % of memory here for other things that will be
-                                                            // cached
+  unsigned long long nBlocks = 0.25 * freeMem / memPerBlock; // keep 75 % of memory here for other things
   // return if there was nothing to store
   if (freeMem < 0)
     nBlocks = 0;

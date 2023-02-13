@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace libecpint {
-class GaussianShell;
+struct GaussianShell;
 }
 
 namespace Serenity {

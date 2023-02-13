@@ -143,7 +143,8 @@ struct LocalCorrelationSettings {
       extendedDomainScaling(1),
       enforceHFFockian(false),
       reuseFockMatrix(true),
-      lowMemory(false) {
+      lowMemory(false),
+      useProjectedOccupiedOrbitals(false) {
   }
 
  public:
@@ -189,9 +190,9 @@ struct LocalCorrelationSettings {
                                               // domain construction.
               (bool)enforceHFFockian,         // Enforce the use of the HF Fock operator.
               (bool)reuseFockMatrix,          // If true, we will try to read the Fock matrix form disk.
-              (bool)lowMemory // Limit the number of 3-center integrals stored in memory and recalculate integrals more
-                              // often.
-
+              (bool)lowMemory, // Limit the number of 3-center integrals stored in memory and recalculate integrals more
+                               // often.
+              (bool)useProjectedOccupiedOrbitals // Use virtual orbitals that are occupied environment orbitals.
   )
   /** ==== FOCK MATRIX  CONSTRUCTION ==== **/
   EmbeddingSettings embeddingSettings;
@@ -344,7 +345,7 @@ class LocalCorrelationController {
    * @brief Produces the quasi canonical PAO constructor.
    * @param ssScaling Same spin scaling factor.
    * @param osScaling Opposite spin scaling factor.
-   * @param clear     Clear integrals and amplitures after pair energy calculation.
+   * @param clear     Clear integrals and amplitudes after pair energy calculation.
    * @return The QCPAO constructor.
    */
   std::shared_ptr<QuasiCanonicalPAODomainConstructor> produceQCPAOConstructor(double ssScaling = 1.0,
@@ -363,8 +364,9 @@ class LocalCorrelationController {
   }
   /**
    * @brief Construct singles for this correlation set up.
+   * @param orbitalPairTypes The orbital pair types.
    */
-  void initializeSingles();
+  void initializeSingles(std::vector<OrbitalPairTypes> orbitalPairTypes = {OrbitalPairTypes::CLOSE});
   /**
    * @brief Getter for the singles.
    * @return The singles.

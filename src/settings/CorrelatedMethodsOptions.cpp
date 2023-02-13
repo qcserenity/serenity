@@ -37,7 +37,8 @@ void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field) {
 
 template<>
 void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field) {
-  static const std::map<std::string, MP2_TYPES> m = {{"AO", MP2_TYPES::AO}, {"RI", MP2_TYPES::RI}, {"LOCAL", MP2_TYPES::LOCAL}};
+  static const std::map<std::string, MP2_TYPES> m = {
+      {"AO", MP2_TYPES::AO}, {"RI", MP2_TYPES::RI}, {"LOCAL", MP2_TYPES::LOCAL}, {"LT", MP2_TYPES::LT}};
   check(m, value, field);
 }
 
@@ -54,6 +55,7 @@ void resolve<PNO_METHOD>(std::string& value, PNO_METHOD& field) {
                                                       {"LMP2", PNO_METHOD::DLPNO_MP2},
                                                       {"DLPNO-CCSD", PNO_METHOD::DLPNO_CCSD},
                                                       {"DLPNO-CCSD(T0)", PNO_METHOD::DLPNO_CCSD_T0},
+                                                      {"SC-MP2", PNO_METHOD::SC_MP2},
                                                       {"NONE", PNO_METHOD::NONE},
                                                       {"HF", PNO_METHOD::NONE}};
   check(m, value, field);

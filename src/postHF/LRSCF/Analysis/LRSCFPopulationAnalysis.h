@@ -20,7 +20,7 @@
  */
 
 #ifndef LRSCFPOPULATIONANALYSIS_H_
-#define LRSCFPOPULATIONANALYSIS_H
+#define LRSCFPOPULATIONANALYSIS_H_
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"

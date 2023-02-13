@@ -67,7 +67,7 @@ struct PCMSettings {
       scaling(true),
       radiiType(Options::PCM_ATOMIC_RADII_TYPES::BONDI),
       minRadius(0.377), // 0.2 Angstrom
-      solverType(Options::PCM_SOLVER_TYPES::IEFPCM),
+      solverType(Options::PCM_SOLVER_TYPES::CPCM),
       solvent(Options::PCM_SOLVENTS::WATER),
       correction(0.0),
       probeRadius(1.0),

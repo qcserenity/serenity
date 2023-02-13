@@ -54,8 +54,10 @@ std::shared_ptr<std::vector<Eigen::MatrixXd>> LRSCFRestart<SCFMode>::fetchEigenp
 
     unsigned iStart = 0;
     for (auto& lrscf : _lrscf) {
+      auto sysSettings = lrscf->getSysSettings();
+
       // prepare hdf5 file
-      std::string fName = lrscf->getSys()->getSystemPath() + lrscf->getSys()->getSystemName() + "_lrscf.";
+      std::string fName = (sysSettings.load.empty() ? sysSettings.path : sysSettings.load) + sysSettings.name + "_lrscf.";
       if (_settings.method == Options::LR_METHOD::TDA || _settings.method == Options::LR_METHOD::TDDFT) {
         fName += "tddft.";
       }
@@ -94,7 +96,7 @@ std::shared_ptr<std::vector<Eigen::MatrixXd>> LRSCFRestart<SCFMode>::fetchEigenp
       }
 
       // initialize file
-      HDF5::H5File file(fName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      HDF5::H5File file(fName.c_str(), H5F_ACC_RDONLY);
 
       // fill up eigenvectors with loaded data
       for (unsigned iSet = 0; iSet < nSets; ++iSet) {

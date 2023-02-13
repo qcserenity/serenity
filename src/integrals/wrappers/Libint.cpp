@@ -232,7 +232,7 @@ void Libint::initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsi
   const long double finalPrecision = getFinalPrecision(precision, maxD, maxNPrim, nCenter);
   if (deriv > 1)
     throw SerenityError("Libint2 is only configured for 1st derivatives.");
-  assert((op == libint2::Operator::emultipole1 || op == libint2::Operator::emultipole2) &&
+  assert((op == LIBINT_OPERATOR::emultipole1 || op == LIBINT_OPERATOR::emultipole2) &&
          "If you put a multipole origin in the Libint initializer you should also use a multipole operator.");
 
   Timings::takeTime("Tech. - Libint Initializations");

@@ -92,7 +92,7 @@ SPMatrix<Options::SCF_MODES::RESTRICTED> Libecpint::computeECPIntegrals(std::sha
         const unsigned int firstJ = basisControllerB->extendedIndex(j);
         const unsigned int nJ = N_SHELL_CART[shellJ->getAngularMomentum()];
         // Loop over atoms
-        for (const auto atom : atoms) {
+        for (const auto& atom : atoms) {
           if (atom->usesECP()) {
             libecpint::TwoIndex<double> shellResult(nI, nJ, 0.0);
             // calculate

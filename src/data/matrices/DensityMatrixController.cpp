@@ -318,7 +318,7 @@ void DensityMatrixController<Options::SCF_MODES::RESTRICTED>::fromHDF5(std::stri
   _densityMatrix.reset(new DensityMatrix<RESTRICTED>(_basisController));
   _occupations.reset(new SpinPolarizedData<RESTRICTED, Eigen::VectorXd>(_basisController->getNBasisFunctions()));
   HDF5::Filepath name(fBaseName + ".dmat.res.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "densityMatrix");
   HDF5::dataset_exists(file, "occupations");
   HDF5::attribute_exists(file, "ID");
@@ -337,7 +337,7 @@ void DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>::fromHDF5(std::st
   _densityMatrix.reset(new DensityMatrix<UNRESTRICTED>(_basisController));
   _occupations.reset(new SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>(_basisController->getNBasisFunctions()));
   HDF5::Filepath name(fBaseName + ".dmat.unres.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "densityMatrix_alpha");
   HDF5::dataset_exists(file, "densityMatrix_beta");
   HDF5::dataset_exists(file, "occupations_alpha");

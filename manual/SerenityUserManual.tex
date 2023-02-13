@@ -66,7 +66,7 @@ User Manual
 }}\\
 \vspace{1cm}
 {\large\textbf{
-Program Version: 1.4.0\\
+Program Version: 1.5.0\\
 Manual Generated: \today
 }}\\
 \vspace{2cm}
@@ -152,11 +152,11 @@ The following programs/libraries must be available on your system:
  \item The standard GNU tool chain (make, tar, autoconf, libtool)
 \end{itemize}
 The following libraries will be automatically downloaded and installed together
-with \serenity:
+with \serenity (unless \texttt{SERENITY\_DOWNLOAD\_DEPENDENCIES=OFF} is set):
 \begin{itemize}
  \item libint2 (Version 2.2.0-beta3, pre-configured and hosted at: \url{https://thclab.uni-muenster.de/serenity/libint})
  \item libecpint (The Serenity version is forked to: \url{https://github.com/qcserenity/libecpint})
- \item libxc (v5.0.0 from \url{https://gitlab.com/libxc/libxc})
+ \item libxc (v6.1.0 from \url{https://gitlab.com/libxc/libxc})
  \item xcfun (The Serenity verison is forked to: \url{https://github.com/qcserenity/xcfun})
  \item GTest (Google Test and Google Mock)
 \end{itemize}
@@ -166,6 +166,7 @@ The following libraries are optional and needed for additional features:
  \item Doxygen (for the documentation)
  \item Python-devel (for the python wrapper)
  \item pybind11 (for the python wrapper)
+ \item laplace-minimax (\url{https://github.com/bhelmichparis/laplace-minimax.git})
 \end{itemize}
 
 \section{Install Using CMake and Make}
@@ -179,6 +180,10 @@ cd build
 Then run cmake:
 \begin{lstlisting}
 cmake ..
+\end{lstlisting}
+To compile Serenity for your specific CPU architecture, you can add:
+\begin{lstlisting}
+cmake .. -DSERENITY_MARCH=native
 \end{lstlisting}
 (If the build folder is not located inside the main directory of \textsc{Serenity}
 please adapt the path accordingly.)
@@ -689,7 +694,7 @@ type surface (DELLEY-type surface, Van-der-Waals-radii) is used.
   If true, the implicit solvent model is used. The default is \ttt{false}.
  \item [\texttt{solverType}]\hfill \\
  The type of solver continuum model to be used. \ttt{CPCM} selects the continuum-like PCM and 
- \ttt{IEFPCM} selects the integral equation formalism variant of PCM. \ttt{IEFPCM} is the default.
+ \ttt{IEFPCM} selects the integral equation formalism variant of PCM. \ttt{CPCM} is the default.
  \item [\texttt{solvent}]\hfill \\
  Select a predefined and tabulated solvent. The default is \ttt{WATER}. All options are given in the table below.
  The manual solvent definition can be triggered by selecting \ttt{EXPLICIT} as the solvent. If done so, the keywords 
@@ -995,6 +1000,9 @@ The \texttt{EMB} block contains all settings for embedding calculations. Be awar
   \item [\texttt{calculateMP2Correction}]\hfill \\
     A flag to turn off the evaluation of the MP2 correction for double hybrid functionals. By default it will
     be calculated.
+  \item [\texttt{fullMP2Coupling}]\hfill \\
+    If true, the MP2 contribution of the non-additive exchange-correlation energy for double hybrids captures
+    the effect of environment orbital pairs on the active-pair amplitudes. By default \ttt{False}.
   \item [\texttt{longRangeNaddKinFunc}]\hfill \\
     Long-range non-additive kinetic energy for hybrid methods. Only used if \ttt{embeddingMode} is one of
     the projection based methods is used. This option is intended to manly be used in conjunction with
@@ -1012,10 +1020,10 @@ The \texttt{EMB} block contains all settings for embedding calculations. Be awar
   \item [\texttt{projecTruncThresh}]\hfill \\
     Total overlap threshold for the truncation of the projection operator. Only used if \\
     \ttt{truncateProjector true} and hence only usefull in any kind of projection technique.
-    By default \ttt{1.0e+1}
+    By default \ttt{1.0e+1}.
   \item [\texttt{fermiShift}]\hfill \\
     An optional shift for the Huzinaga operator. Only used if\\ \ttt{embeddingMode FERMI\_SHIFTED\_HUZINAGA} is
-    used.
+    used. By default \ttt{1.0}.
   \item [\texttt{carterCycles}]\hfill \\
     Number of update cycles for the Zhang-Carter potential reconstruction. Only relevant if
     \ttt{embeddingMode RECONSTRUCTION} is used.
@@ -1176,6 +1184,8 @@ All defaults set by the PNO-macro flag \ttt{pnoSettings} can be overwritten.
     \item [\texttt{lowMemory}]\hfill \\
     If true, \textsc{Serenity} will limit the number of 3-center integrals stored in memory
     and recalculate integrals more often. By default \ttt{false}.
+    \item [\texttt{useProjectedOccupiedOrbitals}]\hfill \\
+    If false, projected orbitals that are occupied by the environment are removed from the virtual orbital space. By default \ttt{false}.
  \end{description}
 
 The settings used in local correlation methods based on the PNO-approximation can
@@ -1219,8 +1229,9 @@ For information regarding the methodology we refer to the original publications~
     super product
     similarityLocThreshold 1e-2
     similarityKinEnergyThreshold 1e-2
-    checkDegeneracies true
-    locType IBO
+    +loc
+      locType IBO
+    -loc
   -task
  \end{lstlisting}
 \subsubsection{Basic Keywords}
@@ -1236,6 +1247,8 @@ For information regarding the methodology we refer to the original publications~
  \item [\texttt{EnvironmentSystems}]\hfill \\
  Accepts multiple environment systems to which the environment orbitals are parsed. The first
  environment system is assumed to correspond to the first supersystem. 
+ \item [\texttt{sub-blocks}]\hfill \\
+ Orbital localization task (\ttt{loc}) settings are added via sub-blocks in the task settings.
  \item [\texttt{similarityLocThreshold}]\hfill \\
  The threshold for the comparison of partial charges. The default is $0.05$.
  \item [\texttt{similarityKinEnergyThreshold}]\hfill \\
@@ -1244,9 +1257,6 @@ For information regarding the methodology we refer to the original publications~
  The algorithm used to calculate partial charges. The default are shell-wise intrinsic atomic orbital (IAO)
  charges (\ttt{IAOShell}). Other useful options are Mulliken charges (\ttt{MULLIKEN}) and atom-wise IAO
  charges (\ttt{IAO}).
- \item [\texttt{locType}]\hfill \\
- The orbital localization method which is used for the initial orbital localization. The default is the
- intrinsic bond orbital scheme \ttt{IBO}. For more options see Sec.~\ref{task:localization}.
  \item [\texttt{alignPiOrbitals}]\hfill \\
  Align the orbitals of all supersystems to the orbitals of the first supersystem (after localization). This
  is useful to avoid degenerate localization minima especially for $\pi$-systems. 
@@ -1261,22 +1271,6 @@ For information regarding the methodology we refer to the original publications~
     \item [\texttt{load}]\hfill \\
     If true, the SCF procedure is skipped and the tasks tries to load the supersystem results. The default
     is \ttt{false}.
-    \item [\texttt{noIsolatedMOs}]\hfill \\
-    Isolated environment orbitals are set as active. An orbital map--atom map is constructed and the
-    atom--atom connectivity determined to classify the connectivity between orbitals. The default is
-    \ttt{false}.
-    \item [\texttt{clusterThreshold}]\hfill \\
-    The threshold for the atom to orbital mapping in order to construct a connectivity map for \ttt{noIsolatedMOs}. The default is $0.3$.
-    \item [\texttt{checkDegeneracies}]\hfill \\
-    Check the orbital--orbital maps for incorrect mappings by grouping orbitals into groups which are similar
-    with respect to the selection criteria. The default is \ttt{false}.
-    \item [\texttt{degeneracyFactor}]\hfill \\
-    The scaling factor for the orbital map construction with itself used for
-    \ttt{checkDegeneracies true}. The default is $10.0$.
-    \item [\texttt{alignCycles}]\hfill \\
-    Maximum number of orbital alignment cycles to be used. The default is $10$. The purpose of the orbital
-    alignment is to align the orbitals before localization. Thus, the alignment does not have to be fully
-    converged.
     \item [\texttt{usePiBias}]\hfill \\
     Use a selection threshold scaling based on the number of significant, orbital-wise partial charges for
     each orbital. This is used to reduce the over-selection of $\pi$-orbitals. The default is \ttt{false}.
@@ -1286,19 +1280,9 @@ For information regarding the methodology we refer to the original publications~
     \item [\texttt{biasAverage}]\hfill \\
     The averaging-parameter for the threshold scaling used for \ttt{usePiBias true}.
     The default is $12.0$.
-    \item [\texttt{alignExponent}]\hfill \\
-    The exponent for the penalty function used in the orbital alignment. This has to be an even integer
-    larger or equal to $2$. The default is $2$. Exponents of $8$ or larger are not recommended since they
-    may lead to numerical instabilities.
-    \item [\texttt{kineticAlign}]\hfill \\
-    If \ttt{true}, the orbital-kinetic energy is used as an additional constrain in the orbital alignment.
-    The default is \ttt{false}.
     \item [\texttt{skipLocalization}]\hfill \\
     If \ttt{true}, the localization step is skipped. This can be useful if the orbitals were already
     localized. The default is \ttt{false}.
-    \item [\texttt{splitValenceAndCore}]\hfill \\
-    If \ttt{true}, valence and core orbitals are localized independently. This is important for local
-    correlation methods. The default is \ttt{false}.
  \end{description}
 
 
@@ -1834,7 +1818,7 @@ This task performs frozen-density embedding (FDE) calculations, possibly using d
 	\item [\texttt{environmentSystems}]\hfill \\
 	Accepts mutiple environment systems that are used in embedded calculation.
 	\item [\texttt{sub-blocks}]\hfill \\
-	The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+	The embedding (\ttt{emb}), local correlation (\ttt{lc}), localization(\ttt{loc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
 	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
 	\ttt{naddXCFunc=PW91}, \ttt{embeddingMode=NADDFUNC} and \ttt{PNOSETTINGS=TIGHT}.
 	\item [\texttt{gridCutOff}] \hfill \\
@@ -1852,6 +1836,8 @@ This task performs frozen-density embedding (FDE) calculations, possibly using d
 	\item [\texttt{calculateSolvationEnergy}] \hfill \\
 	Calculate the interaction of the active system with the joined environment and the energy of the active system. The environment is referenced
 	as a continuum. By default \ttt{false}.
+  \item[\texttt{calculateUnrelaxedMP2Density}]\hfill \\
+  If true, the unrelaxed MP2 density of the active system is calulated. By default \ttt{false}.
 \end{description}
 
 \subsubsection{Advanced Keywords}
@@ -1860,8 +1846,6 @@ This task performs frozen-density embedding (FDE) calculations, possibly using d
 	If true will use the \ttt{smallGridAccuracy} of the given active system instead of the normal grid accuracy for the supersystem grid. By default \ttt{false}.
 	\item [\texttt{finalGrid}]\hfill \\
 	If true, non-additive xc and kin energies will only be evaluated once on a supersystem grid, at the end of the orbital optimization. By default \ttt{true}.
-	\item [\texttt{locType}]\hfill \\
-	Localization type used in hybrid projection/functional approaches. For other valid options see localization options in Section~\ref{task:localization}. By default \ttt{IBO}.
 \end{description}
 
 \subsection{Task: Frozen-Density Embedding Electron Transfer}
@@ -1974,6 +1958,8 @@ cycle the role of the active system changes. \ttt{environmentSystems} will never
 	Calculate the interaction of the first active system with the joined environment and the energy of the first active system. The environment is referenced as a continuum. By default \ttt{false}.
 	\item [\texttt{finalEnergyEvaluation}]\hfill \\
 	Perform a final energy evaluation on the supersystem grid after converging the freeze-and-thaw. By default \ttt{true}.
+  \item[\texttt{calculateUnrelaxedMP2Density}]\hfill \\
+  This vector input specifies if unrelaxed MP2 densities are calculated for the active systems. Therefore, \ttt{calculateUnrelaxedMP2Density\{true false\}} will only calculate the unrelaxed MP2 density for the first active system. By default \ttt{\{\}}.
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -2068,6 +2054,12 @@ the active space selection task (see Section~\ref{sec:activeSpaceTask}) is emplo
  The algorithm used to calculate partial charges. The default are shell-wise intrinsic atomic orbital (IAO)
  charges (\ttt{IAOShell}). Other useful options are Mulliken charges (\ttt{MULLIKEN}) and atom-wise IAO
  charges (\ttt{IAO}).
+ \item [\texttt{mapVirtuals}]\hfill \\
+ If true, the virtual orbitals are considered in the orbital mapping. By default \ttt{false}.
+ \item [\texttt{bestMatchMapping}]\hfill \\
+ If true, the selection thresholds are optimized to provide a qualitative orbital map, \emph{i.e.},
+ the thresholds are chosen such that they minimize the number of unmappable orbitals
+ under the constraint that they are smaller than \texttt{scoreStart}. By default \ttt{false}.
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -2076,12 +2068,6 @@ the active space selection task (see Section~\ref{sec:activeSpaceTask}) is emplo
     after the supersystem orbital set has been separated into active and environment orbitals. If the total
     population of the active orbitals on a given atoms exceeds this threshold it is assigned to the active
     system. The default is $0.8$ au.
-    \item [\texttt{checkDegeneracies}]\hfill \\
-    Check the orbital--orbital maps for incorrect mappings by grouping orbitals into groups which are similar
-    with respect to the selection criteria. The default is \ttt{false}.
-    \item [\texttt{degeneracyFactor}]\hfill \\
-    The scaling factor for the orbital map construction with itself used for
-    \ttt{checkDegeneracies true}. The default is $10.0$.
     \item [\texttt{usePiBias}]\hfill \\
     Use a selection threshold scaling based on the number of significant, orbital-wise partial charges for
     each orbital. This is used to reduce the over-selection of $\pi$-orbitals. The default is \ttt{false}.
@@ -2107,6 +2093,8 @@ the active space selection task (see Section~\ref{sec:activeSpaceTask}) is emplo
     By default 1e-4.
     \item [\texttt{nTest}]\hfill \\
     The number of thresholds scanned for \texttt{writeScores}. By default $1000$.
+    \item [\texttt{writeGroupsToFile}]\hfill \\
+    If true, a file is created containing the orbital set map between structures. By default \ttt{false}.
  \end{description}
 
 \subsection{Task: Geometry Optimization}
@@ -2232,6 +2220,8 @@ This task performs Many-Body-Perturbtaion Theory (MBPT) calculations. Either for
   The number of evGW cycles. The default is \ttt{0}.
   \item [\texttt{convergenceThreshold}]\hfill \\
   The HOMO-LUMO gap convergence threshold for qpiterations/evGW cycles. The default is \ttt{1e-6} a.u..
+  \item [\texttt{densFitCache}]\hfill \\
+  The type of density fitting used for the four center integrals (\ttt{RI},\ttt{ACD},\ttt{ACCD}). The default is \ttt{RI}.
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -2378,6 +2368,8 @@ has to be given as an environment system.
    the lowest orbitals according to their energy eigenvalue. If desired an energy cut-off
    (see \texttt{useEnergyCutOff}) can be used instead or a number of core orbitals may be specified manually.
    Note that the information about core orbitals is kept between tasks.
+ \item [\texttt{localizeVirtuals}]\hfill \\
+   If true, the virtual orbitals are localized as well. By default \ttt{false}. This is only supported for the IBO and ALIGN schemes.
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -2399,6 +2391,17 @@ has to be given as an environment system.
    The exponent for the penalty function used in the orbital alignment. This has to be an even integer
    larger or equal to $2$. The default is $4$. Exponents of $8$ or larger are not recommended since they
    may lead to numerical instabilities.
+ \item [\texttt{splitVirtuals}]\hfill \\
+   If true, the valence virtuals and diffuse virtuals are localized separately. By default \ttt{true}.
+ \item [\texttt{virtualEnergyCutOff}]\hfill \\
+   Orbital eigenvalue threshold to select diffuse virtual orbitals. By default $1.0$.
+ \item [\texttt{nRydbergOrbitals}]\hfill \\
+   Use a predefined number of diffuse virtual orbitals. Not used by default.
+ \item [\texttt{replaceVirtuals}]\hfill \\
+   Reconstruct the virtual orbitals before localization by projecting all occupied orbitals
+   and cleanly separating valence virtuals from diffuse virtuals. This should be used if the
+   \ttt{IBO} or \ttt{ALIGN} approaches are chosen and the same orbital set was not already reconstructed
+   in this manner before. By default \ttt{false}.
 \end{description}
 
 \clearpage
@@ -2415,6 +2418,13 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
 +task LRSCF
   act water
   nEigen 10
+  method tddft
+  frequencies { 2 3 4 }
+  frozenCore true
+  +grid
+    accuracy 7
+    smallgridaccuracy 7
+  -grid
 -task
 \end{lstlisting}
 \subsubsection{Basic Keywords}
@@ -2428,7 +2438,10 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
     \item [\texttt{sub-blocks}]\hfill \\
     Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
     Prominent settings in the embedding block that are relevant for this task, and their defaults are:
-    \ttt{naddXCFunc=NONE}, \ttt{embeddingMode=NONE}, \ttt{naddkinfunc=NONE}.
+    \ttt{naddXCFunc=NONE}, \ttt{embeddingMode=NONE}, \ttt{naddkinfunc=NONE}.\\
+    Grid (\ttt{grid}) settings are added via sub-blocks in the task settings.
+    Prominent settings in the gtid block that are relevant for this task, and their defaults are:
+    \ttt{accuracy=4}, \ttt{smallGridAccuracy=4}.
     \item [\texttt{nEigen}]\hfill \\
     Number of roots to be determined. The default is \ttt{4}.
     \item [\texttt{conv}]\hfill \\
@@ -2455,8 +2468,6 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
-    \item [\texttt{pseudoDensityThreshold}]\hfill \\
-    The pseudo density screening threshold for sigma vector evaluation. The default is \ttt{1.0e-8}.
     \item [\texttt{maxCycles}]\hfill \\
     Maximum number of iterations for the iterative eigenvalue solver. The default is \ttt{100}.
     \item [\texttt{maxSubspaceDimension}]\hfill \\
@@ -2538,6 +2549,18 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
     Calculates transition charges and stores them on disk. The default is \ttt{false}. Also calculates particle and hole populations, prints them and stores the hole-particle-correlation on disk.
     \item[\texttt{grimme}]\hfill\\
     Invokes Grimme's simplified TDA/TDDFT. The default is \ttt{false}.
+    \item[\texttt{adaptivePrescreening}]\hfill\\
+    Uses looser prescreening thresholds in the beginning of the Davidson iterations. Increases performance. The default is \ttt{true}.
+    \item[\texttt{frozenCore}]\hfill\\
+    Removes core orbitals from the reference orbitals (tabulated number for each atom type). The default is \ttt{false}.
+    \item[\texttt{frozenVirtual}]\hfill\\
+    Removes virtual orbitals from the reference orbitals that are higher lying than E(HOMO) + \ttt{frozenVirtual}. The default is \ttt{0.0} which does not remove any virtuals..
+    \item[\texttt{coreOnly}]\hfill\\
+    Removes all but core orbitals from the reference orbitals (can be used to perform X-ray calculations). The default is \ttt{false}.
+    \item[\texttt{ltconv}]\hfill \\
+	  Convergence paramter for the Laplace transformation if LT-SOS-CC2/ADC(2) is used. By default \ttt{1e-5}.
+    \item[\texttt{aocache}]\hfill \\
+	  Triggers that three center integrals are kept in memory for CC2/ADC(2) calculations. By default \ttt{true}.
 \end{description}
 
 \clearpage
@@ -2570,7 +2593,19 @@ correlation version of this task (see Sec.~\ref{task:localization}).
 	\ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
 	Similarly, \ttt{pnoSettings=NORMAL} is a commonly changed default in the local correlation settings.
 	\item [\texttt{mp2Type}] \hfill \\ 
-	MP2 type used. Full four center integral MP2 (\ttt{AO}), RI-MP2 (\ttt{RI}), local MP2 (\ttt{LOCAL}). By default \ttt{RI}. 
+	MP2 type used. Full four center integral MP2 (\ttt{AO}), RI-MP2 (\ttt{RI}), local MP2 (\ttt{LOCAL}), Laplace-transform SOS-MP2 (\ttt{LT}). By default \ttt{RI}.
+  \item[\texttt{maxResidual}]\hfill \\
+	Convergence threshold for the local MP2 calculation. By default \ttt{1.0e-5}.
+  \item[\texttt{sss}]\hfill \\
+	Scaling paramter for same-spin contributions. By default \ttt{1.0}.
+  \item[\texttt{oss}]\hfill \\
+	Scaling paramter for same-spin contributions. By default \ttt{1.0}.
+  \item[\texttt{ltconv}]\hfill \\
+	Convergence paramter for the Laplace transformation if LT-SOS-MP2 is used. By default \ttt{1e-5}.
+  \item[\texttt{maxCycles}]\hfill \\
+  Maximum number of iterations before cancelling the amplitude optimization in local MP2. By default \ttt{100}.
+  \item[\texttt{unrelaxedDensity}]\hfill \\
+  If true, the unrelaxed MP2 density is calulated. By default \ttt{false}. 
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -2817,13 +2852,16 @@ This task allows the calculation of quasi-restricted orbitals (QROs)~\cite{Neese
 
 \subsection{Task: Read Orbitals}
 
-This task allows to read orbitals from non-serenity output files.
-Currently only the ASCII-format for turbomole is supported.
+This task allows to read orbitals from (non)-serenity output files.
+Currently the ASCII-format for Turbomole is supported and the xml format for Molpro are supported up to g functions.
+Molcas orbitals may be read up to arbitrary angular momentum.
+Furthermore, the task may read orbital files from Serenity.
+Note that Serenity does not account for symmetry. Hence, the orbitals must be defined without any symmetry.
 \subsubsection{Example Input}
 \begin{lstlisting}
  +task READ
   act water
-  turbomole true
+  fileformat turbomole
   path path/to/a/directory/containing/a/turbomole/ascii-mo-file
  -task
 \end{lstlisting}
@@ -2835,13 +2873,17 @@ Currently only the ASCII-format for turbomole is supported.
  \item [\texttt{activeSystems}]\hfill \\
   The system to which the orbitals should be read.
  \item [\texttt{fileFormat}]\hfill \\
-  The file format to be expected by the task. Currently supported are the turbomole ASCII-MO file format (\ttt{TURBOMOLE})
-  and the native \textsc{Serenity} HDF5 file format (\ttt{Serenity}). By default \ttt{TURBOMOLE}.
+  The file format to be expected by the task. Currently supported are the Turbomole ASCII-MO file format (\ttt{TURBOMOLE})
+  Molpro's xml format (\ttt{MOLPRO}), the native \textsc{Serenity} HDF5 file format (\ttt{Serenity}), and Molcas-HDF5 file
+  format (\ttt{Molcas}). By default \ttt{TURBOMOLE}.
  \item [\texttt{resetCoreOrbitals}]\hfill \\
   If \texttt{fileFormat = SERENITY} and \ttt{true}, the core orbitals are reset to the core orbitals tabulated for the geometry. Otherwise, the core orbital
   definition on disk is used. Note that this is always done for \texttt{fileFormat = TURBOMOLE}.
  \item [\texttt{path}]\hfill \\
   The path to the orbital files. Default is \ttt{"."}.
+ \item [\texttt{replaceInFile}]\hfill \\
+  If true, copies the original orbital file and replaces the coefficients in this file by Serenity's coefficients. (Only implemented for Molcas HDF5 files).
+  By default \ttt{false}.
 \end{description}
 
 \subsection{Task: SCF}
@@ -2905,7 +2947,9 @@ For all options pertaining the convergence please see the \ttt{scf} block option
 	\item[\texttt{skipSCF}]\hfill \\
 	Skip the SCF procedure and perform an energy evaluation only. By default \ttt{false}.
 	\item[\texttt{allowNotConverged}]\hfill \\
-    If the maximum number of SCF cycles is reached Serenity will continue even with non-converged orbitals. By default \ttt{false}.
+  If the maximum number of SCF cycles is reached Serenity will continue even with non-converged orbitals. By default \ttt{false}.
+  \item[\texttt{calculateMP2Energy}]\hfill \\
+  If the correlation energy of double-hybrid functionals is calculated. By default \ttt{true}.
 \end{description}
 
 \subsection{Task: System-Splitting}
@@ -3765,7 +3809,6 @@ calculations are done for the active systems embedded into their respective envi
   act TransitionState_active
   env Reactant_environment
   env TransitionState_environment
-  checkDegeneracies true
   usePiBias true
   alignPiOrbitals true
 -task
@@ -3865,8 +3908,56 @@ physically meaningful potentials, a constraint as proposed in Ref. (\cite{heat20
 -task
 \end{lstlisting}
 
-\section{TDDFT}
-See below a minimal example of an TDDFT LRSCF calculation:
+\newpage
+\section{LRSCF}
+CIS (TDHF with TDA):
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method hf
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ method tda
+ nEigen 5
+-task
+\end{lstlisting}
+\newpage
+
+ADC(2) (or CC2) with transition moments:
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method hf
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ method adc2 (or cc2)
+ nEigen 5
+ ccprops true
+-task
+\end{lstlisting}
+\newpage
+
+TDDFT Response Properties in the dipole-velocity representation:
 \begin{lstlisting}
 +system
  name water
@@ -3886,13 +3977,16 @@ See below a minimal example of an TDDFT LRSCF calculation:
 
 +task lrscf
  act water
- nEigen 5
+ frequencies { 2 3 4 }
+ gauge velocity
 -task
 \end{lstlisting}
-and a TDDFT calculation with frozen environment (FDEu) and orbital relaxation w.r.t the environment:
+\newpage
+
+FDEu-TDDFT for \ttt{water1} in the environment of \ttt{water2}:
 \begin{lstlisting}
 +system
- name watera
+ name water1
  geometry water_monA.xyz
  method dft
  +dft
@@ -3904,7 +3998,7 @@ and a TDDFT calculation with frozen environment (FDEu) and orbital relaxation w.
 -system
 
 +system
- name waterb
+ name water2
  geometry water_monB.xyz
  method dft
  +dft
@@ -3915,22 +4009,100 @@ and a TDDFT calculation with frozen environment (FDEu) and orbital relaxation w.
  -basis
 -system
 
-+task fde
- act watera
- env waterb
++task fat
+ act water1
+ act water2
+ +emb
+ embeddingmode naddfunc
  naddxcfunc pw91
  naddkinfunc pw91k
+ -emb
 -task
 
 +task lrscf
- act watera
- env waterb
+ act water1
+ env water2
  nEigen 5
- func pbe0
- naddXCfunc pw91
- naddKinfunc pw91k
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
 -task
 \end{lstlisting}
+\newpage
+
+FDEc-TDDFT (coupling FDEu excitations of \ttt{water1} and \ttt{water2}). Specifically coupling
+two excitations of the first subsystem (the first and the third) and three excitations on the second subsystem (the second, the third, and the fourth):
+\begin{lstlisting}
++system
+ name water1
+ geometry water_monA.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++system
+ name water2
+ geometry water_monB.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task fat
+ act water1
+ act water2
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water1
+ env water2
+ nEigen 5
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water2
+ env water1
+ nEigen 5
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water1
+ act water2
+ uncoupledSubspace {2 1 3 3 2 3 4}
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+\end{lstlisting}
+\newpage
 
 \section{Restarting and Properties}
 Below you can find a small input that reads the results of a previous sDFT run, and evaluates the total energy once more.

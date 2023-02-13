@@ -68,8 +68,8 @@ TEST_F(PNOConstructorTest, WaterDimer) {
   double lMP2Energy = localMP2.calculateEnergyCorrection().sum();
   auto orbitalPairs = lCController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
   (void)lMP2Energy;
-  Eigen::VectorXi nPNOs = Eigen::VectorXi::Zero(23);
-  nPNOs << 7, 0, 4, 17, 0, 20, 2, 11, 14, 20, 17, 0, 21, 15, 20, 1, 13, 9, 20, 10, 19, 16, 0;
+  Eigen::VectorXi nPNOs = Eigen::VectorXi::Zero(16);
+  nPNOs << 7, 4, 17, 20, 11, 20, 17, 21, 20, 13, 20, 19, 16, 21, 21, 20;
 
   Eigen::MatrixXd c = waterDimer->getActiveOrbitalController<RESTRICTED>()->getCoefficients();
   Eigen::MatrixXd f_MO = c.transpose() * f * c;
@@ -82,10 +82,11 @@ TEST_F(PNOConstructorTest, WaterDimer) {
       EXPECT_EQ(pair->t_ij.cols(), nPNOs[iPair]);
     }
     else {
+      std::cout << "test" << std::endl;
       EXPECT_EQ(0, nPNOs[iPair]);
     }
     iPair++;
-    if (iPair >= 23)
+    if (iPair >= nPNOs.size())
       break;
   }
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(waterDimer);

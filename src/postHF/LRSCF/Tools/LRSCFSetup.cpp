@@ -351,6 +351,15 @@ void LRSCFSetup<SCFMode>::setupLRSCFController(const LRSCFTaskSettings& settings
       auto indexWhiteList = besley.getWhiteList();
       lrscf->editReference(indexWhiteList);
     }
+    if (settings.frozenCore) {
+      lrscf->applyFrozenCore();
+    }
+    if (settings.coreOnly) {
+      lrscf->applyCoreOnly();
+    }
+    if (settings.frozenVirtual != 0.0) {
+      lrscf->applyFrozenVirtual();
+    }
   }
 }
 

@@ -27,7 +27,6 @@
 #include "system/SystemController.h"                  //Test systems.
 #include "tasks/ScfTask.h"                            //Run SCF.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Test resources.
-//#include "tasks/CubeFileTask.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework
 

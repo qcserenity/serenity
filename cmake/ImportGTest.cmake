@@ -5,8 +5,8 @@ macro(import_gtest)
     set(INSTALL_GTEST OFF CACHE BOOL "Disable Gtests install" FORCE)
     # Try to find the package locally
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
-    find_package(GTest 1.8.1 QUIET)
-    find_package(GMock 1.8.1 QUIET)
+    find_package(GTest QUIET)
+    find_package(GMock QUIET)
     if((NOT TARGET GMock::GMock) OR (NOT TARGET GMock::Main))
       if((TARGET gmock) AND (TARGET gmock_main))
         add_library(GMock::GMock ALIAS gmock)
@@ -22,7 +22,7 @@ macro(import_gtest)
       download_project(
         PROJ                googletest
         GIT_REPOSITORY      https://github.com/google/googletest.git
-        GIT_TAG             release-1.10.0
+        GIT_TAG             v1.13.0
         QUIET
         UPDATE_DISCONNECTED 1
       )

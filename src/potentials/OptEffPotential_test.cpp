@@ -32,7 +32,6 @@
 #include "geometry/Geometry.h"
 #include "integrals/OneIntControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
-#include "settings/Options.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
@@ -74,7 +73,7 @@ TEST_F(OptEffPotentialTest, oep) {
   auto densMat = system->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix();
   const auto& targetDens = densOnGridCalculator->calcDensityOnGrid(densMat);
   auto nOccOrbs = system->getNOccupiedOrbitals<Options::SCF_MODES::RESTRICTED>();
-  auto resultOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(basisController);
+  auto resultOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::RESTRICTED>>(basisController, 0);
 
   GridPotential<Options::SCF_MODES::RESTRICTED> initialGuess(gridController);
   CoulombPotentialOnGridCalculator::calculateElectronElectron<Options::SCF_MODES::RESTRICTED>(initialGuess, densMat);
@@ -138,7 +137,7 @@ TEST_F(OptEffPotentialTest, oepUnres) {
   auto densMat = system->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix();
   const auto& targetDens = densOnGridCalculator->calcDensityOnGrid(densMat);
   auto nOccOrbs = system->getNOccupiedOrbitals<Options::SCF_MODES::UNRESTRICTED>();
-  auto resultOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(basisController);
+  auto resultOrbitals = std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(basisController, 0);
 
   GridPotential<Options::SCF_MODES::UNRESTRICTED> initialGuess(gridController);
   GridPotential<Options::SCF_MODES::RESTRICTED> tmp(gridController);

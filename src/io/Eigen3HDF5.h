@@ -349,6 +349,29 @@ void load_scalar_attribute(const H5::H5Object& h5obj, const std::string& name, T
   linestream >> value;
 }
 
+template<typename Derived>
+void replace(H5::H5Location& h5group, const std::string& name, const Eigen::EigenBase<Derived>& mat) {
+  typedef typename Derived::Scalar Scalar;
+  const H5::DataType* const datatype = DatatypeSpecialization<Scalar>::get();
+  H5::DataSet dataset = h5group.openDataSet(name.c_str());
+  const H5::DataSpace dataspace = dataset.getSpace();
+
+  bool written = false; // flag will be true when the data has been written
+  if (mat.derived().Flags & Eigen::RowMajor) {
+    written = internal::write_rowmat(mat, datatype, &dataset, &dataspace);
+  }
+  else {
+    written = internal::write_colmat(mat, datatype, &dataset, &dataspace);
+  }
+
+  if (!written) {
+    // data has not yet been written, so there is nothing else to try but copy the input
+    // matrix to a row major matrix and write it.
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> row_major_mat(mat);
+    dataset.write(row_major_mat.data(), *datatype);
+  }
+}
+
 // see http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
 
 template<typename Derived>

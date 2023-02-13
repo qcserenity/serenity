@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
+#include "postHF/LRSCF/LRSCFController.h"
 #include "tasks/GWTask.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
@@ -55,7 +56,7 @@ class MBPT {
    * @param startOrb The first orbital index included in a GW calculation
    * @param endOrb The last orbital index included in a GW calculation
    */
-  MBPT(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+  MBPT(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
        std::vector<std::shared_ptr<SystemController>> envSystemController,
        std::shared_ptr<RIIntegrals<SCFMode>> riInts = nullptr, int startOrb = 0, int endOrb = 0);
   /**
@@ -89,6 +90,11 @@ class MBPT {
    * @return screened Coulomb interaction
    */
   SpinPolarizedData<SCFMode, Eigen::MatrixXd> calculateWnmComplex();
+  /**
+   * @brief Calculates the screened Coulomb interaction for complex frequencies using Laplace transform
+   * @return screened Coulomb interaction
+   */
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> calculateWnmComplexLT();
   /**
    * @brief Calculates the fermi level
    * @return fermi level
@@ -143,7 +149,7 @@ class MBPT {
 
  protected:
   /// @brief systemcontroller
-  std::shared_ptr<SystemController> _systemController;
+  std::shared_ptr<LRSCFController<SCFMode>> _lrscfController;
   /// @brief GWTask settings
   GWTaskSettings _settings;
   /// @brief environmental systems
@@ -172,6 +178,10 @@ class MBPT {
   unsigned int _nAux;
   /// @brief the sparse projection matrix
   Eigen::SparseMatrix<double> _proj;
+
+  Eigen::MatrixXd _envResponse;
+
+  Eigen::VectorXd _eValues;
 };
 
 } /* namespace Serenity */

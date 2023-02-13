@@ -96,9 +96,6 @@ void CholeskyDecomposer::decompose(std::string label) {
   // Initialize vector counter n
   unsigned int n = 0;
 
-  // Initialize iteration counter
-  unsigned int i = 0;
-
   // While Dmax^(i+1) > tau
   do {
     takeTime("cycle");
@@ -163,9 +160,6 @@ void CholeskyDecomposer::decompose(std::string label) {
     //   -----------------------------------------------------------------------------------------------
     //   Qualified Set (and minimal diagonal element)
     //   -----------------------------------------------------------------------------------------------
-
-    // Update iteration counter
-    i += 1;
 
     // Compute smallest diagonal that may be treated
     double dMin = std::max(_spanFactor * dMax, _decompositionThreshold);

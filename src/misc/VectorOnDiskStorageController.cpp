@@ -115,7 +115,7 @@ std::shared_ptr<Eigen::VectorXd> VectorOnDiskStorageController::loadVectorSegmen
   auto vectorSegment = std::make_shared<Eigen::VectorXd>(_segmentSizes[label]);
   // if the HDF5 file is not opened yet. Open it.
   HDF5::Filepath name("tmp/" + label + "_" + _fileName);
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(*_files[label], label);
   HDF5::load(*_files[label], label, *vectorSegment);
   return vectorSegment;

@@ -34,27 +34,14 @@ FockSigmavector<SCFMode>::FockSigmavector(std::vector<std::shared_ptr<LRSCFContr
 
 template<Options::SCF_MODES SCFMode>
 std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
-FockSigmavector<SCFMode>::calcF(unsigned I, unsigned J,
-                                std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> densityMatrices) {
-  (void)densityMatrices;
-
-  // Orbital-energy differences only contributing if I == J for canonical orbitals
-  // LMO-TDDFT in the narrow sense only implemented for supermolecular TDDFT
-  if (I == J) {
-    // No actual pseudo Fock matrix needed since no AO2MO transformation necessary
-    return std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>(
-        new std::vector<std::vector<MatrixInBasis<SCFMode>>>());
-  }
-  else {
-    // No contribution here
-    return nullptr;
-  }
+FockSigmavector<SCFMode>::calcF(unsigned I, unsigned J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>) {
+  return (I == J) ? std::make_unique<std::vector<std::vector<MatrixInBasis<SCFMode>>>>() : nullptr;
 }
 
 template<Options::SCF_MODES SCFMode>
 void FockSigmavector<SCFMode>::addToSigma(unsigned I, unsigned iStartI,
                                           std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> F_IJ) {
-  Timings::takeTime("LRSCF -      Fock Sigmavector");
+  Timings::takeTime("LRSCF -   Sigmavector:   Fock");
 
   if (F_IJ) {
     auto no = this->_lrscf[I]->getNOccupied();
@@ -74,7 +61,7 @@ void FockSigmavector<SCFMode>::addToSigma(unsigned I, unsigned iStartI,
     }
   }
 
-  Timings::timeTaken("LRSCF -      Fock Sigmavector");
+  Timings::timeTaken("LRSCF -   Sigmavector:   Fock");
 }
 
 template class FockSigmavector<Options::SCF_MODES::RESTRICTED>;

@@ -112,7 +112,7 @@ ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController
    * Construct and return set of final orbitals
    */
   return std::make_unique<OrbitalController<Options::SCF_MODES::RESTRICTED>>(
-      move(coefficients), minimalBasisController, move(eigenvalues), systemController->getNCoreElectrons());
+      std::move(coefficients), minimalBasisController, *eigenvalues, systemController->getNCoreElectrons());
 }
 
 std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
@@ -126,14 +126,6 @@ ExtendedHueckel::calculateInitialGuess(const std::shared_ptr<SystemController> s
   minimalBasisOverlaps =
       systemController->getOneElectronIntegralController(Options::BASIS_PURPOSES::HUECKEL)->getOverlapIntegrals();
   auto hueckelOrbs = calculateHueckelOrbitals(systemController, minimalBasisController, minimalBasisOverlaps);
-  /*
-   * Calculate Hueckel Energy
-   */
-  double energy = 0;
-  // TODO this is correct only if orbitals for core electrons are present
-  for (unsigned int i = 0; i < systemController->getNElectrons<Options::SCF_MODES::RESTRICTED>() / 2; i++) {
-    energy += 2 * hueckelOrbs->getEigenvalues()[i];
-  }
   /*
    * Transform to the basis which is actually used
    */

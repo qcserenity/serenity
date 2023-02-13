@@ -638,11 +638,11 @@ TEST_F(LRSCFTaskXWFTest, CC2_Chiral) {
 
   double accuracy = 1e-8;
 
-  Eigen::MatrixXd excitations(task.settings.nEigen, 5);
-  excitations.row(0) << 0.229138353, 0.000436648, 0.000437490, -0.000137019, -0.000137214;
-  excitations.row(1) << 0.238283888, 0.025289430, 0.023459799, -0.000190538, -0.000179038;
-  excitations.row(2) << 0.256274774, 0.003381275, 0.003365280, -0.000125052, -0.000124804;
-  excitations.row(3) << 0.261056519, 0.073754001, 0.066161789, 0.000405432, 0.000371064;
+  Eigen::MatrixXd excitations(task.settings.nEigen, 6);
+  excitations.row(0) << 0.229138353, 0.000436648, 0.000437490, -0.000137019, -0.000137214, -0.000137019;
+  excitations.row(1) << 0.238283888, 0.025289430, 0.023459799, -0.000190538, -0.000179038, -0.000185756;
+  excitations.row(2) << 0.256274774, 0.003381275, 0.003365280, -0.000125052, -0.000124804, -0.000125052;
+  excitations.row(3) << 0.261056519, 0.073754001, 0.066161789, 0.000405432, 0.000371064, 0.000391521;
 
   EXPECT_LE((results - excitations).cwiseAbs().maxCoeff(), accuracy);
 
@@ -667,11 +667,11 @@ TEST_F(LRSCFTaskXWFTest, ADC2_Chiral) {
 
   double accuracy = 1e-8;
 
-  Eigen::MatrixXd excitations(task.settings.nEigen, 5);
-  excitations.row(0) << 0.227400602, 0.000313079, 0.000558341, -0.000115377, -0.000154078;
-  excitations.row(1) << 0.236584525, 0.020715602, 0.026296601, -0.000179660, -0.000195230;
-  excitations.row(2) << 0.254475721, 0.001969011, 0.003386149, -0.000099622, -0.000130642;
-  excitations.row(3) << 0.259201256, 0.061986566, 0.071257293, 0.000364242, 0.000365365;
+  Eigen::MatrixXd excitations(task.settings.nEigen, 6);
+  excitations.row(0) << 0.227400602, 0.000313079, 0.000558341, -0.000115377, -0.000154078, -0.000115377;
+  excitations.row(1) << 0.236584525, 0.020715602, 0.026296601, -0.000179660, -0.000195230, -0.000173279;
+  excitations.row(2) << 0.254475721, 0.001969011, 0.003386149, -0.000099622, -0.000130642, -0.000099622;
+  excitations.row(3) << 0.259201256, 0.061986566, 0.071257293, 0.000364242, 0.000365365, 0.000340770;
 
   EXPECT_LE((results - excitations).cwiseAbs().maxCoeff(), accuracy);
 
@@ -721,5 +721,157 @@ TEST_F(LRSCFTaskXWFTest, CD_ADC2) {
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
   SystemController__TEST_SUPPLY::cleanUp();
 } /* ADC2 */
+
+/**
+ * @test
+ * @brief Tests LRSCFTask: LT-CC2
+ */
+#ifdef SERENITY_USE_LAPLACE_MINIMAX
+TEST_F(LRSCFTaskXWFTest, LT_CC2) {
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> task({sys});
+  task.settings.method = Options::LR_METHOD::CC2;
+  task.settings.ccprops = true;
+  task.settings.preopt = 1e-6;
+  task.settings.conv = 1e-9;
+  task.settings.sss = 0.0;
+  task.settings.oss = 1.3;
+  task.run();
+  auto& results = task.getTransitions();
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> tasklt({sys});
+  tasklt.settings.method = Options::LR_METHOD::CC2;
+  tasklt.settings.ccprops = true;
+  tasklt.settings.preopt = 1e-6;
+  tasklt.settings.conv = 1e-9;
+  tasklt.settings.ltconv = 1e-10;
+  tasklt.settings.sss = 0.0;
+  tasklt.settings.oss = 1.3;
+  tasklt.run();
+  auto& resultslt = tasklt.getTransitions();
+
+  double maxDiff = (results - resultslt).cwiseAbs().maxCoeff();
+
+  double accuracy = 1e-8;
+
+  EXPECT_LT(maxDiff, accuracy);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+} /* LT-CC2 */
+
+/**
+ * @test
+ * @brief Tests LRSCFTask: LT_uCC2
+ */
+TEST_F(LRSCFTaskXWFTest, LT_uCC2) {
+  sys->setSpin(1);
+  sys->setCharge(1);
+
+  double accuracy = 1e-7;
+
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
+  task.settings.method = Options::LR_METHOD::CC2;
+  task.settings.ccprops = true;
+  task.settings.preopt = 1e-6;
+  task.settings.conv = 1e-9;
+  task.settings.sss = 0.0;
+  task.settings.oss = 1.3;
+  task.run();
+  auto& results = task.getTransitions();
+
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> tasklt({sys});
+  tasklt.settings.method = Options::LR_METHOD::CC2;
+  tasklt.settings.ccprops = true;
+  tasklt.settings.preopt = 1e-6;
+  tasklt.settings.conv = 1e-9;
+  tasklt.settings.ltconv = 1e-10;
+  tasklt.settings.sss = 0.0;
+  tasklt.settings.oss = 1.3;
+  tasklt.run();
+  auto& resultslt = tasklt.getTransitions();
+
+  double maxDiff = (results - resultslt).cwiseAbs().maxCoeff();
+
+  EXPECT_LT(maxDiff, accuracy);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+} /* LT-uCC2 */
+
+/**
+ * @test
+ * @brief Tests LRSCFTask: LT-ADC2
+ */
+TEST_F(LRSCFTaskXWFTest, LT_ADC2) {
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> task({sys});
+  task.settings.method = Options::LR_METHOD::ADC2;
+  task.settings.ccprops = true;
+  task.settings.preopt = 1e-6;
+  task.settings.conv = 1e-9;
+  task.settings.sss = 0.0;
+  task.settings.oss = 1.3;
+  task.run();
+  auto& results = task.getTransitions();
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> tasklt({sys});
+  tasklt.settings.method = Options::LR_METHOD::ADC2;
+  tasklt.settings.ccprops = true;
+  tasklt.settings.preopt = 1e-6;
+  tasklt.settings.conv = 1e-9;
+  tasklt.settings.ltconv = 1e-10;
+  tasklt.settings.sss = 0.0;
+  tasklt.settings.oss = 1.3;
+  tasklt.run();
+  auto& resultslt = tasklt.getTransitions();
+
+  double maxDiff = (results - resultslt).cwiseAbs().maxCoeff();
+
+  double accuracy = 1e-8;
+
+  EXPECT_LT(maxDiff, accuracy);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+} /* LT-ADC2 */
+
+/**
+ * @test
+ * @brief Tests LRSCFTask: uADC2
+ */
+TEST_F(LRSCFTaskXWFTest, LT_uADC2) {
+  sys->setSpin(1);
+  sys->setCharge(1);
+
+  double accuracy = 1e-7;
+
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
+  task.settings.method = Options::LR_METHOD::ADC2;
+  task.settings.ccprops = true;
+  task.settings.preopt = 1e-6;
+  task.settings.conv = 1e-9;
+  task.settings.sss = 0.0;
+  task.settings.oss = 1.3;
+  task.run();
+  auto& results = task.getTransitions();
+
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> tasklt({sys});
+  tasklt.settings.method = Options::LR_METHOD::ADC2;
+  tasklt.settings.ccprops = true;
+  tasklt.settings.preopt = 1e-6;
+  tasklt.settings.conv = 1e-9;
+  tasklt.settings.ltconv = 1e-10;
+  tasklt.settings.sss = 0.0;
+  tasklt.settings.oss = 1.3;
+  tasklt.run();
+  auto& resultslt = tasklt.getTransitions();
+
+  double maxDiff = (results - resultslt).cwiseAbs().maxCoeff();
+
+  EXPECT_LT(maxDiff, accuracy);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+} /* LT-uCC2 */
+#endif /* SERENITY_USE_LAPLACE_MINIMAX */
 
 } // namespace Serenity

@@ -72,7 +72,7 @@ CustomBasisController::CustomBasisController(std::vector<std::shared_ptr<const S
 }
 
 std::unique_ptr<Basis> CustomBasisController::produceBasisFunctionVector() {
-  return move(_basis);
+  return std::move(_basis);
 }
 
 void CustomBasisController::postConstruction() {

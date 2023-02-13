@@ -108,7 +108,8 @@ double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::S2(bool useUHForbitals) {
         superSystemGeometry->deleteIdenticalAtoms();
         // supersystem grid
         Options::GRID_PURPOSES gridacc = Options::GRID_PURPOSES::DEFAULT;
-        _supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _systemController[0]->getSettings(), gridacc);
+        _supersystemGrid =
+            GridControllerFactory::produce(superSystemGeometry, _systemController[0]->getSettings().grid, gridacc);
       }
 
       std::vector<std::shared_ptr<DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>> _densOnGridControllers;
@@ -167,7 +168,7 @@ double SCFAnalysis<T>::VirialRatio() {
     // Calculate kinetic energy
     auto& libint = Libint::getInstance();
     Eigen::MatrixXd TInts = libint.compute1eInts(LIBINT_OPERATOR::kinetic, _systemController[0]->getBasisController());
-    auto P = _systemController[0]->getElectronicStructure<T>()->getDensityMatrix();
+    auto P = _systemController[0]->template getElectronicStructure<T>()->getDensityMatrix();
     double TEnergy = 0.0;
     for_spin(P) {
       TEnergy += TInts.cwiseProduct(P_spin).sum();
@@ -175,12 +176,12 @@ double SCFAnalysis<T>::VirialRatio() {
     // Calculate potential energy
     double VEnergy = 0.0;
     if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-      VEnergy = _systemController[0]->getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+      VEnergy = _systemController[0]->template getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
                     ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY) -
                 TEnergy;
     }
     else if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-      VEnergy = _systemController[0]->getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+      VEnergy = _systemController[0]->template getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
                     ENERGY_CONTRIBUTIONS::HF_ENERGY) -
                 TEnergy;
     }

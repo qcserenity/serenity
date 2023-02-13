@@ -89,10 +89,22 @@ LocalCorrelationController::LocalCorrelationController(std::shared_ptr<SystemCon
                         "       due to a lack of testing.");
   if (!_fock)
     constructFockMatrix();
+  std::vector<std::shared_ptr<DensityMatrix<RESTRICTED>>> envDensities = {};
+  if (!settings.useProjectedOccupiedOrbitals) {
+    for (auto sys : _environmentSystems) {
+      if (sys->getSCFMode() == RESTRICTED) {
+        envDensities.push_back(
+            std::make_shared<DensityMatrix<RESTRICTED>>(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix()));
+      }
+      else {
+        throw SerenityError("An unrestricted environment is not supported in local correlation approaches!");
+      }
+    }
+  }
   _paoController = std::make_shared<PAOController>(
       std::make_shared<DensityMatrix<RESTRICTED>>(_activeSystem->getElectronicStructure<RESTRICTED>()->getDensityMatrix()),
       std::make_shared<MatrixInBasis<RESTRICTED>>(_activeSystem->getOneElectronIntegralController()->getOverlapIntegrals()),
-      _settings.paoNormalizationThreshold);
+      _settings.paoNormalizationThreshold, envDensities);
   auto paoSelector = producePAOSelector();
   takeTime("PAO Selection");
   _occupiedToPAOOrbitalMap = paoSelector->selectPAOs();
@@ -170,6 +182,7 @@ void LocalCorrelationSettings::resolvePNOSettings() {
       }
       break;
     case Options::PNO_METHOD::DLPNO_MP2:
+    case Options::PNO_METHOD::SC_MP2:
       switch (this->pnoSettings) {
         case Options::PNO_SETTINGS::LOOSE:
           pnoSettings << 1e-3, 3.33e-7, 1e-3, 1e-4, 1e-2;
@@ -212,6 +225,9 @@ void LocalCorrelationController::printSettings() {
       break;
     case Options::PNO_METHOD::DLPNO_MP2:
       methodFlag = "DLPNO-MP2";
+      break;
+    case Options::PNO_METHOD::SC_MP2:
+      methodFlag = "SC-MP2";
       break;
     case Options::PNO_METHOD::NONE:
       throw SerenityError((std::string) "ERROR: Calling a local correlation method without requesting\n"
@@ -428,8 +444,7 @@ void LocalCorrelationController::constructFockMatrix() {
 std::vector<std::shared_ptr<OrbitalPair>> LocalCorrelationController::buildInitialOrbitalPairs() {
   takeTime("Initial orbital pairs");
   unsigned int nOcc = _activeSystem->getNOccupiedOrbitals<Options::SCF_MODES::RESTRICTED>();
-  const Eigen::VectorXd& eigenvalues = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getEigenvalues();
-  const Eigen::VectorXi& coreOrbitals = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getCoreOrbitals();
+  const Eigen::VectorXi& coreOrbitals = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getOrbitalFlags();
   std::vector<std::shared_ptr<OrbitalPair>> initialPairs;
 
   const double pnoCoreThreshold = _settings.pnoThreshold * _settings.pnoCoreScaling;
@@ -467,8 +482,7 @@ void LocalCorrelationController::buildSingles() {
   _singlesIndices = std::make_shared<Eigen::VectorXi>(Eigen::VectorXi::Constant(nOcc, -1));
   auto& singleIndices = *_singlesIndices;
   unsigned int counter = 0;
-  const Eigen::VectorXd& eigenvalues = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getEigenvalues();
-  const Eigen::VectorXi& coreOrbitals = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getCoreOrbitals();
+  const Eigen::VectorXi& coreOrbitals = _activeSystem->getActiveOrbitalController<RESTRICTED>()->getOrbitalFlags();
   for (unsigned int iOcc = 0; iOcc < nOcc; ++iOcc) {
     if (indices(iOcc, iOcc) >= 0) {
       bool isCoreLike = coreOrbitals(iOcc);
@@ -525,8 +539,9 @@ std::vector<std::shared_ptr<OrbitalTriple>> LocalCorrelationController::construc
     }
     for (unsigned int j = 0; j <= i; ++j) {
       std::shared_ptr<OrbitalPair> ijPair = getOrbitalPair(i, j, types);
-      if (!ijPair)
+      if (!ijPair || not ijPair->eligibleForTriples) {
         continue;
+      }
       std::vector<std::shared_ptr<OrbitalPair>> jlPairs;
       for (unsigned int l = 0; l < nOcc; ++l) {
         auto jlPair = getOrbitalPair(j, l, types);
@@ -539,10 +554,12 @@ std::vector<std::shared_ptr<OrbitalTriple>> LocalCorrelationController::construc
           continue;
         std::shared_ptr<OrbitalPair> jkPair = getOrbitalPair(j, k, types);
         std::shared_ptr<OrbitalPair> ikPair = getOrbitalPair(i, k, types);
-        if (!jkPair || !ikPair)
+        if (!jkPair || !ikPair) {
           continue;
-        if (not jkPair->eligibleForTriples || not ikPair->eligibleForTriples)
+        }
+        if (not jkPair->eligibleForTriples || not ikPair->eligibleForTriples) {
           continue;
+        }
         unsigned int nDistant = 0;
         if (ijPair->type != OrbitalPairTypes::CLOSE)
           ++nDistant;
@@ -550,8 +567,9 @@ std::vector<std::shared_ptr<OrbitalTriple>> LocalCorrelationController::construc
           ++nDistant;
         if (ikPair->type != OrbitalPairTypes::CLOSE)
           ++nDistant;
-        if (nDistant > 1)
+        if (nDistant > 1) {
           continue;
+        }
         std::vector<std::shared_ptr<OrbitalPair>> klPairs;
         for (unsigned int l = 0; l < nOcc; ++l) {
           auto klPair = getOrbitalPair(k, l, types);
@@ -567,15 +585,25 @@ std::vector<std::shared_ptr<OrbitalTriple>> LocalCorrelationController::construc
   return triples;
 }
 
-void LocalCorrelationController::initializeSingles() {
+void LocalCorrelationController::initializeSingles(std::vector<OrbitalPairTypes> orbitalPairTypes) {
   if (_singles.size() == 0)
     buildSingles();
-  std::vector<std::shared_ptr<OrbitalPair>> closePairs = getOrbitalPairs(OrbitalPairTypes::CLOSE);
-  for (auto& pair : closePairs) {
-    if (pair->type != OrbitalPairTypes::CLOSE)
+  std::vector<std::shared_ptr<OrbitalPair>> pairs;
+  for (const auto type : orbitalPairTypes) {
+    for (auto& pair : getOrbitalPairs(type)) {
+      pairs.push_back(pair);
+    }
+  }
+  for (auto& pair : pairs) {
+    bool typeCorrect = false;
+    for (const auto type : orbitalPairTypes) {
+      if (pair->type == type)
+        typeCorrect = true;
+    }
+    if (!typeCorrect)
       continue;
     pair->singles_i->orbitalPairs.push_back(pair);
-    if (pair->singles_i != pair->singles_j && pair->type == OrbitalPairTypes::CLOSE)
+    if (pair->singles_i != pair->singles_j)
       pair->singles_j->orbitalPairs.push_back(pair);
   } // for pair
 }
@@ -587,6 +615,7 @@ void LocalCorrelationController::buildOrbitalPairCouplingMap() {
     std::shared_ptr<OrbitalPair> pair = _closeOrbitalPairs[iPair];
     unsigned int i = pair->i;
     unsigned int j = pair->j;
+    pair->coupledPairs.clear();
     for (unsigned int k = 0; k < orbitalPairIndices.rows(); ++k) {
       if (orbitalPairIndices(i, k) < 0 || orbitalPairIndices(k, j) < 0)
         continue;
@@ -714,40 +743,48 @@ void LocalCorrelationController::selectDistantOrbitalPairs() {
   _distantOrbitalPairIndices = nullptr;
   _distantTriplesOrbitalPairIndices = nullptr;
   std::vector<std::shared_ptr<OrbitalTriple>>().swap(_orbitalTriples);
-  std::vector<std::shared_ptr<OrbitalPair>>().swap(_sparseMapConstructionPairs);
-  std::vector<std::shared_ptr<OrbitalPair>> newClosePairs = {};
+  _orbitalTripleSets = {};
+  _closeOrbitalPairs = {};
+  _veryDistantOrbitalPairs = {};
+  _distantOrbitalPairs = {};
+  _distantOrbitalPairsTriples = {};
+  _sparseMapConstructionPairs = {};
   OutputControl::vOut << "Selecting distant orbital pairs based on SC-MP2 pair energy." << std::endl;
   OutputControl::vOut << "Note that diagonal pairs will always be retained in the calculation!" << std::endl;
-  for (auto& pair : _closeOrbitalPairs) {
+  for (auto& pair : _allOrbitalPairs) {
+    const double distantThreshold = (_settings.method == Options::PNO_METHOD::DLPNO_MP2)
+                                        ? pair->getCollinearDipolePairThreshold()
+                                        : pair->getPairEnergyThreshold();
     bool diagonalPair = pair->i == pair->j;
-    if ((std::fabs(pair->scMP2PairEnergy) < pair->getCollinearDipolePairThreshold() || pair->type == OrbitalPairTypes::VERY_DISTANT) &&
-        not diagonalPair) {
+    const bool energyIsClose = std::fabs(pair->scMP2PairEnergy) >= distantThreshold;
+    const bool energyIsDistantTriples =
+        std::fabs(pair->scMP2PairEnergy) >= pair->getPairEnergyThreshold() * _settings.triplesSCMP2Scaling;
+    const bool energyIsDistant = std::fabs(pair->scMP2PairEnergy) >= pair->getCollinearDipolePairThreshold();
+    if (diagonalPair || (energyIsClose && pair->type == OrbitalPairTypes::CLOSE)) {
+      pair->type = OrbitalPairTypes::CLOSE;
+      _closeOrbitalPairs.push_back(pair);
+    }
+    else if (energyIsDistantTriples && pair->type != OrbitalPairTypes::VERY_DISTANT) {
+      pair->type = OrbitalPairTypes::DISTANT_TRIPLES;
+      _distantOrbitalPairs.push_back(pair);
+      _distantOrbitalPairsTriples.push_back(pair);
+    }
+    else if (energyIsDistant && pair->type != OrbitalPairTypes::VERY_DISTANT) {
+      pair->type = OrbitalPairTypes::DISTANT;
+      _distantOrbitalPairs.push_back(pair);
+    }
+    else {
       _veryDistantOrbitalPairs.push_back(pair);
       pair->t_ij = Eigen::MatrixXd(0, 0);
       pair->k_ij = Eigen::MatrixXd(0, 0);
       pair->f_ab.resize(0);
       pair->uncoupledTerm.resize(0, 0);
       pair->type = OrbitalPairTypes::VERY_DISTANT;
-      if (std::fabs(pair->scMP2PairEnergy) > pair->getSparseMapConstructionPairThreshold())
-        _sparseMapConstructionPairs.push_back(pair);
-      continue;
     }
-    if (std::fabs(pair->scMP2PairEnergy) < pair->getPairEnergyThreshold() && not diagonalPair) {
-      _distantOrbitalPairs.push_back(pair);
-      pair->type = OrbitalPairTypes::DISTANT;
-      if (std::fabs(pair->scMP2PairEnergy) >= pair->getPairEnergyThreshold() * _settings.triplesSCMP2Scaling) {
-        _distantOrbitalPairsTriples.push_back(pair);
-        pair->type = OrbitalPairTypes::DISTANT_TRIPLES;
-      }
-      if (std::fabs(pair->scMP2PairEnergy) > pair->getSparseMapConstructionPairThreshold())
-        _sparseMapConstructionPairs.push_back(pair);
-    }
-    else {
-      newClosePairs.push_back(pair);
+    if (std::fabs(pair->scMP2PairEnergy) > pair->getSparseMapConstructionPairThreshold() || energyIsClose)
       _sparseMapConstructionPairs.push_back(pair);
-    } // if/else pair->scMP2PairEnergy < _settings.ccsdPairThreshold
-  }   // for pair
-  _closeOrbitalPairs = newClosePairs;
+
+  } // for pair
   if (_closeOrbitalPairs.size() < 1)
     throw SerenityError("Local-Correlation: All orbital pairs have been screened away! Adjust the SC-MP2 screening "
                         "threshold <ccsdPairThreshold>!");

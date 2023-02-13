@@ -96,13 +96,16 @@ class Sigmavector {
 
   ///@brief Returns an (nShells x nShells) matrix for the set of density matrices containing maximum entries for
   /// prescreening.
-  SPMatrix<SCFMode> getShellWiseMaxDens(unsigned J, std::vector<std::vector<MatrixInBasis<SCFMode>>>& densityMatrices);
+  void setShellWiseMaxDens(unsigned J, std::vector<std::vector<MatrixInBasis<SCFMode>>>& densityMatrices);
+
+  ///@brief Maximum entry of all density matrices.
+  double _maxDens;
+
+  ///@brief Shell-wise maximum density matrix entries.
+  Eigen::MatrixXd _maxDensMat;
 
   ///@brief LRSCFController for each reference subsystem.
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> _lrscf;
-
-  ///@brief This is set to true if the perturbed Fock matrix is half-transformed.
-  bool _partialMO = false;
 
   ///@brief Number of subsystems.
   const unsigned int _nSub;
@@ -112,6 +115,15 @@ class Sigmavector {
 
   ///@brief The number of guess vector sets.
   const unsigned int _nSet;
+
+  ///@brief Number of threads used for Fock contractions.
+  unsigned int _nThreads = omp_get_max_threads();
+
+  ///@brief Number of threads used for Fock contractions before restriction.
+  unsigned int _maxThreads = omp_get_max_threads();
+
+  ///@brief Prescreening threshold.
+  double _prescreeningThreshold = 1e-13;
 
   ///@brief Sets of guess vectors for each subsystem.
   std::vector<std::vector<Eigen::MatrixXd>> _b;

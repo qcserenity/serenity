@@ -152,5 +152,10 @@ void export_SystemController(py::module& spy) {
       .def("getElectronicStructure_U", &SystemController::getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>,
            "@brief Returns the current unrestricted electronic structure.\n"
            "       If there is none, a SCF will be run to generate one.\n"
-           "@returns The unrestricted electronic structure.");
+           "@returns The unrestricted electronic structure.")
+      .def("getSystemName", &SystemController::getSystemName,
+           "@returns the name of the controlled molecular system. It should be unique.")
+      .def("getSettings", &SystemController::getSettings,
+           "@returns the underlying configuration. All data received from this SystemController is\n"
+           "constructed by using this configuration.");
 }

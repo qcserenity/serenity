@@ -23,6 +23,7 @@
 #include "settings/BasisOptions.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/LRSCFOptions.h"
+#include "settings/Settings.h"
 #include "tasks/Task.h"
 
 /* Include Std and External Headers */
@@ -40,11 +41,10 @@ struct LRSCFTaskSettings {
   LRSCFTaskSettings()
     : nEigen(4),
       conv(1.0e-5),
-      maxCycles(100),
+      maxCycles(50),
       maxSubspaceDimension(1e9),
       algorithm(Options::RESPONSE_ALGORITHM::SYMMETRIC),
       dominantThresh(0.85),
-      superSystemGrid(true),
       func(CompositeFunctionals::XCFUNCTIONALS::NONE),
       analysis(true),
       besleyAtoms(0),
@@ -79,24 +79,35 @@ struct LRSCFTaskSettings {
       densFitCache(Options::DENS_FITS::RI),
       transitionCharges(false),
       partialResponseConstruction(false),
-      grimme(false) {
+      grimme(false),
+      adaptivePrescreening(true),
+      frozenCore(false),
+      frozenVirtual(0),
+      coreOnly(false),
+      ltconv(0),
+      aocache(true) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
+    // Don't use two grids by default.
+    grid.smallGridAccuracy = 4;
+    grid.accuracy = 4;
   };
   REFLECTABLE((unsigned int)nEigen, (double)conv, (unsigned int)maxCycles, (unsigned int)maxSubspaceDimension,
-              (Options::RESPONSE_ALGORITHM)algorithm, (double)dominantThresh, (bool)superSystemGrid,
-              (CompositeFunctionals::XCFUNCTIONALS)func, (bool)analysis, (unsigned int)besleyAtoms,
-              (std::vector<double>)besleyCutoff, (bool)excludeProjection, (std::vector<unsigned int>)uncoupledSubspace,
-              (bool)fullFDEc, (Options::LRSCF_TYPE)loadType, (Options::GAUGE)gauge, (std::vector<double>)gaugeOrigin,
-              (std::vector<double>)frequencies, (std::vector<double>)frequencyRange, (double)damping,
-              (std::vector<unsigned int>)couplingPattern, (bool)saveResponseMatrix, (Options::LR_METHOD)method, (bool)diis,
-              (unsigned)diisStore, (double)preopt, (bool)ccprops, (double)sss, (double)oss, (bool)naf, (double)nafThresh,
-              (std::vector<unsigned int>)samedensity, (std::vector<unsigned int>)subsystemgrid, (bool)rpaScreening,
-              (bool)restart, (Options::DENS_FITS)densFitJ, (Options::DENS_FITS)densFitK, (Options::DENS_FITS)densFitLRK,
-              (Options::DENS_FITS)densFitCache, (bool)transitionCharges, (bool)partialResponseConstruction, (bool)grimme)
+              (Options::RESPONSE_ALGORITHM)algorithm, (double)dominantThresh, (CompositeFunctionals::XCFUNCTIONALS)func,
+              (bool)analysis, (unsigned int)besleyAtoms, (std::vector<double>)besleyCutoff, (bool)excludeProjection,
+              (std::vector<unsigned int>)uncoupledSubspace, (bool)fullFDEc, (Options::LRSCF_TYPE)loadType,
+              (Options::GAUGE)gauge, (std::vector<double>)gaugeOrigin, (std::vector<double>)frequencies,
+              (std::vector<double>)frequencyRange, (double)damping, (std::vector<unsigned int>)couplingPattern,
+              (bool)saveResponseMatrix, (Options::LR_METHOD)method, (bool)diis, (unsigned)diisStore, (double)preopt,
+              (bool)ccprops, (double)sss, (double)oss, (bool)naf, (double)nafThresh, (std::vector<unsigned int>)samedensity,
+              (std::vector<unsigned int>)subsystemgrid, (bool)rpaScreening, (bool)restart, (Options::DENS_FITS)densFitJ,
+              (Options::DENS_FITS)densFitK, (Options::DENS_FITS)densFitLRK, (Options::DENS_FITS)densFitCache,
+              (bool)transitionCharges, (bool)partialResponseConstruction, (bool)grimme, (bool)adaptivePrescreening,
+              (bool)frozenCore, (double)frozenVirtual, (bool)coreOnly, (double)ltconv, (bool)aocache)
  public:
   EmbeddingSettings embedding;
+  GRID grid;
 };
 
 /**
@@ -113,14 +124,17 @@ class LRSCFTask : public Task {
    */
   LRSCFTask(const std::vector<std::shared_ptr<SystemController>>& activeSystems,
             const std::vector<std::shared_ptr<SystemController>>& passiveSystems = {});
+
   /**
    * @brief Default destructor.
    */
   virtual ~LRSCFTask() = default;
+
   /**
    * @see Task.h
    */
   void run();
+
   /**
    * @brief Parse the settings to the task settings.
    * @param c The task settings.
@@ -132,7 +146,9 @@ class LRSCFTask : public Task {
       visit_each(c, v);
     }
     else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in LRSCFTaskSettings: " + blockname);
+      if (!c.grid.visitSettings(v, blockname)) {
+        throw SerenityError((std::string) "Unknown block in LRSCFTaskSettings: " + blockname);
+      }
     }
   }
 
@@ -148,7 +164,6 @@ class LRSCFTask : public Task {
    *        -maxSubspaceDimension: Maximum dimension of the subspace used in iterative eigenvalue solver.
    *        -dominantThresh: Orbital transitions with squared coefficients (multiplied by a factor of 100) larger than
    *                         dominantThresh are considered dominant and their contribution is written into the output.
-   *        -superSystemGrid: Uses supersystem Grid for the evaluation of the Kernel Contribution in the subsystem TDDFT
    * case -func: IF another function should be used for the Kernel than for the system during SCF -analysis: If false,
    * LRSCF analysis and excitation / CD spectra will be suppressed
    *        -besleyAtoms: Number of Besley Atoms (the first n atoms will be taken from the xyz file)

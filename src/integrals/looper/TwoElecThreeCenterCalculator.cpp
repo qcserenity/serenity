@@ -20,8 +20,7 @@
 
 /* Include Serenity Internal Header */
 #include "integrals/looper/TwoElecThreeCenterCalculator.h"
-#include "basis/Basis.h"
-#include "basis/BasisController.h"
+#include "memory/MemoryManager.h"
 
 namespace Serenity {
 TwoElecThreeCenterCalculator::TwoElecThreeCenterCalculator(LIBINT_OPERATOR op, double mu,
@@ -37,7 +36,9 @@ TwoElecThreeCenterCalculator::TwoElecThreeCenterCalculator(LIBINT_OPERATOR op, d
     _prescreeningThreshold(prescreeningThreshold),
     _mu(mu),
     _nb_A(_basisControllerA->getNBasisFunctions()),
-    _nb_B(_basisControllerB->getNBasisFunctions()) {
+    _nb_B(_basisControllerB->getNBasisFunctions()),
+    _nss(0),
+    _offsets(auxbasis->getReducedNBasisFunctions(), 0) {
   _integrals.resize(omp_get_max_threads());
 
   // Initialize Libint for this calculator to use.
@@ -60,7 +61,7 @@ TwoElecThreeCenterCalculator::~TwoElecThreeCenterCalculator() {
   _libint->finalize(_op, 0, 3);
 }
 
-Eigen::MatrixXd& TwoElecThreeCenterCalculator::calculateIntegrals(unsigned P, unsigned iThread) {
+Eigen::Ref<Eigen::MatrixXd> TwoElecThreeCenterCalculator::calculateIntegrals(unsigned P, unsigned iThread) {
   // Get basis information.
   auto& basisA = _basisControllerA->getBasis();
   auto& basisB = _basisControllerB->getBasis();
@@ -132,6 +133,43 @@ void TwoElecThreeCenterCalculator::setupShellPairs() {
   else {
     _shellPairData = _basisControllerA->getShellPairData();
   }
+}
+
+void TwoElecThreeCenterCalculator::cacheIntegrals() {
+  auto mem = MemoryManager::getInstance();
+  double freeMem = 0.5 * mem->getAvailableSystemMemory();
+  auto& auxbasis = _auxbasis->getBasis();
+
+  double memx = sizeof(double) * _nb_A * _nb_B;
+  size_t nxs = std::round(std::min((double)_auxbasis->getNBasisFunctions(), freeMem / memx));
+  printf("  Caching %5i aux. basis functions (%3.0f%%, %5.2f GB).\n\n", (int)nxs,
+         100 * (double)nxs / (double)_auxbasis->getNBasisFunctions(), 1e-9 * memx * nxs);
+
+  // Determine number of shells stored.
+  size_t stop = 0;
+  for (size_t iShell = 0; iShell < _auxbasis->getReducedNBasisFunctions(); ++iShell) {
+    if (iShell + 1 < _offsets.size()) {
+      _offsets[iShell + 1] = _offsets[iShell] + auxbasis[iShell]->getNContracted();
+    }
+    if (stop + auxbasis[iShell]->getNContracted() > nxs) {
+      break;
+    }
+    stop += auxbasis[iShell]->getNContracted();
+    _nss += 1;
+  }
+
+  _cache.resize(_nb_A * _nb_B, nxs);
+
+#pragma omp parallel for schedule(dynamic)
+  for (size_t iShell = 0; iShell < _nss; ++iShell) {
+    auto integrals = this->calculateIntegrals(iShell, omp_get_thread_num());
+    _cache.middleCols(_offsets[iShell], integrals.cols()) = integrals;
+  }
+}
+
+void TwoElecThreeCenterCalculator::clearCache() {
+  _nss = 0;
+  _cache.resize(0, 0);
 }
 
 } /* namespace Serenity */

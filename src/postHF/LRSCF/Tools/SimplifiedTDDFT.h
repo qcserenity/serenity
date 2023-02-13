@@ -42,10 +42,7 @@ class SimplifiedTDDFT {
  public:
   /**
    * @brief Constructor
-   *
    * @param lrscf All active LRSCFController of this response problem.
-   *
-   * Note: currently only works for one controller. Coupled is planned for the future.
    *
    * References:
    *  - simplified TDA: J. Chem. Phys. 138, 244104 (2013)
@@ -69,38 +66,57 @@ class SimplifiedTDDFT {
    * This is not a constant reference since the SimplifiedTDDFTSigmavector needs to use it in a way
    * which prevents that. See also other intermediates.
    *
-   * @return A reference to the intermediate used to calculate (ij|ab) exchange integrals.
+   * @return A reference to the intermediate used to calculate (ij|ab) exchange integrals (transformed with atom metric
+   * matrix).
    */
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getJij();
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& getJij();
 
   /**
    * @brief Returns the intermediate used to calculate (ia|jb) Coulomb integrals.
    *
-   * @return A reference to the intermediate used to calculate (ia|jb) Coulomb integrals.
+   * @return A reference to the intermediate used to calculate (ia|jb) Coulomb integrals (transformed with atom metric
+   * matrix).
    */
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getJai();
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& getJai();
 
   /**
    * @brief Returns the "right" intermediate used to calculate (ij|ab) exchange integrals.
    *
    * @return A reference to the intermediate used to calculate (ij|ab) exchange integrals.
    */
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getJab();
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>& getJab();
+
+  /**
+   * @brief Get the Gamma K object.
+   *
+   * @return Gamma K object for (ia|jb) integrals.
+   */
+  std::vector<std::vector<Eigen::MatrixXd>>& getGammaK();
+
+  /**
+   * @brief Get the Gamma J object.
+   *
+   * @return Gamma K object for (ab|ji) integrals.
+   */
+  std::vector<std::vector<Eigen::MatrixXd>>& getGammaJ();
 
   /**
    * @brief Returns the HF exchange ratio for this simplified TDDFT problem.
    * @return The HF exchange ratio for this simplified TDDFT problem.
    */
-  double getHFExchangeRatio();
+  std::vector<double> getHFExchangeRatio();
 
  private:
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> _lrscf;
 
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _Jij;
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _Jai;
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _Jab;
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jij;
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jai;
+  std::vector<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> _Jab;
 
-  double _hfExchangeRatio = 1.0;
+  std::vector<std::vector<Eigen::MatrixXd>> _gammaK;
+  std::vector<std::vector<Eigen::MatrixXd>> _gammaJ;
+
+  std::vector<double> _hfExchangeRatio;
 }; /* class SimplifiedTDDFT */
 } /* namespace Serenity */
 

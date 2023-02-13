@@ -36,10 +36,19 @@ class SystemController;
 using namespace Serenity::Reflection;
 
 struct MP2TaskSettings {
-  MP2TaskSettings() : mp2Type(Options::MP2_TYPES::RI), maxResidual(1e-5), maxCycles(100), writePairEnergies(false) {
+  MP2TaskSettings()
+    : mp2Type(Options::MP2_TYPES::RI),
+      sss(1.0),
+      oss(1.0),
+      ltconv(0.0),
+      maxResidual(1e-5),
+      maxCycles(100),
+      writePairEnergies(false),
+      unrelaxedDensity(false) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::NORMAL;
   };
-  REFLECTABLE((Options::MP2_TYPES)mp2Type, (double)maxResidual, (unsigned int)maxCycles, (bool)writePairEnergies)
+  REFLECTABLE((Options::MP2_TYPES)mp2Type, (double)sss, (double)oss, (double)ltconv, (double)maxResidual,
+              (unsigned int)maxCycles, (bool)writePairEnergies, (bool)unrelaxedDensity)
  public:
   LocalCorrelationSettings lcSettings;
 };
@@ -85,6 +94,9 @@ class MP2Task : public Task {
   /**
    * @brief The settings/keywords for the MP2Task: \n
    *        - mp2Type [RI]       : MP2-Type.
+   *        - sss :              : Same-spin scaling.
+   *        - oss :              : Opposite-spin scaling.
+   *        - ltconv :              : Convergence criterion for num. int with Laplace transformation.
    *        - maxResidual [1e-5] : (Local only) Maximum tolerated residual.
    *        - maxCycles [100]    : (Local only) Maximum number of amplitude optimization cycles.
    *        -lcSettings Local correlation settings. @see LocalCorrelationController.h

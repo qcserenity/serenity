@@ -112,7 +112,7 @@ TEST_F(OrbitalPairTest, writeAndRead_minimum) {
   EXPECT_EQ((unsigned int)_testPair->coupledPairs[0]->jk_ca.size(), 0);
   // Load the integrals from disk and compare them to the initial integrals.
   HDF5::Filepath name(fileName);
-  HDF5::H5File readFile(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File readFile(name.c_str(), H5F_ACC_RDONLY);
   _testPair->loadIntegralsFromFile(readFile);
   readFile.close();
   Eigen::MatrixXd diff = (*_testPair->ac_bd)(0, 0) - ac_bd_00;

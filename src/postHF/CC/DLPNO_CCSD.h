@@ -75,11 +75,8 @@ class DLPNO_CCSD {
    * @param maxResidual The maximum entry left in the residual matrices/vectors in order the assume
    *                    the amplitude optimization to be converged.
    * @param maxCycles The maximum number of iterations before the the amplitude optimization is cancelled.
-   * @param keepMO3CenterIntegrals Flag for keeping the MO3 center integrals in the controller.
-   * @param keepPairIntegrals Flag for not deleting the integrals stored for each pair.
    */
-  DLPNO_CCSD(std::shared_ptr<LocalCorrelationController> localCorrelationController, double maxResidual,
-             unsigned int maxCycles, bool keepMO3CenterIntegrals = false, bool keepPairIntegrals = false);
+  DLPNO_CCSD(std::shared_ptr<LocalCorrelationController> localCorrelationController, double maxResidual, unsigned int maxCycles);
   /**
    * @brief Default destructor.
    */
@@ -97,6 +94,26 @@ class DLPNO_CCSD {
    */
   bool testRun = false;
 
+  struct DLPNO_CCSDSettings {
+    /**
+     * @brief Flag for skipping the crude SC-MP2 prescreening step in case
+     *        they were set previously.
+     */
+    bool skipCrudePrescreening = false;
+    /**
+     * @brief Flag for keeping the MO3Center integrals.
+     */
+    bool keepMO3CenterIntegrals = false;
+    /**
+     * @brief Flag for keeping the integrals stored for each pair.
+     */
+    bool keepPairIntegrals = false;
+  };
+  /**
+   * @brief DLPNO-CCSD specific settings.
+   */
+  DLPNO_CCSDSettings dlpnoCCSDSettings;
+
  private:
   /**
    * @brief The local-correlation controller. (The main hub for all local methods)
@@ -110,15 +127,6 @@ class DLPNO_CCSD {
    * @brief Maximum number of cycles before the amplitude optimization cancels.
    */
   const unsigned int _maxCycles;
-  /**
-   * @brief Flag for keeping the MO3Center integrals.
-   */
-  const bool _keepMO3CenterIntegrals;
-  /**
-   * @brief Flag for keeping the integrals stored for each pair.
-   */
-  const bool _keepPairIntegrals;
-
   /**
    * @brief Sigma vector in AO basis.
    */

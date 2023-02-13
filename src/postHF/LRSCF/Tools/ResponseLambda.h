@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Tools/SigmaCalculator.h"
+#include "settings/GridOptions.h"
 #include "tasks/LRSCFTask.h"
 
 namespace Serenity {
@@ -106,6 +107,19 @@ class ResponseLambda {
   XWFSigmaCalculator getLeftXWFSigma();
 
   /**
+   * @brief Returns whether a double hybrid is used.
+   * @return True if a double hybrid is used.
+   */
+  bool usesDoubleHybrid();
+
+  /**
+   * @brief Returns MP2 correlation ratio of the active systems DH functional. Only supports isolated and FDEu
+   * calculations.
+   * @return The MP2 correlation ratio of the active systems DH functional.
+   */
+  double getDHRatio();
+
+  /**
    * @brief Returns whether the kernel is used or not.
    * @return True if the kernel is used.
    */
@@ -129,6 +143,17 @@ class ResponseLambda {
    */
   bool usesEO();
 
+  /**
+   * @brief Setup kernel with given grid purpose.
+   * @param gridFineness The grid fineness.
+   */
+  void setupKernel(Options::GRID_PURPOSES gridFineness = Options::GRID_PURPOSES::DEFAULT);
+
+  /**
+   * @brief Setup kernel with given grid purpose.
+   */
+  SigmaCalculator setEigensolverMode(bool fockDiagonal);
+
  private:
   ///@brief The active systems.
   std::vector<std::shared_ptr<SystemController>> _act;
@@ -144,6 +169,12 @@ class ResponseLambda {
 
   ///@brief The LRSCFTask settings.
   LRSCFTaskSettings& _settings;
+
+  ///@brief Using double-hybrid functional?
+  bool _usesDoubleHybrid = false;
+
+  ///@brief Using double-hybrid functional?
+  double _doubleHybridCorrRatio = 0.0;
 
   ///@brief Using kernel?
   bool _usesKernel = false;

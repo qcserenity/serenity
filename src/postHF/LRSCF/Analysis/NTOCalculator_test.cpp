@@ -108,6 +108,8 @@ TEST_F(NTOCalculatorTest, SubCoupled_NTOR) {
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfA.settings.grid.accuracy = 7;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
   lrscfA.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.method = Options::LR_METHOD::TDA;
@@ -115,6 +117,8 @@ TEST_F(NTOCalculatorTest, SubCoupled_NTOR) {
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfB.settings.grid.accuracy = 7;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
   lrscfB.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
   auto lrscfContrAct = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(act, lrscfAB.settings);
@@ -124,6 +128,8 @@ TEST_F(NTOCalculatorTest, SubCoupled_NTOR) {
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfAB.settings.grid.accuracy = 7;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.run();
   auto excitationsActCoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::COUPLED);
@@ -182,6 +188,8 @@ TEST_F(NTOCalculatorTest, Super_NTOU) {
   LRSCFTask<UNRESTRICTED> lrscf({system});
   auto lrscfContr = std::make_shared<LRSCFController<UNRESTRICTED>>(system, lrscf.settings);
   lrscf.settings.nEigen = 3;
+  lrscf.settings.grid.accuracy = 5;
+  lrscf.settings.grid.smallGridAccuracy = 5;
   lrscf.run();
   auto excitations = lrscfContr->getExcitationEnergies(Options::LRSCF_TYPE::ISOLATED);
   // NTO calculator

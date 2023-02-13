@@ -157,7 +157,7 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_LOCAL) {
  *        with different basis sets in environment and active system.
  *        Note: This tests print-level adjustments for the task, too.
  */
-TEST_F(TDEmbeddingTaskTest, restricteCCSDinDoubleHybrid_LOCAL) {
+TEST_F(TDEmbeddingTaskTest, restrictedCCSDinDoubleHybrid_LOCAL) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
@@ -181,7 +181,7 @@ TEST_F(TDEmbeddingTaskTest, restricteCCSDinDoubleHybrid_LOCAL) {
   // The difference between RI and no-fitting is around 1.8e-5.
   double naddXCEnergy =
       act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_NAD_XC);
-  // EXPECT_NEAR(-1.7501306206,act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),1e-7);
+  EXPECT_NEAR(-1.7095757608, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
 
   CoupledClusterTask ccTask(act, {env});
   ccTask.settings.level = Options::CC_LEVEL::DLPNO_CCSD;
@@ -410,6 +410,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_levelshift_doubleHybrid) {
   task.settings.lcSettings.mullikenThreshold = 1e-5;
   task.settings.lcSettings.orbitalToShellThreshold = 1e-5;
   task.settings.lcSettings.doiPAOThreshold = 1e-5;
+  task.settings.lcSettings.useProjectedOccupiedOrbitals = true;
   task.settings.splitValenceAndCore = true;
   task.settings.mp2Type = Options::MP2_TYPES::LOCAL;
 
@@ -785,6 +786,58 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybridinDoubleHybrid_Huzinaga) {
               act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 5e-5);
 
   std::string name = "TestSystem_WaterMonOne_Def2_SVP_B2PLYP+TestSystem_WaterMonTwo_Def2_SVP";
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act->getSystemPath() + "TMP_Active/", "TMP_Active");
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests TDEmbeddingTask.h/.cpp: Test restricted energy for gga embedding with dispersion
+ *        in active and environment system.
+ */
+TEST_F(TDEmbeddingTaskTest, restrictedGGADispersion) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
+  Settings settings = act->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.label = "DEF2-SVP";
+  settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.grid.smallGridAccuracy = 4;
+  settings.grid.accuracy = 4;
+  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, settings);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP);
+  settings = env->getSettings();
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.label = "DEF2-SVP";
+  settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.grid.smallGridAccuracy = 4;
+  settings.grid.accuracy = 4;
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, settings);
+  auto task = TDEmbeddingTask<RESTRICTED>(act, env);
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.settings.embedding.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+  task.settings.useFermiLevel = false;
+  task.run();
+
+  Settings supersystemSettings = env->getSettings();
+  supersystemSettings.name = act->getSystemName() + "+" + env->getSystemName();
+  supersystemSettings.charge = 0;
+  supersystemSettings.spin = 0;
+  auto supersystem = std::make_shared<SystemController>(std::make_shared<Geometry>(), supersystemSettings);
+  SystemAdditionTask<RESTRICTED> additionTask(supersystem, {act, env});
+  additionTask.settings.addOccupiedOrbitals = true;
+  additionTask.run();
+
+  ScfTask<RESTRICTED> supersystemSCF(supersystem);
+  supersystemSCF.run();
+
+  EXPECT_NEAR(supersystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(),
+              act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-8);
+
+  std::string name = "TestSystem_WaterMonOne_Def2_SVP+TestSystem_WaterMonTwo_Def2_SVP";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act->getSystemPath() + "TMP_Active/", "TMP_Active");
   SystemController__TEST_SUPPLY::cleanUp();

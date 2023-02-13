@@ -20,9 +20,10 @@
 
 /* Include Class Header*/
 #include "tasks/BasisSetTruncationTask.h"
-#include "basis/Basis.h" //Sehll-wise truncation.
+#include "basis/Basis.h" //Shell-wise truncation.
 #include "basis/CustomBasisController.h"
 #include "data/ElectronicStructure.h"
+#include "data/OrbitalController.h"
 #include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h" //Overlap integrals
 #include "misc/BasisSetTruncationAlgorithms.h"
@@ -63,6 +64,7 @@ void BasisSetTruncationTask<SCFMode>::run() {
   // active density matrix
   DensityMatrix<SCFMode> newActiveDensityMatrix(oldBasis);
   auto oldActiveDensityMatrix = _system->getElectronicStructure<SCFMode>()->getDensityMatrix();
+  const auto nCoreOrbitals = _system->template getActiveOrbitalController<SCFMode>()->getNCoreOrbitals();
   // Explcitly copy the 'old' density matrix.
   for_spin(newActiveDensityMatrix, oldActiveDensityMatrix) {
     newActiveDensityMatrix_spin.setZero();
@@ -82,7 +84,7 @@ void BasisSetTruncationTask<SCFMode>::run() {
 
   // set new electronic structure
   auto newES = std::make_shared<ElectronicStructure<SCFMode>>(_system->getBasisController(), _system->getGeometry(),
-                                                              _system->getNOccupiedOrbitals<SCFMode>());
+                                                              _system->getNOccupiedOrbitals<SCFMode>(), nCoreOrbitals);
   newES->getDensityMatrixController()->setDensityMatrix(projectedDens);
   _system->setElectronicStructure<SCFMode>(newES);
 }

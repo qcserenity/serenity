@@ -44,7 +44,7 @@ The general rule is that all changes merged into the `master` are free to be use
 They are considered ready for release, and ready for production tests.
 The usage of algorithms under development in un-merged branches for publication should be off 
 limits unless agreed upon by the developing person(s).  
-Infringement of this last point can and will result in a permanent removal from the projects development team.  
+Infringement of this last point can and will result in a permanent removal from the project's development team.  
 Additionally the citation of key publications in reference with Serenity is mandatory.
 
 ## Issue Tracker and Feature Requests

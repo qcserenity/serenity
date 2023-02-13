@@ -492,6 +492,9 @@ Eigen::MatrixXd NAddFuncPotential<SCFMode>::getGeomGradients() {
   return gradientContr;
 }
 
+template<Options::SCF_MODES SCFMode>
+NAddFuncPotential<SCFMode>::~NAddFuncPotential() = default;
+
 template class NAddFuncPotential<Options::SCF_MODES::RESTRICTED>;
 template class NAddFuncPotential<Options::SCF_MODES::UNRESTRICTED>;
 
@@ -510,8 +513,6 @@ double NAddEnergyHelper<SCFMode>::getEnergy() {
   }
   return _energy;
 }
-template<Options::SCF_MODES SCFMode>
-NAddFuncPotential<SCFMode>::~NAddFuncPotential() = default;
 
 template class NAddEnergyHelper<Options::SCF_MODES::RESTRICTED>;
 template class NAddEnergyHelper<Options::SCF_MODES::UNRESTRICTED>;

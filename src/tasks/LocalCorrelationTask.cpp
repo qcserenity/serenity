@@ -50,6 +50,7 @@ void LocalCorrelationTask::run() {
     case Options::PNO_METHOD::NONE:
       OutputControl::mOut << "No correlation method selected exiting." << std::endl;
       break;
+    case Options::PNO_METHOD::SC_MP2:
     case Options::PNO_METHOD::DLPNO_MP2: {
       MP2Task<RESTRICTED> mp2Task(_system, _environmentSystems);
       mp2Task.settings.lcSettings = this->settings.lcSettings;

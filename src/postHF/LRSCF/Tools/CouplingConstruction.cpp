@@ -57,9 +57,9 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
 
   if (settings.method == Options::LR_METHOD::TDA) {
     printf("  Using subsystem TDA in coupling-matrix construction!\n\n");
-    Eigen::MatrixXd guessVectors = (*eigenvectors)[0];
-    Eigen::MatrixXd partialSigmaVectors = (*sigmaCalculator(*eigenvectors))[0];
-    Eigen::MatrixXd responseMatrix = guessVectors.transpose() * partialSigmaVectors;
+    std::vector<Eigen::MatrixXd> guessVectors = {(*eigenvectors)[0]};
+    Eigen::MatrixXd partialSigmaVectors = (*sigmaCalculator(guessVectors))[0];
+    Eigen::MatrixXd responseMatrix = guessVectors[0].transpose() * partialSigmaVectors;
 
     // Fill diagonal blocks with old excitation energies.
     unsigned iStart = 0;
@@ -79,7 +79,7 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
       for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
         printf(" ");
         for (unsigned jEigen = 0; jEigen < nEigen; ++jEigen) {
-          printf("%10.4f", responseMatrix(iEigen, jEigen) * HARTREE_TO_EV);
+          printf("%12.3e", responseMatrix(iEigen, jEigen) * HARTREE_TO_EV);
         }
         printf("\n");
       }
@@ -113,7 +113,7 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
     // Subspace solution.
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> subspaceSolver(responseMatrix);
     const Eigen::MatrixXd& eigv = subspaceSolver.eigenvectors();
-    (*eigenvectors)[0] = guessVectors * eigv;
+    (*eigenvectors)[0] = guessVectors[0] * eigv;
     eigenvalues = subspaceSolver.eigenvalues();
 
     // Print subsystem contributions.

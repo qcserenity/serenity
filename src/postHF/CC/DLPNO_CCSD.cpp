@@ -50,12 +50,10 @@
 namespace Serenity {
 
 DLPNO_CCSD::DLPNO_CCSD(std::shared_ptr<LocalCorrelationController> localCorrelationController, double maxResidual,
-                       unsigned int maxCycles, bool keepMO3CenterIntegrals, bool keepPairIntegrals)
+                       unsigned int maxCycles)
   : _localCorrelationController(localCorrelationController),
     _maxResidual(maxResidual),
     _maxCycles(maxCycles),
-    _keepMO3CenterIntegrals(keepMO3CenterIntegrals),
-    _keepPairIntegrals(keepPairIntegrals),
     _linearScalingSigmaVector(_localCorrelationController->getSettings().linearScalingSigmaVector) {
   if (!_linearScalingSigmaVector) {
     _g_ao_ao = std::make_shared<MatrixInBasis<RESTRICTED>>(
@@ -87,7 +85,7 @@ void DLPNO_CCSD::deleteIntegralFiles() {
 }
 
 void DLPNO_CCSD::deleteIntegrals() {
-  if (!_keepPairIntegrals) {
+  if (!dlpnoCCSDSettings.keepPairIntegrals) {
     OutputControl::dOut << "Deleting pair integrals" << std::endl;
     auto orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
     for (auto& pair : orbitalPairs) {
@@ -426,7 +424,7 @@ inline Eigen::VectorXd DLPNO_CCSD::calculateSinglesResidual(std::shared_ptr<Sing
   // G(t_1)_ia
   residual += calculate_G_t1_ia(single);
 
-  for (const auto ijPair_ptr : single->orbitalPairs) {
+  for (const auto& ijPair_ptr : single->orbitalPairs) {
     const auto ijPair = ijPair_ptr.lock();
     bool i_is_i = ijPair->i == single->i;
     const Eigen::MatrixXd& s_ij_j = (i_is_i) ? ijPair->getS_ij_j() : ijPair->getS_ij_i();
@@ -529,7 +527,7 @@ inline Eigen::MatrixXd DLPNO_CCSD::calculateDoublesResidual(std::shared_ptr<Orbi
   } // for kSet
   // sum_kl tilde(ik|jl)*tau^kl_ab
   calculate_tilde_ikjl(pair);
-  for (const auto klPairSet : pair->klPairSets) {
+  for (const auto& klPairSet : pair->klPairSets) {
     const auto& klPair = klPairSet->getKLPair();
     const Eigen::MatrixXd& s_ij_kl = klPairSet->getS_ij_kl();
     const Eigen::MatrixXd& s_ij_k = klPairSet->getS_ij_k();
@@ -594,12 +592,26 @@ inline void DLPNO_CCSD::prepareOrbitalPairs() {
 
   auto qcPAOConstructor = _localCorrelationController->produceQCPAOConstructor();
 
-  OutputControl::nOut << " Crude SC-MP2 guess" << std::endl;
-  Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
-      activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
-      _localCorrelationController->getApproximateMO3CenterIntegralController(), orbitalPairs, qcPAOConstructor);
+  // Ensure that at least some pair energies were set before to avoid removing all orbital pairs
+  // because they have a pair energy of 0.0 .
+  bool pairEnergiesWereSetBefore = false;
+  if (dlpnoCCSDSettings.skipCrudePrescreening) {
+    for (const auto& pair : orbitalPairs) {
+      if (pair->scMP2PairEnergy != 0.0 || pair->dlpnoCCSDPairEnergy != 0.0) {
+        pairEnergiesWereSetBefore = true;
+        break;
+      }
+    }
+  }
+
+  if (not dlpnoCCSDSettings.skipCrudePrescreening || not pairEnergiesWereSetBefore) {
+    OutputControl::nOut << " Crude SC-MP2 guess" << std::endl;
+    Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
+        activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
+        _localCorrelationController->getApproximateMO3CenterIntegralController(), orbitalPairs, qcPAOConstructor);
+    _localCorrelationController->removeApproximateMO3CenterIntegralController();
+  }
   _localCorrelationController->selectDistantOrbitalPairs();
-  _localCorrelationController->removeApproximateMO3CenterIntegralController();
 
   std::shared_ptr<PNOConstructor> pnoConstructor = _localCorrelationController->producePNOConstructor();
   orbitalPairs = _localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
@@ -780,7 +792,7 @@ inline void DLPNO_CCSD::optimizeAmplitudes() {
         const unsigned int threadId = 0;
 #endif
         std::shared_ptr<OrbitalPair> pair = orbitalPairSet[iPair];
-        if (pair->type == OrbitalPairTypes::DISTANT || pair->type == OrbitalPairTypes::VERY_DISTANT)
+        if (pair->type != OrbitalPairTypes::CLOSE)
           continue;
         pair->residual = calculateDoublesResidual(pair);
         double maxCoeff = pair->residual.array().abs().maxCoeff();
@@ -903,7 +915,7 @@ inline void DLPNO_CCSD::calculateCCSDIntegrals() {
       _localCorrelationController->getSettings().dumpIntegrals || closePairSets.size() > 1,
       _localCorrelationController->getPairIntegralFileName(), _linearScalingSigmaVector,
       _localCorrelationController->getSettings().lowMemory);
-  if (!_keepMO3CenterIntegrals)
+  if (!dlpnoCCSDSettings.keepMO3CenterIntegrals)
     _localCorrelationController->removeMO3CenterIntegralController();
 }
 
@@ -977,7 +989,7 @@ std::shared_ptr<HDF5::H5File> DLPNO_CCSD::tryLoadingIntegrals() {
       if (!file) {
         std::string fileName = _localCorrelationController->getPairIntegralFileName();
         HDF5::Filepath name(fileName);
-        file = std::make_shared<HDF5::H5File>(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        file = std::make_shared<HDF5::H5File>(name.c_str(), H5F_ACC_RDONLY);
       } // if !file
       if (memoryUsed + orbitalPairSet->memoryDemand(_linearScalingSigmaVector) < totalMemoryAvailable) {
         orbitalPairSet->fromHDF5(*file);

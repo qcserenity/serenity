@@ -45,12 +45,13 @@ struct ScfTaskSettings {
       maxCycles(100),
       fractionalDegeneracy(false),
       skipSCF(false),
-      allowNotConverged(false) {
+      allowNotConverged(false),
+      calculateMP2Energy(true) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
     lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((bool)restart, (Options::MP2_TYPES)mp2Type, (double)maxResidual, (int)maxCycles,
-              (bool)fractionalDegeneracy, (bool)skipSCF, (bool)allowNotConverged)
+              (bool)fractionalDegeneracy, (bool)skipSCF, (bool)allowNotConverged, (bool)calculateMP2Energy)
  public:
   LocalCorrelationSettings lcSettings;
 };

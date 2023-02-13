@@ -40,10 +40,16 @@ struct LocalizationTaskSettings {
       splitValenceAndCore(false),
       useEnergyCutOff(true),
       energyCutOff(-5.0),
-      nCoreOrbitals(std::numeric_limits<unsigned int>::infinity()){};
+      nCoreOrbitals(std::numeric_limits<unsigned int>::infinity()),
+      localizeVirtuals(false),
+      splitVirtuals(true),
+      virtualEnergyCutOff(+1.0),
+      nRydbergOrbitals(std::numeric_limits<unsigned int>::infinity()),
+      replaceVirtuals(false){};
   REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (unsigned int)maxSweeps, (unsigned int)alignExponent,
               (bool)useKineticAlign, (bool)splitValenceAndCore, (bool)useEnergyCutOff, (double)energyCutOff,
-              (unsigned int)nCoreOrbitals)
+              (unsigned int)nCoreOrbitals, (bool)localizeVirtuals, (bool)splitVirtuals, (double)virtualEnergyCutOff,
+              (unsigned int)nRydbergOrbitals, (bool)replaceVirtuals)
  public:
   /**
    * @brief Parse the settings from the input an instance of this class.
@@ -98,6 +104,16 @@ class LocalizationTask : public Task {
    *        - energyCutOff : Orbital eigenvalue threshold to select core orbitals.
    *        - nCoreOrbitals : Use a predefined number of core orbitals.
    *                          Needs useEnergyCutOff = false and splitValenceAndCore = true.
+   *        - localizeVirtuals : If true, the virtual orbitals are localized as well. Default false.
+   *                             This is only supported for the IBO and ALIGN schemes.
+   *        - splitVirtuals : If true, the valence virtuals and diffuse virtuals are localized separately.
+   *                          By default true.
+   *        - virtualEnergyCutOff : Orbital eigenvalue threshold to select diffuse virtual orbitals. By default 1.0.
+   *        - nRydbergOrbitals : Use a predefined number of diffuse virtual orbitals. Not used by default.
+   *        - replaceVirtuals : Reconstruct the virtual orbitals before localization by projecting all occupied orbitals
+   *                            and cleanly separating valence virtuals from diffuse virtuals. This should be used if
+   * the IBO or ALIGN approaches are chosen and the same orbital set was not already reconstructed in this manner
+   * before.
    */
   LocalizationTaskSettings settings;
 
@@ -111,6 +127,13 @@ class LocalizationTask : public Task {
   template<Options::SCF_MODES SCFMode>
   std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
   getValenceOrbitalIndices();
+  /**
+   * @brief Split virtual valence and rydberg orbitals.
+   * @return The indices of the valence and the rydberg orbitals.
+   */
+  template<Options::SCF_MODES SCFMode>
+  std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
+  getVirtualValenceOrbitalIndices();
   /**
    * @brief Getter for spin polarized output praefix string.
    * @return The strings.

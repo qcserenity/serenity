@@ -61,6 +61,8 @@ DomainOverlapMatrixController::DomainOverlapMatrixController(std::shared_ptr<PAO
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int iPair = 0; iPair < _closeOrbitalPairs.size(); ++iPair) {
     std::shared_ptr<OrbitalPair> pair = _closeOrbitalPairs[iPair];
+    if (pair->toPAODomain.cols() == 0)
+      continue;
     // The calculation of this intermediate will strictly speaking break the linear scaling of the code
     // However, this will only become a problem for huge systems (e.g. DLPNO-MP2 with C200H402)
     // A possible solution would be to restrict the columns to the extended PAO domain of the pair.

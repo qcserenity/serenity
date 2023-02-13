@@ -44,11 +44,6 @@ FaTConvergenceAccelerator<SCFMode>::FaTConvergenceAccelerator(unsigned int maxSt
   long long availableMemory =
       (memoManger->getAvailableSystemMemory() > 2e+9) ? memoManger->getAvailableSystemMemory() - 2e+9 : 0;
   double cacheLimit = (double)availableMemory / ((double)maxStore + 3.0);
-  unsigned int vectorLength = 0;
-  for (unsigned int i = 0; i < _activeSystems.size(); ++i) {
-    unsigned int nBasisFunctionsI = _activeSystems[i]->getBasisController()->getNBasisFunctions();
-    vectorLength += nBasisFunctionsI * nBasisFunctionsI;
-  }
   _densityVector = std::make_shared<VectorOnDiskStorageController>(cacheLimit, "Density.h5");
   _fpsMinusSPF = std::make_shared<VectorOnDiskStorageController>(cacheLimit, "Error.h5");
   _diis = std::make_shared<DIIS>(maxStore, true);

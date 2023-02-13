@@ -52,9 +52,10 @@ class OrbitalAligner : public Localization<SCFMode> {
    * @param templateSystem    The system controller for the template orbitals.
    * @param exponent          The exponent used in the alignment. Has to be even.
    * @param kineticAlign      Use the kinetic energy for the orbital alignment.
+   * @param replaceVirtuals   If true, the virtual valence orbitals are reconstructed to fit the IAO basis.
    */
   OrbitalAligner(std::shared_ptr<SystemController> systemController, std::shared_ptr<SystemController> templateSystem,
-                 unsigned int exponent, bool kineticAlign);
+                 unsigned int exponent, bool kineticAlign, bool replaceVirtuals);
   virtual ~OrbitalAligner() = default;
 
   /**
@@ -139,6 +140,11 @@ class OrbitalAligner : public Localization<SCFMode> {
    * @return The orbital kinetic energies of the template system.
    */
   SpinPolarizedData<SCFMode, Eigen::VectorXd> getReferenceKineticEnergies();
+  /**
+   * If true, the virtual orbitals are localized. False by default.
+   */
+  bool _localizeVirtuals = false;
+  bool _replaceVirtuals = false;
 };
 
 } /* namespace Serenity */

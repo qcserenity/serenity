@@ -22,9 +22,8 @@
 #define TASKS_ACTIVESPACESELECTIONTASK_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/SPMatrix.h"
-#include "settings/LocalizationOptions.h"
 #include "settings/Reflection.h"
+#include "tasks/LocalizationTask.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>
@@ -43,28 +42,20 @@ struct ActiveSpaceSelectionTaskSettings {
   ActiveSpaceSelectionTaskSettings()
     : similarityLocThreshold(5e-2),
       similarityKinEnergyThreshold(5e-2),
-      locType(Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO),
       localizationThreshold(0.8),
       populationAlgorithm(Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell),
       load(false),
-      checkDegeneracies(false),
-      degeneracyFactor(10.0),
       alignPiOrbitals(false),
-      alignCycles(10),
       usePiBias(false),
       biasThreshold(0.01),
       biasAverage(12.0),
-      alignExponent(2),
-      kineticAlign(false),
-      skipLocalization(false),
-      splitValenceAndCore(false) {
+      skipLocalization(false) {
   }
-  REFLECTABLE((double)similarityLocThreshold, (double)similarityKinEnergyThreshold,
-              (Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (double)localizationThreshold,
-              (Options::POPULATION_ANALYSIS_ALGORITHMS)populationAlgorithm, (bool)load, (bool)checkDegeneracies,
-              (double)degeneracyFactor, (bool)alignPiOrbitals, (unsigned int)alignCycles, (bool)usePiBias,
-              (double)biasThreshold, (double)biasAverage, (unsigned int)alignExponent, (bool)kineticAlign,
-              (bool)skipLocalization, (bool)splitValenceAndCore)
+  REFLECTABLE((double)similarityLocThreshold, (double)similarityKinEnergyThreshold, (double)localizationThreshold,
+              (Options::POPULATION_ANALYSIS_ALGORITHMS)populationAlgorithm, (bool)load, (bool)alignPiOrbitals,
+              (bool)usePiBias, (double)biasThreshold, (double)biasAverage, (bool)skipLocalization)
+ public:
+  LocalizationTaskSettings loc;
 };
 
 /**
@@ -98,6 +89,22 @@ class ActiveSpaceSelectionTask : public Task {
    */
   virtual ~ActiveSpaceSelectionTask() = default;
   /**
+   * @brief Parse the settings to the task settings.
+   * @param c The task settings.
+   * @param v The visitor which contains the settings strings.
+   * @param blockname A potential block name.
+   */
+  void visit(ActiveSpaceSelectionTaskSettings& c, set_visitor v, std::string blockname) {
+    if (!blockname.compare("")) {
+      visit_each(c, v);
+      return;
+    }
+    if (c.loc.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the keyword is unknown.
+    throw SerenityError((std::string) "Unknown block in ActiveSpaceSelectionTaskSettings" + blockname);
+  }
+  /**
    * @brief Execute the task.
    */
   void run();
@@ -105,23 +112,15 @@ class ActiveSpaceSelectionTask : public Task {
    * @brief Settings.
    *  similarityLocThreshold          Threshold for the difference in orbital localization between occupied orbitals.
    *  similarityKinEnergyThreshold    Threshold for the difference in kinetic energy.
-   *  locType                         Localization type. See Options.h for options.
    *  localizationThreshold           Threshold for the assignment of atoms to the subsystems. This is purely cosmetic
    * for actual sensible embedding calculations.
-   *  populationAlgorithm             The algorithm used for the population
-   * analysis.
+   *  populationAlgorithm             The algorithm used for the population analysis.
    *  load                            Load systems from file.
-   *  checkDegeneracies               Check for orbitals that are very similar
-   * with respect to the comparison criteria.
-   *  degeneracyFactor                Threshold scaling for degeneracy.
    *  alignPiOrbitals                 Pre-align orbitals.
-   *  alignCycles                     Number of align iterations before the procedure cancels if it does not converge.
    *  usePiBias                       Scale comparison threshold based on number of significant shells.
    *  biasThreshold                   Threshold for the determination of an important shell.
    *  biasAverage                     Scaling parameter for usePiBias.
-   *  alignExponent                   Exponent used in orbital alignment. See LocalizationTaskSettings.
    *  skipLocalization                The orbitals of the systems are used with SCF, alignment or localization.
-   *  splitValenceAndCore             Split valence and core orbitals during alignment AND localization.
    */
   ActiveSpaceSelectionTaskSettings settings;
 

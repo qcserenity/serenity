@@ -137,7 +137,7 @@ TEST_F(HoffmannProjectionPotentialTest, restricted_longRangeKinetic) {
   superSystemAtoms.push_back(env->getGeometry()->getAtoms()[0]);
   superSystemAtoms.push_back(env->getGeometry()->getAtoms()[1]);
   auto superGeom = std::make_shared<Geometry>(superSystemAtoms);
-  auto supersystemGrid = GridControllerFactory::produce(superGeom, act->getSettings(), Options::GRID_PURPOSES::DEFAULT);
+  auto supersystemGrid = GridControllerFactory::produce(superGeom, act->getSettings().grid, Options::GRID_PURPOSES::DEFAULT);
 
   HoffmannProjectionPotential<Options::SCF_MODES::RESTRICTED> hoffPotential(act, {env}, settings, nullptr, false,
                                                                             supersystemGrid);

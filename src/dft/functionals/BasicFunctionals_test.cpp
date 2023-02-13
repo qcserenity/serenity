@@ -35,7 +35,7 @@ namespace BasicFunctionals {
 
 #ifdef SERENITY_USE_LIBXC
 TEST(BasicFunctionalsTest, BasicFunctionalsAliases_LibXC) {
-  const unsigned int nBFuncs = 558;
+  const unsigned int nBFuncs = 555;
   for (unsigned int i = 0; i < nBFuncs; i++) {
     auto func = static_cast<BASIC_FUNCTIONALS>(i);
     if (func == BASIC_FUNCTIONALS::NONE || func == BASIC_FUNCTIONALS::XC_SAOP)
@@ -52,7 +52,7 @@ TEST(BasicFunctionalsTest, BasicFunctionalsAliases_LibXC) {
 
 #ifdef SERENITY_USE_XCFUN
 TEST(BasicFunctionalsTest, BasicFunctionalsAliases_XCFun) {
-  const unsigned int nBFuncs = 558;
+  const unsigned int nBFuncs = 555;
   for (unsigned int i = 0; i < nBFuncs; i++) {
     auto func = static_cast<BASIC_FUNCTIONALS>(i);
     if (func == BASIC_FUNCTIONALS::NONE || func == BASIC_FUNCTIONALS::XC_SAOP)
@@ -68,7 +68,7 @@ TEST(BasicFunctionalsTest, BasicFunctionalsAliases_XCFun) {
 #endif /* SERENITY_USE_XCFUN */
 
 TEST(BasicFunctionalsTest, BasicFunctionalsPurposes) {
-  const unsigned int nBFuncs = 558;
+  const unsigned int nBFuncs = 555;
   for (unsigned int i = 0; i < nBFuncs; i++) {
     ASSERT_NO_THROW(getPurpose[i]);
     int p = static_cast<int>(getPurpose[i]);
@@ -78,7 +78,7 @@ TEST(BasicFunctionalsTest, BasicFunctionalsPurposes) {
 }
 
 TEST(BasicFunctionalsTest, BasicFunctionalsClass) {
-  const unsigned int nBFuncs = 558;
+  const unsigned int nBFuncs = 555;
   for (unsigned int i = 0; i < nBFuncs; i++) {
     ASSERT_NO_THROW(getClass[i]);
     int c = static_cast<int>(getClass[i]);

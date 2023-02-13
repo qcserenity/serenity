@@ -177,7 +177,6 @@ void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbita
     lambdaGradient.setZero();
     Eigen::VectorXd lambda(4);
     lambda.setZero();
-    double wSum = 0.0;
     double omegaValue = 0.0;
     double wValue = 0.0;
     double wValueOld = 99999999.9;
@@ -240,7 +239,6 @@ void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbita
           wGradient -= 2.0 * (lambda[3] * transMatrix.col(i));
           wGradient += 80.0 * ((scalar - 1.0) * transMatrix.col(i));
           lambdaGradient[3] = scalar - 1.0;
-          wSum += wValue;
 
           gradients = wGradient;
           value = wValue;

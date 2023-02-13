@@ -55,7 +55,8 @@ void resolve<DOS_SETTINGS>(std::string& value, DOS_SETTINGS& field) {
   static const std::map<std::string, DOS_SETTINGS> m = {
       {"LOOSE", DOS_SETTINGS::LOOSE},           {"NORMAL", DOS_SETTINGS::NORMAL},
       {"TIGHT", DOS_SETTINGS::TIGHT},           {"VERYTIGHT", DOS_SETTINGS::VERY_TIGHT},
-      {"VERY_TIGHT", DOS_SETTINGS::VERY_TIGHT}, {"EXTREME", DOS_SETTINGS::EXTREME}};
+      {"VERY_TIGHT", DOS_SETTINGS::VERY_TIGHT}, {"EXTREME", DOS_SETTINGS::EXTREME},
+      {"SPREAD", DOS_SETTINGS::SPREAD}};
   check(m, value, field);
 }
 } /* namespace Options */

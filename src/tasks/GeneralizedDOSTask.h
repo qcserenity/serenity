@@ -27,6 +27,8 @@
 #include "settings/LocalizationOptions.h" //POPULATION_ANALYSIS_ALGORITHMS
 #include "settings/Reflection.h"          //Reflections
 #include "tasks/Task.h"                   //Base class.
+/* Include Std and External Headers */
+#include <Eigen/SparseCore>
 
 namespace Serenity {
 using namespace Serenity::Reflection;
@@ -34,6 +36,7 @@ using namespace Serenity::Reflection;
 class SystemController;
 template<Options::SCF_MODES T>
 class DirectOrbitalSelection;
+class DOSOrbitalGroup;
 
 struct GeneralizedDOSTaskSettings {
   GeneralizedDOSTaskSettings()
@@ -43,19 +46,23 @@ struct GeneralizedDOSTaskSettings {
       localizationThreshold(0.8),
       populationAlgorithm(Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell),
       checkDegeneracies(true),
-      degeneracyFactor(10.0),
+      degeneracyFactor(1.0),
       usePiBias(true),
       biasThreshold(0.01),
       biasAverage(12.0),
       writeScores(false),
       scoreStart(1e-1),
       scoreEnd(1e-4),
-      nTest(1000) {
+      nTest(1000),
+      mapVirtuals(false),
+      writeGroupsToFile(false),
+      bestMatchMapping(false) {
   }
   REFLECTABLE((std::vector<double>)similarityLocThreshold, (std::vector<double>)similarityKinEnergyThreshold,
               (bool)prioFirst, (double)localizationThreshold, (Options::POPULATION_ANALYSIS_ALGORITHMS)populationAlgorithm,
               (bool)checkDegeneracies, (double)degeneracyFactor, (bool)usePiBias, (double)biasThreshold,
-              (double)biasAverage, (bool)writeScores, (double)scoreStart, (double)scoreEnd, (unsigned int)nTest)
+              (double)biasAverage, (bool)writeScores, (double)scoreStart, (double)scoreEnd, (unsigned int)nTest,
+              (bool)mapVirtuals, (bool)writeGroupsToFile, (bool)bestMatchMapping)
  public:
   /**
    * @brief Parse the settings from the input an instance of this class.
@@ -125,8 +132,20 @@ class GeneralizedDOSTask : public Task {
    * @param scoreStart                   The start of the DOS-thresholds for the scan.
    * @param scoreEnd                     The end of the DOS-thresholds for the scan.
    * @param nTest                        The number of thresholds used in the scan.
+   * @param mapVirtuals                  If true, the virtual orbitals are considered in the orbital mapping. By default
+   *                                     false.
+   * @param writeGroupsToFile            If true, a file is created containing the orbital set map between structures.
+   * By default false.
+   * @param bestMatchMapping             If true, the selection thresholds are optimized to provide a qualitative
+   * orbital map, i.e., the thresholds are chosen such that they minimize the number of unmappable orbitals under the
+   * constraint that they are smaller than "scoreStart". By default false.
    */
   GeneralizedDOSTaskSettings settings;
+
+  const SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>>& getOrbitalGroups();
+  const SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>>& getUnmappableOrbitalGroups();
+
+  const std::vector<SpinPolarizedData<SCFMode, Eigen::SparseMatrix<int>>>& getSuperToSubsystemOccSortingMatrices();
 
  private:
   ///@brief The supersystems
@@ -154,10 +173,12 @@ class GeneralizedDOSTask : public Task {
   /**
    * @brief Calculate the orbital kinetic energies.
    * @param supersystems The supersystems.
+   * @param nOrbitals    The number of orbitals to calculate the kinetic energy for.
    * @return The orbital kinetic energies.
    */
   std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXd>>
-  calculateKineticEnergies(std::vector<std::shared_ptr<SystemController>> supersystems);
+  calculateKineticEnergies(std::vector<std::shared_ptr<SystemController>> supersystems,
+                           SpinPolarizedData<SCFMode, unsigned int> nOrbitals);
   /**
    * @brief Calculate the orbital-wise populations.
    * @param supersystems The supersystems.
@@ -195,12 +216,28 @@ class GeneralizedDOSTask : public Task {
    */
   std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXi>>
   getIterativeAssignments(std::vector<double> locs, std::vector<double> kins, DirectOrbitalSelection<SCFMode>& dos);
+  /**
+   * @brief Getter for the number of orbitals for which populations were calculated.
+   * @param populations The populations.
+   * @return The number of orbitals for which populations were calculated.
+   */
+  SpinPolarizedData<SCFMode, unsigned int> getMaxNumberOfOrbitalsFromPopulations(const std::vector<SPMatrix<SCFMode>>& populations);
   /*
    * Numerical scan of the GDOS-function. The result is written to file.
    */
   void writeScoresToFile(DirectOrbitalSelection<SCFMode>& dos);
   void writeFile(SPMatrix<SCFMode> scores);
   void writeMatrix(Eigen::MatrixXd scores, std::string fileName = "");
+
+  void writeGroupsToFile();
+  void writeGroupSetToFile(std::string fileName, std::vector<std::shared_ptr<DOSOrbitalGroup>> groups);
+
+  SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>> _orbitalGroups;
+  SpinPolarizedData<SCFMode, std::vector<std::shared_ptr<DOSOrbitalGroup>>> _unmappableOrbitalGroups;
+
+  std::unique_ptr<std::vector<SpinPolarizedData<SCFMode, Eigen::SparseMatrix<int>>>> _superToSubsystemOccSortingMatrices;
+
+  std::unique_ptr<std::vector<SpinPolarizedData<SCFMode, Eigen::VectorXi>>> _finalAssignments;
 };
 
 } /* namespace Serenity */

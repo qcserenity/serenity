@@ -31,7 +31,7 @@ using namespace Serenity;
 void export_FDETask(py::module& spy) {
   py::class_<FDETaskSettings>(spy, "FDETaskSettings", "@brief Default constructor for Settings all set to their default values.")
       .def_readwrite("embedding", &FDETaskSettings::embedding)
-      .def_readwrite("locType", &FDETaskSettings::locType)
+      .def_readwrite("loc", &FDETaskSettings::loc)
       .def_readwrite("smallSupersystemGrid", &FDETaskSettings::smallSupersystemGrid)
       .def_readwrite("finalGrid", &FDETaskSettings::finalGrid)
       .def_readwrite("calculateMP2Energy", &FDETaskSettings::calculateMP2Energy)

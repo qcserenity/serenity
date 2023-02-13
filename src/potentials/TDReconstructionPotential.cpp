@@ -29,7 +29,6 @@
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/CoulombPotentialOnGridCalculator.h"
 #include "data/grid/DensityMatrixDensityOnGridController.h"
-#include "data/grid/DensityOnGrid.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/matrices/DensityMatrixController.h"
@@ -37,7 +36,6 @@
 #include "dft/functionals/wrappers/XCFun.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/MolecularSurfaceController.h" //Enums
-#include "grid/GridController.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/OneIntControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
@@ -243,7 +241,8 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
        * Get the supersystem potential via potential reconstruction
        */
       std::cout << "Supersystem" << std::endl;
-      auto dummyOrbs = std::make_shared<OrbitalController<SCFMode>>(supSysBasisController);
+      auto dummyOrbs =
+          std::make_shared<OrbitalController<SCFMode>>(supSysBasisController, supSysGeom->getNumberOfCoreElectrons() / 2);
       /*
        * First Wu-Yang
        */

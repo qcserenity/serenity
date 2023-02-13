@@ -28,11 +28,11 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-GW_AnalyticContinuation<SCFMode>::GW_AnalyticContinuation(std::shared_ptr<SystemController> systemController,
+GW_AnalyticContinuation<SCFMode>::GW_AnalyticContinuation(std::shared_ptr<LRSCFController<SCFMode>> lrscf,
                                                           GWTaskSettings settings,
                                                           std::vector<std::shared_ptr<SystemController>> envSystemController,
                                                           std::shared_ptr<RIIntegrals<SCFMode>> riInts, int startOrb, int endOrb)
-  : MBPT<SCFMode>(systemController, settings, envSystemController, riInts, startOrb, endOrb) {
+  : MBPT<SCFMode>(lrscf, settings, envSystemController, riInts, startOrb, endOrb) {
   auto integrator = GaussLegendre(this->_settings.padePoints);
   _nodesPade = Eigen::VectorXcd(integrator.getGridPoints());
   _nodesPade.real().setZero();
@@ -75,8 +75,14 @@ void GW_AnalyticContinuation<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedD
       auto eia = this->calculateEia(qpEnergy, this->_nOcc, this->_nVirt);
       this->setEia(eia);
     }
+    SpinPolarizedData<SCFMode, Eigen::MatrixXd> wnm;
     // fermi level
-    auto wnm = this->calculateWnmComplex();
+    if (this->_settings.ltconv == 0) {
+      wnm = this->calculateWnmComplex();
+    }
+    else {
+      wnm = this->calculateWnmComplexLT();
+    }
     // QP interations
     for (unsigned int iQP = 0; iQP < this->_settings.qpiterations + 1; iQP++) {
       // set old qp energies

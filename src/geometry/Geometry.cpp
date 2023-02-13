@@ -685,4 +685,14 @@ unsigned int Geometry::getNumberOfCoreElectrons() {
   return nCoreElectrons;
 }
 
+unsigned int Geometry::getNMinimalBasisFunctions(bool excludeDummyAtoms) const {
+  unsigned int nMinimalBasisFunctions = 0;
+  for (const auto& atom : _atoms) {
+    if (excludeDummyAtoms && atom->isDummy())
+      continue;
+    nMinimalBasisFunctions += atom->getAtomType()->getMinimalBasisSize();
+  }
+  return nMinimalBasisFunctions;
+}
+
 } /* namespace Serenity */

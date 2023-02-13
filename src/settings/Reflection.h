@@ -45,6 +45,9 @@
  */
 namespace Serenity {
 namespace Reflection {
+
+using namespace boost::placeholders;
+
 #define REM(...) __VA_ARGS__
 #define EAT(...)
 

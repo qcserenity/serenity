@@ -151,8 +151,8 @@ void GEPOLSurfaceConstructor::buildSurface(const std::vector<Sphere>& spheres) {
   }
   std::string label = (_isSAS) ? "GEPOL-SAS" : "GEPOL-SES";
   // TODO  Keep track of the triangle centers ...
-  std::vector<std::pair<unsigned int, unsigned int>> sphereIndices = {};
-  std::vector<unsigned int> pointWiseIndicesOfSpheres = {};
+  std::vector<std::pair<unsigned int, unsigned int>> sphereIndices = {std::make_pair(0, centerCoordinates->cols())};
+  std::vector<unsigned int> pointWiseIndicesOfSpheres = {0};
   _surface = std::make_unique<MolecularSurface>(std::move(centerCoordinates), std::move(triangleAreas),
                                                 std::move(normalVectors), label, sphereIndices,
                                                 pointWiseIndicesOfSpheres, _solvRad, spheres);

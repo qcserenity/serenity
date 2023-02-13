@@ -286,6 +286,12 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
    * @return The number of non-valence/core electroncs.
    */
   unsigned int getNumberOfCoreElectrons();
+  /**
+   * @brief Getter for the number of minimal-basis functions associated to this geometry.
+   * @param excludeDummyAtoms If true, the basis functions on dummy atoms are not counted. By default false.
+   * @return The number of minimal basis functions.
+   */
+  unsigned int getNMinimalBasisFunctions(bool excludeDummyAtoms = false) const;
 
  private:
   /**
@@ -309,10 +315,6 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   mutable Point _centerOfMass;
   mutable bool _coreCoreRepulsionUpToDate;
   mutable bool _centerOfMassUpToDate;
-  double _momentOfInertia = 0.0;
-  double _momentOfInertiaX = 0.0;
-  double _momentOfInertiaY = 0.0;
-  double _momentOfInertiaZ = 0.0;
 };
 
 } /* namespace Serenity */

@@ -68,7 +68,7 @@ TEST_F(HessianTaskTest, h2Hf) {
   auto path = systemController->getSystemPath();
 
   HDF5::Filepath name(path + settings.name + ".hess.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "hessian");
   HDF5::dataset_exists(file, "eigenvectors");
   HDF5::dataset_exists(file, "eigenvalues");
@@ -133,7 +133,7 @@ TEST_F(HessianTaskTest, h2FaT) {
   auto path = activeSystem->getSystemPath();
 
   HDF5::Filepath name(path + "SomeTestSystem.hess.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "hessian");
   HDF5::dataset_exists(file, "eigenvectors");
   HDF5::dataset_exists(file, "eigenvalues");
@@ -211,7 +211,7 @@ TEST_F(HessianTaskTest, h2actFaT) {
   auto path = activeSystem->getSystemPath();
 
   HDF5::Filepath name(path + "SomeTestSystem.hess.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::dataset_exists(file, "hessian");
   HDF5::dataset_exists(file, "eigenvectors");
   HDF5::dataset_exists(file, "eigenvalues");

@@ -37,17 +37,13 @@ GridControllerFactory::produce(std::shared_ptr<const Geometry> geometry, Options
   return _instance->getOrProduce(geometry, gridType, gridSmoothing, radialGridType, sphericalGridType, gridAccuracy,
                                  gridWeightThreshold, gridPointSorting);
 }
+
 std::shared_ptr<AtomCenteredGridController> GridControllerFactory::produce(std::shared_ptr<const Geometry> geometry,
-                                                                           const Settings& settings,
+                                                                           const GRID& settings,
                                                                            Options::GRID_PURPOSES purpose) {
-  if (purpose == Options::GRID_PURPOSES::SMALL) {
-    return produce(geometry, settings.grid.gridType, settings.grid.smoothing, settings.grid.radialGridType,
-                   settings.grid.sphericalGridType, settings.grid.smallGridAccuracy, settings.grid.weightThreshold,
-                   settings.grid.gridPointSorting);
-  }
-  return produce(geometry, settings.grid.gridType, settings.grid.smoothing, settings.grid.radialGridType,
-                 settings.grid.sphericalGridType, settings.grid.accuracy, settings.grid.weightThreshold,
-                 settings.grid.gridPointSorting);
+  return produce(geometry, settings.gridType, settings.smoothing, settings.radialGridType, settings.sphericalGridType,
+                 (purpose == Options::GRID_PURPOSES::SMALL) ? settings.smallGridAccuracy : settings.accuracy,
+                 settings.weightThreshold, settings.gridPointSorting);
 }
 
 std::unique_ptr<AtomCenteredGridController>

@@ -49,7 +49,8 @@ TEST_F(DLPNO_CCSD_T0Test, WaterCanonic) {
   scf.run();
   LocalCorrelationSettings lCSettings;
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
-  DLPNO_CCSD localCCSD(localCorrelationController, 8e-4, 100, true);
+  DLPNO_CCSD localCCSD(localCorrelationController, 8e-4, 100);
+  localCCSD.dlpnoCCSDSettings.keepMO3CenterIntegrals = true;
   double ccsdCorrection = localCCSD.calculateElectronicEnergyCorrections().sum();
   double triplesCorrection = DLPNO_CCSD_T0::calculateEnergyCorrection(localCorrelationController);
 
@@ -86,13 +87,53 @@ TEST_F(DLPNO_CCSD_T0Test, WaterLocal) {
   lCSettings.doiPAOThreshold = 1e-14;
   lCSettings.tnoThreshold = 1e-9;
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
-  DLPNO_CCSD localCCSD(localCorrelationController, 1e-4, 100, true);
+  DLPNO_CCSD localCCSD(localCorrelationController, 1e-4, 100);
+  localCCSD.dlpnoCCSDSettings.keepMO3CenterIntegrals = true;
   double ccsdCorrection = localCCSD.calculateElectronicEnergyCorrections().sum();
   double triplesCorrection = DLPNO_CCSD_T0::calculateEnergyCorrection(localCorrelationController);
   OutputControl::vOut << "CCSD " << ccsdCorrection << std::endl;
   OutputControl::vOut << "T0   " << triplesCorrection << std::endl;
   EXPECT_NEAR(-0.213858, ccsdCorrection, 1e-4);
   EXPECT_NEAR(-0.0029991450991246017, triplesCorrection, 1e-4);
+
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+/**
+ * @test
+ * @brief Tests the DLPNO-CCSD(T0) for water and local orbitals with loose thresholds.
+ *        Check the triples lists explicitly.
+ */
+TEST_F(DLPNO_CCSD_T0Test, WaterLocal_LOOSE) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP, true);
+  ScfTask<Options::SCF_MODES::RESTRICTED> scf(system);
+  scf.run();
+
+  LocalizationTask locTask(system);
+  locTask.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO;
+  locTask.settings.splitValenceAndCore = true;
+  locTask.run();
+
+  // Local CCSD_T0
+  LocalCorrelationSettings lCSettings;
+  lCSettings.tnoThreshold = 1e-9;
+  lCSettings.pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
+  DLPNO_CCSD localCCSD(localCorrelationController, 1e-4, 100);
+  localCCSD.dlpnoCCSDSettings.keepMO3CenterIntegrals = true;
+  double ccsdCorrection = localCCSD.calculateElectronicEnergyCorrections().sum();
+  double triplesCorrection = DLPNO_CCSD_T0::calculateEnergyCorrection(localCorrelationController);
+  auto triples = localCorrelationController->getOrbitalTriples();
+  auto distantTriplesPairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::DISTANT_TRIPLES);
+  auto closePairs = localCorrelationController->getOrbitalPairs(OrbitalPairTypes::CLOSE);
+  OutputControl::vOut << "CCSD " << ccsdCorrection << std::endl;
+  OutputControl::vOut << "T0   " << triplesCorrection << std::endl;
+  EXPECT_NEAR(-0.21405024590820307, ccsdCorrection, 1e-4);
+  EXPECT_NEAR(-0.0029991450991246017, triplesCorrection, 1e-4);
+  EXPECT_EQ(triples.size(), 16);
+  EXPECT_EQ(closePairs.size(), 11);
+  EXPECT_EQ(distantTriplesPairs.size(), 4);
 
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   SystemController__TEST_SUPPLY::cleanUp();
@@ -110,7 +151,8 @@ TEST_F(DLPNO_CCSD_T0Test, EthaneCanonic) {
   lCSettings.pnoThreshold = 1e-14;
   lCSettings.doiPAOThreshold = 1e-14;
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
-  DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100, true);
+  DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100);
+  localCCSD.dlpnoCCSDSettings.keepMO3CenterIntegrals = true;
   double ccsdCorrection = localCCSD.calculateElectronicEnergyCorrections().sum();
   double triplesCorrection = DLPNO_CCSD_T0::calculateEnergyCorrection(localCorrelationController);
 
@@ -145,7 +187,8 @@ TEST_F(DLPNO_CCSD_T0Test, EthaneLocal) {
   LocalCorrelationSettings lCSettings;
   lCSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
   auto localCorrelationController = std::make_shared<LocalCorrelationController>(system, lCSettings);
-  DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100, true);
+  DLPNO_CCSD localCCSD(localCorrelationController, 1e-5, 100);
+  localCCSD.dlpnoCCSDSettings.keepMO3CenterIntegrals = true;
   double ccsdCorrection = localCCSD.calculateElectronicEnergyCorrections().sum();
   double triplesCorrection = DLPNO_CCSD_T0::calculateEnergyCorrection(localCorrelationController);
   OutputControl::vOut << "CCSD " << ccsdCorrection << std::endl;

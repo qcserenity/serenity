@@ -34,9 +34,10 @@ namespace Serenity {
 class SystemController;
 using namespace Serenity::Reflection;
 struct ReadOrbitalsTaskSettings {
-  ReadOrbitalsTaskSettings() : fileFormat(Options::ORBITAL_FILE_TYPES::TURBOMOLE), path("."), resetCoreOrbitals(false) {
+  ReadOrbitalsTaskSettings()
+    : fileFormat(Options::ORBITAL_FILE_TYPES::TURBOMOLE), path("."), resetCoreOrbitals(false), replaceInFile(false) {
   }
-  REFLECTABLE((Options::ORBITAL_FILE_TYPES)fileFormat, (std::string)path, (bool)resetCoreOrbitals)
+  REFLECTABLE((Options::ORBITAL_FILE_TYPES)fileFormat, (std::string)path, (bool)resetCoreOrbitals, (bool)replaceInFile)
 };
 
 /**
@@ -46,6 +47,8 @@ struct ReadOrbitalsTaskSettings {
  * Currently supported:\n
  *    - turbomole ASCII-MO files, spherical harmonics.\n
  *    - serenity HDF5 files.
+ *    - molpro xml files.
+ *    - molcas HDF5 files.
  */
 template<Options::SCF_MODES SCFMode>
 class ReadOrbitalsTask : public Task {
@@ -65,9 +68,11 @@ class ReadOrbitalsTask : public Task {
   void run();
   /**
    * @brief The settings.
-   *   -turbomole:         Read ASCII turbomole MO files.
+   *   -fileformat:        The file format of the MO files.
    *   -path:              Path to the directory containing the file to be read.
-   *   -resetCoreOrbitals: Reset the core orbital assignement according to the geometry and eigenvalues.
+   *   -resetCoreOrbitals: Reset the core orbital assignment according to the geometry and eigenvalues.
+   *   -replaceInFile:     If true, copies the original orbital file and replaces the coefficients in this file
+   *                       by Serenity's coefficients. (Only implemented for Molcas HDF5 files).
    */
   ReadOrbitalsTaskSettings settings;
 
@@ -102,7 +107,7 @@ class ReadOrbitalsTask : public Task {
   /*
    * Sort the turbomole coefficients to fit the basis function ordering in Serenity.
    */
-  void resortTurboCoefficients(Eigen::MatrixXd& coefficients);
+  Eigen::MatrixXd resortCoefficients(const Eigen::MatrixXd& coefficients);
   /*
    * Create all sorting matrices.
    */
@@ -119,7 +124,7 @@ class ReadOrbitalsTask : public Task {
   /*
    * The map that contains the sorting matrices for turbomole orbitals..
    */
-  static std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> _turboSortMatrices;
+  static std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> _sortMatrices;
   /*
    * The maximum angular momentum tolerated for turbomole orbitals. This is overridden in
    * initTurboSortingMatrices().
@@ -127,6 +132,68 @@ class ReadOrbitalsTask : public Task {
   unsigned int _maxL = 0;
 
   std::string getSerenityIDFromFile();
+
+  /**
+   * **** Molpro xml files ****
+   */
+  void readMolproXMLOrbitals(CoefficientMatrix<SCFMode>& coeffs, SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues);
+  /*
+   * Get the next set of orbital coefficients form the input stream.
+   */
+  Eigen::VectorXd getMolproXMLOrbitalCoefficients(std::ifstream& input, unsigned int nBFs);
+  /*
+   * Get the next orbital eigenvalue from file.
+   */
+  double getMolproXMLOrbitalEigenvalue(std::ifstream& input, bool& orbitalDefinitionEnd);
+  /*
+   * Skip the stream to the orbital definitions.
+   */
+  void skipToOrbitalDefinitionMolproXML(std::ifstream& input, std::string& filePath);
+  /*
+   * Assign coefficents and eigenvalues to the coefficient matrix and eigenvalue vector (according to spin settings)
+   */
+  void assignCoefficentsAndEigenvalue(const Eigen::VectorXd& orbCoeff, CoefficientMatrix<SCFMode>& coeffMatrix,
+                                      SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues, const double eigenvalue,
+                                      const bool isAlpha, const unsigned int iOrb);
+  /*
+   * Initialize sorting matrices for Molpro.
+   */
+  void initMolproSortingMatrices();
+  /*
+   * Check the input for reading Molpro orbitals from xml files.
+   */
+  void checkMolproInput();
+
+  /*
+   * Read orbitals from molcas HDF5-files.
+   */
+  void readMolcasHDF5Orbitals(CoefficientMatrix<SCFMode>& coeffs, SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues);
+  /*
+   * Replace the orbitals defined in a Molcas HDF5 file by Serenity's cofficients.
+   */
+  void replaceMolcasHDF5Orbitals(const CoefficientMatrix<SCFMode>& coeffs);
+  /*
+   * Ensure that the data sets have the same dimensions in Serenity and Molcas.
+   */
+  void checkMolcasBasisDefinition(const std::string& filePath);
+  /*
+   * Read the orbital eigenvalues.
+   */
+  void readMolcasEigenvalues(const std::string& filePath, SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues);
+  /*
+   * Read and sort the orbital coefficients.
+   */
+  void readMolcasCoefficients(const std::string& filePath, CoefficientMatrix<SCFMode>& coeffs);
+  /*
+   * Get the permutation matrix for the AO ordering.
+   */
+  Eigen::MatrixXi getMolcasSortingMatrix(const std::string& filePath);
+  /*
+   * Get the basis function index characterized by its atom-index, angular momentum, ang. orientation, and index of the
+   * shell with the given angular momentum on the atom.
+   */
+  unsigned int getBasisFunctionIndex(const unsigned int atomIndex, const unsigned int angularMomentum,
+                                     const unsigned int iShellOfMomentum, const int orientation);
 };
 
 } /* namespace Serenity */

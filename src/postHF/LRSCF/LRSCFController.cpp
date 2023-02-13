@@ -28,6 +28,7 @@
 #include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutputStream.h" //Filtered output.
 #include "io/HDF5.h"
+#include "math/linearAlgebra/MatrixFunctions.h" //Matrix sqrt
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/ADC2Sigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/CC2Sigmavector.h"
@@ -112,7 +113,7 @@ void LRSCFController<SCFMode>::loadFromH5(Options::LRSCF_TYPE type) {
   auto loadEigenpairs = [&](std::string input) {
     printf("\n   $  %-20s\n\n", input.c_str());
 
-    HDF5::H5File file(input.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::H5File file(input.c_str(), H5F_ACC_RDONLY);
     HDF5::dataset_exists(file, "X");
     HDF5::dataset_exists(file, "Y");
     HDF5::dataset_exists(file, "EIGENVALUES");
@@ -362,6 +363,11 @@ void LRSCFController<SCFMode>::initializeXWFController() {
 }
 
 template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::finalizeXWFController() {
+  _xwfController = nullptr;
+}
+
+template<Options::SCF_MODES SCFMode>
 std::shared_ptr<XWFController<SCFMode>> LRSCFController<SCFMode>::getXWFController() {
   return _xwfController;
 }
@@ -380,6 +386,16 @@ void LRSCFController<SCFMode>::initializeRIIntegrals(LIBINT_OPERATOR op, double 
 }
 
 template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::finalizeRIIntegrals(LIBINT_OPERATOR op) {
+  if (op == LIBINT_OPERATOR::coulomb) {
+    _riints = nullptr;
+  }
+  else if (op == LIBINT_OPERATOR::erf_coulomb) {
+    _riErfints = nullptr;
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
 std::shared_ptr<RIIntegrals<SCFMode>> LRSCFController<SCFMode>::getRIIntegrals(LIBINT_OPERATOR op) {
   if (op == LIBINT_OPERATOR::coulomb) {
     return _riints;
@@ -394,18 +410,26 @@ std::shared_ptr<RIIntegrals<SCFMode>> LRSCFController<SCFMode>::getRIIntegrals(L
 
 template<Options::SCF_MODES SCFMode>
 void LRSCFController<SCFMode>::calculateScreening(const Eigen::VectorXd& eia) {
+  if (_settings.nafThresh != 0) {
+    throw SerenityError(" NAF not supported with environmetnal screening!");
+  }
   if (_riints != nullptr) {
-    printBigCaption("rpa screening");
+    printBigCaption("RPA Screening");
     auto& jia = *(_riints->getJiaPtr());
     unsigned nAux = _riints->getNTransformedAuxBasisFunctions();
     double prefactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 2.0 : 1.0;
-    Eigen::MatrixXd piPQ = Eigen::MatrixXd::Identity(nAux, nAux);
+    Eigen::MatrixXd unit = Eigen::MatrixXd::Identity(nAux, nAux);
+    Eigen::MatrixXd piPQ = unit;
     Eigen::VectorXd chi_temp = prefactor * (-2.0 / eia.array());
-    unsigned spincounter = 0;
-    for_spin(jia) {
-      piPQ -= jia_spin.transpose() * chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * jia_spin;
-      spincounter += jia_spin.rows();
-    };
+
+    if (_envSystems.size() == 0) {
+      unsigned spincounter = 0;
+      for_spin(jia) {
+        piPQ -= jia_spin.transpose() * chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * jia_spin;
+        spincounter += jia_spin.rows();
+      };
+      _screening = std::make_shared<Eigen::MatrixXd>(piPQ.householderQr().solve(unit));
+    }
     if (_envSystems.size() > 0) {
       if (_settings.nafThresh != 0) {
         throw SerenityError(" NAF not supported with environmetnal screening!");
@@ -415,21 +439,30 @@ void LRSCFController<SCFMode>::calculateScreening(const Eigen::VectorXd& eia) {
       gwSettings.integrationPoints = 0;
       // sets the geometry of the active subsystem to evaluate integrals in the correct aux basis
       _riints->setGeo(_system->getGeometry());
-      auto mbpt = std::make_shared<MBPT<SCFMode>>(_system, gwSettings, _envSystems, _riints, 0, 0);
+      auto mbpt = std::make_shared<MBPT<SCFMode>>(this->shared_from_this(), gwSettings, _envSystems, _riints, 0, 0);
       auto envResponse = mbpt->environmentRespose();
-      Eigen::MatrixXd transformation;
-      auto proj = mbpt->calculateTransformation(transformation, envResponse);
-      _envTransformation = std::make_shared<Eigen::MatrixXd>(transformation * proj.transpose());
-      spincounter = 0;
+      auto auxtrafo = _riints->getAuxTrafoPtr();
+      auto metric = _riints->getAuxMetricPtr();
+      auto metricsqrt = mSqrt_Sym(*metric);
+      Eigen::MatrixXd coulAuxbasis = (*metric) + metricsqrt * envResponse * metricsqrt;
+
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenvalueSolver(coulAuxbasis);
+      Eigen::VectorXd eValues = eigenvalueSolver.eigenvalues();
+      Eigen::MatrixXd eigenVectors = eigenvalueSolver.eigenvectors();
+
+      unsigned int spincounter = 0;
       for_spin(jia) {
-        auto piPQenv = (jia_spin * transformation).transpose() *
-                       chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * (jia_spin * transformation);
-        piPQ += proj * piPQenv * proj.transpose();
+        auto piPQenv = (jia_spin * (*auxtrafo) * eigenVectors).transpose() *
+                       chi_temp.segment(spincounter, jia_spin.rows()).asDiagonal() * (jia_spin * (*auxtrafo) * eigenVectors);
+        piPQ = unit - piPQenv * eValues.asDiagonal();
         spincounter += jia_spin.rows();
       };
+      Eigen::MatrixXd screen = piPQ.householderQr().solve(unit);
+      screen =
+          ((*auxtrafo) * eigenVectors * eValues.asDiagonal() * screen * eigenVectors.transpose() * (*auxtrafo).transpose())
+              .eval();
+      _screening = std::make_shared<Eigen::MatrixXd>(screen);
     }
-    piPQ = (piPQ.inverse()).eval();
-    _screening = std::make_shared<Eigen::MatrixXd>(piPQ);
     printf(" .. done.\n\n");
   }
   else {
@@ -508,6 +541,101 @@ void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vec
     printf("\n");
     iSpin += 1;
   };
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::applyFrozenCore() {
+  if (_settings.coreOnly) {
+    throw SerenityError("LRSCFTask: frozenCore and coreOnly are mutually exclusive!");
+  }
+
+  unsigned nCore = 0;
+  for (const auto& atom : _system->getGeometry()->getAtoms()) {
+    nCore += atom->getNCoreElectrons();
+  }
+
+  nCore /= 2;
+
+  bool isAlpha = true;
+  for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+    if (isAlpha) {
+      OutputControl::nOut << "  Freezing alpha core orbitals: " << nCore << ",   " << 100.0 * nCore / _nOcc_spin
+                          << " %." << std::endl;
+    }
+    else {
+      OutputControl::nOut << "  Freezing beta core orbitals: " << nCore << ",   " << 100.0 * nCore / _nOcc_spin << " %."
+                          << std::endl;
+    }
+    _coefficients_spin.middleCols(0, _nOcc_spin - nCore + _nVirt_spin) =
+        _coefficients_spin.middleCols(nCore, _nOcc_spin - nCore + _nVirt_spin).eval();
+    _orbitalEnergies_spin.middleRows(0, _nOcc_spin - nCore + _nVirt_spin) =
+        _orbitalEnergies_spin.middleRows(nCore, _nOcc_spin - nCore + _nVirt_spin).eval();
+
+    _coefficients_spin.middleCols(_nOcc_spin - nCore + _nVirt_spin, nCore).setZero();
+    _orbitalEnergies_spin.middleRows(_nOcc_spin - nCore + _nVirt_spin, nCore).setZero();
+
+    _nOcc_spin = _nOcc_spin - nCore;
+    isAlpha = false;
+  };
+  OutputControl::nOut << std::endl;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::applyFrozenVirtual() {
+  if (_settings.frozenVirtual < 0) {
+    throw SerenityError("LRSCFTask: frozenVirtual keyword must be positive!");
+  }
+  OutputControl::nOut << "  Freezing all virtual orbitals beyond e(HOMO)+" << _settings.frozenVirtual << " eV." << std::endl;
+
+  bool isAlpha = true;
+  for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+    double e_homo = _orbitalEnergies_spin[_nOcc_spin - 1];
+    for (unsigned a = 0; a < _nVirt_spin; ++a) {
+      double e_virt = _orbitalEnergies_spin[_nOcc_spin + a];
+      if (e_virt > e_homo + _settings.frozenVirtual * EV_TO_HARTREE) {
+        if (isAlpha) {
+          OutputControl::nOut << "  Freezing alpha virtual orbitals: " << _nVirt_spin - a << ",   "
+                              << 100.0 - 100.0 * a / _nVirt_spin << " %." << std::endl;
+        }
+        else {
+          OutputControl::nOut << "  Freezing beta virtual orbitals: " << _nVirt_spin - a << ",   "
+                              << 100.0 - 100.0 * a / _nVirt_spin << " %." << std::endl;
+        }
+        _coefficients_spin.middleCols(_nOcc_spin + a, _nVirt_spin - a).setZero();
+        _orbitalEnergies_spin.middleRows(_nOcc_spin + a, _nVirt_spin - a).setZero();
+        _nVirt_spin = a;
+        break;
+      }
+    }
+    isAlpha = false;
+  };
+  OutputControl::nOut << std::endl;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::applyCoreOnly() {
+  if (_settings.frozenCore) {
+    throw SerenityError("LRSCFTask: frozenCore and coreOnly are mutually exclusive!");
+  }
+
+  unsigned nCore = 0;
+  for (const auto& atom : _system->getGeometry()->getAtoms()) {
+    nCore += atom->getNCoreElectrons();
+  }
+
+  nCore /= 2;
+  OutputControl::nOut << "  Freezing all but core orbitals:  " << nCore << std::endl;
+
+  for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+    _coefficients_spin.middleCols(nCore, _nVirt_spin) = _coefficients_spin.middleCols(_nOcc_spin, _nVirt_spin).eval();
+    _orbitalEnergies_spin.middleRows(nCore, _nVirt_spin) = _orbitalEnergies_spin.middleRows(_nOcc_spin, _nVirt_spin).eval();
+
+    _coefficients_spin.middleCols(nCore + _nVirt_spin, _nOcc_spin - nCore).setZero();
+    _orbitalEnergies_spin.middleRows(nCore + _nVirt_spin, _nOcc_spin - nCore).setZero();
+
+    _nOcc_spin = nCore;
+  };
+  OutputControl::nOut << std::endl;
 }
 
 template class LRSCFController<Options::SCF_MODES::RESTRICTED>;

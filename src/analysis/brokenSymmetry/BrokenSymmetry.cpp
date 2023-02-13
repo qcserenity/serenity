@@ -28,7 +28,6 @@
 #include "energies/EnergyContributions.h"
 #include "geometry/Geometry.h"
 #include "io/Filesystem.h"
-#include "io/FormattedOutputStream.h"
 #include "misc/SerenityError.h"
 #include "misc/WarningTracker.h"
 #include "parameters/Constants.h"
@@ -39,9 +38,7 @@
 #include "tasks/FDETask.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/LocalizationTask.h"
-#include "tasks/OrthogonalizationTask.h"
 #include "tasks/ScfTask.h"
-#include "tasks/SystemAdditionTask.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 
@@ -115,7 +112,6 @@ void BrokenSymmetry::bsDFT(unsigned int nA, unsigned int nB, Options::ORBITAL_LO
    */
   Eigen::MatrixXd hsDensMatMOalpha = (hsCoeff.alpha).transpose() * s * hsDensMat.alpha * s * hsCoeff.alpha;
   Eigen::MatrixXd hsDensMatMObeta = (hsCoeff.alpha).transpose() * s * hsDensMat.beta * s * hsCoeff.alpha;
-
   /*
    * Calculate the natural orbitals (NO)
    */
@@ -170,14 +166,13 @@ void BrokenSymmetry::bsDFT(unsigned int nA, unsigned int nB, Options::ORBITAL_LO
   /*
    * Localize SONO orbitals (LNO)
    */
-  auto sonoEigenValPtr = std::make_unique<SpinPolarizedData<RESTRICTED, Eigen::VectorXd>>(nBas);
-  sonoEigenValPtr->setZero();
+  auto sonoEigenValPtr = std::make_unique<SpinPolarizedData<RESTRICTED, Eigen::VectorXd>>(Eigen::VectorXd::Zero(nBas));
   auto sonoCoeffPtr = std::make_unique<CoefficientMatrix<RESTRICTED>>(sonoCoeff);
 
-  auto sonoOrbs =
-      std::make_shared<OrbitalController<RESTRICTED>>(std::move(sonoCoeffPtr), basController, std::move(sonoEigenValPtr),
-                                                      _hsSystemController[0]->getGeometry()->getNumberOfCoreElectrons());
-  auto sonoES = std::make_shared<ElectronicStructure<RESTRICTED>>(basController, _hsSystemController[0]->getGeometry(), nSONO);
+  auto sonoOrbs = std::make_shared<OrbitalController<RESTRICTED>>(std::move(sonoCoeffPtr), basController, *sonoEigenValPtr,
+                                                                  _hsSystemController[0]->getNCoreElectrons());
+  auto sonoES = std::make_shared<ElectronicStructure<RESTRICTED>>(basController, _hsSystemController[0]->getGeometry(),
+                                                                  nSONO, _hsSystemController[0]->getNCoreElectrons());
 
   sonoES->setMolecularOrbitals(sonoOrbs);
   auto sonoSettings = _hsSystemController[0]->getSettings();
@@ -227,10 +222,11 @@ void BrokenSymmetry::bsDFT(unsigned int nA, unsigned int nB, Options::ORBITAL_LO
   nOccBS.alpha = nOcc.alpha - nB;
   nOccBS.beta = nOcc.beta + nB;
 
-  auto bsOrbs = std::make_shared<OrbitalController<UNRESTRICTED>>(basController);
+  auto bsOrbs =
+      std::make_shared<OrbitalController<UNRESTRICTED>>(basController, _hsSystemController[0]->getNCoreElectrons() / 2);
   bsOrbs->updateOrbitals(bsCoeff, hsES->getMolecularOrbitals()->getEigenvalues());
-  auto bsES =
-      std::make_shared<ElectronicStructure<UNRESTRICTED>>(basController, _bsSystemController[0]->getGeometry(), nOccBS);
+  auto bsES = std::make_shared<ElectronicStructure<UNRESTRICTED>>(basController, _bsSystemController[0]->getGeometry(),
+                                                                  nOccBS, _hsSystemController[0]->getNCoreElectrons() / 2);
   bsES->setMolecularOrbitals(bsOrbs);
   _bsSystemController[0]->setElectronicStructure(bsES);
 

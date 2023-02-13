@@ -55,6 +55,9 @@ ExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
     std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> densityMatrices) {
   this->setParameters(I, J, false);
 
+  // Calculate shell-wise max coefficients in set of perturbed density matrices.
+  this->setShellWiseMaxDens(J, (*densityMatrices));
+
   // Set dimensions for Fock like matrices.
   auto fock = std::make_unique<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>>(this->_nSet);
   for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
@@ -64,13 +67,12 @@ ExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
   }
 
   // Thread safety.
-  unsigned nThreads = omp_get_max_threads();
-  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> fock_threads(nThreads);
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    fock_threads[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>(this->_nSet);
+  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>> Fx(this->_nThreads);
+  for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+    Fx[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::RESTRICTED>>>(this->_nSet);
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        fock_threads[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
+        Fx[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
       }
     }
   }
@@ -79,168 +81,151 @@ ExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
   unsigned nb_I = this->_lrscf[I]->getBasisController()->getNBasisFunctions();
   unsigned nb_J = this->_lrscf[J]->getBasisController()->getNBasisFunctions();
 
-  // Determine prescreening threshold.
-  double prescreeningThreshold = std::min(this->_lrscf[I]->getSysSettings().basis.integralThreshold,
-                                          this->_lrscf[J]->getSysSettings().basis.integralThreshold);
-
-  if (prescreeningThreshold == 0) {
-    double prescreenTresholdI = this->_lrscf[I]->getBasisController()->getPrescreeningThreshold();
-    double prescreenTresholdJ = this->_lrscf[J]->getBasisController()->getPrescreeningThreshold();
-    prescreeningThreshold = std::min(prescreenTresholdI, prescreenTresholdJ);
-  }
-
-  double maxDens = 0.0;
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      maxDens = std::max(maxDens, (*densityMatrices)[iSet][iGuess].array().abs().maxCoeff());
-    }
-  }
-
-  Eigen::MatrixXd maxDensBlocks = this->getShellWiseMaxDens(J, *densityMatrices);
-  auto maxDensPtr = maxDensBlocks.data();
-  unsigned ns = maxDensBlocks.rows();
+  // Prescreening.
+  auto maxDensPtr = this->_maxDensMat.data();
+  unsigned ns = this->_maxDensMat.rows();
 
   // Exchange ratio for lambda functions.
   double exchangeRatio = 0.0;
 
+  // Use symmetry.
+  std::vector<std::vector<MatrixInBasis<RESTRICTED>>> D_sym(
+      this->_nSet, std::vector<MatrixInBasis<RESTRICTED>>(this->_nGuess, this->_lrscf[J]->getBasisController()));
+  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+      D_sym[iSet][iGuess] = (*densityMatrices)[iSet][iGuess];
+      D_sym[iSet][iGuess] += _pm[iSet] * (*densityMatrices)[iSet][iGuess].transpose();
+    }
+  }
+
   // Distribute function II.
-  auto distributeExchangeII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nb_I + k;
-    unsigned long il = i * nb_I + l;
-    unsigned long jl = j * nb_I + l;
-    unsigned long jk = j * nb_I + k;
-    unsigned long ki = k * nb_I + i;
-    unsigned long kj = k * nb_I + j;
-    unsigned long li = l * nb_I + i;
-    unsigned long lj = l * nb_I + j;
-    double exc = integral * exchangeRatio;
+  auto distributeII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ii = i * nb_I;
+    unsigned jj = j * nb_I;
+    unsigned kk = k * nb_I;
+    unsigned ll = l * nb_I;
+    unsigned ik = ii + k;
+    unsigned il = ii + l;
+    unsigned jk = jj + k;
+    unsigned jl = jj + l;
+    unsigned ki = kk + i;
+    unsigned kj = kk + j;
+    unsigned li = ll + i;
+    unsigned lj = ll + j;
 
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      double exc_B = _pm[iSet] * exc;
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto F = fock_threads[threadId][iSet][iGuess].data();
-        auto D = (*densityMatrices)[iSet][iGuess].data();
-
-        // Contractions from A exchange term.
-        F[ik] += D[jl] * exc;
-        F[il] += D[jk] * exc;
-        F[jk] += D[il] * exc;
-        F[jl] += D[ik] * exc;
-        F[ki] += D[lj] * exc;
-        F[kj] += D[li] * exc;
-        F[li] += D[kj] * exc;
-        F[lj] += D[ki] * exc;
-
-        // Contractions from B exchange term.
-        if (_pm[iSet]) {
-          F[ik] += D[lj] * exc_B;
-          F[il] += D[kj] * exc_B;
-          F[jk] += D[li] * exc_B;
-          F[jl] += D[ki] * exc_B;
-          F[ki] += D[jl] * exc_B;
-          F[kj] += D[il] * exc_B;
-          F[li] += D[jk] * exc_B;
-          F[lj] += D[ik] * exc_B;
+        auto F = Fx[iThread][iSet][iGuess].data();
+        auto D = D_sym[iSet][iGuess].data();
+        F[ik] += D[jl] * integral;
+        F[il] += D[jk] * integral;
+        F[jk] += D[il] * integral;
+        F[jl] += D[ik] * integral;
+        if (!_pm[iSet]) {
+          F[ki] += D[lj] * integral;
+          F[li] += D[kj] * integral;
+          F[kj] += D[li] * integral;
+          F[lj] += D[ki] * integral;
         }
+      }
+    }
+  };
+
+  // Distribute function IJ.
+  auto distributeIJ = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ik = i * nb_I + k;
+    unsigned jl = j * nb_J + l;
+
+    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+        auto F = Fx[iThread][iSet][iGuess].data();
+        auto D = D_sym[iSet][iGuess].data();
+        F[ik] += D[jl] * integral;
       }
     }
   };
 
   // Prescreening function II.
-  auto prescreeningFuncII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
-    if (maxDens * schwarz < prescreeningThreshold) {
+  auto prescreenII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = exchangeRatio * schwarz;
+    if (xschwarz * this->_maxDens < this->_prescreeningThreshold) {
       return true;
     }
-    double t1 = maxDensPtr[i * ns + k];
-    double t2 = maxDensPtr[i * ns + l];
-    double t3 = maxDensPtr[j * ns + k];
-    double t4 = maxDensPtr[j * ns + l];
-    double t5 = maxDensPtr[k * ns + i];
-    double t6 = maxDensPtr[k * ns + j];
-    double t7 = maxDensPtr[l * ns + i];
-    double t8 = maxDensPtr[l * ns + j];
+    unsigned ii = i * ns;
+    unsigned jj = j * ns;
+    unsigned kk = k * ns;
+    unsigned ll = l * ns;
+    double t1 = maxDensPtr[ii + k];
+    double t2 = maxDensPtr[ii + l];
+    double t3 = maxDensPtr[jj + k];
+    double t4 = maxDensPtr[jj + l];
+    double t5 = maxDensPtr[kk + i];
+    double t6 = maxDensPtr[kk + j];
+    double t7 = maxDensPtr[ll + i];
+    double t8 = maxDensPtr[ll + j];
     double maxDBlock = std::max({t1, t2, t3, t4, t5, t6, t7, t8});
-    return (maxDBlock * schwarz < prescreeningThreshold);
-  };
-
-  // Distribute function IJ.
-  auto distributeExchangeIJ = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nb_I + k;
-    unsigned long jl = j * nb_J + l;
-    unsigned long lj = l * nb_J + j;
-
-    double exc = integral * exchangeRatio;
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      double exc_B = _pm[iSet] * exc;
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto D = (*densityMatrices)[iSet][iGuess].data();
-        auto F = fock_threads[threadId][iSet][iGuess].data();
-
-        // Contractions from A exchange term.
-        F[ik] += D[jl] * exc;
-
-        // Contractions from B exchange term.
-        if (_pm[iSet]) {
-          F[ik] += D[lj] * exc_B;
-        }
-      }
-    }
+    return (xschwarz * maxDBlock < this->_prescreeningThreshold);
   };
 
   // Prescreening function IJ.
-  auto prescreeningFuncIJ = [&](unsigned, unsigned j, unsigned, unsigned l, double schwarz) {
-    if (maxDens * schwarz < prescreeningThreshold) {
+  auto prescreenIJ = [&](unsigned, unsigned j, unsigned, unsigned l, double schwarz) {
+    double xschwarz = exchangeRatio * schwarz;
+    if (xschwarz * this->_maxDens < this->_prescreeningThreshold) {
       return true;
     }
     double t1 = maxDensPtr[j * ns + l];
     double t2 = maxDensPtr[l * ns + j];
     double maxDBlock = std::max({t1, t2});
-    return (maxDBlock * schwarz < prescreeningThreshold);
+    return (xschwarz * maxDBlock < this->_prescreeningThreshold);
   };
 
-  // Loop and contract integrals (conventional exchange)!
-  if (_hfExchangeRatio > 0.0 && !_densFitK) {
-    OutputControl::dOut << " **** Performing No RI-K ****" << std::endl;
-    Timings::takeTime("LRSCF -   Sigmavector:      K");
-    exchangeRatio = _hfExchangeRatio;
+  auto contractExchange = [&](double ax, LIBINT_OPERATOR op, double mu) {
+    exchangeRatio = ax;
+
+    // Loop and contract.
     if (I == J) {
-      TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                        prescreeningThreshold);
-      looper.loopNoDerivative(distributeExchangeII, prescreeningFuncII, maxDens, nullptr, true);
+      TwoElecFourCenterIntLooper looper(op, 0, this->_lrscf[I]->getBasisController(), this->_prescreeningThreshold, mu);
+      looper.loopNoDerivative(distributeII, prescreenII, this->_maxDens, nullptr, true);
     }
     else if (I != J) {
-      ExchangeInteractionIntLooper looper(LIBINT_OPERATOR::coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                          this->_lrscf[J]->getBasisController(), prescreeningThreshold);
-      looper.loopNoDerivative(distributeExchangeIJ, prescreeningFuncIJ);
+      ExchangeInteractionIntLooper looper(op, 0, this->_lrscf[I]->getBasisController(),
+                                          this->_lrscf[J]->getBasisController(), this->_prescreeningThreshold, mu);
+      looper.loopNoDerivative(distributeIJ, prescreenIJ);
     }
+
+    // Sum up fock matrices.
+    for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+          auto& F = Fx[iThread][iSet][iGuess];
+          F *= exchangeRatio;
+
+          (*fock)[iSet][iGuess] += F;
+          if (I == J) {
+            (*fock)[iSet][iGuess] += _pm[iSet] * F.transpose();
+          }
+
+          // Set zero if needed another time.
+          if (op == LIBINT_OPERATOR::coulomb && _lrExchangeRatio > 0.0) {
+            F.setZero();
+          }
+        }
+      }
+    }
+  };
+
+  // HF exchange.
+  if (_hfExchangeRatio > 0.0 && !_densFitK) {
+    Timings::takeTime("LRSCF -   Sigmavector:      K");
+    contractExchange(_hfExchangeRatio, LIBINT_OPERATOR::coulomb, 0.0);
     Timings::timeTaken("LRSCF -   Sigmavector:      K");
   }
 
-  // Loop and contract integrals (long-range exchange)!
+  // LR exchange.
   if (_lrExchangeRatio > 0.0 && !_densFitLRK) {
-    OutputControl::dOut << " **** Performing No RI-ErfK ****" << std::endl;
     Timings::takeTime("LRSCF -   Sigmavector:    LRK");
-    exchangeRatio = _lrExchangeRatio;
-    if (I == J) {
-      TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::erf_coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                        prescreeningThreshold, _mu);
-      looper.loopNoDerivative(distributeExchangeII, prescreeningFuncII, maxDens, nullptr, true);
-    }
-    else if (I != J) {
-      ExchangeInteractionIntLooper looper(LIBINT_OPERATOR::erf_coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                          this->_lrscf[J]->getBasisController(), prescreeningThreshold, _mu);
-      looper.loopNoDerivative(distributeExchangeIJ, prescreeningFuncIJ);
-    }
+    contractExchange(_lrExchangeRatio, LIBINT_OPERATOR::erf_coulomb, _mu);
     Timings::timeTaken("LRSCF -   Sigmavector:    LRK");
-  }
-
-  // Sum over threads.
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        (*fock)[iSet][iGuess] += fock_threads[iThread][iSet][iGuess];
-      }
-    }
   }
 
   return fock;
@@ -253,6 +238,9 @@ ExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
     std::unique_ptr<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>> densityMatrices) {
   this->setParameters(I, J, false);
 
+  // Calculate shell-wise max coefficients in set of perturbed density matrices.
+  this->setShellWiseMaxDens(J, (*densityMatrices));
+
   // Set dimensions for Fock like matrices.
   auto fock = std::make_unique<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>>(this->_nSet);
   for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
@@ -262,13 +250,12 @@ ExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
   }
 
   // Thread safety.
-  unsigned nThreads = omp_get_max_threads();
-  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>> fock_threads(nThreads);
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    fock_threads[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>(this->_nSet);
+  std::vector<std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>> Fx(this->_nThreads);
+  for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+    Fx[iThread] = std::vector<std::vector<MatrixInBasis<Options::SCF_MODES::UNRESTRICTED>>>(this->_nSet);
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        fock_threads[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
+        Fx[iThread][iSet].emplace_back(this->_lrscf[I]->getBasisController());
       }
     }
   }
@@ -277,192 +264,171 @@ ExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
   unsigned nb_I = this->_lrscf[I]->getBasisController()->getNBasisFunctions();
   unsigned nb_J = this->_lrscf[J]->getBasisController()->getNBasisFunctions();
 
-  // Determine prescreening threshold.
-  double prescreeningThreshold = std::min(this->_lrscf[I]->getSysSettings().basis.integralThreshold,
-                                          this->_lrscf[J]->getSysSettings().basis.integralThreshold);
-
-  if (prescreeningThreshold == 0) {
-    double prescreenTresholdI = this->_lrscf[I]->getBasisController()->getPrescreeningThreshold();
-    double prescreenTresholdJ = this->_lrscf[J]->getBasisController()->getPrescreeningThreshold();
-    prescreeningThreshold = std::min(prescreenTresholdI, prescreenTresholdJ);
-  }
-
-  double maxDens = 0.0;
-  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-      maxDens = std::max(maxDens, (*densityMatrices)[iSet][iGuess].total().array().abs().maxCoeff());
-    }
-  }
-
-  Eigen::MatrixXd maxDensBlocks = this->getShellWiseMaxDens(J, *densityMatrices).total();
-  auto maxDensPtr = maxDensBlocks.data();
-  unsigned ns = maxDensBlocks.rows();
+  // Prescreening.
+  auto maxDensPtr = this->_maxDensMat.data();
+  unsigned ns = this->_maxDensMat.rows();
 
   // Exchange ratio for lambda functions.
   double exchangeRatio = 0.0;
 
+  // Use symmetry.
+  std::vector<std::vector<MatrixInBasis<UNRESTRICTED>>> D_sym(
+      this->_nSet, std::vector<MatrixInBasis<UNRESTRICTED>>(this->_nGuess, this->_lrscf[J]->getBasisController()));
+  for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+    for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+      D_sym[iSet][iGuess].alpha = (*densityMatrices)[iSet][iGuess].alpha;
+      D_sym[iSet][iGuess].beta = (*densityMatrices)[iSet][iGuess].beta;
+      D_sym[iSet][iGuess].alpha += _pm[iSet] * (*densityMatrices)[iSet][iGuess].alpha.transpose();
+      D_sym[iSet][iGuess].beta += _pm[iSet] * (*densityMatrices)[iSet][iGuess].beta.transpose();
+    }
+  }
+
   // Distribute function II.
-  auto distributeExchangeII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nb_I + k;
-    unsigned long il = i * nb_I + l;
-    unsigned long jl = j * nb_I + l;
-    unsigned long jk = j * nb_I + k;
-    unsigned long ki = k * nb_I + i;
-    unsigned long kj = k * nb_I + j;
-    unsigned long li = l * nb_I + i;
-    unsigned long lj = l * nb_I + j;
-    double exc = integral * exchangeRatio;
+  auto distributeII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ii = i * nb_I;
+    unsigned jj = j * nb_I;
+    unsigned kk = k * nb_I;
+    unsigned ll = l * nb_I;
+    unsigned ik = ii + k;
+    unsigned il = ii + l;
+    unsigned jk = jj + k;
+    unsigned jl = jj + l;
+    unsigned ki = kk + i;
+    unsigned kj = kk + j;
+    unsigned li = ll + i;
+    unsigned lj = ll + j;
 
     for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      double exc_B = _pm[iSet] * exc;
       for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto Fa = fock_threads[threadId][iSet][iGuess].alpha.data();
-        auto Fb = fock_threads[threadId][iSet][iGuess].beta.data();
-        auto Da = (*densityMatrices)[iSet][iGuess].alpha.data();
-        auto Db = (*densityMatrices)[iSet][iGuess].beta.data();
-
-        // Contractions from A exchange term.
-        Fa[ik] += Da[jl] * exc;
-        Fa[il] += Da[jk] * exc;
-        Fa[jk] += Da[il] * exc;
-        Fa[jl] += Da[ik] * exc;
-        Fa[ki] += Da[lj] * exc;
-        Fa[kj] += Da[li] * exc;
-        Fa[li] += Da[kj] * exc;
-        Fa[lj] += Da[ki] * exc;
-
-        Fb[ik] += Db[jl] * exc;
-        Fb[il] += Db[jk] * exc;
-        Fb[jk] += Db[il] * exc;
-        Fb[jl] += Db[ik] * exc;
-        Fb[ki] += Db[lj] * exc;
-        Fb[kj] += Db[li] * exc;
-        Fb[li] += Db[kj] * exc;
-        Fb[lj] += Db[ki] * exc;
-
-        // Contractions from B exchange term.
-        if (_pm[iSet]) {
-          Fa[ik] += Da[lj] * exc_B;
-          Fa[il] += Da[kj] * exc_B;
-          Fa[jk] += Da[li] * exc_B;
-          Fa[jl] += Da[ki] * exc_B;
-          Fa[ki] += Da[jl] * exc_B;
-          Fa[kj] += Da[il] * exc_B;
-          Fa[li] += Da[jk] * exc_B;
-          Fa[lj] += Da[ik] * exc_B;
-
-          Fb[ik] += Db[lj] * exc_B;
-          Fb[il] += Db[kj] * exc_B;
-          Fb[jk] += Db[li] * exc_B;
-          Fb[jl] += Db[ki] * exc_B;
-          Fb[ki] += Db[jl] * exc_B;
-          Fb[kj] += Db[il] * exc_B;
-          Fb[li] += Db[jk] * exc_B;
-          Fb[lj] += Db[ik] * exc_B;
+        auto Fa = Fx[iThread][iSet][iGuess].alpha.data();
+        auto Da = D_sym[iSet][iGuess].alpha.data();
+        auto Fb = Fx[iThread][iSet][iGuess].beta.data();
+        auto Db = D_sym[iSet][iGuess].beta.data();
+        Fa[ik] += Da[jl] * integral;
+        Fa[il] += Da[jk] * integral;
+        Fa[jk] += Da[il] * integral;
+        Fa[jl] += Da[ik] * integral;
+        Fb[ik] += Db[jl] * integral;
+        Fb[il] += Db[jk] * integral;
+        Fb[jk] += Db[il] * integral;
+        Fb[jl] += Db[ik] * integral;
+        if (!_pm[iSet]) {
+          Fa[ki] += Da[lj] * integral;
+          Fa[li] += Da[kj] * integral;
+          Fa[kj] += Da[li] * integral;
+          Fa[lj] += Da[ki] * integral;
+          Fb[ki] += Db[lj] * integral;
+          Fb[li] += Db[kj] * integral;
+          Fb[kj] += Db[li] * integral;
+          Fb[lj] += Db[ki] * integral;
         }
+      }
+    }
+  };
+
+  // Distribute function IJ.
+  auto distributeIJ = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ik = i * nb_I + k;
+    unsigned jl = j * nb_J + l;
+
+    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+        auto Fa = Fx[iThread][iSet][iGuess].alpha.data();
+        auto Da = D_sym[iSet][iGuess].alpha.data();
+        auto Fb = Fx[iThread][iSet][iGuess].beta.data();
+        auto Db = D_sym[iSet][iGuess].beta.data();
+        Fa[ik] += Da[jl] * integral;
+        Fb[ik] += Db[jl] * integral;
       }
     }
   };
 
   // Prescreening function II.
-  auto prescreeningFuncII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
-    if (maxDens * schwarz < prescreeningThreshold) {
+  auto prescreenII = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = exchangeRatio * schwarz;
+    if (xschwarz * this->_maxDens < this->_prescreeningThreshold) {
       return true;
     }
-    double t1 = maxDensPtr[i * ns + k];
-    double t2 = maxDensPtr[i * ns + l];
-    double t3 = maxDensPtr[j * ns + k];
-    double t4 = maxDensPtr[j * ns + l];
-    double t5 = maxDensPtr[k * ns + i];
-    double t6 = maxDensPtr[k * ns + j];
-    double t7 = maxDensPtr[l * ns + i];
-    double t8 = maxDensPtr[l * ns + j];
+    unsigned ii = i * ns;
+    unsigned jj = j * ns;
+    unsigned kk = k * ns;
+    unsigned ll = l * ns;
+    double t1 = maxDensPtr[ii + k];
+    double t2 = maxDensPtr[ii + l];
+    double t3 = maxDensPtr[jj + k];
+    double t4 = maxDensPtr[jj + l];
+    double t5 = maxDensPtr[kk + i];
+    double t6 = maxDensPtr[kk + j];
+    double t7 = maxDensPtr[ll + i];
+    double t8 = maxDensPtr[ll + j];
     double maxDBlock = std::max({t1, t2, t3, t4, t5, t6, t7, t8});
-    return (maxDBlock * schwarz < prescreeningThreshold);
-  };
-
-  // Distribute function IJ.
-  auto distributeExchangeIJ = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nb_I + k;
-    unsigned long jl = j * nb_J + l;
-    unsigned long lj = l * nb_J + j;
-
-    double exc = integral * exchangeRatio;
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      double exc_B = exc * _pm[iSet];
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        auto Da = (*densityMatrices)[iSet][iGuess].alpha.data();
-        auto Db = (*densityMatrices)[iSet][iGuess].beta.data();
-        auto Fa = fock_threads[threadId][iSet][iGuess].alpha.data();
-        auto Fb = fock_threads[threadId][iSet][iGuess].beta.data();
-
-        // Contractions from A exchange term.
-        Fa[ik] += Da[jl] * exc;
-        Fb[ik] += Db[jl] * exc;
-
-        // Contractions from B exchange term.
-        if (_pm[iSet]) {
-          Fa[ik] += Da[lj] * exc_B;
-          Fb[ik] += Db[lj] * exc_B;
-        }
-      }
-    }
+    return (xschwarz * maxDBlock < this->_prescreeningThreshold);
   };
 
   // Prescreening function IJ.
-  auto prescreeningFuncIJ = [&](unsigned, unsigned j, unsigned, unsigned l, double schwarz) {
-    if (maxDens * schwarz < prescreeningThreshold) {
+  auto prescreenIJ = [&](unsigned, unsigned j, unsigned, unsigned l, double schwarz) {
+    double xschwarz = exchangeRatio * schwarz;
+    if (xschwarz * this->_maxDens < this->_prescreeningThreshold) {
       return true;
     }
     double t1 = maxDensPtr[j * ns + l];
     double t2 = maxDensPtr[l * ns + j];
     double maxDBlock = std::max({t1, t2});
-    return (maxDBlock * schwarz < prescreeningThreshold);
+    return (xschwarz * maxDBlock < this->_prescreeningThreshold);
   };
 
-  // Loop and contract integrals (conventional exchange)!
-  if (_hfExchangeRatio > 0.0 && !_densFitK) {
-    OutputControl::dOut << " **** Performing No RI-K ****" << std::endl;
-    Timings::takeTime("LRSCF -   Sigmavector:      K");
-    exchangeRatio = _hfExchangeRatio;
+  auto contractExchange = [&](double ax, LIBINT_OPERATOR op, double mu) {
+    exchangeRatio = ax;
+
+    // Loop and contract.
     if (I == J) {
-      TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                        prescreeningThreshold);
-      looper.loopNoDerivative(distributeExchangeII, prescreeningFuncII, maxDens, nullptr, true);
+      TwoElecFourCenterIntLooper looper(op, 0, this->_lrscf[I]->getBasisController(), this->_prescreeningThreshold, mu);
+      looper.loopNoDerivative(distributeII, prescreenII, this->_maxDens, nullptr, true);
     }
     else if (I != J) {
-      ExchangeInteractionIntLooper looper(LIBINT_OPERATOR::coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                          this->_lrscf[J]->getBasisController(), prescreeningThreshold);
-      looper.loopNoDerivative(distributeExchangeIJ, prescreeningFuncIJ);
+      ExchangeInteractionIntLooper looper(op, 0, this->_lrscf[I]->getBasisController(),
+                                          this->_lrscf[J]->getBasisController(), this->_prescreeningThreshold, mu);
+      looper.loopNoDerivative(distributeIJ, prescreenIJ);
     }
+
+    // Sum up fock matrices.
+    for (unsigned iThread = 0; iThread < this->_nThreads; ++iThread) {
+      for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
+        for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
+          auto& Fa = Fx[iThread][iSet][iGuess].alpha;
+          auto& Fb = Fx[iThread][iSet][iGuess].beta;
+          Fa *= exchangeRatio;
+          Fb *= exchangeRatio;
+
+          (*fock)[iSet][iGuess].alpha += Fa;
+          (*fock)[iSet][iGuess].beta += Fb;
+          if (I == J) {
+            (*fock)[iSet][iGuess].alpha += _pm[iSet] * Fa.transpose();
+            (*fock)[iSet][iGuess].beta += _pm[iSet] * Fb.transpose();
+          }
+
+          // Set zero if needed another time.
+          if (op == LIBINT_OPERATOR::coulomb && _lrExchangeRatio > 0.0) {
+            Fa.setZero();
+            Fb.setZero();
+          }
+        }
+      }
+    }
+  };
+
+  // HF exchange.
+  if (_hfExchangeRatio > 0.0 && !_densFitK) {
+    Timings::takeTime("LRSCF -   Sigmavector:      K");
+    contractExchange(_hfExchangeRatio, LIBINT_OPERATOR::coulomb, 0.0);
     Timings::timeTaken("LRSCF -   Sigmavector:      K");
   }
 
-  // Loop and contract integrals (long-range exchange)!
+  // LR exchange.
   if (_lrExchangeRatio > 0.0 && !_densFitLRK) {
-    OutputControl::dOut << " **** Performing No RI-ErfK ****" << std::endl;
     Timings::takeTime("LRSCF -   Sigmavector:    LRK");
-    exchangeRatio = _lrExchangeRatio;
-    if (I == J) {
-      TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::erf_coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                        prescreeningThreshold, _mu);
-      looper.loopNoDerivative(distributeExchangeII, prescreeningFuncII, maxDens, nullptr, true);
-    }
-    else if (I != J) {
-      ExchangeInteractionIntLooper looper(LIBINT_OPERATOR::erf_coulomb, 0, this->_lrscf[I]->getBasisController(),
-                                          this->_lrscf[J]->getBasisController(), prescreeningThreshold, _mu);
-      looper.loopNoDerivative(distributeExchangeIJ, prescreeningFuncIJ);
-    }
+    contractExchange(_lrExchangeRatio, LIBINT_OPERATOR::erf_coulomb, _mu);
     Timings::timeTaken("LRSCF -   Sigmavector:    LRK");
-  }
-
-  // Sum over threads.
-  for (unsigned iThread = 0; iThread < nThreads; ++iThread) {
-    for (unsigned iSet = 0; iSet < this->_nSet; ++iSet) {
-      for (unsigned iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
-        (*fock)[iSet][iGuess] += fock_threads[iThread][iSet][iGuess];
-      }
-    }
   }
 
   return fock;

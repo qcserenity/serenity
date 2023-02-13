@@ -180,7 +180,7 @@ void FDEETController::collectSubsystems() {
   // Construct vector containing all subsystems for this coupling problem
   std::vector<std::shared_ptr<SystemController>> systems;
   for (unsigned iState = 0; iState < _nStatesCouple; ++iState) {
-    for (const auto sys : _stateVector[(*_indexVector)[iState]]) {
+    for (const auto& sys : _stateVector[(*_indexVector)[iState]]) {
       systems.emplace_back(sys);
     }
   }

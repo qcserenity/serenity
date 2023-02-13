@@ -80,7 +80,8 @@ UnrestrictedFromRestrictedGuess::calculateInitialGuess(std::shared_ptr<SystemCon
   auto restrictedOrbs = restrictedESguess->getMolecularOrbitals();
   // Create empty unrestricted orbital set
   auto unrestrictedOrbs = std::shared_ptr<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(
-      new OrbitalController<Options::SCF_MODES::UNRESTRICTED>(restrictedOrbs->getBasisController()));
+      new OrbitalController<Options::SCF_MODES::UNRESTRICTED>(restrictedOrbs->getBasisController(),
+                                                              restrictedOrbs->getNCoreOrbitals()));
   // Copy orbitals to unrestricted
   CoefficientMatrix<Options::SCF_MODES::RESTRICTED> restrictedCoefficients = restrictedOrbs->getCoefficients();
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> unrestrictedCoefficients = unrestrictedOrbs->getCoefficients();

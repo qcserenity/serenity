@@ -97,7 +97,7 @@ std::unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalContro
   coefficientsB.block(0, 0, nOrbitalsB, nOrbitalsA) = newCoefficientsB;
   // OrbitalController requires eigenvalues. These are set to zero.
   std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvaluesBptr(new SpinPolarizedData<T, Eigen::VectorXd>(nOrbitalsB));
-  auto coreOrbitalPtr = std::make_unique<SpinPolarizedData<T, Eigen::VectorXi>>(orbitalsA.getCoreOrbitals());
+  auto coreOrbitalPtr = std::make_unique<SpinPolarizedData<T, Eigen::VectorXi>>(orbitalsA.getOrbitalFlags());
   // return new OrbitalController
   return std::make_unique<OrbitalController<T>>(std::move(coefficientsBptr), basisControllerB,
                                                 std::move(eigenvaluesBptr), std::move(coreOrbitalPtr));

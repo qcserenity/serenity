@@ -125,7 +125,6 @@ void CDIntegralController::generateACDVectors(std::shared_ptr<BasisController> b
   // Utilize existing RI framework to evaluate three index integrals
   auto& basis = basisController->getBasis();
   auto& auxbasis = auxBasisController->getBasis();
-  const auto& shellPairs = basisController->getShellPairData();
   const auto& riPrescreeningFactors = auxBasisController->getRIPrescreeningFactors();
 
   auto riints = std::make_shared<RI_J_IntegralController>(basisController, auxBasisController);

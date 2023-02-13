@@ -130,6 +130,11 @@ class AtomType {
       return 7;
     }
   }
+  /**
+   * @brief Getter for the minimal basis size of the given element.
+   * @return The minimal basis size.
+   */
+  unsigned int getMinimalBasisSize() const;
 
  private:
   const std::string _name;

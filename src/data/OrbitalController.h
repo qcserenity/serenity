@@ -56,12 +56,14 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    * @param nCoreElectrons    The number of core electrons (Assigns the core orbitals by eigenvalue).
    */
   OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
-                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues, unsigned int nCoreElectrons);
+                    const SpinPolarizedData<T, Eigen::VectorXd>& eigenvalues, unsigned int nCoreElectrons);
   /**
    * @brief provides an empty set of orbitals waiting to be filled
    * @param basis for which the orbitals in coefficientMatrix are defined.
+   * @param nCoreOrbitals The number of core orbitals (Assigns the first n/2 orbitals as core).
    */
-  explicit OrbitalController(std::shared_ptr<BasisController> basisController);
+  explicit OrbitalController(std::shared_ptr<BasisController> basisController,
+                             const SpinPolarizedData<T, unsigned int> nCoreElectrons);
   /**
    * @param orig Explicit copy constructor.
    *     (Is explicit to avoid unintentional copies.)
@@ -75,6 +77,7 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   OrbitalController(std::string filePath, std::shared_ptr<BasisController> basisController, std::string id);
   ///@brief Move constructor
   OrbitalController(OrbitalController<T>&&) = default;
+  ///@brief Default destructor.
   virtual ~OrbitalController();
 
   /// @returns the controller for the underlying basis
@@ -115,18 +118,36 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
 
   /// @returns the orbital energies.
   SpinPolarizedData<T, Eigen::VectorXd> getEigenvalues();
-  /// @returns Returns the core orbital flags.
-  SpinPolarizedData<T, Eigen::VectorXi> getCoreOrbitals();
+  /// @returns Returns the core/Rydberg orbital flags: 1: Core orbital, 2: Rydberg orbital, 0: valence orbital
+  SpinPolarizedData<T, Eigen::VectorXi> getOrbitalFlags();
+  /// @brief Returns the number of core orbitals.
+  SpinPolarizedData<T, unsigned int> getNCoreOrbitals();
   /**
    * @brief Set all orbitals with an orbital eigenvalue lower than the cut-off as core orbitals.
    * @param energyCutOff The energy cut-off
    */
   void setCoreOrbitalsByEnergyCutOff(double energyCutOff);
   /**
+   * @brief Set virtual orbitals to valence and Rydberg-like orbitals by energy cut-off.
+   * @param energyCutOff The energy cut-off. Orbitals with eigenvalues larger than the
+   *                     given threshold are considered as Rydberg orbitals.
+   */
+  void setRydbergOrbitalsByEnergyCutOff(double energyCutOff);
+  /**
    * @brief Set the orbitals with lowest eigenvalues as core orbitals.
    * @param nCoreOrbitals The number of core orbitals.
    */
   void setCoreOrbitalsByNumber(unsigned int nCoreOrbitals);
+  /**
+   * @brief Set virtual orbitals to valence and Rydberg-like orbitals.
+   * @param nRydbergOrbitals The number of non-valence orbitals.
+   */
+  void setRydbergOrbitalsByNumber(unsigned int nRydbergOrbitals);
+  /**
+   * @brief Set the first N orbitals as core orbitals irrespective of their eigenvalue.
+   * @param nCoreOrbitals The number of core orbitals.
+   */
+  void setCoreOrbitalsFirstN(const SpinPolarizedData<T, unsigned int>& nCoreOrbitals);
   /**
    * @brief Get the ranges for valence and core orbitals among the set of occupied orbitals.
    * @param nOcc The number of occupied orbitals.
@@ -134,6 +155,13 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    */
   std::pair<SpinPolarizedData<T, std::vector<unsigned int>>, SpinPolarizedData<T, std::vector<unsigned int>>>
   getValenceOrbitalIndices(SpinPolarizedData<T, unsigned int> nOcc);
+  /**
+   * @brief Get the ranges for virtual valence and Rydberg orbitals.
+   * @param nOcc The number of occupied orbitals.
+   * @return The ranges for Rydberg and valence orbitals.
+   */
+  std::pair<SpinPolarizedData<T, std::vector<unsigned int>>, SpinPolarizedData<T, std::vector<unsigned int>>>
+  getVirtualValenceOrbitalIndices(SpinPolarizedData<T, unsigned int> nOcc);
   /**
    * @returns the number of orbitals (occupied AND virtual) in this OrbitalController
    */
@@ -248,14 +276,20 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
     return std::make_shared<Eigen::MatrixXd>(_X);
   }
 
+  /**
+   * @brief Constructs a core orbital vector according to the eigenvalue up to the given number of core electrons.
+   * @param nCoreElectrons The number of core electrons.
+   * @param eigenvalues    The eigenvalues.
+   * @return The core orbital vector.
+   */
+  static SpinPolarizedData<T, Eigen::VectorXi>
+  getCoreOrbitalsByEigenvalue(unsigned int nCoreElectrons, const SpinPolarizedData<T, Eigen::VectorXd>& eigenvalues);
+
  private:
   std::unique_ptr<CoefficientMatrix<T>> _coefficients;
   const std::shared_ptr<BasisController> _basisController;
   std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> _eigenvalues;
-  /**
-   * number of core orbitals in constructor with default argument
-   */
-  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> _isCoreOrbital;
+  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> _orbitalFlags;
   double _canOrthTh;
   bool _firstIteration = true;
   Eigen::MatrixXd _X;
@@ -268,14 +302,6 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   std::string _fBaseName;
   std::string _id;
   void calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController);
-  /**
-   * @brief Constructs a core orbital vector according to the eigenvalue up to the given number of core electrons.
-   * @param nCoreElectrons The number of core electrons.
-   * @param eigenvalues    The eigenvalues.
-   * @return The core orbital vector.
-   */
-  SpinPolarizedData<T, Eigen::VectorXi>
-  getCoreOrbitalsByEigenvalue(unsigned int nCoreElectrons, const SpinPolarizedData<T, Eigen::VectorXd>& eigenvalues);
 };
 
 } /* namespace Serenity */

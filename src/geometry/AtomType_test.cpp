@@ -75,4 +75,16 @@ TEST_F(AtomTypeTest, Occupations_U) {
   EXPECT_EQ(occ.beta[4], 2.0 / 3.0);
 }
 
+/**
+ * @test
+ * @brief Tests AtomType.h/.cpp: Tests minimal basis size.
+ */
+TEST_F(AtomTypeTest, MinimalBasisSize) {
+  auto& fac = AtomTypeFactory::getInstance();
+  EXPECT_EQ(fac.getAtomType("F")->getMinimalBasisSize(), 5);
+  EXPECT_EQ(fac.getAtomType("Ar")->getMinimalBasisSize(), 9);
+  EXPECT_EQ(fac.getAtomType("Cs")->getMinimalBasisSize(), 31);
+  EXPECT_EQ(fac.getAtomType("Na")->getMinimalBasisSize(), 9);
+}
+
 } /* namespace Serenity */

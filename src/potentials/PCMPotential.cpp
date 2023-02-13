@@ -185,7 +185,7 @@ Eigen::MatrixXd PCMPotential<SCFMode>::getGeomGradients() {
     }     // for aAtom
   }
   else {
-    throw SerenityError("Analytical, geometrical gradients for IEFPCM/embedded CPCM are not implemented yet.");
+    throw SerenityError("Analytical, geometrical gradients for IEFPCM and FDE-embedded CPCM are not implemented yet.");
   }
   return gradient;
 }

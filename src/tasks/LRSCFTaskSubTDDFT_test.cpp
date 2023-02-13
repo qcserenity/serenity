@@ -75,6 +75,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
   lrscfA.settings.nEigen = 3;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::LLP91K;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   // Uncoupled Subsystem B.
@@ -83,6 +85,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
   lrscfB.settings.nEigen = 3;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   lrscfB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::LLP91K;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   // Coupled Subsystems A and B.
@@ -91,6 +95,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::LLP91K;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.partialResponseConstruction = true;
   lrscfAB.run();
 
@@ -140,6 +146,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_subsystemGrid) {
   lrscfA.settings.nEigen = 3;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::LLP91K;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.settings.subsystemgrid = {1};
   lrscfA.run();
 
@@ -190,6 +198,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Level) {
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
@@ -198,6 +208,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Level) {
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
@@ -211,6 +223,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Level) {
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.run();
 
   auto excitationsActUncoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
@@ -262,6 +276,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huz) {
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
@@ -270,6 +286,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huz) {
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
@@ -282,6 +300,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huz) {
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   lrscfAB.run();
 
@@ -334,6 +354,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Hof) {
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
@@ -342,6 +364,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Hof) {
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
@@ -354,6 +378,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Hof) {
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HOFFMANN;
   lrscfAB.run();
 
@@ -406,7 +432,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level) {
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
-  lrscfA.settings.superSystemGrid = true;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
@@ -414,7 +441,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level) {
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
-  lrscfA.settings.superSystemGrid = true;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
@@ -426,6 +454,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level) {
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.run();
 
@@ -481,15 +511,17 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_Unrestricted) {
   lrscfA.settings.nEigen = 12;
   lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
-  lrscfA.settings.superSystemGrid = true;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.excludeProjection = true;
   lrscfB.settings.nEigen = 12;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
-  lrscfB.settings.superSystemGrid = true;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfAB({act, env}, {});
@@ -500,6 +532,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_Unrestricted) {
   lrscfAB.settings.excludeProjection = true;
   lrscfAB.settings.nEigen = 24;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfAB.run();
@@ -552,14 +586,16 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_RI) {
   lrscfA.settings.excludeProjection = true;
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
-  lrscfA.settings.superSystemGrid = true;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.excludeProjection = true;
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
-  lrscfB.settings.superSystemGrid = true;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
@@ -570,8 +606,9 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_RI) {
   lrscfAB.settings.excludeProjection = true;
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  lrscfAB.settings.superSystemGrid = true;
   lrscfAB.settings.fullFDEc = true;
   lrscfAB.run();
 
@@ -627,14 +664,16 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_RI_Unrestricted) {
   lrscfA.settings.excludeProjection = true;
   lrscfA.settings.nEigen = 6;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE0;
-  lrscfA.settings.superSystemGrid = true;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.run();
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.excludeProjection = true;
   lrscfB.settings.nEigen = 6;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE0;
-  lrscfB.settings.superSystemGrid = true;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.run();
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfAB({act, env}, {});
@@ -642,8 +681,9 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level_RI_Unrestricted) {
   lrscfAB.settings.excludeProjection = true;
   lrscfAB.settings.nEigen = 12;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
-  lrscfAB.settings.superSystemGrid = true;
   lrscfAB.settings.fullFDEc = true;
   lrscfAB.run();
 
@@ -765,29 +805,39 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huzinaga_OrbitalSelection) {
   lrscfALE.settings.nEigen = 6;
   lrscfALE.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfALE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfALE.settings.grid.smallGridAccuracy = 7;
+  lrscfALE.settings.grid.accuracy = 7;
   lrscfALE.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfACT({act_CT}, {env});
   lrscfACT.settings.method = Options::LR_METHOD::TDA;
   lrscfACT.settings.nEigen = 6;
   lrscfACT.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfACT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfACT.settings.grid.smallGridAccuracy = 7;
+  lrscfACT.settings.grid.accuracy = 7;
   lrscfACT.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfBLE({env_LE}, {act});
   lrscfBLE.settings.method = Options::LR_METHOD::TDA;
   lrscfBLE.settings.nEigen = 6;
   lrscfBLE.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfBLE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfBLE.settings.grid.smallGridAccuracy = 7;
+  lrscfBLE.settings.grid.accuracy = 7;
   lrscfBLE.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfBCT({env_CT}, {act});
   lrscfBCT.settings.method = Options::LR_METHOD::TDA;
   lrscfBCT.settings.nEigen = 6;
   lrscfBCT.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfBCT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfBCT.settings.grid.smallGridAccuracy = 7;
+  lrscfBCT.settings.grid.accuracy = 7;
   lrscfBCT.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfCoupling({act_LE, act_CT, env_LE, env_CT}, {});
   lrscfCoupling.settings.method = Options::LR_METHOD::TDA;
   lrscfCoupling.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfCoupling.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfCoupling.settings.grid.smallGridAccuracy = 7;
+  lrscfCoupling.settings.grid.accuracy = 7;
   lrscfCoupling.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   lrscfCoupling.settings.samedensity = {1, 1, 3, 3};
   lrscfCoupling.run();
@@ -888,29 +938,39 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Level_OrbitalSelection) {
   lrscfALE.settings.nEigen = 6;
   lrscfALE.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfALE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfALE.settings.grid.smallGridAccuracy = 7;
+  lrscfALE.settings.grid.accuracy = 7;
   lrscfALE.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfACT({act_CT}, {env});
   lrscfACT.settings.method = Options::LR_METHOD::TDA;
   lrscfACT.settings.nEigen = 6;
   lrscfACT.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfACT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfACT.settings.grid.smallGridAccuracy = 7;
+  lrscfACT.settings.grid.accuracy = 7;
   lrscfACT.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfBLE({env_LE}, {act});
   lrscfBLE.settings.method = Options::LR_METHOD::TDA;
   lrscfBLE.settings.nEigen = 6;
   lrscfBLE.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfBLE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfBLE.settings.grid.smallGridAccuracy = 7;
+  lrscfBLE.settings.grid.accuracy = 7;
   lrscfBLE.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfBCT({env_CT}, {act});
   lrscfBCT.settings.method = Options::LR_METHOD::TDA;
   lrscfBCT.settings.nEigen = 6;
   lrscfBCT.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfBCT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfBCT.settings.grid.smallGridAccuracy = 7;
+  lrscfBCT.settings.grid.accuracy = 7;
   lrscfBCT.run();
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfCoupling({act_LE, act_CT, env_LE, env_CT}, {});
   lrscfCoupling.settings.method = Options::LR_METHOD::TDA;
   lrscfCoupling.settings.densFitJ = Options::DENS_FITS::NONE;
   lrscfCoupling.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfCoupling.settings.grid.smallGridAccuracy = 7;
+  lrscfCoupling.settings.grid.accuracy = 7;
   lrscfCoupling.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfCoupling.settings.samedensity = {1, 1, 3, 3};
   lrscfCoupling.run();
@@ -975,7 +1035,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, rTDDFT_Exact_Approx_Embedding) {
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  lrscfAB.settings.superSystemGrid = true;
   lrscfAB.run();
   auto lrscfContrCombined = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(act1_act2, lrscfAB.settings);
   auto excitationsABCombined = lrscfContrCombined->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
@@ -1015,7 +1074,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, rTDDFT_Exact_Approx_Embedding) {
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
   lrscfA.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::PBE0,
                                               CompositeFunctionals::XCFUNCTIONALS::PBE};
-  lrscfA.settings.superSystemGrid = true;
   lrscfA.run();
   VirtualOrbitalSpaceSelectionTask<SPIN> vossB({act2}, {act1});
   vossB.settings.excludeProjection = true;
@@ -1028,7 +1086,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, rTDDFT_Exact_Approx_Embedding) {
   lrscfB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
   lrscfB.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::PBE0,
                                               CompositeFunctionals::XCFUNCTIONALS::PBE};
-  lrscfB.settings.superSystemGrid = true;
   lrscfB.run();
 
   LRSCFTask<SPIN> lrscfAB_New({act1, act2}, {env3});
@@ -1038,7 +1095,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, rTDDFT_Exact_Approx_Embedding) {
   lrscfAB_New.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
   lrscfAB_New.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::PBE0,
                                                    CompositeFunctionals::XCFUNCTIONALS::PBE};
-  lrscfAB_New.settings.superSystemGrid = true;
   lrscfAB_New.settings.fullFDEc = true;
   lrscfAB_New.run();
   auto lrscfContrSeperated1 = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(act1, lrscfAB_New.settings);
@@ -1076,7 +1132,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding) {
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
-  lrscfAB.settings.superSystemGrid = true;
   lrscfAB.run();
   auto lrscfContrCombined = std::make_shared<LRSCFController<SPIN>>(act1_act2, lrscfAB.settings);
   auto excitationsABCombined = lrscfContrCombined->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
@@ -1107,7 +1162,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding) {
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfA.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                               CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfA.settings.superSystemGrid = true;
   lrscfA.run();
   VirtualOrbitalSpaceSelectionTask<SPIN> vossB({act2}, {act1});
   vossB.settings.excludeProjection = true;
@@ -1120,7 +1174,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding) {
   lrscfB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfB.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                               CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfB.settings.superSystemGrid = true;
   lrscfB.run();
 
   LRSCFTask<SPIN> lrscfAB_New({act1, act2}, {env3});
@@ -1130,7 +1183,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding) {
   lrscfAB_New.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfAB_New.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                                    CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfAB_New.settings.superSystemGrid = true;
   lrscfAB_New.settings.fullFDEc = true;
   lrscfAB_New.run();
   auto lrscfContrSeperated1 = std::make_shared<LRSCFController<SPIN>>(act1, lrscfAB_New.settings);
@@ -1204,7 +1256,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding_VirtualOrbLocalizati
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfA.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                               CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfA.settings.superSystemGrid = true;
   lrscfA.run();
 
   VirtualOrbitalSpaceSelectionTask<SPIN> vossALE({act1, act1_LE}, {act2, env3});
@@ -1237,7 +1288,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding_VirtualOrbLocalizati
   lrscfALE.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfALE.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                                 CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfALE.settings.superSystemGrid = true;
   lrscfALE.run();
 
   LRSCFTask<SPIN> lrscfACT({act1_CT}, {act2, env3});
@@ -1248,7 +1298,6 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding_VirtualOrbLocalizati
   lrscfACT.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::TF;
   lrscfACT.settings.embedding.naddXCFuncList = {CompositeFunctionals::XCFUNCTIONALS::BP86,
                                                 CompositeFunctionals::XCFUNCTIONALS::BP86};
-  lrscfACT.settings.superSystemGrid = true;
   lrscfACT.run();
 
   LRSCFTask<SPIN> lrscfCoupling({act1_CT, act1_LE}, {act2, env3});

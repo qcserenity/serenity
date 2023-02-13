@@ -24,6 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "geometry/Geometry.h"
+#include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/MBPT/MBPT.h"
 #include "tasks/GWTask.h"
 /* Include Std and External Headers */
@@ -49,7 +50,7 @@ class GW_AnalyticContinuation : protected MBPT<SCFMode> {
    * @param startOrb The first orbital index included in a GW calculation
    * @param endOrb The last orbital index included in a GW calculation
    */
-  GW_AnalyticContinuation(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+  GW_AnalyticContinuation(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
                           std::vector<std::shared_ptr<SystemController>> envSystemController,
                           std::shared_ptr<RIIntegrals<SCFMode>> riInts, int startOrb = 0, int endOrb = 0);
   /**

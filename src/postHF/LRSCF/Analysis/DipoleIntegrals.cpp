@@ -23,7 +23,9 @@
 #include "integrals/OneElectronIntegralController.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/XWFController.h"
+#include "settings/LRSCFOptions.h"
 #include "system/SystemController.h"
+#include "tasks/LRSCFTask.h"
 
 namespace Serenity {
 
@@ -89,14 +91,17 @@ Eigen::MatrixXd DipoleIntegrals<SCFMode>::ao2mo(std::vector<std::vector<MatrixIn
     auto H = _lrscf[iSys]->getHoleCoefficients();
     auto xwf = _lrscf[iSys]->getXWFController();
 
+    auto settings = _lrscf[iSys]->getLRSCFSettings();
+    bool pq_space = (xwf && settings.ccprops && settings.method != Options::LR_METHOD::CISD);
+
     for_spin(nv, no, P, H) {
       unsigned nb = nv_spin + no_spin;
-      unsigned np = xwf ? nb : nv_spin;
-      unsigned nh = xwf ? nb : no_spin;
+      unsigned np = pq_space ? nb : nv_spin;
+      unsigned nh = pq_space ? nb : no_spin;
       dipoles.conservativeResize(dipoles.rows() + np * nh, 3);
       for (unsigned j = 0; j < 3; ++j) {
         Eigen::MatrixXd tmp =
-            P_spin.middleCols(xwf ? 0 : no_spin, np).transpose() * ao_xyz[iSys][j] * H_spin.middleCols(0, nh);
+            P_spin.middleCols(pq_space ? 0 : no_spin, np).transpose() * ao_xyz[iSys][j] * H_spin.middleCols(0, nh);
         dipoles.block(iStartSysSpin, j, np * nh, 1) = Eigen::Map<Eigen::VectorXd>(tmp.data(), np * nh);
       }
       iStartSysSpin += np * nh;

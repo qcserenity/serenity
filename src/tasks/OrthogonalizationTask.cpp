@@ -127,20 +127,20 @@ void OrthogonalizationTask<SCFMode>::run() {
     case Options::ORTHOGONALIZATION_ALGORITHMS::BROER: {
       OutputControl::nOut << "Use Broer's orthogonalization scheme" << std::endl;
       if (_systemController.size() == 2) {
-        auto nOccAct = _systemController[0]->getNOccupiedOrbitals<SCFMode>();
-        auto nOccEnv = _systemController[1]->getNOccupiedOrbitals<SCFMode>();
+        auto nOccAct = _systemController[0]->template getNOccupiedOrbitals<SCFMode>();
+        auto nOccEnv = _systemController[1]->template getNOccupiedOrbitals<SCFMode>();
         auto nBasAct = _systemController[0]->getBasisController()->getNBasisFunctions();
         auto nBasEnv = _systemController[1]->getBasisController()->getNBasisFunctions();
 
-        auto actSuperSysCoeff = _systemController[0]->getActiveOrbitalController<SCFMode>()->getCoefficients();
-        auto envSuperSysCoeff = _systemController[1]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+        auto actSuperSysCoeff = _systemController[0]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+        auto envSuperSysCoeff = _systemController[1]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
 
         if (nBasAct != nBas and nBasEnv != nBas) {
           actSuperSysCoeff = coeff;
           envSuperSysCoeff = coeff;
 
-          auto actSysCoeff = _systemController[0]->getActiveOrbitalController<SCFMode>()->getCoefficients();
-          auto envSysCoeff = _systemController[1]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+          auto actSysCoeff = _systemController[0]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+          auto envSysCoeff = _systemController[1]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
           for_spin(actSysCoeff, envSysCoeff, actSuperSysCoeff, envSuperSysCoeff, nOccAct, nOccEnv) {
             actSuperSysCoeff_spin.setZero();
             actSuperSysCoeff_spin.block(0, 0, nBasAct, nOccAct_spin) = (actSysCoeff_spin).leftCols(nOccAct_spin);

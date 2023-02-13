@@ -86,128 +86,119 @@ double ExchangePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
 template<>
 void ExchangePotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Options::SCF_MODES::RESTRICTED>& F,
                                                                     const DensityMatrix<Options::SCF_MODES::RESTRICTED>& densityMatrix) {
-  const unsigned int nBFs = _basis->getNBasisFunctions();
+  unsigned nb = _basis->getNBasisFunctions();
+  unsigned ns = _basis->getReducedNBasisFunctions();
+  unsigned nThreads = omp_get_max_threads();
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>> fx(nThreads, _basis);
 
-  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>> fx;
-  const unsigned int nThreads = omp_get_max_threads();
-  for (unsigned int i = 0; i < nThreads; ++i) {
-    fx.emplace_back(_basis);
-  }
+  auto D = densityMatrix.data();
 
-  auto distribute = [&](unsigned i, unsigned j, unsigned k, const unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nBFs + k;
-    unsigned long il = i * nBFs + l;
-    unsigned long jl = j * nBFs + l;
-    unsigned long jk = j * nBFs + k;
+  auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ik = i * nb + k;
+    unsigned il = i * nb + l;
+    unsigned jl = j * nb + l;
+    unsigned jk = j * nb + k;
 
-    auto Fx = fx[threadId].data();
-    auto D = densityMatrix.data();
+    auto Fx = fx[iThread].data();
 
-    // Exchange.
-    const double exc = 0.5 * _exc * integral;
-    *(Fx + ik) -= *(D + jl) * exc;
-    *(Fx + il) -= *(D + jk) * exc;
-    *(Fx + jk) -= *(D + il) * exc;
-    *(Fx + jl) -= *(D + ik) * exc;
+    Fx[ik] -= D[jl] * integral;
+    Fx[il] -= D[jk] * integral;
+    Fx[jk] -= D[il] * integral;
+    Fx[jl] -= D[ik] * integral;
   };
 
-  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
-  const auto maxDens = maxDensMat.maxCoeff();
-  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwartz) {
-    if (maxDens * schwartz < _screening) {
+  auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  auto maxDensPtr = maxDensMat.data();
+  auto maxDens = maxDensMat.maxCoeff();
+
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = 0.5 * _exc * schwarz;
+    if (maxDens * xschwarz < _screening) {
       return true;
     }
-    double maxDBlock = 0.5 * maxDensMat(i, k);
-    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(i, l));
-    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(j, k));
-    maxDBlock = std::max(maxDBlock, 0.5 * maxDensMat(j, l));
-    if (maxDBlock * schwartz < _screening) {
-      return true;
-    }
-    return false;
+    double t1 = maxDensPtr[i * ns + k];
+    double t2 = maxDensPtr[i * ns + l];
+    double t3 = maxDensPtr[j * ns + k];
+    double t4 = maxDensPtr[j * ns + l];
+    double maxDBlock = std::max({t1, t2, t3, t4});
+    return (maxDBlock * xschwarz < _screening);
   };
 
   TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
   looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
 
-  for (unsigned int i = 1; i < nThreads; ++i) {
-    fx[0] += fx[i];
+  for (unsigned iThread = 1; iThread < nThreads; ++iThread) {
+    fx[0] += fx[iThread];
   }
 
   // Symmetrize.
-  Eigen::Ref<Eigen::MatrixXd> Fxa = fx[0];
-  Eigen::MatrixXd tmp_x = Fxa + Fxa.transpose();
-  F += tmp_x;
+  fx[0] *= 0.5 * _exc;
+  F += fx[0];
+  F += fx[0].transpose();
 }
 
 template<>
 void ExchangePotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(
     FockMatrix<Options::SCF_MODES::UNRESTRICTED>& F, const DensityMatrix<Options::SCF_MODES::UNRESTRICTED>& densityMatrix) {
-  const unsigned int nBFs = _basis->getNBasisFunctions();
+  unsigned nb = _basis->getNBasisFunctions();
+  unsigned ns = _basis->getReducedNBasisFunctions();
+  unsigned nThreads = omp_get_max_threads();
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>> fx(nThreads, _basis);
 
-  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>> fx;
-  const unsigned int nThreads = omp_get_max_threads();
-  for (unsigned int i = 0; i < nThreads; ++i) {
-    fx.emplace_back(_basis);
-  }
+  auto Da = densityMatrix.alpha.data();
+  auto Db = densityMatrix.beta.data();
 
   auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
-    unsigned long ik = i * nBFs + k;
-    unsigned long il = i * nBFs + l;
-    unsigned long jl = j * nBFs + l;
-    unsigned long jk = j * nBFs + k;
+    unsigned ik = i * nb + k;
+    unsigned il = i * nb + l;
+    unsigned jl = j * nb + l;
+    unsigned jk = j * nb + k;
 
     auto Fxa = fx[threadId].alpha.data();
+    Fxa[ik] -= Da[jl] * integral;
+    Fxa[il] -= Da[jk] * integral;
+    Fxa[jk] -= Da[il] * integral;
+    Fxa[jl] -= Da[ik] * integral;
+
     auto Fxb = fx[threadId].beta.data();
-
-    auto Da = densityMatrix.alpha.data();
-    auto Db = densityMatrix.beta.data();
-
-    double exc = _exc * integral;
-    *(Fxa + ik) -= *(Da + jl) * exc;
-    *(Fxa + il) -= *(Da + jk) * exc;
-    *(Fxa + jk) -= *(Da + il) * exc;
-    *(Fxa + jl) -= *(Da + ik) * exc;
-
-    *(Fxb + ik) -= *(Db + jl) * exc;
-    *(Fxb + il) -= *(Db + jk) * exc;
-    *(Fxb + jk) -= *(Db + il) * exc;
-    *(Fxb + jl) -= *(Db + ik) * exc;
+    Fxb[ik] -= Db[jl] * integral;
+    Fxb[il] -= Db[jk] * integral;
+    Fxb[jk] -= Db[il] * integral;
+    Fxb[jl] -= Db[ik] * integral;
   };
 
-  const auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
-  const auto maxDens = maxDensMat.maxCoeff();
-  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwartz) {
-    if (maxDens * schwartz < _screening) {
+  auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  auto maxDensPtr = maxDensMat.data();
+  auto maxDens = maxDensMat.maxCoeff();
+
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = _exc * schwarz;
+    if (maxDens * xschwarz < _screening) {
       return true;
     }
-    double maxDBlock = maxDensMat(i, k);
-    maxDBlock = std::max(maxDBlock, maxDensMat(i, l));
-    maxDBlock = std::max(maxDBlock, maxDensMat(j, k));
-    maxDBlock = std::max(maxDBlock, maxDensMat(j, l));
-    if (maxDBlock * schwartz < _screening) {
-      return true;
-    }
-    return false;
+    double t1 = maxDensPtr[i * ns + k];
+    double t2 = maxDensPtr[i * ns + l];
+    double t3 = maxDensPtr[j * ns + k];
+    double t4 = maxDensPtr[j * ns + l];
+    double maxDBlock = std::max({t1, t2, t3, t4});
+    return (maxDBlock * xschwarz < _screening);
   };
 
   TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
   looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
 
-  for (unsigned int i = 1; i < nThreads; ++i) {
-    fx[0].alpha += fx[i].alpha;
-    fx[0].beta += fx[i].beta;
+  for (unsigned iThread = 1; iThread < nThreads; ++iThread) {
+    fx[0].alpha += fx[iThread].alpha;
+    fx[0].beta += fx[iThread].beta;
   }
 
   // Symmetrize.
-  Eigen::Ref<Eigen::MatrixXd> Fxa = fx[0].alpha;
-  Eigen::Ref<Eigen::MatrixXd> Fxb = fx[0].beta;
-
-  Eigen::MatrixXd tmp_x = Fxa + Fxa.transpose();
-  F.alpha += tmp_x;
-
-  tmp_x = Fxb + Fxb.transpose();
-  F.beta += tmp_x;
+  fx[0].alpha *= _exc;
+  F.alpha += fx[0].alpha;
+  F.alpha += fx[0].alpha.transpose();
+  fx[0].beta *= _exc;
+  F.beta += fx[0].beta;
+  F.beta += fx[0].beta.transpose();
 }
 
 template<>

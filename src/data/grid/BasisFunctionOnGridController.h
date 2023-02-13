@@ -33,9 +33,9 @@ class BasisController;
 class Grid;
 class GridController;
 template<class T>
-class Gradient;
+struct Gradient;
 template<class T>
-class Hessian;
+struct Hessian;
 
 /**
  * @class BasisFunctionOnGridController BasisFunctionOnGridController.h

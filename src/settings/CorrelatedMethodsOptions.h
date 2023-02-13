@@ -45,8 +45,9 @@ void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field);
  *   AO      Employ full four center integrals.
  *   RI      Use RI approximation for four center integrals.
  *   Local   Use orbital invariant formulation of MP2 using PNO, RI and pair approximation.
+ *   LT      Use a Laplace transformation of the energy demoninator to obtain N4 scaling.
  */
-enum class MP2_TYPES { AO = 0, RI = 1, LOCAL = 2 };
+enum class MP2_TYPES { AO = 0, RI = 1, LOCAL = 2, LT = 3 };
 template<>
 void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field);
 /**************************************************************************************************/
@@ -69,7 +70,7 @@ void resolve<PNO_SETTINGS>(std::string& value, PNO_SETTINGS& field);
  *   DLPNO_CCSD_T0: DLPNO-CCSD(T0)
  *   NONE:          Hartree-Fock
  */
-enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0, NONE };
+enum class PNO_METHOD { DLPNO_MP2, DLPNO_CCSD, DLPNO_CCSD_T0, SC_MP2, NONE };
 template<>
 void resolve<PNO_METHOD>(std::string& value, PNO_METHOD& field);
 } /* namespace Options */

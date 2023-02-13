@@ -186,7 +186,7 @@ AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemCont
             if (resExists) {
               // Load old files.
               HDF5::Filepath name(pathRes);
-              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
               HDF5::dataset_exists(file, "densityMatrix");
               HDF5::load(file, "densityMatrix", atomDensMat);
               file.close();
@@ -194,7 +194,7 @@ AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemCont
             else {
               Eigen::MatrixXd dummy;
               HDF5::Filepath name(pathUnres);
-              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+              HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
               HDF5::dataset_exists(file, "densityMatrix_alpha");
               HDF5::load(file, "densityMatrix_alpha", dummy);
               atomDensMat = dummy;
@@ -212,7 +212,7 @@ AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemCont
       }
       else {
         HDF5::Filepath name(pathToGuessDensities + atom->getAtomType()->getElementSymbol() + ".dmat.res.h5");
-        HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
         HDF5::dataset_exists(file, "densityMatrix");
         HDF5::load(file, "densityMatrix", atomDensMat);
         file.close();

@@ -40,6 +40,8 @@ TEST_F(ResponseSolverTest, Undamped) {
   Eigen::MatrixXd dipE(nDim, 3);
   dipE.setRandom();
   dipE *= 1000;
+  std::vector<Eigen::MatrixXd> ppmq(2, 2 * dipE);
+  ppmq[1].setZero();
 
   double damping = 0.;
 
@@ -67,8 +69,7 @@ TEST_F(ResponseSolverTest, Undamped) {
   std::vector<double> frequencies = {1};
 
   // Build response solver
-  auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
+  auto responseSolver = ResponseSolver(diagonalElements, 1e-6, 100, 100000, frequencies, damping, ppmq, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();
@@ -105,6 +106,8 @@ TEST_F(ResponseSolverTest, Undamped_Multifreq) {
   Eigen::MatrixXd dipE(nDim, 3);
   dipE.setRandom();
   dipE *= 1000;
+  std::vector<Eigen::MatrixXd> ppmq(2, 2 * dipE);
+  ppmq[1].setZero();
 
   double damping = 0.;
 
@@ -136,8 +139,7 @@ TEST_F(ResponseSolverTest, Undamped_Multifreq) {
   }
 
   // Build response solver
-  auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
+  auto responseSolver = ResponseSolver(diagonalElements, 1e-6, 100, 100000, frequencies, damping, ppmq, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();
@@ -177,6 +179,10 @@ TEST_F(ResponseSolverTest, Damped) {
   Eigen::MatrixXd dipE(nDim, 3);
   dipE.setRandom();
   dipE *= 1000;
+  std::vector<Eigen::MatrixXd> ppmq(4, 2 * dipE);
+  ppmq[1].setZero();
+  ppmq[2].setZero();
+  ppmq[3].setZero();
 
   APB.setRandom();
   // make symmetric
@@ -206,8 +212,7 @@ TEST_F(ResponseSolverTest, Damped) {
   double damping = 1.0;
 
   // Build response solver
-  auto responseSolver = ResponseSolver(nDim, 0, diagonalElements, 1e-6, 100, 100000, frequencies, damping,
-                                       Options::GAUGE::LENGTH, dipE, dipE, dipE, sigmaVectorCalculator);
+  auto responseSolver = ResponseSolver(diagonalElements, 1e-6, 100, 100000, frequencies, damping, ppmq, sigmaVectorCalculator);
 
   // Solutionvectors
   auto itVectors = responseSolver.getEigenvectors();
@@ -251,6 +256,60 @@ TEST_F(ResponseSolverTest, Damped) {
   EXPECT_LT(diffXmYr.array().cwiseAbs().maxCoeff(), 1e-10);
   EXPECT_LT(diffXpYi.array().cwiseAbs().maxCoeff(), 1e-10);
   EXPECT_LT(diffXmYi.array().cwiseAbs().maxCoeff(), 1e-10);
+}
+
+TEST_F(ResponseSolverTest, Single_Set) {
+  // construct test matrices A+B and A-B
+  unsigned int nDim = 250;
+  Eigen::MatrixXd APB(nDim, nDim);
+  Eigen::MatrixXd dipE(nDim, 3);
+  dipE.setRandom();
+  dipE *= 1000;
+  std::vector<Eigen::MatrixXd> ppmq(1, 2 * dipE);
+
+  double damping = 0.;
+
+  APB.setRandom();
+  // make symmetric
+  APB = APB.transpose() * APB;
+  // make diagonal dominant and A-B positive definite
+  Eigen::VectorXd diagonalElements = APB.diagonal();
+  diagonalElements = diagonalElements.array().square();
+  diagonalElements = diagonalElements.array().sqrt();
+  APB *= 1.0e-3;
+  APB.diagonal() = diagonalElements;
+
+  // Sigma vector calculators
+  auto sigmaVectorCalculator = [&](std::vector<Eigen::MatrixXd>& guessVectors) {
+    std::unique_ptr<std::vector<Eigen::MatrixXd>> sigma =
+        std::unique_ptr<std::vector<Eigen::MatrixXd>>(new std::vector<Eigen::MatrixXd>(1));
+    (*sigma)[0] = APB * guessVectors[0];
+    return sigma;
+  };
+
+  std::vector<double> frequencies = {1};
+
+  // Build response solver
+  auto responseSolver = ResponseSolver(diagonalElements, 1e-6, 100, 100000, frequencies, damping, ppmq, sigmaVectorCalculator);
+
+  // Solutionvectors
+  auto itVectors = responseSolver.getEigenvectors();
+
+  // Setup 'exact' lhs-matrix to feed eigen3 with
+  Eigen::MatrixXd lhs = Eigen::MatrixXd::Zero(nDim, nDim);
+  lhs.block(0 * nDim, 0 * nDim, nDim, nDim) = APB - frequencies[0] * Eigen::MatrixXd::Identity(nDim, nDim);
+
+  // Same for rhs-matrix
+  Eigen::MatrixXd rhs = Eigen::MatrixXd::Zero(nDim, 3);
+
+  // Determine solution vectors using eigen
+  Eigen::MatrixXd solVectors = lhs.colPivHouseholderQr().solve(2 * dipE);
+
+  // Build difference matrix
+  Eigen::MatrixXd diffXpY = solVectors - itVectors[0];
+
+  // Compare
+  EXPECT_LT(diffXpY.array().cwiseAbs().maxCoeff(), 1e-10);
 }
 
 } /* namespace Serenity */

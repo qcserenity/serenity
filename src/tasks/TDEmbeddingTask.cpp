@@ -93,9 +93,11 @@ void TDEmbeddingTask<SCFMode>::run() {
     fdeTask.settings.embedding = settings.embedding;
     fdeTask.settings.calculateEnvironmentEnergy = true;
     fdeTask.settings.lcSettings = settings.lcSettings;
+    if (settings.truncAlgorithm != Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE)
+      fdeTask.settings.lcSettings.useProjectedOccupiedOrbitals = true;
     fdeTask.settings.maxCycles = settings.maxCycles;
     fdeTask.settings.maxResidual = settings.maxResidual;
-    fdeTask.settings.locType = settings.locType;
+    fdeTask.settings.loc.locType = settings.locType;
     fdeTask.settings.mp2Type = settings.mp2Type;
     fdeTask.run();
   }

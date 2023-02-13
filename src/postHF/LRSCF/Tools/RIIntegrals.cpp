@@ -37,9 +37,11 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 RIIntegrals<SCFMode>::RIIntegrals(std::shared_ptr<SystemController> sys, LIBINT_OPERATOR op, double mu, bool calcJia,
-                                  unsigned pStart, unsigned pEnd, double nafThresh, std::shared_ptr<Geometry> geo) {
+                                  unsigned pStart, unsigned pEnd, double nafThresh, std::shared_ptr<Geometry> geo,
+                                  Options::DENS_FITS densFitCache) {
   LRSCFTaskSettings settings;
   settings.nafThresh = nafThresh;
+  settings.densFitCache = densFitCache;
   (*this) =
       RIIntegrals<SCFMode>(std::make_shared<LRSCFController<SCFMode>>(sys, settings), op, mu, calcJia, pStart, pEnd, geo);
 }
@@ -52,7 +54,6 @@ RIIntegrals<SCFMode>::RIIntegrals(std::shared_ptr<LRSCFController<SCFMode>> lrsc
     _mu(mu),
     _no(lrscf->getNOccupied()),
     _nv(lrscf->getNVirtual()),
-    _nxs(0),
     _pStart(pStart),
     _pEnd(pEnd),
     _calcJia(calcJia),
@@ -159,7 +160,7 @@ void RIIntegrals<SCFMode>::printInfo() {
   };
   memDemand *= sizeof(double);
   auto mem = MemoryManager::getInstance();
-  double freeMem = 0.85 * mem->getAvailableSystemMemory();
+  size_t freeMem = 0.8 * MemoryManager::getInstance()->getAvailableSystemMemory();
   double gbFactor = 1e-9;
   printf("  Available memory            : %12.3f GB\n", gbFactor * freeMem);
   printf("  Minimal memory demand       : %12.3f GB\n\n", gbFactor * memDemand);
@@ -170,13 +171,14 @@ void RIIntegrals<SCFMode>::printInfo() {
 
 template<Options::SCF_MODES SCFMode>
 void RIIntegrals<SCFMode>::calculateIntegrals() {
-  Timings::takeTime("RIIntegrals -    MO Integrals");
+  Timings::takeTime("RIIntegrals -        MO Integrals");
 
   RI_J_IntegralController riints(_basContr, _auxBasContr, nullptr, _op, _mu);
-  TwoElecThreeCenterCalculator ints(_op, _mu, _basContr, _basContr, _auxBasContr, _basContr->getPrescreeningThreshold());
-  auto& auxShells = _auxBasContr->getBasis();
-
+  _integrals = std::make_shared<TwoElecThreeCenterCalculator>(_op, _mu, _basContr, _basContr, _auxBasContr,
+                                                              _basContr->getPrescreeningThreshold());
   _auxTrafo = std::make_shared<Eigen::MatrixXd>(riints.getInverseMSqrt());
+
+  _metric = std::make_shared<Eigen::MatrixXd>(riints.getMetric());
 
   _Jij = std::make_shared<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>();
   _Jia = std::make_shared<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>();
@@ -188,7 +190,7 @@ void RIIntegrals<SCFMode>::calculateIntegrals() {
 
   auto C = _lrscf.lock()->getCoefficients();
 
-  for_spin(C, Jij, Jia, Jpq, _no, _nv) {
+  for_spin(Jij, Jia, Jpq, _no, _nv) {
     Jij_spin = Eigen::MatrixXd((long)_no_spin * _no_spin, _nxb);
     if (_calcJia) {
       Jia_spin = Eigen::MatrixXd((long)_nv_spin * _no_spin, _nxb);
@@ -196,31 +198,26 @@ void RIIntegrals<SCFMode>::calculateIntegrals() {
     if (_calcJpq) {
       Jpq_spin = Eigen::MatrixXd((long)(_no_spin + _nv_spin) * (_pEnd - _pStart), _nxb);
     }
+  };
 
-#pragma omp parallel for schedule(dynamic)
-    for (size_t iShell = 0; iShell < _auxBasContr->getReducedNBasisFunctions(); ++iShell) {
-      unsigned iThread = omp_get_thread_num();
-      auto& integrals = ints.calculateIntegrals(iShell, iThread);
+  auto distribute = [&](Eigen::Map<Eigen::MatrixXd> AO, size_t P, unsigned) {
+    for_spin(C, Jij, Jia, Jpq, _no, _nv) {
+      Eigen::Map<Eigen::MatrixXd> oo(Jij_spin.col(P).data(), _no_spin, _no_spin);
+      oo = C_spin.middleCols(0, _no_spin).transpose() * AO * C_spin.middleCols(0, _no_spin);
 
-      unsigned long P_in_iShell = auxShells[iShell]->getNContracted();
-      for (unsigned P = 0; P < P_in_iShell; ++P) {
-        unsigned long P_all = _auxBasContr->extendedIndex(iShell) + P;
-        Eigen::Map<Eigen::MatrixXd> AO(integrals.col(P).data(), _nb, _nb);
-
-        Eigen::Map<Eigen::MatrixXd> oo(Jij_spin.col(P_all).data(), _no_spin, _no_spin);
-        oo = C_spin.middleCols(0, _no_spin).transpose() * AO * C_spin.middleCols(0, _no_spin);
-
-        if (_calcJia) {
-          Eigen::Map<Eigen::MatrixXd> vo(Jia_spin.col(P_all).data(), _nv_spin, _no_spin);
-          vo = C_spin.middleCols(_no_spin, _nv_spin).transpose() * AO * C_spin.middleCols(0, _no_spin);
-        }
-        if (_calcJpq) {
-          Eigen::Map<Eigen::MatrixXd> pq(Jpq_spin.col(P_all).data(), (_no_spin + _nv_spin), (_pEnd - _pStart));
-          pq = C_spin.middleCols(0, (_no_spin + _nv_spin)).transpose() * AO * C_spin.middleCols(_pStart, (_pEnd - _pStart));
-        }
+      if (_calcJia) {
+        Eigen::Map<Eigen::MatrixXd> vo(Jia_spin.col(P).data(), _nv_spin, _no_spin);
+        vo = C_spin.middleCols(_no_spin, _nv_spin).transpose() * AO * C_spin.middleCols(0, _no_spin);
       }
-    }
+      if (_calcJpq) {
+        Eigen::Map<Eigen::MatrixXd> pq(Jpq_spin.col(P).data(), (_no_spin + _nv_spin), (_pEnd - _pStart));
+        pq = C_spin.middleCols(0, (_no_spin + _nv_spin)).transpose() * AO * C_spin.middleCols(_pStart, (_pEnd - _pStart));
+      }
+    };
+  };
+  _integrals->loop(distribute);
 
+  for_spin(Jij, Jia, Jpq, _no, _nv) {
     // P -> Q transformation.
     Jij_spin *= (*_auxTrafo);
 
@@ -242,55 +239,14 @@ void RIIntegrals<SCFMode>::calculateIntegrals() {
   }
 
   _fullyMOCached = true;
-  Timings::timeTaken("RIIntegrals -    MO Integrals");
+  Timings::timeTaken("RIIntegrals -        MO Integrals");
 }
 
 template<Options::SCF_MODES SCFMode>
 void RIIntegrals<SCFMode>::cacheAOIntegrals() {
-  Timings::takeTime("RIIntegrals -      AO Caching");
-
-  std::string cap;
-  if (_op == LIBINT_OPERATOR::coulomb) {
-    cap = "AO Integral Caching - Coulomb";
-  }
-  else if (_op == LIBINT_OPERATOR::erf_coulomb) {
-    cap = "AO Integral Caching - erf-Coulomb";
-  }
-  else {
-    throw SerenityError("Operator for RI integrals not yet supported.");
-  }
-  printBigCaption(cap);
-
-  double gbFactor = 1e-9;
-  auto mem = MemoryManager::getInstance();
-  double freeMem = 0.5 * mem->getAvailableSystemMemory();
-  printf("  Memory available for AO integral cache    : %7.3f GB\n", gbFactor * freeMem);
-
-  double memx = sizeof(double) * _nb * (_nb + 1) / 2;
-  double nxs_d = std::min((double)_nxb, freeMem / memx);
-  _nxs = std::round(nxs_d);
-
-  _looper = std::make_shared<TwoElecThreeCenterIntLooper>(
-      _op, 0, _basContr, _auxBasContr, _basContr->getPrescreeningThreshold(), std::pair<unsigned, unsigned>(0, _nxs), _mu);
-
-  printf("  Caching %4lu (%3.0f%%) of (mn|P) integrals   : %7.3f GB\n\n", _nxs, 100 * (nxs_d / _nxb), gbFactor * nxs_d * memx);
-
-  _Jmn = std::make_shared<Eigen::MatrixXd>(_nb * (_nb + 1) / 2, _nxs);
-  _Jmn->setZero();
-  double* jmnptr = _Jmn->data();
-
-  auto loopFunc = [&](size_t mu, size_t nu, size_t P, double integral, unsigned) {
-    size_t index = (P * _nb * (_nb + 1) / 2) + (nu * _nb - (nu - 1) * (nu) / 2) + (mu - nu);
-    jmnptr[index] = integral;
-  };
-
-  _looper->loopNoDerivative(loopFunc);
-
-  // reset the looper so it will from now on only loop over ints that could not be cached
-  _looper = std::make_shared<TwoElecThreeCenterIntLooper>(_op, 0, _basContr, _auxBasContr,
-                                                          _basContr->getPrescreeningThreshold(),
-                                                          std::pair<unsigned, unsigned>(_nxs, _nxb), _mu);
-  Timings::timeTaken("RIIntegrals -      AO Caching");
+  Timings::takeTime("RIIntegrals -          AO Caching");
+  _integrals->cacheIntegrals();
+  Timings::timeTaken("RIIntegrals -          AO Caching");
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -306,10 +262,8 @@ void RIIntegrals<SCFMode>::applyNAFApproximation() {
   auto& Jia = *_Jia;
   auto& Jpq = *_Jpq;
   for_spin(Jij, Jia) {
-    // (ij|Q)
     naf.noalias() += _scfFactor * Jij_spin.transpose() * Jij_spin;
     if (_calcJia) {
-      // (ia|Q) and (ai|Q)
       naf.noalias() += _scfFactor * 2.0 * Jia_spin.transpose() * Jia_spin;
     }
   };
@@ -381,8 +335,7 @@ void RIIntegrals<SCFMode>::clearMOCache() {
 
 template<Options::SCF_MODES SCFMode>
 void RIIntegrals<SCFMode>::clearAOCache() {
-  _Jmn->resize(0, 0);
-  _nxs = 0;
+  _integrals->clearCache();
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -411,11 +364,6 @@ unsigned RIIntegrals<SCFMode>::getNAuxBasisFunctions() {
 }
 
 template<Options::SCF_MODES SCFMode>
-unsigned RIIntegrals<SCFMode>::getNCachedAuxBasisFunctions() {
-  return _nxs;
-}
-
-template<Options::SCF_MODES SCFMode>
 std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> RIIntegrals<SCFMode>::getJijPtr() {
   return _Jij;
 }
@@ -431,28 +379,23 @@ std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> RIIntegrals<SCFMode
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<Eigen::MatrixXd> RIIntegrals<SCFMode>::getJmnPtr() {
-  return _Jmn;
-}
-
-template<Options::SCF_MODES SCFMode>
 std::shared_ptr<Eigen::MatrixXd> RIIntegrals<SCFMode>::getAuxTrafoPtr() {
   return _auxTrafo;
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<TwoElecThreeCenterIntLooper> RIIntegrals<SCFMode>::getLooperPtr() {
-  return _looper;
+std::shared_ptr<Eigen::MatrixXd> RIIntegrals<SCFMode>::getAuxMetricPtr() {
+  return _metric;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<TwoElecThreeCenterCalculator> RIIntegrals<SCFMode>::getIntegralPtr() {
+  return _integrals;
 }
 
 template<Options::SCF_MODES SCFMode>
 bool RIIntegrals<SCFMode>::isFullyMOCached() {
   return _fullyMOCached;
-}
-
-template<Options::SCF_MODES SCFMode>
-bool RIIntegrals<SCFMode>::isFullyAOCached() {
-  return (_nxb == _nxs) ? true : false;
 }
 
 template<Options::SCF_MODES SCFMode>

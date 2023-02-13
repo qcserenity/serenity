@@ -20,7 +20,6 @@
 /* Include Class Header*/
 #include "geometry/AtomType.h"
 /* Include Serenity Internal Headers */
-#include "io/FormattedOutput.h"
 #include "misc/WarningTracker.h"
 #include "parameters/AtomicParameters.h"
 /* Include Std and External Headers */
@@ -187,6 +186,42 @@ int getAtomSpin(const AtomType& atomType) {
   }
   else {
     return 2 * nFunctionsInIncompleteShells - nElectronsInIncompleteShells;
+  }
+}
+
+unsigned int AtomType::getMinimalBasisSize() const {
+  if (_psePosition < 3) {
+    return 1;
+  }
+  else if (_psePosition < 11) {
+    return 5;
+  }
+  else if (_psePosition < 19) {
+    return 9;
+  }
+  else if (_psePosition < 21) {
+    return 13;
+  }
+  else if (_psePosition < 37) {
+    return 18;
+  }
+  else if (_psePosition < 39) {
+    return 22;
+  }
+  else if (_psePosition < 55) {
+    return 27;
+  }
+  else if (_psePosition < 57) {
+    return 31;
+  }
+  else if (_psePosition < 87) {
+    return 43;
+  }
+  else if (_psePosition < 89) {
+    return 47;
+  }
+  else {
+    return 59;
   }
 }
 

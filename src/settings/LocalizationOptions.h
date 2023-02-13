@@ -67,7 +67,7 @@ void resolve<POPULATION_ANALYSIS_ALGORITHMS>(std::string& value, POPULATION_ANAL
  * These flags can be used to automatically select a set of DOS thresholds. The accuracy of the
  * DOS orbital sets for relative energies is indicated by the flags name.
  */
-enum class DOS_SETTINGS { LOOSE = 0, NORMAL = 1, TIGHT = 2, VERY_TIGHT = 3, EXTREME = 4 };
+enum class DOS_SETTINGS { LOOSE = 0, NORMAL = 1, TIGHT = 2, VERY_TIGHT = 3, EXTREME = 4, SPREAD = 5 };
 template<>
 void resolve<DOS_SETTINGS>(std::string& value, DOS_SETTINGS& field);
 } /* namespace Options */

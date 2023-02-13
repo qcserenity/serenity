@@ -29,6 +29,7 @@
 #include "misc/SystemSplittingTools.h"
 #include "postHF/CC/DLPNO_CCSD.h" //Local coupled cluster.
 #include "postHF/CC/DLPNO_CCSD_T0.h"
+#include "postHF/MPn/LocalMP2.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -98,8 +99,8 @@ Eigen::SparseMatrix<int> WavefunctionEmbeddingTask::setUpSupersystem() {
   return orbitalIndexMap.sparseView();
 }
 
-std::vector<std::shared_ptr<OrbitalPair>> WavefunctionEmbeddingTask::buildOrbialPairs(unsigned int iSys, unsigned int jSys) {
-  const Eigen::VectorXi& coreOrbitals = _supersystem->getActiveOrbitalController<RESTRICTED>()->getCoreOrbitals();
+std::vector<std::shared_ptr<OrbitalPair>> WavefunctionEmbeddingTask::buildOrbitalPairs(unsigned int iSys, unsigned int jSys) {
+  const Eigen::VectorXi& coreOrbitals = _supersystem->getActiveOrbitalController<RESTRICTED>()->getOrbitalFlags();
   const bool usesFrozenCore = settings.lcSettings[iSys].useFrozenCore || settings.lcSettings[jSys].useFrozenCore;
   unsigned int thresholdSystem = (settings.accurateInteraction) ? iSys : jSys;
   const auto& lcSettings = settings.lcSettings[thresholdSystem];
@@ -209,6 +210,7 @@ void WavefunctionEmbeddingTask::buildIntegralThresholdVectors() {
 void WavefunctionEmbeddingTask::run() {
   for (auto& lcSettings : settings.lcSettings)
     lcSettings.resolvePNOSettings();
+  this->checkForMP2Run();
   // Build supersystem
   if (settings.fromFragments) {
     _orbitalIndexMap = setUpSupersystem();
@@ -231,7 +233,7 @@ void WavefunctionEmbeddingTask::run() {
   auto& pairMatrix = *_pairMatrix;
   for (unsigned int iSys = 0; iSys < _systems.size(); ++iSys) {
     for (unsigned int jSys = iSys; jSys < _systems.size(); ++jSys) {
-      auto pairSet = buildOrbialPairs(iSys, jSys);
+      auto pairSet = buildOrbitalPairs(iSys, jSys);
       pairMatrix(iSys, jSys) = pairSet;
       pairMatrix(jSys, iSys) = pairSet;
       _allPairs.insert(_allPairs.end(), pairSet.begin(), pairSet.end());
@@ -247,16 +249,28 @@ void WavefunctionEmbeddingTask::run() {
   double totalHFEnergy = _supersystem->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY);
   // Run CC calculation.
   std::vector<std::shared_ptr<SystemController>> dummy = {};
-  auto localCorrelationController = std::make_shared<LocalCorrelationController>(
+  _localCorrelationController = std::make_shared<LocalCorrelationController>(
       _supersystem, settings.lcSettings[0], dummy, fockMatrix, _allPairs, _orbitalWiseMullikenThresholds,
       _orbitalToShellThresholds, _orbitalWiseDOIPAOThresholds);
-  DLPNO_CCSD dlpnoCCSD(localCorrelationController, settings.normThreshold, settings.maxCycles);
-  Eigen::VectorXd energies = dlpnoCCSD.calculateElectronicEnergyCorrections();
-  double totalCCSD = energies.sum();
+  Eigen::VectorXd energies;
+  if (_useCCCalculator) {
+    DLPNO_CCSD dlpnoCCSD(_localCorrelationController, settings.normThreshold, settings.maxCycles);
+    energies = dlpnoCCSD.calculateElectronicEnergyCorrections();
+  }
+  else if (_useMP2Calculator) {
+    LocalMP2 localMP2(_localCorrelationController);
+    localMP2.settings.maxCycles = settings.maxCycles;
+    localMP2.settings.maxResidual = settings.normThreshold;
+    energies = localMP2.calculateEnergyCorrection();
+  }
+  else if (_onlyNone) {
+    OutputControl::mOut << "No correlation treatment requested!" << std::endl;
+  }
+  double totalDoubles = energies.sum();
   double triplesCorrection = 0.0;
   if (usesTriples) {
-    sortOrbitalTriples(localCorrelationController);
-    triplesCorrection = calculateTriplesCorrection(localCorrelationController);
+    triplesCorrection = calculateTriplesCorrection(_localCorrelationController);
+    sortOrbitalTriples(_localCorrelationController);
   }
 
   for (unsigned int iSys = 0; iSys < _systems.size(); ++iSys) {
@@ -267,16 +281,14 @@ void WavefunctionEmbeddingTask::run() {
       performFullDecomposition(iSys);
     double aaPairEnergies = 0.0;
     for (auto& pair : pairMatrix(iSys, iSys)) {
-      aaPairEnergies += pair->getCCSDPairEnergy();
+      aaPairEnergies += pair->getPairEnergy();
     }
     double abPairEnergies = 0.0;
-    unsigned int nABPairs = 0;
     for (unsigned int jSys = 0; jSys < _systems.size(); ++jSys) {
       if (jSys == iSys)
         continue;
       for (auto& pair : pairMatrix(iSys, jSys))
-        abPairEnergies += pair->getCCSDPairEnergy();
-      nABPairs += pairMatrix(iSys, jSys).size();
+        abPairEnergies += pair->getPairEnergy();
     }
 
     OutputControl::mOut << "Energy decomposition for system: " << sys->getSystemName() << std::endl;
@@ -305,24 +317,62 @@ void WavefunctionEmbeddingTask::run() {
     _fragmentEnergies(iSys) = totalACorrelationEnergy;
     _interactionEnergies(iSys) = totalCorrelationInteractionEnergy;
   }
-  _totalEnergy = std::make_unique<double>(triplesCorrection + totalCCSD + totalHFEnergy);
+  _totalEnergy = std::make_unique<double>(triplesCorrection + totalDoubles + totalHFEnergy);
   OutputControl::mOut << "Total supersystem energies: " << _supersystem->getSystemName() << std::endl;
   OutputControl::mOut
       << "----------------------------------------------------------------------------------------------------" << std::endl;
   printf("%-80s %18.10f \n", "Total Hartree Fock Energy:", totalHFEnergy);
-  printf("%-80s %18.10f \n", "Total LCCSD Energy:", totalCCSD);
+  if (_useCCCalculator)
+    printf("%-80s %18.10f \n", "Total LCCSD Energy:", totalDoubles);
+  if (_useMP2Calculator)
+    printf("%-80s %18.10f \n", "Total L-MP2 Energy:", totalDoubles);
   if (usesTriples)
     printf("%-80s %18.10f \n", "Total Semi-Can. Triples correction:", triplesCorrection);
-  printf("%-80s %18.10f \n", "Total Correlation Energy:", triplesCorrection + totalCCSD);
+  printf("%-80s %18.10f \n", "Total Correlation Energy:", triplesCorrection + totalDoubles);
   printf("%-80s %18.10f \n", "Total Energy (HF + corr):", *_totalEnergy);
   OutputControl::mOut
       << "----------------------------------------------------------------------------------------------------" << std::endl;
+  if (this->settings.writePairEnergies)
+    _localCorrelationController->writePairEnergies("MultiLevelCC");
+}
+
+void WavefunctionEmbeddingTask::checkForMP2Run() {
+  bool containsMP2 = false;
+  bool containsCCSDT = false;
+  bool containsSCMP2 = false;
+  for (unsigned int iSubsystem = 0; iSubsystem < _systems.size(); ++iSubsystem) {
+    switch (settings.lcSettings[iSubsystem].method) {
+      case (Options::PNO_METHOD::DLPNO_CCSD_T0):
+      case (Options::PNO_METHOD::DLPNO_CCSD):
+        containsCCSDT = true;
+        break;
+      case (Options::PNO_METHOD::DLPNO_MP2):
+        containsMP2 = true;
+        break;
+      case (Options::PNO_METHOD::SC_MP2):
+        containsSCMP2 = true;
+        break;
+      case (Options::PNO_METHOD::NONE):
+        break;
+    }
+  } // for iSubsystem
+  _useMP2Calculator = (containsMP2 && not containsCCSDT) || (containsSCMP2 && not containsCCSDT);
+  _useCCCalculator = containsCCSDT && not containsMP2;
+  _onlyNone = not containsMP2 && not containsMP2;
+  if ((containsMP2 && containsCCSDT) || (containsMP2 && containsSCMP2) || (containsSCMP2 && containsCCSDT))
+    throw SerenityError("Error: Mixed MP2/CC multi-level calculations are not supported.");
 }
 
 double WavefunctionEmbeddingTask::getTotalEnergy() {
   if (!_totalEnergy)
     this->run();
   return *_totalEnergy;
+}
+
+std::shared_ptr<LocalCorrelationController> WavefunctionEmbeddingTask::getLocalCorrelationController() {
+  if (!_localCorrelationController)
+    this->run();
+  return _localCorrelationController;
 }
 
 } /* namespace Serenity */

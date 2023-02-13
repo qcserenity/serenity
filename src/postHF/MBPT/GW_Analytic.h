@@ -24,6 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "geometry/Geometry.h"
+#include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/MBPT/MBPT.h"
 #include "tasks/GWTask.h"
 #include "tasks/LRSCFTask.h"
@@ -53,7 +54,7 @@ class GW_Analytic : public MBPT<SCFMode> {
    * @param startOrb The first orbital index included in a GW calculation
    * @param endOrb The last orbital index included in a GW calculation
    */
-  GW_Analytic(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+  GW_Analytic(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
               std::vector<std::shared_ptr<SystemController>> envSystemController,
               std::shared_ptr<RIIntegrals<SCFMode>> riInts = nullptr, int startOrb = 0, int endOrb = 0);
   /**
@@ -86,18 +87,6 @@ class GW_Analytic : public MBPT<SCFMode> {
    */
   Eigen::VectorXd calculatedVector(double freq, Eigen::VectorXd orbEigenValues, double excitationEnergy,
                                    unsigned int nOcc, unsigned int nVirt);
-
- private:
-  ///@brief Occupied orbitals.
-  SpinPolarizedData<SCFMode, unsigned int> _nOcc;
-  ///@brief Virtual orbitals.
-  SpinPolarizedData<SCFMode, unsigned int> _nVirt;
-  ///@brief Orbital eigenvalues.
-  SpinPolarizedData<SCFMode, Eigen::VectorXd> _orbEig;
-  ///@brief LRSCF controller.
-  std::shared_ptr<LRSCFController<SCFMode>> _lrscf;
-  ///@brief The LRSCF controller settings.
-  LRSCFTaskSettings _lrscfSettings;
 };
 
 } /* namespace Serenity */

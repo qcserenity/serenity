@@ -52,6 +52,11 @@ void EigenvalueSolver::initialize() {
   }
   else if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIZED) {
     printf("\n    Symmetrized algorithm.\n");
+    if (_initialGuess) {
+      for (auto& set : (*_initialGuess)) {
+        set = _diagonal.cwiseSqrt().cwiseInverse().asDiagonal() * set;
+      }
+    }
   }
   else {
     printf("\n    Symplectic algorithm.\n");
@@ -311,10 +316,10 @@ void EigenvalueSolver::postProcessing() {
 
   // print eigenvalues with norms
   if (_algorithm == Options::RESPONSE_ALGORITHM::SYMMETRIC) {
-    printf("\n         TDA excitation energies       \n");
+    printf("         TDA excitation energies       \n");
   }
   else {
-    printf("\n        TDDFT excitation energies      \n");
+    printf("        TDDFT excitation energies      \n");
   }
   printf(" ------------------------------------------\n");
   printf("    root        eigenvalue       res norm  \n");

@@ -24,11 +24,13 @@
 #include "energies/EnergyComponentController.h" //Assign and get energy contributions.
 #include "energies/EnergyContributions.h"       //Assign and get energy contributions.
 #include "io/FormattedOutput.h"                 //Table heads.
-#include "misc/WarningTracker.h"                //Warnings for incorrect energy handling.
-#include "postHF/MPn/LocalMP2.h"                //Local MP2.
-#include "postHF/MPn/MP2.h"                     //Canonical MP2.
-#include "postHF/MPn/RIMP2.h"                   //RI MP2.
-#include "system/SystemController.h"            //Access to electronic structure.
+#include "io/FormattedOutputStream.h"
+#include "misc/WarningTracker.h"     //Warnings for incorrect energy handling.
+#include "postHF/MPn/LTMP2.h"        //Laplace-Transform SOS RI MP2.
+#include "postHF/MPn/LocalMP2.h"     //Local MP2.
+#include "postHF/MPn/MP2.h"          //Canonical MP2.
+#include "postHF/MPn/RIMP2.h"        //RI MP2.
+#include "system/SystemController.h" //Access to electronic structure.
 /* Include Std and External Headers */
 #include <iomanip> //std::setw(...) for ostream
 
@@ -44,26 +46,68 @@ MP2Task<SCFMode>::MP2Task(std::shared_ptr<SystemController> systemController,
 template<Options::SCF_MODES SCFMode>
 void MP2Task<SCFMode>::run() {
   Eigen::VectorXd mp2EnergyCorrections(1);
+  if (settings.sss != 1.0 || settings.oss != 1.0) {
+    OutputControl::nOut << "Custom spin-component scaling:" << std::endl;
+    OutputControl::nOut << " Same-spin     : " << settings.sss << std::endl;
+    OutputControl::nOut << " Opposite-spin : " << settings.oss << std::endl;
+  }
+  if (settings.ltconv != 0) {
+    printBigCaption("Laplace-Transform algorithms");
+    printf(" Threshold     : %-6.1e\n", settings.ltconv);
+    printf(" Opposite-spin : %-6.3f\n\n", settings.oss);
+    if (settings.mp2Type != Options::MP2_TYPES::LT) {
+      WarningTracker::printWarning("You have set the ltconv threshold but did not request LT as the MP2 type.", 1);
+    };
+  }
   if (settings.mp2Type == Options::MP2_TYPES::RI) {
-    RIMP2<SCFMode> rimp2(_systemController);
+    RIMP2<SCFMode> rimp2(_systemController, settings.sss, settings.oss);
     mp2EnergyCorrections << rimp2.calculateCorrection();
+    if (settings.unrelaxedDensity) {
+      auto densityCorrection = rimp2.calculateDensityCorrection();
+      auto densityController = _systemController->getElectronicStructure<SCFMode>()->getDensityMatrixController();
+      auto density = densityController->getDensityMatrix();
+      densityController->setDensityMatrix(density + densityCorrection);
+    }
+  }
+  else if (settings.mp2Type == Options::MP2_TYPES::LT) {
+    LTMP2<SCFMode> ltmp2(_systemController, settings.oss, settings.ltconv);
+    mp2EnergyCorrections << ltmp2.calculateCorrection();
   }
   else if (settings.mp2Type == Options::MP2_TYPES::AO) {
-    if (SCFMode == UNRESTRICTED)
+    if (settings.sss != 1.0 || settings.sss != 1.0) {
+      WarningTracker::printWarning("Custom spin scaling is ignored.", 1);
+    }
+    if (SCFMode == UNRESTRICTED) {
       throw SerenityError("MP2 is not available for unrestricted systems, please use RI-MP2.");
+    }
     MP2EnergyCorrector<RESTRICTED> mp2EnergyCorrector(_systemController);
     mp2EnergyCorrections << mp2EnergyCorrector.calculateElectronicEnergy();
+    if (settings.unrelaxedDensity) {
+      throw SerenityError("Unrelaxed density is not available for canonical MP2, please use RI-MP2.");
+    }
   }
   else if (settings.mp2Type == Options::MP2_TYPES::LOCAL) {
-    if (SCFMode == UNRESTRICTED)
+    if (SCFMode == UNRESTRICTED) {
       throw SerenityError("Local-MP2 is not available for unrestricted systems, please use RI-MP2.");
-    settings.lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
+    }
+    // If SC-MP2 is not requested explicitly, set the DLPNO method to DLPNO-MP2.
+    if (settings.lcSettings.method != Options::PNO_METHOD::SC_MP2) {
+      settings.lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
+    }
     auto localCorrelationController =
         std::make_shared<LocalCorrelationController>(_systemController, settings.lcSettings, _environmentSystems);
     LocalMP2 mp2EnergyCorrector(localCorrelationController);
+    mp2EnergyCorrector.settings.ssScaling = settings.sss;
+    mp2EnergyCorrector.settings.osScaling = settings.oss;
     mp2EnergyCorrector.settings.maxResidual = settings.maxResidual;
     mp2EnergyCorrector.settings.maxCycles = settings.maxCycles;
     mp2EnergyCorrections = mp2EnergyCorrector.calculateEnergyCorrection();
+    if (settings.unrelaxedDensity) {
+      auto densityCorrection = mp2EnergyCorrector.calculateDensityCorrection();
+      auto densityController = _systemController->getElectronicStructure<SCFMode>()->getDensityMatrixController();
+      auto density = densityController->getDensityMatrix();
+      densityController->setDensityMatrix(density + densityCorrection);
+    }
     if (this->settings.writePairEnergies)
       localCorrelationController->writePairEnergies("MP2");
   }
@@ -78,6 +122,9 @@ void MP2Task<SCFMode>::run() {
    */
   if (settings.mp2Type == Options::MP2_TYPES::RI) {
     printSectionTitle("(RI-)MP2 Results");
+  }
+  if (settings.mp2Type == Options::MP2_TYPES::LT) {
+    printSectionTitle("(LT-SOS-)MP2 Results");
   }
   else if (settings.mp2Type == Options::MP2_TYPES::AO) {
     printSectionTitle("MP2 Results");

@@ -160,52 +160,23 @@ void LRSCFTask<SCFMode>::run() {
     eigenvectors = restart.fetchEigenpairs(eigenvalues);
   }
 
-  // turn off grid output globally
+  // Turn off grid output globally.
   bool oldIOGridInfo = iOOptions.printGridInfo;
   iOOptions.printGridInfo = (GLOBAL_PRINT_LEVEL != Options::GLOBAL_PRINT_LEVELS::DEBUGGING) ? false : true;
 
-  // setup lambda functions for response matrix sigmavectors
-  ResponseLambda<SCFMode> lambda(_act, _env, _lrscf, diagonal, settings);
-  lambda.setupTDDFTLambdas();
-  SigmaCalculator sigmaCalculator;
-
-  // check if local orbitals are used
+  // Check if local orbitals are used.
   bool fockDiagonal = true;
   for (auto& lrscf : _lrscf) {
     fockDiagonal = fockDiagonal && lrscf->isMOFockMatrixDiagonal();
   }
   if (!fockDiagonal) {
-    printf(" Fock matrix is not diagonal, please make sure this is intended.\n\n");
+    WarningTracker::printWarning(" Fock matrix is not diagonal, please make sure this is intended.", true);
   }
 
-  // set mode for eigenvalue solver
-  if (settings.method != Options::LR_METHOD::TDDFT) {
-    // tda: ignore user input and solve symmetric problem
-    settings.algorithm = Options::RESPONSE_ALGORITHM::SYMMETRIC;
-    sigmaCalculator = lambda.getTDASigma();
-  }
-  else if (settings.algorithm == Options::RESPONSE_ALGORITHM::SYMPLECTIC) {
-    sigmaCalculator = lambda.getRPASigma();
-  }
-  else {
-    if (!fockDiagonal || lambda.usesEO() || lambda.usesExchange() || lambda.usesLRExchange() ||
-        settings.partialResponseConstruction || settings.grimme) {
-      // (A-B) is not diagonal, have to solve symplectic problem
-      settings.algorithm = Options::RESPONSE_ALGORITHM::SYMPLECTIC;
-      sigmaCalculator = lambda.getRPASigma();
-    }
-    else {
-      // (A-B) is diagonal, might also solve the symmetrized problem
-      settings.algorithm = Options::RESPONSE_ALGORITHM::SYMMETRIZED;
-      sigmaCalculator = lambda.getTDDFTSigma();
-      // transform eigenvectors if they are about to be used as an initial guess
-      if (eigenvectors) {
-        for (auto& set : (*eigenvectors)) {
-          set = diagonal.cwiseSqrt().cwiseInverse().asDiagonal() * set;
-        }
-      }
-    }
-  }
+  // Setup lambda functions for response matrix sigmavectors.
+  ResponseLambda<SCFMode> lambda(_act, _env, _lrscf, diagonal, settings);
+  lambda.setupTDDFTLambdas();
+  SigmaCalculator sigmaCalculator = lambda.setEigensolverMode(fockDiagonal);
 
   auto& libint = Libint::getInstance();
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
@@ -225,7 +196,7 @@ void LRSCFTask<SCFMode>::run() {
     }
 
     // Set initial subspace size.
-    unsigned initialSubspace = (settings.nEigen) < 8 ? (settings.nEigen * 2) : (settings.nEigen + 8);
+    unsigned initialSubspace = std::min(settings.nEigen * 2, settings.nEigen + 8);
     initialSubspace = (type == Options::LRSCF_TYPE::COUPLED) ? settings.nEigen : initialSubspace;
     initialSubspace = std::min(initialSubspace, nDimension);
 
@@ -235,25 +206,62 @@ void LRSCFTask<SCFMode>::run() {
       }
       else {
         // If this is a coupled calculation and no full FDEc was requested, only perform a single iteration.
-        EigenvalueSolver eigenSolver(settings.saveResponseMatrix, nDimension, settings.nEigen, diagonal, settings.conv,
+        EigenvalueSolver eigensolver(settings.saveResponseMatrix, nDimension, settings.nEigen, diagonal, settings.conv,
                                      (type == Options::LRSCF_TYPE::COUPLED && !settings.fullFDEc) ? 1 : settings.maxCycles,
                                      settings.maxSubspaceDimension, initialSubspace, settings.algorithm,
                                      sigmaCalculator, eigenvectors, restart.getWriteToDisk());
 
-        eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(eigenSolver.getEigenvectors());
-        eigenvalues = eigenSolver.getEigenvalues();
+        eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(eigensolver.getEigenvectors());
+        eigenvalues = eigensolver.getEigenvalues();
+
+        // Switch to finer grid if necessary and perform one final iteration.
+        if (lambda.usesKernel() && settings.grid.accuracy != settings.grid.smallGridAccuracy) {
+          printSmallCaption("Switching from small to default grid");
+          printf("  Residual norms might not match the desired convergence anymore.\n");
+          printf("  Grid accuracy:    %1i -> %1i\n\n", settings.grid.smallGridAccuracy, settings.grid.accuracy);
+          lambda.setupKernel(Options::GRID_PURPOSES::DEFAULT);
+          // At this point, there is X and Y stored in (*eigenvectors)[0] and [1], respectively.
+          if (settings.method == Options::LR_METHOD::TDDFT) {
+            (*eigenvectors)[0] += (*eigenvectors)[1];
+            (*eigenvectors)[1] = ((*eigenvectors)[0] - 2 * (*eigenvectors)[1]).eval();
+          }
+          eigensolver = EigenvalueSolver(settings.saveResponseMatrix, nDimension, settings.nEigen, diagonal,
+                                         settings.conv, 1, settings.maxSubspaceDimension, settings.nEigen,
+                                         settings.algorithm, sigmaCalculator, eigenvectors, restart.getWriteToDisk());
+          eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(eigensolver.getEigenvectors());
+          eigenvalues = eigensolver.getEigenvalues();
+        }
       }
 
       // For (TDA-)TDDFT transition density matrices: (X+Y) (X-Y).
       transDensityMatrices = std::make_shared<std::vector<Eigen::MatrixXd>>(2);
-      if (settings.method == Options::LR_METHOD::TDA) {
-        (*transDensityMatrices)[0] = (*eigenvectors)[0];
-        (*transDensityMatrices)[1] = (*eigenvectors)[0];
+      (*transDensityMatrices)[0] = (*eigenvectors)[0];
+      (*transDensityMatrices)[1] = (*eigenvectors)[0];
+      if (settings.method == Options::LR_METHOD::TDDFT) {
+        (*transDensityMatrices)[0] += (*eigenvectors)[1];
+        (*transDensityMatrices)[1] -= (*eigenvectors)[1];
       }
-      else if (settings.method == Options::LR_METHOD::TDDFT) {
-        (*transDensityMatrices)[0] = (*eigenvectors)[0] + (*eigenvectors)[1];
-        (*transDensityMatrices)[1] = (*eigenvectors)[0] - (*eigenvectors)[1];
-      }
+
+      // If double hybrid is used, calculate CIS(D) correction.
+      if (lambda.usesDoubleHybrid()) {
+        lambda.setupCC2Lambdas();
+        Eigen::VectorXd cisd = eigenvalues;
+
+        NonlinearEigenvalueSolver nlEigenSolver(settings.nEigen, diagonal, settings.conv, settings.preopt,
+                                                settings.diis, settings.diisStore, settings.maxCycles,
+                                                Options::LR_METHOD::CISD, (*transDensityMatrices)[0], cisd,
+                                                lambda.getRightXWFSigma(), restart.getWriteToDisk());
+        nlEigenSolver.solve();
+
+        // Add correction to excitation energies.
+        eigenvalues += lambda.getDHRatio() * cisd;
+
+        // Get rid of CC2 and RIIntegral controller.
+        for (auto& lrscf : _lrscf) {
+          lrscf->finalizeXWFController();
+          lrscf->finalizeRIIntegrals(LIBINT_OPERATOR::coulomb);
+        }
+      } /* Double hybrid correction */
     }
     else {
       lambda.setupCC2Lambdas();
@@ -261,32 +269,34 @@ void LRSCFTask<SCFMode>::run() {
         // RI-CIS calculation.
         printSubSectionTitle("RI-CIS Calculation");
         double cisthresh = (settings.method == Options::LR_METHOD::CISD) ? settings.conv : settings.preopt;
-        EigenvalueSolver eigenSolver(false, nDimension, settings.nEigen, diagonal, cisthresh, settings.maxCycles,
+        EigenvalueSolver eigensolver(false, nDimension, settings.nEigen, diagonal, cisthresh, settings.maxCycles,
                                      settings.maxSubspaceDimension, initialSubspace,
                                      Options::RESPONSE_ALGORITHM::SYMMETRIC, sigmaCalculator);
 
-        eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(eigenSolver.getEigenvectors());
-        eigenvalues = eigenSolver.getEigenvalues();
+        eigenvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(eigensolver.getEigenvectors());
+        eigenvalues = eigensolver.getEigenvalues();
       }
       /* RI-CIS calculation. */
 
-      // Ground-state calculation
-      printSubSectionTitle("Ground-state Calculation");
-      _lrscf[0]->getXWFController()->initialize();
-      /* Ground-state calculation */
-
-      printSubSectionTitle("Right-eigenvector Calculation");
+      Eigen::VectorXd nleigenvalues(settings.nEigen);
+      printSubSectionTitle("Right Eigenvector Calculation");
       NonlinearEigenvalueSolver nlEigenSolver(settings.nEigen, diagonal, settings.conv, settings.preopt, settings.diis,
                                               settings.diisStore, settings.maxCycles, settings.method, (*eigenvectors)[0],
-                                              eigenvalues, lambda.getRightXWFSigma(), restart.getWriteToDisk());
+                                              nleigenvalues, lambda.getRightXWFSigma(), restart.getWriteToDisk());
       nlEigenSolver.solve();
 
-      if (settings.method != Options::LR_METHOD::CISD) {
+      if (settings.method == Options::LR_METHOD::CISD) {
+        // In the CISD case, this is just the correction.
+        eigenvalues += nleigenvalues;
+        transDensityMatrices = std::make_shared<std::vector<Eigen::MatrixXd>>(2, (*eigenvectors)[0]);
+      }
+      else {
+        eigenvalues = nleigenvalues;
         if (settings.ccprops) {
           Eigen::VectorXd rightEigenvalues = eigenvalues;
           if (settings.method != Options::LR_METHOD::ADC2) {
             eigenvectors->push_back((*eigenvectors)[0]);
-            printSubSectionTitle("Left-eigenvector Calculation");
+            printSubSectionTitle("Left Eigenvector Calculation");
             NonlinearEigenvalueSolver nlEigenSolver(settings.nEigen, diagonal, settings.conv, settings.preopt,
                                                     settings.diis, settings.diisStore, settings.maxCycles, settings.method,
                                                     (*eigenvectors)[1], eigenvalues, lambda.getLeftXWFSigma());
@@ -350,10 +360,24 @@ void LRSCFTask<SCFMode>::run() {
 
     settings.maxSubspaceDimension = settings.frequencies.size() * 100;
 
-    ResponseSolver responseSolver(nDimension, 0, diagonal, settings.conv, settings.maxCycles,
-                                  settings.maxSubspaceDimension, settings.frequencies, settings.damping, settings.gauge,
-                                  (*dipoles->getLengths()), (*dipoles->getVelocities()), (*dipoles->getMagnetics()),
-                                  lambda.getRPASigma(), nullptr, [](std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&) {});
+    // Just use normal grid for property calculation.
+    if (lambda.usesKernel() && settings.grid.accuracy != settings.grid.smallGridAccuracy && settings.nEigen < 1) {
+      printf("  Will use default grid accuracy for response property calculation.\n\n");
+      lambda.setupKernel(Options::GRID_PURPOSES::DEFAULT);
+    }
+
+    // Determine rhs of the linear equation system.
+    std::vector<Eigen::MatrixXd> rhs(settings.damping != 0 ? 4 : 2, Eigen::MatrixXd::Zero(nDimension, 3));
+    if (settings.gauge == Options::GAUGE::LENGTH) {
+      rhs[0] = 2 * (*dipoles->getLengths());
+    }
+    else {
+      rhs[1] = 2 * (*dipoles->getVelocities());
+    }
+
+    ResponseSolver responseSolver(diagonal, settings.conv, settings.maxCycles, settings.maxSubspaceDimension,
+                                  settings.frequencies, settings.damping, rhs, lambda.getRPASigma(), nullptr,
+                                  [](std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&) {});
 
     // Get converged solution vectors for analysis.
     solutionvectors = std::make_shared<std::vector<Eigen::MatrixXd>>(responseSolver.getEigenvectors());
@@ -374,9 +398,9 @@ void LRSCFTask<SCFMode>::run() {
   }
 
   // Analysis: dominant contributions, excitation spectrum, CD Spectrum, response properties.
-  if (settings.analysis && settings.method != Options::LR_METHOD::CISD) {
+  if (settings.analysis) {
     if (eigenvectors) {
-      _excitations = Eigen::MatrixXd::Zero(settings.nEigen, 5);
+      _excitations = Eigen::MatrixXd::Zero(settings.nEigen, 6);
       // Prints dominant contributions etc.
       LRSCFAnalysis<SCFMode>::printDominantContributions(_lrscf, (*eigenvectors), eigenvalues, settings.dominantThresh);
       // Print delta s^2 values in unrestricted case.
@@ -386,20 +410,20 @@ void LRSCFTask<SCFMode>::run() {
           spinSquared.print();
         }
       }
-      // Prints excitation and CD spectrum (oscillator and rotatory strengths, respectively).
-      if (settings.method == Options::LR_METHOD::TDA || settings.method == Options::LR_METHOD::TDDFT || settings.ccprops) {
+      if (transDensityMatrices) {
+        // Prints excitation and CD spectrum (oscillator and rotatory strengths, respectively).
         std::string name = (type != Options::LRSCF_TYPE::COUPLED)
                                ? _lrscf[0]->getSys()->getSystemPath() + _lrscf[0]->getSys()->getSystemName()
                                : "";
         ExcitationSpectrum<SCFMode>::printSpectrum(settings.method, dipoles, (*transDensityMatrices), eigenvalues,
                                                    _excitations, name);
-        // Calculate Löwdin charges and store on disk.
-        if (settings.transitionCharges) {
-          if (settings.method == Options::LR_METHOD::CC2) {
-            WarningTracker::printWarning("CC2 transition densities might not be well defined.", true);
-          }
-          LRSCFPopulationAnalysis<SCFMode>::calculateTransitionCharges(_lrscf, (*transDensityMatrices));
+      }
+      // Calculate Löwdin charges and store on disk.
+      if (settings.transitionCharges) {
+        if (settings.method == Options::LR_METHOD::CC2) {
+          WarningTracker::printWarning("CC2 transition densities might not be well defined.", true);
         }
+        LRSCFPopulationAnalysis<SCFMode>::calculateTransitionCharges(_lrscf, (*transDensityMatrices));
       }
     }
     if (solutionvectors) {
@@ -408,11 +432,12 @@ void LRSCFTask<SCFMode>::run() {
       for (const auto& sys : _act) {
         auto atoms = sys->getGeometry()->getAtoms();
         for (const auto& atom : atoms) {
-          if (!atom->isDummy())
+          if (!atom->isDummy()) {
             molWeight += atom->getAtomType()->getMass();
+          }
         }
       }
-      // See Grimme Chem. Phys. Lett. 361 (2002) 321–328.
+      // See Grimme Chem. Phys. Lett. 361 (2002) 321-328.
       double rotFactor = 1.343e-4 / molWeight * HARTREE_TO_OOCM * HARTREE_TO_OOCM;
 
       // Print properties.

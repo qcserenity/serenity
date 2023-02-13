@@ -20,14 +20,13 @@
 #ifndef TWOELECTHREECENTERCALCULATOR_H_
 #define TWOELECTHREECENTERCALCULATOR_H_
 /* Include Serenity Internal Headers */
+#include "basis/Basis.h"
+#include "basis/BasisController.h"
 #include "integrals/wrappers/Libint.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
-
-class BasisController;
-class ShellPairData;
 
 /**
  * @class TwoElecThreeCenterCalculator TwoElecThreeCenterCalculator.h
@@ -62,7 +61,7 @@ class TwoElecThreeCenterCalculator {
    * @param iThread The thread ID.
    * @return A matrix with nu*mu rows and nBF(shell P) columns for easy mapping.
    */
-  Eigen::MatrixXd& calculateIntegrals(unsigned P, unsigned iThread);
+  Eigen::Ref<Eigen::MatrixXd> calculateIntegrals(unsigned P, unsigned iThread);
 
   /**
    * @brief Sets up shell pairs for the regular bases, i.e. the mu and nu indices in (mu nu|p). Note that
@@ -70,6 +69,40 @@ class TwoElecThreeCenterCalculator {
    * construction
    */
   void setupShellPairs();
+
+  /**
+   * @brief Loops over all sets of integrals (mu nu|P).
+   *
+   * @param distribute The distribute function.
+   */
+  __attribute__((always_inline)) inline void
+  loop(std::function<void(Eigen::Map<Eigen::MatrixXd> AO, size_t P, unsigned iThread)> distribute) {
+    auto& auxbasis = _auxbasis->getBasis();
+
+#pragma omp parallel for schedule(dynamic)
+    for (size_t iShell = 0; iShell < _auxbasis->getReducedNBasisFunctions(); ++iShell) {
+      unsigned long P_in_iShell = auxbasis[iShell]->getNContracted();
+      unsigned iThread = omp_get_thread_num();
+      auto integrals = (iShell < _nss) ? _cache.middleCols(_offsets[iShell], P_in_iShell)
+                                       : this->calculateIntegrals(iShell, iThread);
+
+      for (unsigned P = 0; P < P_in_iShell; ++P) {
+        unsigned long P_all = _auxbasis->extendedIndex(iShell) + P;
+        Eigen::Map<Eigen::MatrixXd> AO(integrals.col(P).data(), _nb_B, _nb_A);
+        distribute(AO, P_all, iThread);
+      }
+    }
+  }
+
+  /**
+   * @brief Caches integrals of the type (mu nu|P).
+   */
+  void cacheIntegrals();
+
+  /**
+   * @brief Clear integral cache.
+   */
+  void clearCache();
 
  private:
   // Libint engine.
@@ -96,6 +129,12 @@ class TwoElecThreeCenterCalculator {
   unsigned _nb_A;
   /// @brief Number of basis functions in the second basis.
   unsigned _nb_B;
+  /// @brief Cached integrals.
+  Eigen::MatrixXd _cache;
+  /// @brief Stored shells.
+  unsigned _nss;
+  /// @brief Basis function offsets for all shell indices.
+  std::vector<size_t> _offsets;
 };
 } /* namespace Serenity */
 #endif /* TWOELECTHREECENTERCALCULATOR_H_ */

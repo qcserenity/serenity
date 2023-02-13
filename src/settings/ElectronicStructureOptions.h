@@ -30,8 +30,10 @@ namespace Options {
  * The file formats supported for the ReadOrbitals task.
  *   TURBOMOLE: Turbomole ASCII-MOS.
  *   SERENITY:  Serenity HDF5 files.
+ *   MOLPRO:    Molpro-xml orbital file.
+ *   MOLCAS:    Molcas hdf5 file format (.scf.h5 files).
  */
-enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1 };
+enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1, MOLPRO = 2, MOLCAS = 3 };
 template<>
 void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field);
 

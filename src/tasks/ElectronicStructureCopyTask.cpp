@@ -269,7 +269,7 @@ void ElectronicStructureCopyTask<SCFMode>::run() {
   const CoefficientMatrix<SCFMode>& sourceCoefficients =
       _sourceSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
   const auto& sourceEigenvalues = _sourceSystem->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-  const auto& sourceCoreOrbitals = _sourceSystem->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
+  const auto& sourceCoreOrbitals = _sourceSystem->getActiveOrbitalController<SCFMode>()->getOrbitalFlags();
   // Construct internal frame for the source system.
   const std::vector<Eigen::Vector3d> sourceFrame = getInternalFrame(_sourceSystem->getGeometry());
   // Rotate the Electronic structure of the source system into the Cartesian frame by rotating the Cartesian axes.

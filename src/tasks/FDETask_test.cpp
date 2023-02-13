@@ -139,8 +139,29 @@ TEST_F(FDETaskTest, restrictedPCM) {
   task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   task.settings.embedding.pcm.use = true;
   task.settings.embedding.pcm.solvent = Options::PCM_SOLVENTS::N_HEPTANE;
+  task.settings.embedding.pcm.solverType = Options::PCM_SOLVER_TYPES::IEFPCM;
   task.run();
   EXPECT_NEAR(-1.8131957184036818, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test
+ * @brief Tests FDETask.h/.cpp: Test the unrelaxed MP2 density correction.
+ */
+TEST_F(FDETaskTest, densityCorrectedInteraction) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::OHPhenol_Def2_SVP_Act, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::PhenylPhenol_Def2_SVP_Env, true);
+  auto task = FDETask<Options::SCF_MODES::RESTRICTED>(act, {env});
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  task.settings.calculateUnrelaxedMP2Density = true;
+  task.run();
+  double interaction_energy =
+      act->getElectronicStructure<RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY);
+  EXPECT_NEAR(-0.50363547208851855, interaction_energy, 1e-7);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   SystemController__TEST_SUPPLY::cleanUp();
 }

@@ -92,7 +92,7 @@ void FDEDiabController::calcAdiabDensities() {
               2, Eigen::MatrixXd::Zero(_superSystem->getBasisController()->getNBasisFunctions(),
                                        _superSystem->getBasisController()->getNBasisFunctions()));
           HDF5::Filepath name(pathUnres);
-          HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+          HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
           HDF5::dataset_exists(file, "densityMatrix_alpha");
           HDF5::load(file, "densityMatrix_alpha", temp[0]);
           HDF5::dataset_exists(file, "densityMatrix_beta");

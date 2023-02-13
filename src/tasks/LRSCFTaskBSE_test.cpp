@@ -317,11 +317,11 @@ TEST_F(LRSCFTaskBSETest, embBSE) {
   gw.run();
   auto correlationEnergy = gw._correlationEnergies;
   Eigen::VectorXd correlation2(6);
-  // Serenity 03.02.2021
-  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.8311401694482519, -0.68697046946389084;
+  // Serenity 19.05.2022 (from CD)
+  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.819371555985553, -0.69471338695164397;
   for_spin(correlationEnergy) {
     for (unsigned int i = 0; i < correlation2.size(); i++) {
-      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 3e-6);
+      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 2e-6);
     }
   };
   LRSCFTask<RESTRICTED> lrscf_RI({act}, {env});
@@ -334,7 +334,7 @@ TEST_F(LRSCFTaskBSETest, embBSE) {
   auto excitationEnergies = lrscfContr_RI->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
   // Turbomole 7.4.1 BSE/ri approximation/all states
   Eigen::VectorXd bseExcitationEnergy_eV(10);
-  bseExcitationEnergy_eV << 6.85008, 6.87331, 7.37402, 7.55992, 10.26931, 10.88393, 13.30210, 13.54767, 14.18144, 14.25536;
+  bseExcitationEnergy_eV << 6.85445, 6.86877, 7.39249, 7.57497, 10.27804, 10.89427, 13.29167, 13.55584, 14.18332, 14.23498;
   for (unsigned int i = 0; i < bseExcitationEnergy_eV.size(); i++) {
     EXPECT_NEAR((*excitationEnergies)(i)*HARTREE_TO_EV, bseExcitationEnergy_eV(i), 1.0e-5);
   }

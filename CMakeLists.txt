@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 project(serenity
-        VERSION 1.4.0
+        VERSION 1.5.0
         DESCRIPTION "Serenity: A subsystem quantum chemistry program.")
 
 set(CMAKE_MODULE_PATH  ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
@@ -17,7 +17,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 
 # Optional flags
-set(SERENITY_MARCH "native" CACHE STRING "Compile with -march=<FLAG>")
+set(SERENITY_MARCH "x86-64" CACHE STRING "Compile with -march=<FLAG>")
 option(WERROR "Compile with warnings as errors" OFF)
 option(GCC_PROFILE "Compile with profile flags" OFF)
 option(GCC_COVERAGE "Compile with coverage flags" OFF)
@@ -27,9 +27,11 @@ endif()
 option(SERENITY_PREFER_XCFUN "If both XCFun and LibXC are present, prefer XCFun per default" ON)
 option(SERENITY_USE_XCFUN "Include XCFun as DFT functional library" ON)
 option(SERENITY_USE_LIBXC "Include LibXC as DFT functional library" ON)
+option(SERENITY_USE_LAPLACE_MINIMAX "Do not include laplace-minimax by default" OFF)
 if ((NOT SERENITY_USE_LIBXC) AND (NOT SERENITY_USE_XCFUN))
-  message(FATAL_ERROR "At least one of SERENITY_USE_LIBXC and SERENITY_USE_XCFUN has to be true.")
+  message(FATAL_ERROR "At least one of SERENITY_USE_LIBXC and SERENITY_USE_XCFUN has to be enabled.")
 endif()
+option(SERENITY_DOWNLOAD_DEPENDENCIES "If OFF, will require the operator to provide all dependencies." ON)
 
 # Get some architecture info
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
@@ -83,23 +85,56 @@ add_eigen(serenity PUBLIC)
 message("-----Checking OpenMP-----")
 find_package(OpenMP REQUIRED)
 
+# Laplace Minimax
+if (SERENITY_USE_LAPLACE_MINIMAX)
+  message("-----Checking Laplace_Minimax-----")
+  if (SERENITY_DOWNLOAD_DEPENDENCIES)
+    include(ImportLaplaceMinimax)
+    import_laplace_minimax()
+  else()
+    message(FATAL_ERROR "Laplace-Minimax cannot be detected via CMake please enable download or disable this dependency")
+  endif()
+endif(SERENITY_USE_LAPLACE_MINIMAX)
+
 # Libint2
 message("-----Checking Libint2-----")
-include(ImportLibint)
-import_libint()
+if (SERENITY_DOWNLOAD_DEPENDENCIES)
+  include(ImportLibint)
+  import_libint()
+else()
+  find_package(Libint2 CONFIG REQUIRED)
+  add_library(libint2-static INTERFACE IMPORTED)
+  target_link_libraries(libint2-static INTERFACE Libint2::libint2)
+endif()
 
 if (SERENITY_USE_XCFUN)
   # xcfun
   message("-----Checking XCFun----")
-  include(ImportXCFun)
-  import_xcfun()
+  if (SERENITY_DOWNLOAD_DEPENDENCIES)
+    include(ImportXCFun)
+    import_xcfun()
+  else()
+    find_package(XCFun CONFIG REQUIRED)
+    add_library(xcfun INTERFACE IMPORTED)
+    target_link_libraries(xcfun INTERFACE XCFun::xcfun)
+  endif()
 endif()
 
 if (SERENITY_USE_LIBXC)
   # libxc
   message("-----Checking Libxc----")
-  include(ImportLibxc)
-  import_libxc()
+  if (SERENITY_DOWNLOAD_DEPENDENCIES)
+    include(ImportLibxc)
+    import_libxc()
+  else()
+    find_package(PkgConfig QUIET)
+    pkg_check_modules(pc_libxc libxc)
+    if(pc_libxc_FOUND)
+      add_library(xc INTERFACE IMPORTED)
+      target_link_libraries(xc INTERFACE ${pc_libxc_LINK_LIBRARIES})
+      target_include_directories(xc INTERFACE ${pc_libxc_INCLUDE_DIRS})
+    endif()
+  endif()
 endif()
 
 # HDF5
@@ -155,8 +190,35 @@ find_package(Boost REQUIRED)
 
 # Libecpint
 message("-----Checking Libecpint-----")
-include(ImportLibecpint)
-import_libecpint()
+if (SERENITY_DOWNLOAD_DEPENDENCIES)
+  include(ImportLibecpint)
+  import_libecpint()
+else()
+  find_package(ecpint CONFIG REQUIRED)
+  add_library(ecpint INTERFACE IMPORTED)
+endif()
+
+#################
+## Definitions ##
+#################
+find_package(Git)
+if(Git_FOUND)
+  message(STATUS "Found git executable: ${GIT_EXECUTABLE}")
+  # In case no git repository is found, only redirect stderr to /dev/null.
+  execute_process ( COMMAND bash -c "git rev-parse --abbrev-ref HEAD 2> /dev/null" OUTPUT_VARIABLE GIT_BRANCH )
+  if (GIT_BRANCH STREQUAL "")
+    message(STATUS "No git repository found.")
+    set(GIT_BRANCH "UNKNOWN")
+  else ()
+    # Remove new line character.
+    string ( STRIP ${GIT_BRANCH} GIT_BRANCH )
+    message(STATUS "Found git repository: " ${GIT_BRANCH})
+  endif()
+else ()
+  set(GIT_BRANCH "UNKNOWN")
+endif()
+add_definitions (-DGIT_BRANCH="${GIT_BRANCH}")
+# configure_file (${PROJECT_SOURCE_DIR}/src/io/FormattedOutput.cpp ${PROJECT_SOURCE_DIR}/src/io/FormattedOutput.cpp)
 
 #################################
 ## Add dependencies to targets ##
@@ -184,12 +246,14 @@ target_link_libraries(serenity
     xc
     xcfun
     ecpint
+    $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:laplace-minimax>
     ${HDF5_TARGET}
 )
 target_compile_definitions(serenity PUBLIC
   $<$<BOOL:${SERENITY_PREFER_XCFUN}>:SERENITY_PREFER_XCFUN>
   $<$<BOOL:${SERENITY_USE_XCFUN}>:SERENITY_USE_XCFUN>
   $<$<BOOL:${SERENITY_USE_LIBXC}>:SERENITY_USE_LIBXC>
+  $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:SERENITY_USE_LAPLACE_MINIMAX>
   $<$<CONFIG:Debug>:EIGEN_INITIALIZE_MATRICES_BY_NAN>
   $<$<BOOL:${MKL_FOUND}>:EIGEN_USE_MKL_ALL>
 )
@@ -268,8 +332,12 @@ if(SERENITY_ENABLE_TESTS)
   enable_testing()
   message("-----Checking GTest-----")
   # Load gtest dependency
-  include(ImportGTest)
-  import_gtest()
+  if (SERENITY_DOWNLOAD_DEPENDENCIES)
+    include(ImportGTest)
+    import_gtest()
+  else()
+    find_package(GTest REQUIRED)
+  endif()
   message("-----Adding Test Executable-----")
   # Test exe
   add_executable(serenity_tests ${SERENITY_TEST_FILES})
@@ -314,9 +382,12 @@ if (SERENITY_PYTHON_BINDINGS)
   message("#===============================#")
   message("| Python Interface Dependencies |")
   message("#===============================#")
-  include(ImportPybind11)
-  import_pybind11()
-
+  if(SERENITY_DOWNLOAD_DEPENDENCIES)
+    include(ImportPybind11)
+    import_pybind11()
+  else()
+    find_package(pybind11 REQUIRED)
+  endif()
   # target
   #  set(PYBIND11_PYTHON_VERSION ${PYTHONVERSION})
   pybind11_add_module(serenipy

@@ -30,6 +30,7 @@
 #include "grid/GridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
 #include "settings/DFTOptions.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -71,8 +72,8 @@ TEST_F(BUReconstructionPotentialTest, H2FDE) {
   *superSystemGeometry += *(_activeSystem->getGeometry());
   *superSystemGeometry += *(_environmentSystem->getGeometry());
 
-  auto supersystemGrid =
-      GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings(), Options::GRID_PURPOSES::DEFAULT);
+  auto supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
+                                                        Options::GRID_PURPOSES::DEFAULT);
 
   BUReconstructionPotential<Options::SCF_MODES::RESTRICTED> exactNaddKin(
       _activeSystem, _activeSystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController(),
@@ -127,8 +128,8 @@ TEST_F(BUReconstructionPotentialTest, H2FDEUnres) {
   *superSystemGeometry += *(_activeSystem->getGeometry());
   *superSystemGeometry += *(_environmentSystem->getGeometry());
 
-  auto supersystemGrid =
-      GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings(), Options::GRID_PURPOSES::DEFAULT);
+  auto supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
+                                                        Options::GRID_PURPOSES::DEFAULT);
 
   BUReconstructionPotential<Options::SCF_MODES::UNRESTRICTED> exactNaddKin(
       _activeSystem, _activeSystem->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController(),

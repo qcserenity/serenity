@@ -55,6 +55,7 @@ void ExcitationSpectrum<SCFMode>::printSpectrum(Options::LR_METHOD method,
   std::vector<Eigen::Matrix3d> S_vv(nEigen);
   std::vector<Eigen::Matrix3d> S_lm(nEigen);
   std::vector<Eigen::Matrix3d> S_vm(nEigen);
+  std::vector<Eigen::Matrix3d> S_lm_mod(nEigen);
 
   // Matrices to store transition moments in.
   Eigen::MatrixXcd len_R, vel_R, mag_R;
@@ -109,6 +110,10 @@ void ExcitationSpectrum<SCFMode>::printSpectrum(Options::LR_METHOD method,
     S_vv[iEigen] = 0.5 * ((vel_R.col(iEigen) * vel_L.row(iEigen)) + (vel_R.col(iEigen) * vel_L.row(iEigen)).adjoint()).real();
     S_lm[iEigen] = 0.5 * ((len_R.col(iEigen) * mag_L.row(iEigen)) + (mag_R.col(iEigen) * len_L.row(iEigen)).adjoint()).imag();
     S_vm[iEigen] = 0.5 * ((vel_R.col(iEigen) * mag_L.row(iEigen)) + (mag_R.col(iEigen) * vel_L.row(iEigen)).adjoint()).real();
+
+    // Calculate modified electric dipole--magnetic dipole transition strength
+    Eigen::JacobiSVD<Eigen::Matrix3d> svd(S_lv[iEigen], Eigen::ComputeThinU | Eigen::ComputeThinV);
+    S_lm_mod[iEigen] = svd.matrixU().transpose() * S_lm[iEigen] * svd.matrixV();
   }
 
   // Oscillator and rotator strengths.
@@ -122,9 +127,11 @@ void ExcitationSpectrum<SCFMode>::printSpectrum(Options::LR_METHOD method,
     results(iEigen, 3) = S_lm[iEigen].trace();
     // Rotator Strength (velocity)
     results(iEigen, 4) = S_vm[iEigen].trace();
+    // Rotator Strength (modified length)
+    results(iEigen, 5) = S_lm_mod[iEigen].trace();
   }
 
-  // print spectra
+  // Print spectra.
   printf("                          Absorption Spectrum (dipole-length)                          \n");
   printf("---------------------------------------------------------------------------------------\n");
   printf(" state       energy      wavelength        fosc          Sxx        Syy        Szz     \n");
@@ -167,6 +174,17 @@ void ExcitationSpectrum<SCFMode>::printSpectrum(Options::LR_METHOD method,
     printf(" %3i %15.5f %12.1f %15.4f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
            HARTREE_TO_NM / eigenvalues(iEigen), AU_TO_CGS * results(iEigen, 4), AU_TO_CGS * S_vm[iEigen](0, 0),
            AU_TO_CGS * S_vm[iEigen](1, 1), AU_TO_CGS * S_vm[iEigen](2, 2));
+  }
+  printf("---------------------------------------------------------------------------------------\n");
+  printf("                            CD Spectrum (mod. dipole-length)                           \n");
+  printf("---------------------------------------------------------------------------------------\n");
+  printf(" state       energy      wavelength         R            Sxx        Syy        Szz     \n");
+  printf("              (eV)          (nm)        (1e-40cgs)               (1e-40cgs)            \n");
+  printf("---------------------------------------------------------------------------------------\n");
+  for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    printf(" %3i %15.5f %12.1f %15.4f %12.5f %10.5f %10.5f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), AU_TO_CGS * results(iEigen, 5), AU_TO_CGS * S_lm_mod[iEigen](0, 0),
+           AU_TO_CGS * S_lm_mod[iEigen](1, 1), AU_TO_CGS * S_lm_mod[iEigen](2, 2));
   }
   printf("---------------------------------------------------------------------------------------\n");
 }

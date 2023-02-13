@@ -111,7 +111,7 @@ bool CoulombInteractionPotential<SCFMode>::fromHDF5() {
   auto actSystem = _actSystem.lock();
   if (stat(fileName.c_str(), &buffer) == 0) {
     HDF5::Filepath name(fileName);
-    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
     try {
       HDF5::attribute_exists(file, "ID");
       HDF5::dataset_exists(file, "passiveCoulombContribution");

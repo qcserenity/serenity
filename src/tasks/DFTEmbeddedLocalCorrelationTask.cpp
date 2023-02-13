@@ -58,16 +58,20 @@ void DFTEmbeddedLocalCorrelationTask::run() {
     allSystems.insert(allSystems.begin(), _activeSystem);
     FreezeAndThawTask<RESTRICTED> fatTask(allSystems);
     fatTask.settings.embedding = this->settings.lcSettings.embeddingSettings;
+    fatTask.settings.lcSettings = this->settings.lcSettings;
     fatTask.run();
   }
   FDETask<RESTRICTED> fdeTask(_activeSystem, _environmentSystems);
   fdeTask.settings.embedding = this->settings.lcSettings.embeddingSettings;
   fdeTask.settings.lcSettings = this->settings.lcSettings;
+  fdeTask.settings.loc = this->settings.loc;
   fdeTask.settings.calculateEnvironmentEnergy = true;
   fdeTask.run();
   // Run localCorrelation task
   LocalCorrelationTask localCorrelationTask(_activeSystem, _environmentSystems);
   localCorrelationTask.settings.lcSettings = this->settings.lcSettings;
+  if (this->settings.trunc.truncAlgorithm != Options::BASIS_SET_TRUNCATION_ALGORITHMS::NONE)
+    localCorrelationTask.settings.lcSettings.useProjectedOccupiedOrbitals = true;
   localCorrelationTask.settings.normThreshold = this->settings.normThreshold;
   localCorrelationTask.settings.maxCycles = this->settings.maxCycles;
   localCorrelationTask.settings.writePairEnergies = this->settings.writePairEnergies;

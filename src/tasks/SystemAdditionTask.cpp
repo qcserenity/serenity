@@ -53,7 +53,7 @@ void SystemAdditionTask<SCFMode>::checkGeometry(std::shared_ptr<Geometry> supers
     throw SerenityError("ERROR: The number of supersystem and subsystem atoms do not match!");
 
   auto subsystemAtoms = supersystemGeometry->getAtoms();
-  for (const auto subAtom : subsystemAtoms) {
+  for (const auto& subAtom : subsystemAtoms) {
     unsigned int supersystemIndex = SystemSplittingTools<SCFMode>::matchAtom(_supersystem->getGeometry(), subAtom);
     if (supersystemIndex > nSuperSystemAtoms)
       throw SerenityError((std::string) "ERROR: The subsystem atoms do not add up to the supersystem atoms");
@@ -128,7 +128,7 @@ void SystemAdditionTask<SCFMode>::run() {
       SpinPolarizedData<SCFMode, Eigen::VectorXd> subsystemEigenvalues =
           subsystem->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
       SpinPolarizedData<SCFMode, Eigen::VectorXi> subsystemCoreOrbitals =
-          subsystem->template getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
+          subsystem->template getActiveOrbitalController<SCFMode>()->getOrbitalFlags();
       auto nOccSub = subsystem->template getNOccupiedOrbitals<SCFMode>();
       Eigen::MatrixXd projection;
       if (subsystem->getAtomCenteredBasisController()->getBasisLabel() ==

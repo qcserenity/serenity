@@ -11,7 +11,7 @@ function(import_libxc)
   download_project(
     PROJ ext-libxc
     GIT_REPOSITORY https://gitlab.com/libxc/libxc.git
-    GIT_TAG 5.0.0
+    GIT_TAG 6.1.0
     QUIET
   )
 

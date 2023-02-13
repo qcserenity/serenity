@@ -29,6 +29,8 @@ namespace Serenity {
 class Geometry;
 class GridFactory;
 struct Settings;
+struct GRID;
+
 /**
  * TODO rename to AtomCenteredGridControllerFactory
  * @class GridControllerFactory GridControllerFactory.h
@@ -59,7 +61,7 @@ class GridControllerFactory
    * @param gridPurpose to choose between regular and small grid
    * @returns a new or already existing GridController
    */
-  static std::shared_ptr<AtomCenteredGridController> produce(std::shared_ptr<const Geometry> geometry, const Settings& settings,
+  static std::shared_ptr<AtomCenteredGridController> produce(std::shared_ptr<const Geometry> geometry, const GRID& gridSettings,
                                                              Options::GRID_PURPOSES purpose = Options::GRID_PURPOSES::DEFAULT);
 
  private:

@@ -164,6 +164,7 @@ TEST_F(ScfTaskTest, Water_PCM_Water) {
   settings.pcm.use = true;
   settings.pcm.solvent = Options::PCM_SOLVENTS::WATER;
   settings.pcm.cavityFormation = true;
+  settings.pcm.solverType = Options::PCM_SOLVER_TYPES::IEFPCM;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<RESTRICTED> scf(sys);
@@ -180,6 +181,7 @@ TEST_F(ScfTaskTest, unrestrictedWater_PCM_Water) {
   Settings settings = sys->getSettings();
   settings.pcm.use = true;
   settings.pcm.solvent = Options::PCM_SOLVENTS::WATER;
+  settings.pcm.solverType = Options::PCM_SOLVER_TYPES::IEFPCM;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<UNRESTRICTED> scf(sys);

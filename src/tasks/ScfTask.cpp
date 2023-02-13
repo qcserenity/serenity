@@ -26,6 +26,7 @@
 #include "energies/EnergyContributions.h"
 #include "misc/SerenityError.h"
 #include "misc/Timing.h"
+#include "postHF/MPn/LTMP2.h"
 #include "postHF/MPn/LocalMP2.h"
 #include "postHF/MPn/MP2.h"
 #include "postHF/MPn/RIMP2.h"
@@ -56,7 +57,7 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
   // check for double hybrid functional
   auto functional = resolveFunctional(systemSettings.dft.functional);
   double MP2Correlation = 0.0;
-  if (functional.isDoubleHybrid()) {
+  if (functional.isDoubleHybrid() && settings.calculateMP2Energy) {
     // perform MP2 for double hybrids
     switch (this->settings.mp2Type) {
       case Options::MP2_TYPES::LOCAL: {
@@ -80,6 +81,11 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
       case Options::MP2_TYPES::RI: {
         RIMP2<SCFMode> rimp2(_systemController, functional.getssScaling(), functional.getosScaling());
         MP2Correlation = rimp2.calculateCorrection();
+        break;
+      }
+      case Options::MP2_TYPES::LT: {
+        LTMP2<SCFMode> ltmp2(_systemController);
+        MP2Correlation = ltmp2.calculateCorrection();
         break;
       }
       case Options::MP2_TYPES::AO: {
@@ -310,6 +316,7 @@ void ScfTask<SCFMode>::run() {
     printHeader();
   // Run SCF or energy evaluation.
   performSCF(potentials);
+
   // Print the final results.
   if (iOOptions.printSCFResults)
     printResults();

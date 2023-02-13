@@ -48,7 +48,7 @@ class IBOLocalization : public Localization<SCFMode> {
    * @param systemController The system to of which the orbitals are to be localized.
    * @param IAOsOnly Switch to stop after the generation of IAOs.
    */
-  IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly = false);
+  IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly = false, bool replaceVirtuals = false);
   /**
    * @brief Destructor
    */
@@ -66,6 +66,7 @@ class IBOLocalization : public Localization<SCFMode> {
  private:
   std::shared_ptr<SystemController> _system;
   const bool _IAOsOnly;
+  const bool _replaceVirtuals;
 };
 
 } /* namespace Serenity */

@@ -30,6 +30,7 @@
 #include "grid/GridControllerFactory.h"
 #include "io/FormattedOutput.h"
 #include "misc/WarningTracker.h"
+#include "postHF/MPn/LTMP2.h"
 #include "postHF/MPn/LocalMP2.h"
 #include "postHF/MPn/LocalMP2InteractionCalculator.h"
 #include "postHF/MPn/MP2.h"
@@ -40,7 +41,6 @@
 #include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
-#include "tasks/LocalizationTask.h"
 /* Include Std and External Headers */
 #include <cassert>
 #include <limits>
@@ -109,7 +109,7 @@ void FDETask<SCFMode>::run() {
     // supersystem grid
     Options::GRID_PURPOSES gridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    _supersystemgrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings(), gridacc);
+    _supersystemgrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid, gridacc);
   }
   if (settings.initializeSuperMolecularSurface && settings.embedding.pcm.use) {
     // geometry of the entire system
@@ -363,7 +363,7 @@ void FDETask<SCFMode>::run() {
     // supersystem grid
     Options::GRID_PURPOSES finalGridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    _finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystem->getSettings(), finalGridacc);
+    _finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystem->getSettings().grid, finalGridacc);
   }
 
   if (settings.calculateSolvationEnergy) {
@@ -414,6 +414,8 @@ void FDETask<SCFMode>::run() {
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_XC, eLinNaddXC);
   }
   calculateMP2CorrelationContribution(fdePot);
+  if (settings.calculateUnrelaxedMP2Density)
+    calculateUnrelaxedMP2Density(fdePot, eCont);
   /*
    * Print final results if sensible
    */
@@ -468,8 +470,7 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
       switch (settings.mp2Type) {
         case Options::MP2_TYPES::LOCAL: {
           LocalizationTask locTask(_activeSystem);
-          locTask.settings.locType = settings.locType;
-          locTask.settings.splitValenceAndCore = true;
+          locTask.settings = settings.loc;
           locTask.run();
           // perform MP2 for double hybrids
           settings.lcSettings.embeddingSettings = settings.embedding;
@@ -491,8 +492,18 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
           break;
         }
         case Options::MP2_TYPES::RI: {
+          if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC)
+            WarningTracker::printWarning(
+                "WARNING: The virtual orbital space contains occupied environment orbitals.\n"
+                "         This may lead to an error. Use \"mp2Type local\" to avoid this issue.",
+                iOOptions.printSCFCycleInfo);
           RIMP2<SCFMode> rimp2(_activeSystem, functional.getssScaling(), functional.getosScaling());
           MP2Correlation = functional.getHfCorrelRatio() * rimp2.calculateCorrection();
+          break;
+        }
+        case Options::MP2_TYPES::LT: {
+          LTMP2<SCFMode> ltmp2(_activeSystem);
+          MP2Correlation = functional.getHfCorrelRatio() * ltmp2.calculateCorrection();
           break;
         }
         case Options::MP2_TYPES::AO: {
@@ -507,13 +518,13 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
     } // if functional.isDoubleHybrid()
     if (naddXCFunctional.isDoubleHybrid()) {
       LocalizationTask locTaskAct(_activeSystem);
-      locTaskAct.settings.locType = settings.locType;
-      locTaskAct.settings.splitValenceAndCore = true;
+      locTaskAct.settings = settings.loc;
       locTaskAct.run();
-      LocalizationTask locTaskEnv(_environmentSystems[0]);
-      locTaskEnv.settings.locType = settings.locType;
-      locTaskEnv.settings.splitValenceAndCore = true;
-      locTaskEnv.run();
+      for (auto sys : _environmentSystems) {
+        LocalizationTask locTaskEnv(sys);
+        locTaskEnv.settings = settings.loc;
+        locTaskEnv.run();
+      }
       settings.lcSettings.embeddingSettings = settings.embedding;
       FockMatrix<SCFMode> f = fdePot->getFockMatrix(_activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),
                                                     std::make_shared<EnergyComponentController>());
@@ -529,7 +540,7 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
         double envEnergy = eCont->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES);
         double envMP2Energy = locMP2Inter.getEnvironmentEnergy();
         envEnergy += envMP2Energy;
-        auto envECont = _environmentSystems[0]->getElectronicStructure<SCFMode>()->getEnergyComponentController();
+        auto envECont = _environmentSystems[0]->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
         eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES, envEnergy);
         envECont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, envMP2Energy);
       }
@@ -568,6 +579,8 @@ void FDETask<SCFMode>::calculateNonAdditiveDispersionCorrection() {
       for (auto sys : _environmentSystems)
         nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
             settings.embedding.dispersion, sys->getGeometry(), settings.embedding.naddXCFunc);
+      nadDispCorrection -= DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
+          settings.embedding.dispersion, _activeSystem->getGeometry(), settings.embedding.naddXCFunc);
     } // if settings.finalGrid
     Timings::timeTaken("FDE -    Non-Add. Disper.");
   }
@@ -576,6 +589,63 @@ void FDETask<SCFMode>::calculateNonAdditiveDispersionCorrection() {
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NAD_DISP, solvScaledNadDispCorrection);
   }
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_DISP, nadDispCorrection);
+}
+
+template<Options::SCF_MODES SCFMode>
+void FDETask<SCFMode>::calculateUnrelaxedMP2Density(std::shared_ptr<PotentialBundle<SCFMode>> fdePot,
+                                                    std::shared_ptr<EnergyComponentController> eCont) {
+  DensityMatrix<SCFMode> densityCorrection(_activeSystem->getBasisController());
+  double MP2Correlation = 0.0;
+  switch (settings.mp2Type) {
+    case Options::MP2_TYPES::LOCAL: {
+      if (SCFMode != RESTRICTED)
+        throw SerenityError("DLPNO-MP2 is not available for unrestricted systems. Please use the RI approximation.");
+      LocalizationTask locTask(_activeSystem);
+      locTask.settings = settings.loc;
+      locTask.run();
+      auto localCorrelationController =
+          std::make_shared<LocalCorrelationController>(_activeSystem, settings.lcSettings, _environmentSystems);
+      LocalMP2 localMP2(localCorrelationController);
+      localMP2.settings.maxResidual = settings.maxResidual;
+      localMP2.settings.maxCycles = settings.maxCycles;
+
+      MP2Correlation = localMP2.calculateEnergyCorrection().sum();
+      densityCorrection = localMP2.calculateDensityCorrection();
+      break;
+    }
+    case Options::MP2_TYPES::RI: {
+      if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC)
+        WarningTracker::printWarning("WARNING: The virtual orbital space contains occupied environment orbitals.\n"
+                                     "         This may lead to an error. Use \"mp2Type local\" to avoid this issue.",
+                                     iOOptions.printSCFCycleInfo);
+      RIMP2<SCFMode> rimp2(_activeSystem);
+      MP2Correlation = rimp2.calculateCorrection();
+      densityCorrection = rimp2.calculateDensityCorrection();
+      break;
+    }
+    case Options::MP2_TYPES::LT: {
+      throw SerenityError(
+          "Unrelaxed density is not available for Laplace-Transform MP2. Please use the RI or DLPNO approximation.");
+    }
+    case Options::MP2_TYPES::AO: {
+      throw SerenityError(
+          "Unrelaxed density is not available for non-RI MP2. Please use the RI or DLPNO approximation.");
+    }
+  }
+  auto densityController = _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController();
+  auto density = densityController->getDensityMatrix();
+  densityController->setDensityMatrix(density + densityCorrection);
+  auto eCont_tmp = std::make_shared<EnergyComponentController>();
+  fdePot->getFockMatrix(densityController->getDensityMatrix(), eCont_tmp);
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_XC,
+                               eCont_tmp->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_XC));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC,
+                               eCont_tmp->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_ELECTRONS_ENV_ELECTRONS_COULOMB,
+                               eCont_tmp->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_ELECTRONS_ENV_ELECTRONS_COULOMB));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_ELECTRONS_ENV_NUCLEI_COULOMB,
+                               eCont_tmp->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_ELECTRONS_ENV_NUCLEI_COULOMB));
+  eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::MP2_CORRECTION, MP2Correlation);
 }
 
 template<Options::SCF_MODES SCFMode>

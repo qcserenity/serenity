@@ -10,7 +10,8 @@ function(import_libecpint)
   include(DownloadProject)
   download_project(
     PROJ ext-ecpint
-    GIT_REPOSITORY "https://github.com/qcserenity/libecpint.git"
+    GIT_REPOSITORY "https://github.com/robashaw/libecpint.git"
+    GIT_TAG v1.0.7 
     QUIET
   )
   set(LIBECPINT_BUILD_TESTS OFF CACHE BOOL "Disable tests")

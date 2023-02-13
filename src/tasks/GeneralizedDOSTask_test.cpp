@@ -18,11 +18,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
-#include "tasks/GeneralizedDOSTask.h"                 //To be tested.
-#include "geometry/Geometry.h"                        //Check geometries after selection.
-#include "settings/Settings.h"                        //Settings definition.
-#include "system/SystemController.h"                  //Access to test systems.
-#include "tasks/LocalizationTask.h"                   //Orbital localization.
+#include "tasks/GeneralizedDOSTask.h"                               //To be tested.
+#include "analysis/directOrbitalSelection/DirectOrbitalSelection.h" //Orbital groups definition
+#include "geometry/Geometry.h"                                      //Check geometries after selection.
+#include "settings/Settings.h"                                      //Settings definition.
+#include "system/SystemController.h"                                //Access to test systems.
+#include "tasks/LocalizationTask.h"                                 //Orbital localization.
+#include "tasks/PlotTask.h"
 #include "tasks/WavefunctionEmbeddingTask.h"          //Coupled cluster calculation.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Access to test systems.
 /* Include Std and External Headers */
@@ -58,22 +60,53 @@ TEST_F(GeneralizedDOSTaskTest, restricted_EthaneIAOShell) {
   fragSettings.name = "b3";
   auto b3 = std::make_shared<SystemController>(std::make_shared<Geometry>(), fragSettings);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+
+  LocalizationTask loc(a);
+  loc.settings.splitValenceAndCore = true;
+  loc.settings.localizeVirtuals = true;
+  loc.run();
+
+  LocalizationTask loc2(b);
+  loc2.settings = loc.settings;
+  loc2.run();
+
   GeneralizedDOSTask<SPIN> gdos({a, b}, {a1, a2, a3, b1, b2, b3});
   gdos.settings.similarityLocThreshold = {1e-1, 5e-2};
   gdos.settings.similarityKinEnergyThreshold = {1e-1, 5e-2};
   gdos.settings.usePiBias = true;
   gdos.settings.populationAlgorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell;
-  gdos.settings.checkDegeneracies = true;
+  gdos.settings.mapVirtuals = true;
+  gdos.settings.writeGroupsToFile = true;
   gdos.run();
 
-  EXPECT_EQ(3, a1->getNOccupiedOrbitals<SPIN>());
-  EXPECT_EQ(2, a2->getNOccupiedOrbitals<SPIN>());
-  EXPECT_EQ(4, a3->getNOccupiedOrbitals<SPIN>());
-  EXPECT_EQ(3, b1->getNOccupiedOrbitals<SPIN>());
-  EXPECT_EQ(2, b2->getNOccupiedOrbitals<SPIN>());
-  EXPECT_EQ(4, b3->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(1, a1->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(6, a2->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(2, a3->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(1, b1->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(6, b2->getNOccupiedOrbitals<SPIN>());
+  EXPECT_EQ(2, b3->getNOccupiedOrbitals<SPIN>());
+
+  const auto& groups = gdos.getOrbitalGroups();
+  for (const auto& group : groups) {
+    EXPECT_EQ(1, group->getNOrbitals());
+  }
+
+  GeneralizedDOSTask<SPIN> gdos2({a, b}, {a1, a2, a3, b1, b2, b3});
+  gdos2.settings = gdos.settings;
+  gdos2.settings.bestMatchMapping = true;
+  gdos2.settings.scoreStart = 5e-1;
+  gdos2.settings.scoreEnd = 5e-2;
+  gdos2.run();
+  const auto& groups2 = gdos2.getOrbitalGroups();
+  for (const auto& group : groups2) {
+    if (group->getNOrbitals()) {
+      EXPECT_EQ(1, group->getNOrbitals());
+    }
+  }
 
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+
+  std::remove("orbital_groups.dat");
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a1);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a2);
@@ -123,7 +156,6 @@ TEST_F(GeneralizedDOSTaskTest, restricted_gdos_wfemb_run) {
   gdos.settings.similarityKinEnergyThreshold = {1e-1, 5e-2};
   gdos.settings.usePiBias = true;
   gdos.settings.populationAlgorithm = Options::POPULATION_ANALYSIS_ALGORITHMS::IAOShell;
-  gdos.settings.checkDegeneracies = true;
   gdos.run();
 
   WavefunctionEmbeddingTask wfemb(a, {a1, a2, a3});

@@ -24,7 +24,6 @@
 /* Include Std and External Headers */
 #include <algorithm>
 #include <iostream>
-#include <stdexcept>
 
 namespace Serenity {
 

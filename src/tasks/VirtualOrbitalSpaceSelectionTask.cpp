@@ -49,10 +49,10 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
   if (settings.excludeProjection) {
     printf("  ------- Exclude Projection -------\n");
     // Some initial initialization
-    CoefficientMatrix<SCFMode> coefs = _act[0]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+    CoefficientMatrix<SCFMode> coefs = _act[0]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
     SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenValues =
-        _act[0]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-    auto nOcc = _act[0]->getNOccupiedOrbitals<SCFMode>();
+        _act[0]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+    auto nOcc = _act[0]->template getNOccupiedOrbitals<SCFMode>();
     // The Virtual orbital space selector
     auto selectorAlgorithm = std::make_shared<VirtualOrbitalSelectionAlgorithms<SCFMode>>(_act[0], _env);
     // Creates Reference List of orbital indices
@@ -64,7 +64,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     selectorAlgorithm->excludeProjection(coefs, nOcc, indices);
     updateOrbitals(coefs, eigenValues, indices);
     // Update Orbitals
-    _act[0]->getActiveOrbitalController<SCFMode>()->updateOrbitals(coefs, eigenValues);
+    _act[0]->template getActiveOrbitalController<SCFMode>()->updateOrbitals(coefs, eigenValues);
     selectorAlgorithm = nullptr;
     writeOrbitalsToHDF5(coefs, eigenValues, _act[0]);
   } /* Exclude Projection */
@@ -77,18 +77,19 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     _act[1]->getGeometry()->printToFile(_act[1]->getHDF5BaseName(), _act[1]->getSystemIdentifier());
     ElectronicStructureCopyTask<SCFMode> copytask(_act[0], {_act[1]});
     copytask.run();
-    auto nOcc = _act[1]->getNOccupiedOrbitals<SCFMode>();
-    auto nVirt = _act[1]->getNVirtualOrbitalsTruncated<SCFMode>();
-    CoefficientMatrix<SCFMode> coeffs = _act[1]->getActiveOrbitalController<SCFMode>()->getCoefficients();
-    SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvals = _act[1]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+    auto nOcc = _act[1]->template getNOccupiedOrbitals<SCFMode>();
+    auto nVirt = _act[1]->template getNVirtualOrbitalsTruncated<SCFMode>();
+    CoefficientMatrix<SCFMode> coeffs = _act[1]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+    SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvals =
+        _act[1]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
     auto selectorAlgorithm = std::make_shared<VirtualOrbitalSelectionAlgorithms<SCFMode>>(_act[1], _env);
-    auto es = _act[0]->getElectronicStructure<SCFMode>();
+    auto es = _act[0]->template getElectronicStructure<SCFMode>();
     std::shared_ptr<FockMatrix<SCFMode>> fock = nullptr;
     if (es->checkFock() && settings.recalculateFockMatrix == false) {
       std::cout << "   Fock matrix from a previous embedding/supermolecular calculation used!" << std::endl;
       fock = std::make_shared<FockMatrix<SCFMode>>(es->getFockMatrix());
       _act[1]->template getElectronicStructure<SCFMode>()->setFockMatrix(*fock);
-      _act[1]->getElectronicStructure<SCFMode>()->toHDF5(_act[1]->getHDF5BaseName(), _act[1]->getSettings().identifier);
+      _act[1]->template getElectronicStructure<SCFMode>()->toHDF5(_act[1]->getHDF5BaseName(), _act[1]->getSettings().identifier);
     }
     SpinPolarizedData<SCFMode, std::vector<unsigned int>> indices;
     for_spin(indices, nOcc) {
@@ -99,7 +100,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
                                                              settings.envCanonicalVirtuals, settings.onlyOne);
     updateOrbitals(coeffs, eigenvals, indices);
     // Update Orbitals
-    _act[1]->getActiveOrbitalController<SCFMode>()->updateOrbitals(coeffs, eigenvals);
+    _act[1]->template getActiveOrbitalController<SCFMode>()->updateOrbitals(coeffs, eigenvals);
     printNewOrbitals(nOcc, eigenvals);
     writeOrbitalsToHDF5(coeffs, eigenvals, _act[1]);
   } /* localCanonicalVirutalOrbitals */
@@ -112,14 +113,15 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     _act[1]->getGeometry()->printToFile(_act[1]->getHDF5BaseName(), _act[1]->getSystemIdentifier());
     ElectronicStructureCopyTask<SCFMode> copytask(_act[0], {_act[1]});
     copytask.run();
-    auto nOcc = _act[1]->getNOccupiedOrbitals<SCFMode>();
-    auto nVirt = _act[1]->getNVirtualOrbitalsTruncated<SCFMode>();
-    CoefficientMatrix<SCFMode> coeffs = _act[1]->getActiveOrbitalController<SCFMode>()->getCoefficients();
-    SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvals = _act[1]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+    auto nOcc = _act[1]->template getNOccupiedOrbitals<SCFMode>();
+    auto nVirt = _act[1]->template getNVirtualOrbitalsTruncated<SCFMode>();
+    CoefficientMatrix<SCFMode> coeffs = _act[1]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
+    SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenvals =
+        _act[1]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
     // Initialize VirtualOrbitalSelection
     auto selectorAlgorithm = std::make_shared<VirtualOrbitalSelectionAlgorithms<SCFMode>>(_act[1], _env);
     // Check if a Fock matrix exists and set Fockmatrix
-    auto es = _act[0]->getElectronicStructure<SCFMode>();
+    auto es = _act[0]->template getElectronicStructure<SCFMode>();
     std::shared_ptr<FockMatrix<SCFMode>> fock = nullptr;
     if (es->checkFock() && settings.recalculateFockMatrix == false) {
       std::cout << "   Fock matrix from a previous embedding/supermolecular calculation used!" << std::endl;
@@ -129,7 +131,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
       fock = std::make_shared<FockMatrix<SCFMode>>(selectorAlgorithm->calcEmbeddedFockMatrix(_act[1], _env, settings.embedding));
     }
     _act[1]->template getElectronicStructure<SCFMode>()->setFockMatrix(*fock);
-    _act[1]->getElectronicStructure<SCFMode>()->toHDF5(_act[1]->getHDF5BaseName(), _act[1]->getSettings().identifier);
+    _act[1]->template getElectronicStructure<SCFMode>()->toHDF5(_act[1]->getHDF5BaseName(), _act[1]->getSettings().identifier);
     // Localization
     bool localized = false;
     if (settings.localizedVirtualorbitals)
@@ -143,7 +145,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
       eigenvals_spin.segment(temp.size(), eigenvals_spin.size() - temp.size()).array() =
           std::numeric_limits<double>::infinity();
     };
-    _act[1]->getActiveOrbitalController<SCFMode>()->updateOrbitals(coeffs, eigenvals);
+    _act[1]->template getActiveOrbitalController<SCFMode>()->updateOrbitals(coeffs, eigenvals);
     printNewOrbitals(nOcc, eigenvals);
     writeOrbitalsToHDF5(coeffs, eigenvals, _act[1]);
   } /* localizedVirtualOrbitals */
@@ -152,10 +154,10 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     printf("\n  ------- Mixing virtual and occupied orbitals of two subsystems -------\n");
     auto selectorAlgorithm = std::make_shared<VirtualOrbitalSelectionAlgorithms<SCFMode>>(_act[0], _env);
     selectorAlgorithm->occupiedVirtualMixing(settings.relaxation, settings.embedding);
-    CoefficientMatrix<SCFMode> coefs = _act[0]->getActiveOrbitalController<SCFMode>()->getCoefficients();
+    CoefficientMatrix<SCFMode> coefs = _act[0]->template getActiveOrbitalController<SCFMode>()->getCoefficients();
     SpinPolarizedData<SCFMode, Eigen::VectorXd> eigenValues =
-        _act[0]->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-    auto nOcc = _act[0]->getNOccupiedOrbitals<SCFMode>();
+        _act[0]->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+    auto nOcc = _act[0]->template getNOccupiedOrbitals<SCFMode>();
     printNewOrbitals(nOcc, eigenValues);
     writeOrbitalsToHDF5(coefs, eigenValues, _act[0]);
   } /*OccVirtMixing*/

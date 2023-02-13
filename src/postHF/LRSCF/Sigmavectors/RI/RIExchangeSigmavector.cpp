@@ -166,14 +166,7 @@ RIExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
     if (rpaScreen == true && invM == nullptr) {
       Eigen::MatrixXd invSqrt = riints->getInverseMSqrt();
       auto auxScreen = _lrscf[I]->getScreeningAuxMatrix();
-      auto envTrafo = _lrscf[I]->getEnvTrafo();
-      if (auxScreen) {
-        Eigen::MatrixXd temp = (*auxScreen);
-        if (envTrafo) {
-          temp -= (*envTrafo) * (*auxScreen) * (*envTrafo).transpose();
-        }
-        invSqrt = invSqrt * temp * invSqrt;
-      }
+      invSqrt = (invSqrt * (*auxScreen) * invSqrt).eval();
       invM = std::make_shared<Eigen::MatrixXd>(invSqrt);
       _lrscf[I]->setInverseMetric(invM);
     }
@@ -200,7 +193,7 @@ RIExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -234,7 +227,7 @@ RIExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -334,7 +327,7 @@ RIExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -368,7 +361,7 @@ RIExchangeSigmavector<Options::SCF_MODES::RESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -543,14 +536,7 @@ RIExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
     if (rpaScreen == true && invM == nullptr) {
       Eigen::MatrixXd invSqrt = riints->getInverseMSqrt();
       auto auxScreen = _lrscf[I]->getScreeningAuxMatrix();
-      auto envTrafo = _lrscf[I]->getEnvTrafo();
-      if (auxScreen) {
-        Eigen::MatrixXd temp = (*auxScreen);
-        if (envTrafo) {
-          temp -= (*envTrafo) * (*auxScreen) * (*envTrafo).transpose();
-        }
-        invSqrt = invSqrt * temp * invSqrt;
-      }
+      invSqrt = (invSqrt * (*auxScreen) * invSqrt).eval();
       invM = std::make_shared<Eigen::MatrixXd>(invSqrt);
       _lrscf[I]->setInverseMetric(invM);
     }
@@ -583,7 +569,7 @@ RIExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -624,7 +610,7 @@ RIExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -745,7 +731,7 @@ RIExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {
@@ -786,7 +772,7 @@ RIExchangeSigmavector<Options::SCF_MODES::UNRESTRICTED>::calcF(
 #pragma omp parallel for schedule(dynamic)
     for (size_t iShell = 0; iShell < nxs; ++iShell) {
       unsigned iThread = omp_get_thread_num();
-      auto& integrals = intCalculator.calculateIntegrals(iShell, iThread);
+      auto integrals = intCalculator.calculateIntegrals(iShell, iThread);
 
       unsigned P_in_iShell = auxShells[iShell]->getNContracted();
       for (unsigned P = 0; P < P_in_iShell; ++P) {

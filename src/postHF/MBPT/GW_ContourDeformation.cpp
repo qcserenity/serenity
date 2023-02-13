@@ -26,10 +26,10 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-GW_ContourDeformation<SCFMode>::GW_ContourDeformation(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+GW_ContourDeformation<SCFMode>::GW_ContourDeformation(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
                                                       std::vector<std::shared_ptr<SystemController>> envSystemController,
                                                       std::shared_ptr<RIIntegrals<SCFMode>> riInts, int startOrb, int endOrb)
-  : MBPT<SCFMode>(systemController, settings, envSystemController, riInts, startOrb, endOrb) {
+  : MBPT<SCFMode>(lrscf, settings, envSystemController, riInts, startOrb, endOrb) {
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -67,7 +67,13 @@ void GW_ContourDeformation<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedDat
     }
     // fermi level
     auto fermiLevel = this->calculateFermiLevel();
-    auto wnm = this->calculateWnmComplex();
+    SpinPolarizedData<SCFMode, Eigen::MatrixXd> wnm;
+    if (this->_settings.ltconv == 0) {
+      wnm = this->calculateWnmComplex();
+    }
+    else {
+      wnm = this->calculateWnmComplexLT();
+    }
     // QP interations
     for (unsigned int iQP = 0; iQP < this->_settings.qpiterations + 1; iQP++) {
       // set old qp energies
@@ -158,30 +164,38 @@ GW_ContourDeformation<SCFMode>::calculateContourResidues(SpinPolarizedData<SCFMo
         }
         if (f == 0.0)
           continue;
-        // residue frequence
+        // residue frequency
         auto freq = std::complex<double>(std::abs(orbEig_spin(iRes) - qpEnergy_spin(iState)), this->_settings.eta);
+        Timings::takeTime("MBPT -CD Dielectric Residues");
         Eigen::MatrixXd dielectric = unit;
         for_spin(eia, jia, jia_transformed) {
-          dielectric.noalias() -= this->calculatePiOmega(freq, jia_spin, eia_spin);
-          // if additional environment screening is taken into account
-          if (environment) {
-            Eigen::MatrixXd piPQ_screen = this->calculatePiOmega(freq, jia_transformed_spin, eia_spin);
-            dielectric.noalias() += (this->_proj) * piPQ_screen * (this->_proj).transpose();
+          if (!environment) {
+            dielectric.noalias() -= this->calculatePiOmega(freq, jia_spin, eia_spin);
+          }
+          else {
+            auto dielectricScreen = this->calculatePiOmega(freq, jia_transformed_spin, eia_spin);
+            dielectric.noalias() -= dielectricScreen * (this->_eValues.asDiagonal());
           }
         };
-        // Building the inverse
-        dielectric = dielectric.inverse();
+        Timings::timeTaken("MBPT -CD Dielectric Residues");
         double value = 0.0;
         // other environmental screening
         if (environment) {
-          double value_screen = jpq_transformed_spin.row((iState - this->_startOrb) * states + iRes) *
-                                ((this->_proj).transpose() * dielectric * (this->_proj)) *
-                                jpq_transformed_spin.row((iState - this->_startOrb) * states + iRes).transpose();
-          value = -1.0 * value_screen;
+          Eigen::VectorXd temp = dielectric.householderQr().solve(
+              jpq_transformed_spin.row((iState - this->_startOrb) * states + iRes).transpose());
+          value += jpq_transformed_spin.row((iState - this->_startOrb) * states + iRes) * (this->_eValues.asDiagonal()) * temp;
+          value -= jpq_spin.row((iState - this->_startOrb) * states + iRes) *
+                   jpq_spin.row((iState - this->_startOrb) * states + iRes).transpose();
         }
-        dielectric.noalias() -= unit;
-        value += jpq_spin.row((iState - this->_startOrb) * states + iRes) * dielectric *
-                 jpq_spin.row((iState - this->_startOrb) * states + iRes).transpose();
+        else {
+          Timings::takeTime("MBPT -   CD LU Decomposition");
+          Eigen::VectorXd jpqVec = jpq_spin.row((iState - this->_startOrb) * states + iRes);
+          Eigen::VectorXd jpqtransformed = dielectric.lu().solve(jpqVec);
+          Timings::timeTaken("MBPT -   CD LU Decomposition");
+          value += jpqtransformed.transpose() * jpq_spin.row((iState - this->_startOrb) * states + iRes).transpose();
+          value -= jpq_spin.row((iState - this->_startOrb) * states + iRes) *
+                   jpq_spin.row((iState - this->_startOrb) * states + iRes).transpose();
+        }
         realPart_spin(iState - this->_startOrb) += f * value;
       }
     };

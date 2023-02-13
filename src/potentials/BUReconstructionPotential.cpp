@@ -136,7 +136,7 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
                                                                                   2, actSysBasisController, this->_grid);
   auto oneEIntControllerAct = OneIntControllerFactory::getInstance().produce(actSysBasisController, actSysGeom);
   auto actDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(actBasFuncOnGridController, 0.0);
-  auto dummyOrbsAct = std::make_shared<OrbitalController<SCFMode>>(actSysBasisController);
+  auto dummyOrbsAct = std::make_shared<OrbitalController<SCFMode>>(actSysBasisController, 0);
 
   /*
    * Supersystem basis
@@ -180,7 +180,7 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
   auto supBasFuncOnGridController = BasisFunctionOnGridControllerFactory::produce(system->getSettings().grid.blocksize, 0.0,
                                                                                   2, supSysBasisController, this->_grid);
   auto supDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(supBasFuncOnGridController, 0.0);
-  auto dummyOrbs = std::make_shared<OrbitalController<SCFMode>>(supSysBasisController);
+  auto dummyOrbs = std::make_shared<OrbitalController<SCFMode>>(supSysBasisController, system->getNCoreElectrons() / 2);
 
   /*
    * Hybrid functional?

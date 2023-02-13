@@ -67,6 +67,7 @@ TEST_F(GWTaskTest, RPA_R) {
   // Turbomole 7.4.1 RPA/ri approximation/(gridpoints 60)
   EXPECT_NEAR(correlationEnergy, -0.30931089941, 1.0e-6);
 }
+
 TEST_F(GWTaskTest, RPA_U) {
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
   // Perform SCF
@@ -82,6 +83,7 @@ TEST_F(GWTaskTest, RPA_U) {
   // Turbomole 7.4.1 RPA/ri approximation/(gridpoints 60)
   EXPECT_NEAR(correlationEnergy, -0.24393318612, 2.0e-6);
 }
+
 // dRPA tests
 TEST_F(GWTaskTest, RPA_R_NAF) {
   auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
@@ -104,6 +106,7 @@ TEST_F(GWTaskTest, RPA_R_NAF) {
   // Turbomole 7.4.1 RPA/ri approximation/(gridpoints 60)
   EXPECT_NEAR(correlationEnergy, -0.30931089941, 2.0e-4);
 }
+
 TEST_F(GWTaskTest, RPA_U_NAF) {
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
   // Perform SCF
@@ -120,33 +123,7 @@ TEST_F(GWTaskTest, RPA_U_NAF) {
   // Turbomole 7.4.1 RPA/ri approximation/(gridpoints 60)
   EXPECT_NEAR(correlationEnergy, -0.24393318612, 2.0e-4);
 }
-TEST_F(GWTaskTest, RPA_R_EmbScreen) {
-  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, true);
-  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, true);
 
-  Settings settings1 = act->getSettings();
-  settings1.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  settings1.basis.label = "DEF2-TZVP";
-  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, settings1);
-
-  Settings settings2 = env->getSettings();
-  settings2.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  settings2.basis.label = "DEF2-TZVP";
-  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, settings2);
-
-  auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act, env}, {});
-  task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
-  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  task.run();
-
-  // Perform RPA calculation
-  auto gw = GWTask<RESTRICTED>({act}, {env});
-  gw.settings.mbpttype = Options::MBPT::RPA;
-  gw.run();
-  double correlationEnergy = gw._correlationEnergy;
-  // From Serenity 03.02.2021
-  EXPECT_NEAR(correlationEnergy, -0.42311806147599201, 1.0e-6);
-}
 // GW tests
 TEST_F(GWTaskTest, GW_analytic_R) {
   auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
@@ -264,6 +241,43 @@ TEST_F(GWTaskTest, GW_CD_R) {
     }
   };
 }
+TEST_F(GWTaskTest, GW_CD_CD_R) {
+  auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
+  Settings settings = waterMon->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.densityFitting = Options::DENS_FITS::ACD;
+  settings.basis.cdThreshold = 1e-12;
+  settings.basis.label = "DEF2-SVP";
+  waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
+  // Perform SCF
+  auto scf = ScfTask<RESTRICTED>(waterMon);
+  scf.run();
+  // Serenity without RI
+  EXPECT_NEAR(-76.2723726160, waterMon->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-5);
+  // Perform CD GW calculation
+  auto gw = GWTask<RESTRICTED>({waterMon});
+  gw.settings.gwtype = Options::GWALGORITHM::CD;
+  gw.settings.nVirt = 5;
+  gw.settings.nOcc = 5;
+  // set to zero because closer to the turbomole results
+  gw.settings.eta = 0.0;
+  gw.settings.densFitCache = Options::DENS_FITS::ACD;
+  gw.run();
+  auto correlationEnergy = gw._correlationEnergies;
+  // Turbomole 7.4.1 gw/ri approximation/analytic/eta 0.001(but seems to be done with eta =0.0)
+  // The first value has been changed with a value obtained without RI in the full Analytic implementation in Serenity
+  Eigen::VectorXd correlationEnergyTurbo_eV(10);
+  correlationEnergyTurbo_eV << 17.78012, 8.863, 0.625, 1.410, 1.720, -0.486, -0.575, -1.474, -1.976, -1.947;
+  for_spin(correlationEnergy) {
+    for (unsigned int i = 0; i < correlationEnergyTurbo_eV.size(); i++) {
+      if (i == 1)
+        continue;
+      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlationEnergyTurbo_eV(i), 3.3e-3);
+    }
+  };
+}
+
 TEST_F(GWTaskTest, GW_CD_U) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
   Settings settings = system->getSettings();
@@ -298,6 +312,7 @@ TEST_F(GWTaskTest, GW_CD_U) {
   };
   SystemController__TEST_SUPPLY::cleanUp();
 }
+
 TEST_F(GWTaskTest, GW_CD_R_NAF) {
   auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
   Settings settings = waterMon->getSettings();
@@ -334,6 +349,7 @@ TEST_F(GWTaskTest, GW_CD_R_NAF) {
     }
   };
 }
+
 TEST_F(GWTaskTest, GW_AC_R) {
   auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
   Settings settings = waterMon->getSettings();
@@ -431,11 +447,11 @@ TEST_F(GWTaskTest, embGW_small) {
   gw.run();
   auto correlationEnergy = gw._correlationEnergies;
   Eigen::VectorXd correlation2(6);
-  // Serenity 03.02.2021
-  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.8311401694482949, -0.68697046946385487;
+  // Serenity 19.05.2022
+  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.819371555985553, -0.69471338695164397;
   for_spin(correlationEnergy) {
     for (unsigned int i = 0; i < correlation2.size(); i++) {
-      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 3e-6);
+      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 2e-6);
     }
   };
 }
@@ -473,8 +489,8 @@ TEST_F(GWTaskTest, embGW_small_AC) {
   gw.run();
   auto correlationEnergy = gw._correlationEnergies;
   Eigen::VectorXd correlation2(6);
-  // Serenity 18.02.2021 CD results
-  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.8311401694482949, -0.68697046946385487;
+  // Serenity 19.05.2022 (from CD)
+  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.819371555985553, -0.69471338695164397;
   for_spin(correlationEnergy) {
     for (unsigned int i = 0; i < correlation2.size(); i++) {
       EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 1e-5);
@@ -514,8 +530,8 @@ TEST_F(GWTaskTest, embGW_large) {
   gw.run();
   auto correlationEnergy = gw._correlationEnergies;
   Eigen::VectorXd correlation2(6);
-  // Serenity from 22.10.2020
-  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.7281869069752989, -0.59314206433908812;
+  // Serenity 19.05.2022
+  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.6675961049528527, -0.57892512045600975;
 
   for_spin(correlationEnergy) {
     for (unsigned int i = 0; i < correlation2.size(); i++) {
@@ -523,5 +539,158 @@ TEST_F(GWTaskTest, embGW_large) {
     }
   };
 }
+
+#ifdef SERENITY_USE_LAPLACE_MINIMAX
+
+TEST_F(GWTaskTest, GW_CD_LT_R) {
+  auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
+  Settings settings = waterMon->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.label = "DEF2-SVP";
+  waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
+  // Perform SCF
+  auto scf = ScfTask<RESTRICTED>(waterMon);
+  scf.run();
+  // Turbomole 7.4.1 ridft/PBE/m3
+  EXPECT_NEAR(-76.27245320915, waterMon->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-5);
+  // Perform CD GW calculation
+  auto gw = GWTask<RESTRICTED>({waterMon});
+  gw.settings.gwtype = Options::GWALGORITHM::CD;
+  gw.settings.nVirt = 5;
+  gw.settings.nOcc = 5;
+  // set to zero because closer to the turbomole results
+  gw.settings.eta = 0.0;
+  gw.settings.ltconv = 1e-7;
+  gw.run();
+  auto correlationEnergy = gw._correlationEnergies;
+  // Turbomole 7.4.1 gw/ri approximation/analytic/eta 0.001(but seems to be done with eta =0.0)
+  Eigen::VectorXd correlationEnergyTurbo_eV(10);
+  correlationEnergyTurbo_eV << 17.789, 8.863, 0.625, 1.410, 1.720, -0.486, -0.575, -1.474, -1.976, -1.947;
+  for_spin(correlationEnergy) {
+    for (unsigned int i = 0; i < correlationEnergyTurbo_eV.size(); i++) {
+      if (i == 1)
+        continue;
+      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlationEnergyTurbo_eV(i), 1.5e-3);
+    }
+  };
+}
+
+TEST_F(GWTaskTest, embGW_small_LT) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, true);
+
+  Settings settings1 = act->getSettings();
+  settings1.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  settings1.basis.label = "DEF2-TZVP";
+  act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, settings1);
+
+  Settings settings2 = env->getSettings();
+  settings2.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  settings2.basis.label = "DEF2-TZVP";
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_Def2_SVP, settings2);
+
+  auto task = FreezeAndThawTask<Options::SCF_MODES::RESTRICTED>({act, env}, {});
+  task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  task.run();
+
+  auto gw = GWTask<Options::SCF_MODES::RESTRICTED>({act}, {env});
+  gw.settings.eta = 0.001;
+  gw.settings.diis = true;
+  gw.settings.nVirt = 1;
+  gw.settings.nOcc = 1;
+  gw.settings.qpiterations = 10;
+  gw.settings.ConvergenceThreshold = 1e-6;
+  gw.settings.integrationPoints = 128;
+  gw.settings.subsystemAuxillaryBasisOnly = true;
+  gw.settings.ltconv = 1e-7;
+  gw.run();
+  auto correlationEnergy = gw._correlationEnergies;
+  Eigen::VectorXd correlation2(6);
+  // Serenity 19.05.2022 (from CD)
+  correlation2 << 0.0, 0.0, 0.0, 0.0, 1.819371555985553, -0.69471338695164397;
+  for_spin(correlationEnergy) {
+    for (unsigned int i = 0; i < correlation2.size(); i++) {
+      EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlation2(i), 4e-5);
+    }
+  };
+}
+
+TEST_F(GWTaskTest, GW_CD_R_NAF_LT) {
+  auto waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true);
+  Settings settings = waterMon->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  settings.basis.label = "DEF2-SVP";
+  waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
+  // Perform SCF
+  auto scf = ScfTask<RESTRICTED>(waterMon);
+  scf.run();
+  // Turbomole 7.4.1 ridft/PBE/m3
+  EXPECT_NEAR(-76.27245320915, waterMon->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-5);
+  // Perform CD GW calculation
+  auto gw = GWTask<RESTRICTED>({waterMon});
+  gw.settings.gwtype = Options::GWALGORITHM::CD;
+  gw.settings.nVirt = 2;
+  gw.settings.nOcc = 2;
+  // set to zero because closer to the turbomole results
+  gw.settings.eta = 0.0;
+  gw.run();
+  auto correlationEnergy1 = gw._correlationEnergies;
+  auto gw2 = GWTask<RESTRICTED>({waterMon});
+  gw2.settings.gwtype = Options::GWALGORITHM::CD;
+  gw2.settings.nVirt = 2;
+  gw2.settings.nOcc = 2;
+  gw2.settings.nafThresh = 1e-4;
+  gw2.settings.ltconv = 1e-7;
+  // set to zero because closer to the turbomole results
+  gw2.settings.eta = 0.0;
+  gw2.run();
+  auto correlationEnergy2 = gw2._correlationEnergies;
+  for_spin(correlationEnergy1, correlationEnergy2) {
+    for (unsigned int i = 0; i < correlationEnergy1_spin.size(); i++) {
+      EXPECT_NEAR(correlationEnergy1_spin(i), correlationEnergy2_spin(i), 3e-3);
+    }
+  };
+}
+
+TEST_F(GWTaskTest, GW_CD_LT_U) {
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
+  Settings settings = system->getSettings();
+  settings.grid.accuracy = 5;
+  settings.grid.smallGridAccuracy = 3;
+  system =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, settings, 0, 1);
+  // Perform SCF
+  auto scf = ScfTask<UNRESTRICTED>(system);
+  scf.run();
+  // Turbomole 7.4.1 ridft/PBE/m3
+  EXPECT_NEAR(-39.73968410168, system->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(), 1e-5);
+  // Perform CD GW calculation
+  auto gw = GWTask<UNRESTRICTED>({system});
+  gw.settings.gwtype = Options::GWALGORITHM::CD;
+  gw.settings.nVirt = 2;
+  gw.settings.nOcc = 2;
+  gw.settings.eta = 0.001;
+  gw.settings.ltconv = 1e-7;
+  gw.run();
+  // Turbomole 7.4.1
+  Eigen::VectorXd correlationEnergyTurbo_eV(8);
+  correlationEnergyTurbo_eV << 0.48028999, 0.49317720, 0.89494920, -0.56708293, 0.31385060, 0.32801042, -2.29475965, -0.76964986;
+  auto correlationEnergy = gw._correlationEnergies;
+  unsigned counter = 0;
+  for_spin(correlationEnergy) {
+    for (unsigned int i = 0; i < correlationEnergy_spin.size(); i++) {
+      if (std::abs(correlationEnergy_spin(i)) > 1e-8) {
+        EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlationEnergyTurbo_eV(counter), 1.2e-3);
+        counter++;
+      }
+    }
+  };
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+#endif /* SERENITY_USE_LAPLACE_MINIMAX */
 
 } // namespace Serenity

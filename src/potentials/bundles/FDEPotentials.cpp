@@ -35,8 +35,6 @@ FDEPotentials<SCFMode>::FDEPotentials(std::shared_ptr<PotentialBundle<SCFMode>> 
   : _activeSystemPot(activeSystemPot), _esiPot(esiPot), _naddXC(naddXC), _naddKin(naddKin), _ecp(ecp), _pcm(pcm) {
   assert(_activeSystemPot);
   assert(_esiPot);
-  assert(_naddXC);
-  assert(_naddKin);
   assert(_ecp);
   assert(_pcm);
 }

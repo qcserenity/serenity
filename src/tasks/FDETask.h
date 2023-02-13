@@ -26,8 +26,8 @@
 #include "misc/SerenityError.h"
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"
 #include "settings/EmbeddingSettings.h"
-#include "settings/LocalizationOptions.h"
 #include "settings/Reflection.h"
+#include "tasks/LocalizationTask.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>
@@ -37,16 +37,17 @@ namespace Serenity {
 class SystemController;
 template<Options::SCF_MODES T>
 class PotentialBundle;
+class EnergyComponentController;
 
 using namespace Serenity::Reflection;
 
 struct FDETaskSettings {
   FDETaskSettings()
-    : locType(Options::ORBITAL_LOCALIZATION_ALGORITHMS::IBO),
-      gridCutOff(-1.0),
+    : gridCutOff(-1.0),
       smallSupersystemGrid(false),
       finalGrid(true),
       calculateMP2Energy(true),
+      calculateUnrelaxedMP2Density(false),
       maxResidual(1e-5),
       maxCycles(100),
       calculateEnvironmentEnergy(false),
@@ -57,13 +58,15 @@ struct FDETaskSettings {
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
     lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
+    loc.splitValenceAndCore = true;
   }
-  REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (double)gridCutOff, (bool)smallSupersystemGrid,
-              (bool)finalGrid, (bool)calculateMP2Energy, (double)maxResidual, (int)maxCycles,
-              (bool)calculateEnvironmentEnergy, (Options::MP2_TYPES)mp2Type, (bool)calculateSolvationEnergy, (bool)skipSCF)
+  REFLECTABLE((double)gridCutOff, (bool)smallSupersystemGrid, (bool)finalGrid, (bool)calculateMP2Energy,
+              (bool)calculateUnrelaxedMP2Density, (double)maxResidual, (int)maxCycles, (bool)calculateEnvironmentEnergy,
+              (Options::MP2_TYPES)mp2Type, (bool)calculateSolvationEnergy, (bool)skipSCF)
  public:
   LocalCorrelationSettings lcSettings;
   EmbeddingSettings embedding;
+  LocalizationTaskSettings loc;
   ///@brief The index of the first passive environment subsystem that will never
   ///       be changed during a freeze-and-thaw procedure.
   unsigned int firstPassiveSystemIndex = 9999999;
@@ -104,12 +107,16 @@ class FDETask : public Task {
   void visit(FDETaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      if (!c.lcSettings.visitSettings(v, blockname)) {
-        throw SerenityError((std::string) "Unknown block in FDETaskSettings: " + blockname);
-      }
-    }
+    if (c.embedding.visitSettings(v, blockname))
+      return;
+    if (c.lcSettings.visitSettings(v, blockname))
+      return;
+    if (c.loc.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the keyword is unknown.
+    throw SerenityError((std::string) "Unknown block in FDETaskSettings: " + blockname);
   }
 
   /**
@@ -160,6 +167,8 @@ class FDETask : public Task {
   std::shared_ptr<GridController> _finalGrid;
   void calculateNonAdditiveDispersionCorrection();
   void calculateMP2CorrelationContribution(std::shared_ptr<PotentialBundle<SCFMode>> fdePot);
+  void calculateUnrelaxedMP2Density(std::shared_ptr<PotentialBundle<SCFMode>> fdePot,
+                                    std::shared_ptr<EnergyComponentController> eCont);
   // prints the S*S values
   void printFaTAnalysis(std::vector<std::shared_ptr<SystemController>> systems,
                         std::shared_ptr<GridController> supersystemGrid = nullptr, bool actOnly = false);

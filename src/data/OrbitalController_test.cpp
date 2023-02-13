@@ -77,17 +77,33 @@ TEST_F(OrbitalControllerTest, setCoreOrbitals) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
   auto orbitalController = system->getActiveOrbitalController<RESTRICTED>();
   unsigned int nCore_1 = system->getNCoreElectrons();
+  unsigned int nCoreFromOrbitalController = orbitalController->getNCoreOrbitals();
+  EXPECT_EQ(nCore_1, nCoreFromOrbitalController * 2);
   orbitalController->setCoreOrbitalsByEnergyCutOff(-5);
-  unsigned int nCore_2 = orbitalController->getCoreOrbitals().sum();
-  EXPECT_EQ(nCore_1, 82); // This is just by chance two times the number of core orbitals from the energy-wise selection.
+  unsigned int nCore_2 = orbitalController->getOrbitalFlags().sum();
+  EXPECT_EQ(nCore_1, 82);
   EXPECT_EQ(nCore_2, 41);
   orbitalController->setCoreOrbitalsByEnergyCutOff(-10);
-  unsigned int nCore_3 = orbitalController->getCoreOrbitals().sum();
+  unsigned int nCore_3 = orbitalController->getOrbitalFlags().sum();
   EXPECT_EQ(nCore_3, 29);
   unsigned int nCoreSet = 40;
   orbitalController->setCoreOrbitalsByNumber(nCoreSet);
-  unsigned int nCore_4 = orbitalController->getCoreOrbitals().sum();
+  unsigned int nCore_4 = orbitalController->getOrbitalFlags().sum();
   EXPECT_EQ(nCoreSet, nCore_4);
+}
+
+/**
+ * @test
+ * @brief Test core orbitals from initial guess.
+ */
+TEST_F(OrbitalControllerTest, coreOrbitalsFromGuess) {
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE, true);
+  auto nCoreElectronsInTable = system->getNCoreElectrons();
+  auto orbitalController = system->getActiveOrbitalController<RESTRICTED>();
+  const unsigned int nCoreOrbitals = orbitalController->getNCoreOrbitals();
+  EXPECT_EQ(nCoreElectronsInTable, nCoreOrbitals * 2);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "I_FREE/", "I_FREE");
+  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } /*namespace Serenity*/

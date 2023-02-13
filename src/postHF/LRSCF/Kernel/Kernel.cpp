@@ -43,8 +43,8 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
-                        std::vector<std::shared_ptr<SystemController>> env, const LRSCFTaskSettings& settings)
+Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std::vector<std::shared_ptr<SystemController>> env,
+                        const LRSCFTaskSettings& settings, Options::GRID_PURPOSES gridFineness)
   : _settings(settings),
     _naddKinFunc(settings.embedding.naddKinFunc),
     _naddXCFunc(settings.embedding.naddXCFunc),
@@ -57,30 +57,28 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
   for (auto sys : env) {
     _systems.push_back(sys);
   }
-  // Build supersystem grid if desired
+
+  //  Build reference geometry.
+  std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
+
+  // Build subsystem-based grid.
   if (settings.subsystemgrid.size() != 0) {
-    // Build subsystem-based grid
-    std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
-    for (unsigned int I = 0; I < settings.subsystemgrid.size(); ++I) {
-      if (settings.subsystemgrid[I] > _systems.size())
+    for (unsigned I = 0; I < settings.subsystemgrid.size(); ++I) {
+      if (settings.subsystemgrid[I] > _systems.size()) {
         throw SerenityError("Your index for the subsystem-based grid is too large!");
+      }
       (*geometry) += (*_systems[settings.subsystemgrid[I] - 1]->getGeometry());
     }
-    geometry->deleteIdenticalAtoms();
-    // produce grid controller for supersystem geometry
-    _gridController = GridControllerFactory::produce(geometry, _systems[0]->getSettings(), Options::GRID_PURPOSES::DEFAULT);
   }
+  // Build supersystem grid.
   else {
-    // Build supersystem geometry
-    std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
-    for (unsigned int I = 0; I < _systems.size(); ++I) {
+    for (unsigned I = 0; I < _systems.size(); ++I) {
       (*geometry) += (*_systems[I]->getGeometry());
     }
-    geometry->deleteIdenticalAtoms();
-    // produce grid controller for supersystem geometry
-    _gridController = GridControllerFactory::produce(geometry, _systems[0]->getSettings(), Options::GRID_PURPOSES::DEFAULT);
   }
-  assert(_gridController);
+  geometry->deleteIdenticalAtoms();
+  _gridController = GridControllerFactory::produce(geometry, _settings.grid, gridFineness);
+
   // Get and check data from input functionals
   for (auto sys : _systems) {
     if (sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF &&
@@ -94,24 +92,31 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
       _func.push_back(settings.func);
     }
   }
+
   if (_systems.size() == 1) {
-    // If only one system is present, non-additive contribution is zero and need not be calculated.
-    // Though NONE is default, we reassure that non-additive functionals are not used.
     _naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     _naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
   }
+
   Functional EnaddXC = resolveFunctional(_naddXCFunc);
   Functional EnaddKIN = resolveFunctional(_naddKinFunc);
-  if (EnaddKIN.isHybrid() || EnaddKIN.isRSHybrid())
+  if (EnaddKIN.isHybrid() || EnaddKIN.isRSHybrid()) {
     throw SerenityError("ERROR: Found hybrid functional for non-additive kinetic kernel.");
-  if (EnaddXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA ||
-      EnaddKIN.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA)
+  }
+  if (EnaddXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
     _gga = true;
+  }
+  if (EnaddKIN.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
+    _gga = true;
+  }
+
   for (auto funcXC : _func) {
     Functional EXC = resolveFunctional(funcXC);
-    if (EXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA)
+    if (EXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
       _gga = true;
+    }
   }
+
   // Initialize storage objects (this ensures that key is already present when working with it)
   for (auto sys : _systems) {
     _pp.insert(std::make_pair(sys->getSystemName(),
@@ -130,6 +135,7 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
     _ggtot = makeHessianPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
     _pgtot = makeGradientPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
   }
+
   // Check if same density keyword is used correctly
   if (_settings.samedensity.size() > 0) {
     if (_settings.samedensity.size() != _systems.size()) {
@@ -140,7 +146,7 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
   // Check for mixed exact approx embedding
   if (settings.embedding.embeddingModeList.size() == 0) {
     // Calculate and store derivatives
-    calculateDerivatives();
+    this->calculateDerivatives();
   }
   else {
     auto embeddingmodes = settings.embedding.embeddingModeList;
@@ -153,7 +159,7 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act,
     _ggExact = makeHessianPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
     _pgExact = makeGradientPtr<DoublySpinPolarizedData<SCFMode, GridData<Options::SCF_MODES::RESTRICTED>>>(_gridController);
     // Calculate and store mixed derivatives
-    calculateDerivativesMixedEmbedding();
+    this->calculateDerivativesMixedEmbedding();
   }
 }
 
@@ -488,6 +494,7 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getGG(unsigned int I, unsigned int J, 
   }
   return gg_Block;
 }
+
 template<>
 void Kernel<Options::SCF_MODES::RESTRICTED>::storeDerivatives(
     FunctionalData<Options::SCF_MODES::RESTRICTED>& funcData, DensityOnGrid<Options::SCF_MODES::RESTRICTED>& p,
@@ -922,7 +929,7 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getDensityOnGridController(std::shared
         sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getEigenvalues());
     // Build unrestricted core orbital vector from restricted ones
     auto core = std::make_unique<SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, Eigen::VectorXi>>(
-        sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoreOrbitals());
+        sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getOrbitalFlags());
     // Build unrestricted OrbitalController from restricted data
     std::shared_ptr<OrbitalController<Options::SCF_MODES::UNRESTRICTED>> orbitalController =
         std::make_shared<OrbitalController<Options::SCF_MODES::UNRESTRICTED>>(std::move(c), sys->getBasisController(),
@@ -939,17 +946,20 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getDensityOnGridController(std::shared
   return std::make_shared<DensityMatrixDensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>(densityOnGridCalculator,
                                                                                                   densityMatrixController);
 }
+
 template<Options::SCF_MODES SCFMode>
-unsigned int Kernel<SCFMode>::getBlocksize(unsigned int subsystemNumber) {
-  return _systems[subsystemNumber]->getSettings().grid.blocksize;
+unsigned Kernel<SCFMode>::getBlocksize(unsigned I) {
+  return _systems[I]->getSettings().grid.blocksize;
 };
+
 template<Options::SCF_MODES SCFMode>
-unsigned int Kernel<SCFMode>::getbasFuncRadialThreshold(unsigned int subsystemNumber) {
-  return _systems[subsystemNumber]->getSettings().grid.basFuncRadialThreshold;
+unsigned Kernel<SCFMode>::getbasFuncRadialThreshold(unsigned I) {
+  return _systems[I]->getSettings().grid.basFuncRadialThreshold;
 };
+
 template<Options::SCF_MODES SCFMode>
-double Kernel<SCFMode>::getblockAveThreshold(unsigned int subsystemNumber) {
-  return _systems[subsystemNumber]->getSettings().grid.blockAveThreshold;
+double Kernel<SCFMode>::getblockAveThreshold(unsigned I) {
+  return _systems[I]->getSettings().grid.blockAveThreshold;
 }
 
 template class Kernel<Options::SCF_MODES::RESTRICTED>;

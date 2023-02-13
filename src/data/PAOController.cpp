@@ -19,6 +19,7 @@
  */
 /* Include Class Header*/
 #include "data/PAOController.h"
+#include "basis/BasisFunctionMapper.h"
 /* Include Serenity Internal Headers */
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 
@@ -35,7 +36,14 @@ void PAOController::constructPAOs() {
   // Active system
   const auto& d = *_activeDensity;
   const auto& s = *_s;
-  coefficients -= 0.5 * d * s;
+  // Environment - removing projected occupied orbitals
+  Eigen::MatrixXd d_env = Eigen::MatrixXd::Zero(nBasisFunctions, nBasisFunctions);
+  BasisFunctionMapper mapper(_activeDensity->getBasisController());
+  for (auto& envDensity : _environmentDensities) {
+    auto projection = mapper.getSparseProjection(envDensity->getBasisController());
+    d_env += projection->transpose() * (*envDensity) * (*projection);
+  }
+  coefficients -= 0.5 * (d + d_env) * s;
   // Search for functions which are no longer present in the basis.
   // Otherwise renormalize.
   Eigen::MatrixXd metric = coefficients.transpose() * s * coefficients;

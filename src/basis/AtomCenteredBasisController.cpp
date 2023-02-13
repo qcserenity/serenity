@@ -157,7 +157,7 @@ void AtomCenteredBasisController::toHDF5(std::string fBaseName, std::string id) 
 
 void AtomCenteredBasisController::fromHDF5(std::string fBaseName, std::string id) {
   HDF5::Filepath name(fBaseName + ".basis.h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::attribute_exists(file, "ID");
   HDF5::check_attribute(file, "ID", id);
   for (unsigned int i = 0; i < _geometry->getNAtoms(); i++) {

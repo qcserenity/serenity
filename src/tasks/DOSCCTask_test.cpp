@@ -20,9 +20,12 @@
 
 /* Include Serenity Internal Headers */
 #include "tasks/DOSCCTask.h"                          //To be tested.
+#include "data/ElectronicStructure.h"                 //Get energy for comparison.
+#include "io/FormattedOutputStream.h"                 //Change print level.
 #include "math/FloatMaths.h"                          //Precision.
 #include "settings/Settings.h"                        //Change system settings.
 #include "system/SystemController.h"                  //Access to system settings.
+#include "tasks/LocalCorrelationTask.h"               //DLPNO-CCSD(T0) reference calculations.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Access to test systems.
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -43,6 +46,7 @@ class DOSCCTaskTest : public ::testing::Test {
 };
 
 TEST_F(DOSCCTaskTest, ethane_bond_streching) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   Settings aSettings = a->getSettings();
   aSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
@@ -57,18 +61,221 @@ TEST_F(DOSCCTaskTest, ethane_bond_streching) {
   DOSCCTask dosccTask({a, b});
   dosccTask.settings.dosSettings = Options::DOS_SETTINGS::LOOSE;
   dosccTask.settings.wfemb.lcSettings[0].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.printGroupAnalysis = true;
+  dosccTask.settings.orbitalPairAnalysis = true;
+  dosccTask.settings.lcPairSelection[0].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.strictTriples = false;
   dosccTask.run();
   const auto relativeEnergies = dosccTask.getRelativeEnergies();
   const auto totalEnergies = dosccTask.getTotalEnergies();
 
+  // Small changes in the triple correction because of rigorous removal of distant orbital pairs.
   EXPECT_NEAR(relativeEnergies(0), 0.0, TIGHT_D);
-  EXPECT_NEAR(relativeEnergies(1), 0.062922261156970194, NORMAL_D);
-  EXPECT_NEAR(totalEnergies(0), -79.52253707479764, NORMAL_D);
-  EXPECT_NEAR(totalEnergies(1), -79.45961481364067, NORMAL_D);
+  EXPECT_NEAR(relativeEnergies(1), 0.063639187988570711, NORMAL_D);
+  EXPECT_NEAR(totalEnergies(0), -79.51949931969429, NORMAL_D);
+  EXPECT_NEAR(totalEnergies(1), -79.45586013170572, NORMAL_D);
+
+  const auto relativeEnergiesFromPairSelected = dosccTask.getRelativeEnergiesFromPairSelected();
+  const auto totalEnergiesFromPairSelected = dosccTask.getTotalEnergiesFromPairSelected();
+
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(0), 0.0, TIGHT_D);
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(1), 0.063547338789121, NORMAL_D);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(0), -79.521960798079562, NORMAL_D);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(1), -79.458413459290441, NORMAL_D);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
   SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+  auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
+  Settings aSettings = a->getSettings();
+  aSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  aSettings.name = "a";
+  a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, aSettings);
+  auto b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, true);
+  Settings bSettings = b->getSettings();
+  bSettings.name = "b";
+  bSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, bSettings);
+
+  DOSCCTask dosccTask({a, b});
+  dosccTask.settings.dosSettings = Options::DOS_SETTINGS::LOOSE;
+  dosccTask.settings.alignOrbitals = false;
+  dosccTask.settings.wfemb.lcSettings[0].pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  dosccTask.settings.wfemb.lcSettings[0].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[1].pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  dosccTask.settings.wfemb.lcSettings[1].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[2].pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  dosccTask.settings.wfemb.lcSettings[2].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[3].pnoSettings = Options::PNO_SETTINGS::LOOSE;
+  dosccTask.settings.wfemb.lcSettings[3].useFrozenCore = true;
+  dosccTask.settings.printGroupAnalysis = true;
+  dosccTask.settings.orbitalPairAnalysis = true;
+  dosccTask.settings.lcPairSelection[0].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[0].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[0].enforceHFFockian = true;
+  dosccTask.settings.lcPairSelection[1].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[1].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[2].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[2].useFrozenCore = true;
+  dosccTask.run();
+
+  const auto relativeEnergiesFromPairSelected = dosccTask.getRelativeEnergiesFromPairSelected();
+  const auto totalEnergiesFromPairSelected = dosccTask.getTotalEnergiesFromPairSelected();
+  LocalCorrelationTask lcTaskA(a);
+  lcTaskA.settings.lcSettings.useFrozenCore = true;
+  lcTaskA.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskA.run();
+  const double energyA = a->getElectronicStructure<RESTRICTED>()->getEnergy();
+  LocalCorrelationTask lcTaskB(b);
+  lcTaskB.settings.lcSettings.useFrozenCore = true;
+  lcTaskB.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskB.run();
+  const double energyB = b->getElectronicStructure<RESTRICTED>()->getEnergy();
+  const double relativeEnergy = energyB - energyA;
+
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(0), 0.0, TIGHT_D);
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(1), relativeEnergy, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_lmp2) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+  auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
+  Settings aSettings = a->getSettings();
+  aSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  aSettings.name = "a";
+  a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, aSettings);
+  auto b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, true);
+  Settings bSettings = b->getSettings();
+  bSettings.name = "b";
+  bSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, bSettings);
+
+  DOSCCTask dosccTask({a, b});
+  dosccTask.settings.dosSettings = Options::DOS_SETTINGS::SPREAD;
+  dosccTask.settings.alignOrbitals = false;
+  dosccTask.settings.wfemb.lcSettings[0].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[0].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[0].method = Options::PNO_METHOD::DLPNO_MP2;
+  dosccTask.settings.wfemb.lcSettings[1].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[1].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[1].method = Options::PNO_METHOD::DLPNO_MP2;
+  dosccTask.settings.wfemb.lcSettings[2].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[2].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[2].method = Options::PNO_METHOD::DLPNO_MP2;
+  dosccTask.settings.wfemb.lcSettings[3].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[3].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[3].method = Options::PNO_METHOD::DLPNO_MP2;
+  dosccTask.settings.printGroupAnalysis = true;
+  dosccTask.settings.orbitalPairAnalysis = true;
+  dosccTask.settings.lcPairSelection[0].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[0].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[0].enforceHFFockian = true;
+  dosccTask.settings.lcPairSelection[1].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[1].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[2].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[2].useFrozenCore = true;
+  dosccTask.run();
+
+  const auto relativeEnergiesFromPairSelected = dosccTask.getRelativeEnergiesFromPairSelected();
+  const auto totalEnergiesFromPairSelected = dosccTask.getTotalEnergiesFromPairSelected();
+  LocalCorrelationTask lcTaskA(a);
+  lcTaskA.settings.lcSettings.useFrozenCore = true;
+  lcTaskA.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskA.run();
+  const double energyA = a->getElectronicStructure<RESTRICTED>()->getEnergy();
+  LocalCorrelationTask lcTaskB(b);
+  lcTaskB.settings.lcSettings.useFrozenCore = true;
+  lcTaskB.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskB.run();
+  const double energyB = b->getElectronicStructure<RESTRICTED>()->getEnergy();
+  const double relativeEnergy = energyB - energyA;
+
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(0), 0.0, TIGHT_D);
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(1), relativeEnergy, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+}
+
+TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_scmp2) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
+  auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
+  Settings aSettings = a->getSettings();
+  aSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  aSettings.name = "a";
+  a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, aSettings);
+  auto b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, true);
+  Settings bSettings = b->getSettings();
+  bSettings.name = "b";
+  bSettings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  b = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86, bSettings);
+
+  DOSCCTask dosccTask({a, b});
+  dosccTask.settings.dosSettings = Options::DOS_SETTINGS::SPREAD;
+  dosccTask.settings.alignOrbitals = false;
+  dosccTask.settings.wfemb.lcSettings[0].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[0].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[0].method = Options::PNO_METHOD::SC_MP2;
+  dosccTask.settings.wfemb.lcSettings[1].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[1].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[1].method = Options::PNO_METHOD::SC_MP2;
+  dosccTask.settings.wfemb.lcSettings[2].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[2].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[2].method = Options::PNO_METHOD::SC_MP2;
+  dosccTask.settings.wfemb.lcSettings[3].pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  dosccTask.settings.wfemb.lcSettings[3].useFrozenCore = true;
+  dosccTask.settings.wfemb.lcSettings[3].method = Options::PNO_METHOD::SC_MP2;
+  dosccTask.settings.printGroupAnalysis = true;
+  dosccTask.settings.orbitalPairAnalysis = true;
+  dosccTask.settings.lcPairSelection[0].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[0].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[0].enforceHFFockian = true;
+  dosccTask.settings.lcPairSelection[1].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[1].useFrozenCore = true;
+  dosccTask.settings.lcPairSelection[2].method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  dosccTask.settings.lcPairSelection[2].useFrozenCore = true;
+  dosccTask.settings.skipCrudePresPairSelected = true;
+  dosccTask.run();
+
+  const auto relativeEnergiesFromPairSelected = dosccTask.getRelativeEnergiesFromPairSelected();
+  const auto totalEnergiesFromPairSelected = dosccTask.getTotalEnergiesFromPairSelected();
+  LocalCorrelationTask lcTaskA(a);
+  lcTaskA.settings.lcSettings.useFrozenCore = true;
+  lcTaskA.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskA.run();
+  const double energyA = a->getElectronicStructure<RESTRICTED>()->getEnergy();
+  LocalCorrelationTask lcTaskB(b);
+  lcTaskB.settings.lcSettings.useFrozenCore = true;
+  lcTaskB.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  lcTaskB.run();
+  const double energyB = b->getElectronicStructure<RESTRICTED>()->getEnergy();
+  const double relativeEnergy = energyB - energyA;
+
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(0), 0.0, TIGHT_D);
+  EXPECT_NEAR(relativeEnergiesFromPairSelected(1), relativeEnergy, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
+  EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
+  SystemController__TEST_SUPPLY::cleanUp();
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
 } /* namespace Serenity */

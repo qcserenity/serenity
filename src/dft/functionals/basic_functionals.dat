@@ -86,7 +86,7 @@ LDA  C  LIBXC C_XALPHA           XC_LDA_C_XALPHA                -
 LDA  XC LIBXC XC_EHWLRG_1D_1     XC_LDA_XC_1D_EHWLRG_1          -
 LDA  XC LIBXC XC_EHWLRG_1D_2     XC_LDA_XC_1D_EHWLRG_2          -
 LDA  XC LIBXC XC_EHWLRG_1D_3     XC_LDA_XC_1D_EHWLRG_3          -
-LDA  XC LIBXC XC_BN05            XC_LDA_XC_BN05                 -
+LDA  XC LIBXC XC_BN05            XC_HYB_LDA_XC_BN05                 -
 LDA  XC LIBXC XC_GDSMFB          XC_LDA_XC_GDSMFB               -
 LDA  XC LIBXC XC_KSDT            XC_LDA_XC_KSDT                 -
 LDA  XC LIBXC XC_LP_A            XC_LDA_XC_LP_A                 -
@@ -151,9 +151,6 @@ GGA  X  LIBXC X_LAMBDA_LO_N      XC_GGA_X_LAMBDA_LO_N           -
 GGA  X  LIBXC X_LAMBDA_OC2_N     XC_GGA_X_LAMBDA_OC2_N          -
 GGA  X  LIBXC X_LB               XC_GGA_X_LB                    -
 GGA  X  LIBXC X_LBM              XC_GGA_X_LBM                   -
-GGA  X  LIBXC X_LC2GAU           XC_GGA_X_LC2GAU                -
-GGA  X  LIBXC X_LCGAU            XC_GGA_X_LCGAU                 -
-GGA  X  LIBXC X_LCGAU_CORE       XC_GGA_X_LCGAU_CORE            -
 GGA  X  LIBXC X_LG93             XC_GGA_X_LG93                  -
 GGA  X  LIBXC X_LSPBE            XC_GGA_X_LSPBE                 -
 GGA  X  LIBXC X_LSRPBE           XC_GGA_X_LSRPBE                -
@@ -277,7 +274,7 @@ GGA  XC LIBXC XC_HLE16           XC_GGA_XC_HLE16                -
 GGA  XC LIBXC XC_KT1             XC_GGA_XC_KT1                  -
 GGA  XC LIBXC XC_KT2             XC_GGA_XC_KT2                  -
 GGA  XC LIBXC XC_KT3             XC_GGA_XC_KT3                  -
-GGA  XC LIBXC XC_LB07            XC_GGA_XC_LB07                 -
+GGA  XC LIBXC XC_LB07            XC_HYB_GGA_XC_LB07                 -
 GGA  XC LIBXC XC_MOHLYP          XC_GGA_XC_MOHLYP               -
 GGA  XC LIBXC XC_MOHLYP2         XC_GGA_XC_MOHLYP2              -
 GGA  XC LIBXC XC_MPWLYP1W        XC_GGA_XC_MPWLYP1W             -

@@ -224,6 +224,11 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
   void initializeXWFController();
 
   /**
+   * @brief Finalizes the XWFController attached to this LRSCFController.
+   */
+  void finalizeXWFController();
+
+  /**
    * @brief Returns the underlying XWFController calculator.
    * @return A pointer to the underlyng XWFController calculator.
    */
@@ -233,6 +238,11 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
    * @brief Setup RI integral cache.
    */
   void initializeRIIntegrals(LIBINT_OPERATOR op, double mu, bool calcJia);
+
+  /**
+   * @brief Finalizes the RIIntegrals attached to this LRSCFController.
+   */
+  void finalizeRIIntegrals(LIBINT_OPERATOR op);
 
   /**
    * @brief The RI integral cache.
@@ -279,6 +289,21 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
    * @return The cached inverse aux metric.
    */
   std::shared_ptr<Eigen::MatrixXd> getInverseErfMetric();
+
+  /**
+   * @brief Applies frozen core approximation.
+   */
+  void applyFrozenCore();
+
+  /**
+   * @brief Applies frozen virtual approximation (based on energy difference with HOMO).
+   */
+  void applyFrozenVirtual();
+
+  /**
+   * @brief Applies core only approximation.
+   */
+  void applyCoreOnly();
 
  private:
   // The system controller

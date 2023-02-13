@@ -20,6 +20,9 @@
 
 #include "tasks/ReadOrbitalsTask.h"                   //To be tested.
 #include "data/ElectronicStructure.h"                 //GetEnergy.
+#include "geometry/Atom.h"                            //Manually construct geometry.
+#include "geometry/AtomTypeFactory.h"                 //Manually construct geometry.
+#include "geometry/Geometry.h"                        //Manually construct geometry.
 #include "potentials/bundles/PotentialBundle.h"       //getFockMatrix()
 #include "settings/Settings.h"                        //Settings.
 #include "system/SystemController.h"                  //Test systems.
@@ -40,6 +43,143 @@ class ReadOrbitalsTaskTest : public ::testing::Test {
     SystemController__TEST_SUPPLY::cleanUp();
   }
 };
+
+TEST_F(ReadOrbitalsTaskTest, restricted_molpro_h2o_qzvp) {
+  auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 1.8588136904 * ANGSTROM_TO_BOHR, 0.0, 0.0);
+  auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 2.4432381548 * ANGSTROM_TO_BOHR,
+                                   0.1743648456 * ANGSTROM_TO_BOHR, -0.7451535006 * ANGSTROM_TO_BOHR);
+  auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 2.4432381548 * ANGSTROM_TO_BOHR,
+                                   -0.1743648456 * ANGSTROM_TO_BOHR, 0.7451535006 * ANGSTROM_TO_BOHR);
+
+  auto geom = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H1, H2});
+  Settings settings;
+  settings.name = "water_qzvp";
+  settings.basis.label = "DEF2-QZVP";
+  settings.basis.integralIncrementThresholdStart = 1e-12;
+
+  auto sys = std::make_shared<SystemController>(geom, settings);
+  ReadOrbitalsTask<RESTRICTED> read(sys);
+  std::string pathToTestsResources;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/molpro_orbitals/h2o_orbitals_hf_qzvp.xml";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLPRO;
+  read.settings.path = pathToTestsResources;
+  read.run();
+
+  auto eStruc = sys->getElectronicStructure<RESTRICTED>();
+  auto dMat = eStruc->getDensityMatrix();
+  auto eCont = eStruc->getEnergyComponentController();
+  auto bundle = sys->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+  auto F = bundle->getFockMatrix(dMat, eCont);
+  double energy_without_scf = eStruc->getEnergy();
+
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+  double energy_aftter_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water_qzvp/", "water_qzvp");
+}
+
+TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp) {
+  auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0.0);
+  auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
+                                   1.4 * ANGSTROM_TO_BOHR);
+  auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
+                                   1.4 * ANGSTROM_TO_BOHR);
+
+  auto geom = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H1, H2});
+  Settings settings;
+  settings.name = "water";
+  settings.basis.label = "DEF2-QZVP";
+  settings.basis.integralIncrementThresholdStart = 1e-12;
+
+  auto sys = std::make_shared<SystemController>(geom, settings);
+  ReadOrbitalsTask<RESTRICTED> read(sys);
+  std::string pathToTestsResources;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/molcas_orbitals/";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLCAS;
+  read.settings.path = pathToTestsResources;
+  read.run();
+
+  auto eStruc = sys->getElectronicStructure<RESTRICTED>();
+  auto dMat = eStruc->getDensityMatrix();
+  auto eCont = eStruc->getEnergyComponentController();
+  auto bundle = sys->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+  auto F = bundle->getFockMatrix(dMat, eCont);
+  double energy_without_scf = eStruc->getEnergy();
+
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+  double energy_aftter_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water/", "water");
+}
+
+TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp_replace) {
+  auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0.0);
+  auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
+                                   1.4 * ANGSTROM_TO_BOHR);
+  auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
+                                   1.4 * ANGSTROM_TO_BOHR);
+
+  auto geom = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H1, H2});
+  Settings settings;
+  settings.name = "water";
+  settings.basis.label = "DEF2-QZVP";
+  settings.basis.integralIncrementThresholdStart = 1e-12;
+
+  auto sys = std::make_shared<SystemController>(geom, settings);
+  std::string pathToTestsResources;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/molcas_orbitals/";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  ReadOrbitalsTask<RESTRICTED> replace(sys);
+  replace.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLCAS;
+  replace.settings.path = pathToTestsResources;
+  replace.settings.replaceInFile = true;
+  replace.run();
+
+  // Copy the replaced orbitals to read them later again.
+  const std::string originalFilePath = pathToTestsResources + "/" + sys->getSystemName() + "_backup.scf.h5";
+  const std::string destinationFilePath = sys->getSystemName() + ".scf.h5";
+  std::ifstream src(originalFilePath, std::ios::binary);
+  std::ofstream dst(destinationFilePath, std::ios::binary);
+  dst << src.rdbuf();
+  dst.flush();
+
+  ReadOrbitalsTask<RESTRICTED> read(sys);
+  read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLCAS;
+  read.settings.path = ".";
+  read.run();
+
+  auto eStruc = sys->getElectronicStructure<RESTRICTED>();
+  auto dMat = eStruc->getDensityMatrix();
+  auto eCont = eStruc->getEnergyComponentController();
+  auto bundle = sys->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+  auto F = bundle->getFockMatrix(dMat, eCont);
+  double energy_without_scf = eStruc->getEnergy();
+
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+  double energy_aftter_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+
+  std::remove(destinationFilePath.c_str());
+  std::remove(originalFilePath.c_str());
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water/", "water");
+}
 
 TEST_F(ReadOrbitalsTaskTest, restricted_turbomole_h2o_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);

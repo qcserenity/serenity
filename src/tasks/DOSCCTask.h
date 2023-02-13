@@ -33,17 +33,31 @@ namespace Serenity {
 class SystemController;
 class OrbitalPair;
 class OrbitalTriple;
+class DOSOrbitalGroup;
 
 struct DOSCCTaskSettings {
-  DOSCCTaskSettings() : alignOrbitals(true), dosSettings(Options::DOS_SETTINGS::NORMAL) {
+  DOSCCTaskSettings()
+    : alignOrbitals(true),
+      dosSettings(Options::DOS_SETTINGS::NORMAL),
+      printGroupAnalysis(true),
+      orbitalPairAnalysis(false),
+      pairCutOff({1e-4, 0.0}),
+      normThreshold(1e-5),
+      maxCycles(100),
+      strictPairEnergyThresholds(true),
+      strictTriples(true),
+      skipCrudePresPairSelected(false) {
     wfemb.loc.splitValenceAndCore = true;
     gdos.similarityLocThreshold = {};
     gdos.similarityKinEnergyThreshold = {};
   }
-  REFLECTABLE((bool)alignOrbitals, (Options::DOS_SETTINGS)dosSettings)
+  REFLECTABLE((bool)alignOrbitals, (Options::DOS_SETTINGS)dosSettings, (bool)printGroupAnalysis,
+              (bool)orbitalPairAnalysis, (std::vector<double>)pairCutOff, (double)normThreshold, (unsigned int)maxCycles,
+              (bool)strictPairEnergyThresholds, (bool)strictTriples, (bool)skipCrudePresPairSelected)
  public:
   WavefunctionEmbeddingTaskSettings wfemb;
   GeneralizedDOSTaskSettings gdos;
+  std::vector<LocalCorrelationSettings> lcPairSelection;
   /**
    * @brief Choose the similarity thresholds for the DOS procedure based on the macro flag "dosSettings"
    *        if no manual input is given.
@@ -103,6 +117,11 @@ class DOSCCTask : public Task {
     LocalCorrelationSettings& lcSettings = c.wfemb.lcSettings[regionIndex];
     if (lcSettings.visitSettings(v, reducedBlockName))
       return;
+    if (!blockname.substr(0, blockname.length() - 1).compare("PAIRLC")) {
+      LocalCorrelationSettings& lcSettingsPairSelection = c.lcPairSelection[regionIndex];
+      if (lcSettingsPairSelection.visitSettings(v, "LC"))
+        return;
+    }
 
     // If reached, the keyword is unknown.
     throw SerenityError((std::string) "Unknown block in DOSCCTaskSettings: " + blockname);
@@ -116,15 +135,25 @@ class DOSCCTask : public Task {
    */
   DOSCCTaskSettings settings;
   /**
-   * @brief Getter for the relative energies.
+   * @brief Getter for the relative energies from the multi-level CC calculation.
    * @return The relative energies.
    */
   const Eigen::VectorXd& getRelativeEnergies();
   /**
-   * @brief Getter for the total energies.
+   * @brief Getter for the relative energies from the pair selected CC calculation.
+   * @return The relative energies.
+   */
+  const Eigen::VectorXd& getRelativeEnergiesFromPairSelected();
+  /**
+   * @brief Getter for the total energies from the multi-level CC calculation.
    * @return The total energies.
    */
   const Eigen::VectorXd& getTotalEnergies();
+  /**
+   * @brief Getter for the total energies from the pair selected CC calculation.
+   * @return The total energies.
+   */
+  const Eigen::VectorXd& getTotalEnergiesFromPairSelected();
 
  private:
   // The supersystem controller.
@@ -142,15 +171,33 @@ class DOSCCTask : public Task {
   /**
    * @brief Run the orbital selection through the generalized DOS.
    */
-  void runGDOS();
+  const SpinPolarizedData<RESTRICTED, std::vector<std::shared_ptr<DOSOrbitalGroup>>> runGDOS();
   /**
    * @brief Run the multi-level CC claculations.
+   * @param pairEnergyMatrices The matrices of the pair energies. The vector will be filled upon function call.
    */
-  Eigen::VectorXd runCC();
+  Eigen::VectorXd runCC(std::vector<Eigen::MatrixXd>& pairEnergyMatrices);
   /**
    * @brief Print the final results to the output.
    */
-  void printResults(const Eigen::VectorXd& energies);
+  void printResults(const Eigen::VectorXd& energies, Eigen::VectorXd& relativeEnergies,
+                    const SpinPolarizedData<RESTRICTED, std::vector<std::shared_ptr<DOSOrbitalGroup>>>& orbitalGroups);
+
+  std::vector<std::vector<std::shared_ptr<OrbitalPair>>>
+  selectOrbitalPairsFromPairEnergies(std::vector<std::shared_ptr<DOSOrbitalGroup>> orbitalGroups,
+                                     std::vector<Eigen::MatrixXd> pairEnergyMatrices);
+
+  Eigen::VectorXd runPairSelectedCC(std::vector<std::vector<std::shared_ptr<OrbitalPair>>> orbitalPairs);
+  void resolvePNOSettingsForPairSelection();
+
+  Eigen::MatrixXd calculateMaximumDifferencePairEnergyMatrix(std::vector<std::shared_ptr<DOSOrbitalGroup>> orbitalGroups,
+                                                             const std::vector<Eigen::MatrixXd>& pairEnergyMatrices);
+  Eigen::MatrixXi buildSettingsMatrix(const Eigen::MatrixXd& maxDifferenceMatrix);
+
+  void setOrbitalWiseThreshold(const unsigned int i, const unsigned int j, const unsigned int iSys,
+                               const LocalCorrelationSettings& lcSettings);
+
+  std::vector<unsigned int> getSkipableOrbitalGroupIndices(const Eigen::MatrixXi& settingsMatrix);
 
   /**
    * We need to initialize the vector containing the local correlation settings
@@ -164,14 +211,27 @@ class DOSCCTask : public Task {
    */
   unsigned int _nFragments = 0;
   /**
-   * @brief The total energies for each supersystem.
+   * @brief The total energies for each supersystem from the multi-level CC calculation.
    */
   std::unique_ptr<Eigen::VectorXd> _totalEnergies;
+
+  std::unique_ptr<Eigen::VectorXd> _totalEnergiesFromPairSelected;
   /**
    * @brief The relative energies for each supersystem with respect to
-   *        the first supersystem energy.
+   *        the first supersystem energy from the multi-level CC calculation.
    */
   std::unique_ptr<Eigen::VectorXd> _relativeEnergies;
+
+  std::unique_ptr<Eigen::VectorXd> _relativeEnergiesFromPairSelected;
+
+  std::vector<Eigen::MatrixXd> _pairEnergyMatrices;
+  // occ(wfemb) x occ(orig)
+  std::vector<Eigen::SparseMatrix<int>> _sortingMatrices;
+
+  std::vector<Eigen::VectorXd> _orbitalWiseMullikenThresholds;
+  std::vector<Eigen::VectorXd> _orbitalToShellThresholds;
+  std::vector<Eigen::VectorXd> _orbitalWiseDOIPAOThresholds;
+  bool _triplesInPairSelectedCalc = false;
 };
 
 } /* namespace Serenity */

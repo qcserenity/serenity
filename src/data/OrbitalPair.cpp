@@ -171,7 +171,7 @@ void OrbitalPair::setOverlapMatrixController(std::shared_ptr<DomainOverlapMatrix
 
 double OrbitalPair::getLMP2PairEnergy() {
   double pairEnergy = 0.0;
-  if (this->type == OrbitalPairTypes::CLOSE) {
+  if (this->lMP2PairEnergy != 0.0) {
     pairEnergy = this->lMP2PairEnergy;
     pairEnergy += this->deltaPNO;
   }
@@ -188,7 +188,7 @@ double OrbitalPair::getLMP2PairEnergy() {
 
 double OrbitalPair::getCCSDPairEnergy() {
   double pairEnergy = 0.0;
-  if (this->type == OrbitalPairTypes::CLOSE) {
+  if (this->dlpnoCCSDPairEnergy != 0.0) {
     pairEnergy = this->dlpnoCCSDPairEnergy;
     pairEnergy += this->deltaPNO;
   }
@@ -204,7 +204,7 @@ double OrbitalPair::getCCSDPairEnergy() {
 }
 
 double OrbitalPair::getPairEnergy() {
-  return (this->getCCSDPairEnergy() != 0.0) ? this->getCCSDPairEnergy() : this->getLMP2PairEnergy();
+  return (this->dlpnoCCSDPairEnergy != 0.0) ? this->getCCSDPairEnergy() : this->getLMP2PairEnergy();
 }
 
 double OrbitalPair::getPNOThreshold() {

@@ -30,15 +30,10 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-GW_Analytic<SCFMode>::GW_Analytic(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+GW_Analytic<SCFMode>::GW_Analytic(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
                                   std::vector<std::shared_ptr<SystemController>> envSystemController,
                                   std::shared_ptr<RIIntegrals<SCFMode>> riInts, int startOrb, int endOrb)
-  : MBPT<SCFMode>(systemController, settings, envSystemController, riInts, startOrb, endOrb) {
-  _nOcc = MBPT<SCFMode>::_nOcc;
-  _nVirt = MBPT<SCFMode>::_nVirt;
-  _orbEig = MBPT<SCFMode>::_orbEig;
-  _lrscfSettings.method = Options::LR_METHOD::TDDFT;
-  _lrscf = std::make_shared<LRSCFController<SCFMode>>(this->_systemController, _lrscfSettings);
+  : MBPT<SCFMode>(lrscf, settings, envSystemController, riInts, startOrb, endOrb) {
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -48,8 +43,12 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
                                                       SpinPolarizedData<SCFMode, Eigen::VectorXd>& correlation,
                                                       SpinPolarizedData<SCFMode, Eigen::VectorXd>& dsigma_de,
                                                       SpinPolarizedData<SCFMode, Eigen::VectorXd>& z) {
+  auto nocc = this->_nOcc;
+  auto nvirt = this->_nVirt;
+  auto orbEig = this->_orbEig;
+  auto lrscf = this->_lrscfController;
   // Coeffs
-  auto coeffs = _lrscf->getCoefficients();
+  auto coeffs = lrscf->getCoefficients();
   // Set loading type for calculation
   Options::LRSCF_TYPE load_type = Options::LRSCF_TYPE::ISOLATED;
   if (this->_env.size() == 0) {
@@ -59,14 +58,14 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
     load_type = Options::LRSCF_TYPE::UNCOUPLED;
   }
   // Add everything to sigma vectors
-  auto eigenvectors = _lrscf->getExcitationVectors(load_type);
-  auto eigenvalues = _lrscf->getExcitationEnergies(load_type);
+  auto eigenvectors = lrscf->getExcitationVectors(load_type);
+  auto eigenvalues = lrscf->getExcitationEnergies(load_type);
   // Coulomb
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> temp;
-  temp.push_back(_lrscf);
+  temp.push_back(lrscf);
 
   std::shared_ptr<Sigmavector<SCFMode>> coulomb;
-  if (this->_systemController->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
+  if (lrscf->getSysSettings().basis.densityFitting == Options::DENS_FITS::RI) {
     coulomb = std::make_shared<RICoulombSigmavector<SCFMode>>(temp, (*eigenvectors));
   }
   else {
@@ -107,42 +106,41 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
       for (int nState = this->_startOrb; nState < this->_endOrb; nState++) {
         // MO-Fock transformation
         SpinPolarizedData<SCFMode, Eigen::VectorXd> moFock;
-        for_spin(_nOcc, _nVirt, perturbedFock, coeffs, moFock) {
+        for_spin(nocc, nvirt, perturbedFock, coeffs, moFock) {
           // Transform perturbed fock matrix
           moFock_spin =
-              coeffs_spin.col(nState).transpose() * perturbedFock_spin * coeffs_spin.leftCols(_nOcc_spin + _nVirt_spin);
+              coeffs_spin.col(nState).transpose() * perturbedFock_spin * coeffs_spin.leftCols(nocc_spin + nvirt_spin);
           moFock_spin = moFock_spin.cwiseProduct(moFock_spin);
         };
-        for_spin(_nOcc, _nVirt, _orbEig, moFock, correlation, dsigma_de, frequency_dependency, qpEnergy) {
+        for_spin(nocc, nvirt, orbEig, moFock, correlation, dsigma_de, frequency_dependency, qpEnergy) {
           double freq = qpEnergy_spin(nState);
-          auto d_Vector = this->calculatedVector(freq, _orbEig_spin, (*eigenvalues)(iState), _nOcc_spin, _nVirt_spin);
+          auto d_Vector = this->calculatedVector(freq, orbEig_spin, (*eigenvalues)(iState), nocc_spin, nvirt_spin);
           correlation_spin(nState) += (moFock_spin.cwiseProduct(d_Vector)).sum();
           // if the correlation self-energy should be calculated for mutliple frequencies
           if (this->_settings.freq.size() == 3) {
             for (unsigned int i = 0; i < frequencies.size(); i++) {
-              auto d_freq =
-                  this->calculatedVector(frequencies(i), _orbEig_spin, (*eigenvalues)(iState), _nOcc_spin, _nVirt_spin);
+              auto d_freq = this->calculatedVector(frequencies(i), orbEig_spin, (*eigenvalues)(iState), nocc_spin, nvirt_spin);
               frequency_dependency_spin(i, nState - this->_startOrb) += (moFock_spin.cwiseProduct(d_freq)).sum();
             }
           }
           if (this->_settings.linearized) {
-            Eigen::VectorXd d2_Vector = Eigen::VectorXd::Zero(_nOcc_spin + _nVirt_spin);
+            Eigen::VectorXd d2_Vector = Eigen::VectorXd::Zero(nocc_spin + nvirt_spin);
             // Occupied
-            d2_Vector.segment(0, _nOcc_spin) =
+            d2_Vector.segment(0, nocc_spin) =
                 pow(this->_settings.eta, 2) -
-                (freq - _orbEig_spin.segment(0, _nOcc_spin).array() + (*eigenvalues)(iState)).square();
-            d2_Vector.segment(0, _nOcc_spin) =
-                d2_Vector.segment(0, _nOcc_spin).array() /
-                ((freq - _orbEig_spin.segment(0, _nOcc_spin).array() + (*eigenvalues)(iState)).square() +
+                (freq - orbEig_spin.segment(0, nocc_spin).array() + (*eigenvalues)(iState)).square();
+            d2_Vector.segment(0, nocc_spin) =
+                d2_Vector.segment(0, nocc_spin).array() /
+                ((freq - orbEig_spin.segment(0, nocc_spin).array() + (*eigenvalues)(iState)).square() +
                  pow(this->_settings.eta, 2))
                     .square();
             // Virtual
-            d2_Vector.segment(_nOcc_spin, _nVirt_spin) =
+            d2_Vector.segment(nocc_spin, nvirt_spin) =
                 pow(this->_settings.eta, 2) -
-                (freq - _orbEig_spin.segment(_nOcc_spin, _nVirt_spin).array() - (*eigenvalues)(iState)).square();
-            d2_Vector.segment(_nOcc_spin, _nVirt_spin) =
-                d2_Vector.segment(_nOcc_spin, _nVirt_spin).array() /
-                ((freq - _orbEig_spin.segment(_nOcc_spin, _nVirt_spin).array() - (*eigenvalues)(iState)).square() +
+                (freq - orbEig_spin.segment(nocc_spin, nvirt_spin).array() - (*eigenvalues)(iState)).square();
+            d2_Vector.segment(nocc_spin, nvirt_spin) =
+                d2_Vector.segment(nocc_spin, nvirt_spin).array() /
+                ((freq - orbEig_spin.segment(nocc_spin, nvirt_spin).array() - (*eigenvalues)(iState)).square() +
                  pow(this->_settings.eta, 2))
                     .square();
             dsigma_de_spin(nState) += (moFock_spin.cwiseProduct(d2_Vector)).sum();
@@ -154,13 +152,13 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
     double prefactor = 1.0;
     if (SCFMode == Options::SCF_MODES::RESTRICTED)
       prefactor = 2.0;
-    for_spin(qpEnergy, dsigma_de, z, vxc_energies, x_energies, correlation, _orbEig) {
+    for_spin(qpEnergy, dsigma_de, z, vxc_energies, x_energies, correlation, orbEig) {
       correlation_spin = correlation_spin * prefactor;
       dsigma_de_spin = dsigma_de_spin * prefactor;
       z_spin = 1.0 / (1.0 - dsigma_de_spin.array());
       if (this->_settings.linearized) {
         qpEnergy_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) =
-            _orbEig_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
+            orbEig_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
             z_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb)
                 .cwiseProduct(x_energies_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
                               correlation_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) -
@@ -168,7 +166,7 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
       }
       else {
         qpEnergy_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) =
-            _orbEig_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
+            orbEig_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
             x_energies_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) +
             correlation_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb) -
             vxc_energies_spin.segment(this->_startOrb, this->_endOrb - this->_startOrb);

@@ -254,6 +254,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   lrscfA.settings.densFitK = Options::DENS_FITS::RI;
   lrscfA.settings.nEigen = 999;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfA.run();
 
@@ -262,6 +264,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   lrscfB.settings.densFitK = Options::DENS_FITS::RI;
   lrscfB.settings.nEigen = 999;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfB.run();
 
@@ -273,6 +277,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   lrscfAB.settings.excludeProjection = true;
   lrscfAB.settings.densFitK = Options::DENS_FITS::RI;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfAB.run();
@@ -337,6 +343,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   lrscfA.settings.densFitK = Options::DENS_FITS::RI;
   lrscfA.settings.nEigen = 999;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
   lrscfA.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfA.run();
 
@@ -345,6 +353,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   lrscfB.settings.densFitK = Options::DENS_FITS::RI;
   lrscfB.settings.nEigen = 999;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
   lrscfB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfB.run();
 
@@ -356,6 +366,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   lrscfAB.settings.excludeProjection = true;
   lrscfAB.settings.densFitK = Options::DENS_FITS::RI;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   lrscfAB.run();

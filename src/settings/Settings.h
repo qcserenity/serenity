@@ -134,6 +134,12 @@ struct GRID {
               (Options::SPHERICAL_GRID_TYPES)sphericalGridType, (unsigned int)blocksize, (unsigned int)accuracy,
               (unsigned int)smallGridAccuracy, (double)blockAveThreshold, (double)basFuncRadialThreshold,
               (double)weightThreshold, (unsigned int)smoothing, (bool)gridPointSorting)
+
+  // This is for enabling GRID blocks in tasks.
+  bool visitSettings(set_visitor v, std::string) {
+    visit_each((*this), v);
+    return true;
+  }
 };
 
 struct EFIELD {

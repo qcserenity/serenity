@@ -22,6 +22,7 @@
 #define POSTHF_MPN_LOCALMP2_H_
 
 /* Include Serenity Internal Headers */
+#include "data/matrices/DensityMatrix.h"                        //Density matrix.
 #include "postHF/LocalCorrelation/LocalCorrelationController.h" //Local-correlation framework.
 
 namespace Serenity {
@@ -29,6 +30,7 @@ namespace Serenity {
 /* Forward Declarations */
 class DomainOverlapMatrixController;
 class OrbitalPair;
+class LocalCorrelationController;
 
 /**
  * @class localMP2Settings LocalMP2.h
@@ -116,6 +118,11 @@ class LocalMP2 {
    */
   Eigen::VectorXd calculateEnergyCorrection(std::vector<std::shared_ptr<OrbitalPair>> pairs);
   /**
+   * @brief Calculates the unrelaxed density correction.
+   * @return Returns the local MP2 correction of the AO density matrix.
+   */
+  DensityMatrix<RESTRICTED> calculateDensityCorrection();
+  /**
    * @brief The settings. More details are above.
    */
   localMP2Settings settings;
@@ -126,6 +133,8 @@ class LocalMP2 {
   // Calculate (ia|jb) integrals for all significant pairs.
   void generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
                                  std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
+  // Set domain overlap matrix controller
+  void setDomainOverlapMatrixController(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs);
   // Optimize the amplitudes.
   void optimizeAmplitudes(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
                           std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);

@@ -20,7 +20,7 @@
 ## Synopsis
 Serenity is a quantum chemistry code originally
 developed in the group of Johannes Neugebauer
-at the WWU Münster.       
+at the University of Münster.       
 Serenity has a strong focus on quantum chemical subsystem/embedding methods.
 
 ## License and Copyright Info
@@ -38,7 +38,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## Download 
+## Download
 
 In order to download the source files of the latest Serenity release please
 visit:  
@@ -68,21 +68,22 @@ The following programs/libraries must be available on your system:
  - Eigen3
  - HDF5 (Version >= 1.10.1; including header files and cmake files)
  - A recent GMP version, including C++ support (for libint2)
- - The standard GNU toolchain (make, tar, autoconf, libtool)  
+ - The standard GNU toolchain (make, tar, autoconf, libtool)
 
 The following libraries will be automatically downloaded and installed together
-with serenity:  
+with Serenity (unless SERENITY_DOWNLOAD_DEPENDENCIES=OFF is set):  
  - libint2 (Version 2.2.0-beta3, pre-configured and hosted at: https://thclab.uni-muenster.de/serenity/libint)
- - libecpint (The Serenity version is forked to: https://github.com/qcserenity/libecpint)  
- - libxc (v5.0.0 from https://gitlab.com/libxc/libxc)
- - xcfun (The Serenity verison is forked to: https://github.com/qcserenity/xcfun)  
+ - libecpint (The Serenity version is forked to: https://github.com/qcserenity/libecpint)
+ - libxc (v6.1.0 from https://gitlab.com/libxc/libxc)
+ - xcfun (The Serenity version is forked to: https://github.com/qcserenity/xcfun)
  - GTest (Google Test and Google Mock)
 
 The following libraries are optional and needed for additional features:
  - Intel MKL (for SMP parallel Eigen3 eigenvalue solvers)
  - Doxygen (for the documentation)
- - Python-devel (for the python wrapper)   
+ - Python-devel (for the python wrapper)
  - pybind11 (for the python wrapper)
+ - laplace-minimax (commit: '55414f3', https://github.com/bhelmichparis/laplace-minimax.git)
 
 ### Install Using CMake and Make
 Extract or pull the source code, then create a build directory:
@@ -93,13 +94,16 @@ Extract or pull the source code, then create a build directory:
 Then run cmake:
 > cmake ..  
 
-(If the build folder is not located inside the main directory of Serenity 
+To compile Serenity for your specific CPU architecture, you can add:
+> cmake .. -DSERENITY_MARCH=native
+
+(If the build folder is not located inside the main directory of Serenity
 please adapt the path accordingly.)
 
 Finally run make and make install to build the program:
 > make         
 
-Please source serenity.sh located in the main folder to set all necessary environment 
+Please source serenity.sh located in the main folder to set all necessary environment
 variables:
 > cd ..  
 > source serenity.sh

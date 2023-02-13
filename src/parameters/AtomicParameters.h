@@ -62,7 +62,7 @@ constexpr std::array<const char* const, N_ELEMENTS_IN_PERIODIC_TABLE + 1> PERIOD
  * Each element has in its atomic form a certain, fixed configuration of the electron shell. This
  * is used e.g. in the AtomicScfGuessCalculator. Although the electron configuration looks very
  * systematic at first glance, there are quite a lot of exceptions caused by shielding effects of
- * inner electrons. Thus we completely tabulate them to avoid any confusion.
+ * inner electrons. Thus, we completely tabulate them to avoid any confusion.
  * These standard configurations for the elements have been taken from the wikipedia pages for each
  * particular element. (en.wikipedia.org, 26.01.2016)
  * Usage: For each element we list for each period how many electrons are in a shell with a certain

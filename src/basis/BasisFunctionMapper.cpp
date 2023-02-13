@@ -37,7 +37,7 @@ std::shared_ptr<BasisController> BasisFunctionMapper::getDifferentialBasis(std::
   std::vector<std::shared_ptr<const Shell>> differentialBasis;
   unsigned int nShellsA = _basisControllerA->getBasis().size();
 
-  for (const auto shellB : basisControllerB->getBasis()) {
+  for (const auto& shellB : basisControllerB->getBasis()) {
     unsigned int shellIndexInA = getShellIndex(*shellB);
     if (shellIndexInA >= nShellsA)
       differentialBasis.push_back(shellB);
@@ -84,7 +84,7 @@ BasisFunctionMapper::getSparseProjection(std::shared_ptr<BasisController> basisC
    * 1 corresponds to a unit matrix over the contracted functions and zero
    * is a matrix containing only zeros.
    */
-  for (const auto shellB : basisB) {
+  for (const auto& shellB : basisB) {
     unsigned int shellStart = getShellIndex(*shellB);
     unsigned int nContractedB = shellB->getNContracted();
     if (shellStart < nShellsA) {

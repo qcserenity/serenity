@@ -31,7 +31,7 @@
 namespace libint2 {
 enum class Operator;
 class Engine;
-class Shell;
+struct Shell;
 } // namespace libint2
 
 namespace Serenity {

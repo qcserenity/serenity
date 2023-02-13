@@ -473,7 +473,7 @@ void PlotTask<SCFMode>::run() {
       }
       fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
       fileName += "h5";
-      HDF5::H5File afile(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+      HDF5::H5File afile(fileName, H5F_ACC_RDONLY);
       HDF5::dataset_exists(afile, "X+Y");
       HDF5::dataset_exists(afile, "X-Y");
       HDF5::dataset_exists(afile, "frequencies");

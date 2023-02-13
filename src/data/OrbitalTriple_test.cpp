@@ -100,7 +100,7 @@ TEST_F(OrbitalTripleTest, calculateIntegralsAndEnergy) {
   };
   looper.loop(storeERIS);
   double triplesCorrection = 0.0;
-  for (const auto triple : triples) {
+  for (const auto& triple : triples) {
     tnoConstructor->transformToTNOBasis(triple);
     triple->calculateIntegrals(auxBasisController, mo3CenterIntegralController, iaK, abK, klK, metric);
 

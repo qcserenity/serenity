@@ -53,16 +53,22 @@ struct FreezeAndThawTaskSettings {
       diisStart(5.0e-5),
       diisEnd(1e-4),
       calculateSolvationEnergy(false),
+      calculateUnrelaxedMP2Density({}),
+      mp2Type(Options::MP2_TYPES::LOCAL),
       keepCoulombCache(false),
       finalEnergyEvaluation(true) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+    lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
+    lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((unsigned int)maxCycles, (double)convThresh, (double)gridCutOff, (bool)smallSupersystemGrid,
               (double)basisExtThresh, (bool)extendBasis, (bool)useConvAcceleration, (double)diisStart, (double)diisEnd,
-              (bool)calculateSolvationEnergy, (bool)keepCoulombCache, (bool)finalEnergyEvaluation)
+              (bool)calculateSolvationEnergy, (std::vector<bool>)calculateUnrelaxedMP2Density,
+              (Options::MP2_TYPES)mp2Type, (bool)keepCoulombCache, (bool)finalEnergyEvaluation)
  public:
   EmbeddingSettings embedding;
+  LocalCorrelationSettings lcSettings;
 };
 
 /**

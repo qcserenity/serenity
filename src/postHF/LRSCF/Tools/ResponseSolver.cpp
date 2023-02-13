@@ -27,23 +27,18 @@
 
 namespace Serenity {
 
-ResponseSolver::ResponseSolver(
-    unsigned nDimension, unsigned nEigen, Eigen::VectorXd& diagonal, double convergenceCriterion, unsigned maxIterations,
-    unsigned maxSubspaceDimension, std::vector<double>& frequencies, double damping, Options::GAUGE gauge,
-    const Eigen::MatrixXd& lengths, const Eigen::MatrixXd& velocities, const Eigen::MatrixXd& magnetics,
-    std::function<std::unique_ptr<std::vector<Eigen::MatrixXd>>(std::vector<Eigen::MatrixXd>& guessVectors)> sigmaCalculator,
-    std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess,
-    std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk)
-  : IterativeSolver(damping == 0.0 ? 2 : 4, nDimension, 0 * nEigen + 3 * frequencies.size(), diagonal,
-                    convergenceCriterion, maxIterations, maxSubspaceDimension, sigmaCalculator, writeToDisk, initialGuess),
+ResponseSolver::ResponseSolver(Eigen::VectorXd& diagonal, double convergenceCriterion, unsigned maxIterations,
+                               unsigned maxSubspaceDimension, std::vector<double>& frequencies, double damping,
+                               std::vector<Eigen::MatrixXd> ppmq, SigmaCalculator sigmaCalculator,
+                               std::shared_ptr<std::vector<Eigen::MatrixXd>> initialGuess,
+                               std::function<void(std::vector<Eigen::MatrixXd>&, Eigen::VectorXd&)> writeToDisk)
+  : IterativeSolver(ppmq.size(), diagonal.size(), 3 * frequencies.size(), diagonal, convergenceCriterion, maxIterations,
+                    maxSubspaceDimension, sigmaCalculator, writeToDisk, initialGuess),
     _frequencies(frequencies),
     _damping(damping),
     _damped(_damping == 0.0 ? false : true),
     _nFreqs(_frequencies.size()),
-    _gauge(gauge),
-    _lengths(lengths),
-    _velocities(velocities),
-    _magnetics(magnetics) {
+    _ppmq(ppmq) {
   this->initialize();
 }
 
@@ -54,7 +49,6 @@ void ResponseSolver::initialize() {
   }
 
   // Set dimensions
-  _ppmq.resize(_nSets);
   _expansionVectors.resize(_nSets);
   _guessVectors.resize(_nSets);
   _sigmaVectors.resize(_nSets);
@@ -69,7 +63,11 @@ void ResponseSolver::initialize() {
     _eigenvectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _nEigen);
     _residualVectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _nEigen);
     _correctionVectors[iSet] = Eigen::MatrixXd::Zero(_nDimension, _nEigen);
-    _ppmq[iSet] = Eigen::MatrixXd::Zero(_nDimension, 3);
+  }
+
+  _eigenvalues.resize(_nFreqs * 3);
+  for (unsigned iFreq = 0; iFreq < _nFreqs * 3; ++iFreq) {
+    _eigenvalues(iFreq) = _frequencies[iFreq / 3];
   }
 
   /**
@@ -103,12 +101,6 @@ void ResponseSolver::initialize() {
    *
    *                         -(Q+R) = 0 and -(Q-R) = -(-2p) in the velocity case (since <i|p|a> = -<a|p|i>).
    */
-  if (_gauge == Options::GAUGE::LENGTH) {
-    _ppmq[0] = -(-2 * _lengths);
-  }
-  else if (_gauge == Options::GAUGE::VELOCITY) {
-    _ppmq[1] = -(-2 * _velocities);
-  }
 
   // Initialize guessvectors
   this->seed();
@@ -150,48 +142,42 @@ void ResponseSolver::iterate() {
   Timings::takeTime("LRSCF -  RSolver: LES Solving");
 
   // Parallelize over frequencies
-  // Safety first
-  Eigen::setNbThreads(1);
-#pragma omp parallel
-  {
+#pragma omp parallel for schedule(dynamic)
+  for (unsigned iFreq = 0; iFreq < _nFreqs; ++iFreq) {
     // A matrix for each thread
     Eigen::MatrixXd lhs = _subspaceMatrix;
 
-#pragma omp for schedule(dynamic)
-    for (unsigned iFreq = 0; iFreq < _nFreqs; ++iFreq) {
-      if (_freqConverged(iFreq)) {
-        continue;
+    if (_freqConverged(iFreq)) {
+      continue;
+    }
+    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+      unsigned iSetc = (_nSets == 1) ? 0 : (iSet / 2 * 2 + (iSet + 1) % 2);
+      lhs.block(iSet * _subDim, iSetc * _subDim, _subDim, _subDim) -=
+          _frequencies[iFreq] * _guessVectors[iSet].transpose() * _guessVectors[iSetc];
+    } /* Loop over sets */
+
+    // Solve subspace linear system of equations
+    _subspaceEigenvectors.middleCols(3 * iFreq, 3) = cond * (cond * lhs * cond).householderQr().solve(rhs);
+
+    // Ritz vectors
+    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+      _expansionVectors[iSet].middleCols(3 * iFreq, 3) = _subspaceEigenvectors.block(iSet * _subDim, 3 * iFreq, _subDim, 3);
+      _eigenvectors[iSet].middleCols(3 * iFreq, 3) = _guessVectors[iSet] * _expansionVectors[iSet].middleCols(3 * iFreq, 3);
+    }
+
+    // Residual vectors
+    for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+      unsigned iSetc = (_nSets == 1) ? 0 : (iSet / 2 * 2 + (iSet + 1) % 2);
+      _residualVectors[iSet].middleCols(3 * iFreq, 3) =
+          _sigmaVectors[iSet] * _expansionVectors[iSet].middleCols(3 * iFreq, 3);
+      _residualVectors[iSet].middleCols(3 * iFreq, 3) -=
+          _ppmq[iSet] + _frequencies[iFreq] * _eigenvectors[iSetc].middleCols(3 * iFreq, 3);
+      if (_damped) {
+        _residualVectors[iSet].middleCols(3 * iFreq, 3) +=
+            (iSet < 2 ? 1. : -1.) * _damping * _eigenvectors[3 - iSet].middleCols(3 * iFreq, 3);
       }
-      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-        unsigned iSetc = iSet / 2 * 2 + (iSet + 1) % 2;
-        lhs.block(iSet * _subDim, iSetc * _subDim, _subDim, _subDim) =
-            -_frequencies[iFreq] * _guessVectors[iSet].transpose() * _guessVectors[iSetc];
-      } /* Loop over sets */
-
-      // Solve subspace linear system of equations
-      _subspaceEigenvectors.middleCols(3 * iFreq, 3) = cond * (cond * lhs * cond).householderQr().solve(rhs);
-
-      // Ritz vectors
-      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-        _expansionVectors[iSet].middleCols(3 * iFreq, 3) = _subspaceEigenvectors.block(iSet * _subDim, 3 * iFreq, _subDim, 3);
-        _eigenvectors[iSet].middleCols(3 * iFreq, 3) = _guessVectors[iSet] * _expansionVectors[iSet].middleCols(3 * iFreq, 3);
-      }
-
-      // Residual vectors
-      for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-        unsigned iSetc = iSet / 2 * 2 + (iSet + 1) % 2;
-        _residualVectors[iSet].middleCols(3 * iFreq, 3) =
-            _sigmaVectors[iSet] * _expansionVectors[iSet].middleCols(3 * iFreq, 3) - _ppmq[iSet];
-        _residualVectors[iSet].middleCols(3 * iFreq, 3) -=
-            _frequencies[iFreq] * _eigenvectors[iSetc].middleCols(3 * iFreq, 3);
-        if (_damped) {
-          _residualVectors[iSet].middleCols(3 * iFreq, 3) +=
-              (iSet < 2 ? 1. : -1.) * _damping * _eigenvectors[3 - iSet].middleCols(3 * iFreq, 3);
-        }
-      } /* Loop over sets */
-    }   /* Loop over frequencies */
-  }     /* pragma omp for */
-  Eigen::setNbThreads(0);
+    } /* Loop over sets */
+  }   /* Loop over frequencies */
   Timings::timeTaken("LRSCF -  RSolver: LES Solving");
 
   // Residualnorms for each root
@@ -200,7 +186,6 @@ void ResponseSolver::iterate() {
     _residualNorms += _residualVectors[iSet].colwise().norm() / std::sqrt(_nSets);
   }
 
-  // Convergence check
   // Perform convergence check frequency wise
   _nConverged = 0;
   for (unsigned iFreq = 0; iFreq < _nFreqs; ++iFreq) {
@@ -211,8 +196,9 @@ void ResponseSolver::iterate() {
         ++counter;
       }
     }
-    if (counter == 3)
+    if (counter == 3) {
       _freqConverged(iFreq) = 1;
+    }
   }
 
   _itEnd = std::chrono::steady_clock::now();
@@ -251,17 +237,20 @@ void ResponseSolver::seed() {
   for (unsigned i = 0; i < _nEigen; ++i) {
     // Get corresponding frequency (it is more stable to use a finite value for omega in the static limit)
     double frequency = (_frequencies[i / 3] == 0) ? 1e-9 : _frequencies[i / 3];
-    for (unsigned j = 0; j < _nDimension; ++j) {
+    for (unsigned ia = 0; ia < _nDimension; ++ia) {
       // Invert upper left block
-      double a_j = 1. / (_diagonal(j) - frequency / _diagonal(j) * frequency);
-      double b_j = a_j * frequency / _diagonal(j);
+      double a_j = 1. / (_diagonal(ia) - frequency / _diagonal(ia) * frequency);
+      double b_j = a_j * frequency / _diagonal(ia);
 
-      if (!_damped) {
-        _guessVectors[0](j, i) = a_j * _ppmq[0](j, i % 3) + b_j * _ppmq[1](j, i % 3);
-        _guessVectors[1](j, i) = b_j * _ppmq[0](j, i % 3) + a_j * _ppmq[1](j, i % 3);
+      if (_nSets == 1) {
+        _guessVectors[0](ia, i) = 1 / (frequency - _diagonal(ia)) * _ppmq[0](ia, i % 3);
       }
-      else if (_damped) {
-        double c_j = _diagonal(j) + a_j * _damping * _damping;
+      else if (_nSets == 2) {
+        _guessVectors[0](ia, i) = a_j * _ppmq[0](ia, i % 3) + b_j * _ppmq[1](ia, i % 3);
+        _guessVectors[1](ia, i) = b_j * _ppmq[0](ia, i % 3) + a_j * _ppmq[1](ia, i % 3);
+      }
+      else if (_nSets == 4) {
+        double c_j = _diagonal(ia) + a_j * _damping * _damping;
         double d_j = -frequency + b_j * _damping * _damping;
 
         double e_j = 1. / (c_j - d_j / c_j * d_j);
@@ -270,14 +259,14 @@ void ResponseSolver::seed() {
         double g_j = a_j * f_j * _damping + b_j * e_j * _damping;
         double h_j = a_j * e_j * _damping + b_j * f_j * _damping;
 
-        _guessVectors[0](j, i) =
-            e_j * _ppmq[0](j, i % 3) + f_j * _ppmq[1](j, i % 3) - g_j * _ppmq[2](j, i % 3) - h_j * _ppmq[3](j, i % 3);
-        _guessVectors[1](j, i) =
-            f_j * _ppmq[0](j, i % 3) + e_j * _ppmq[1](j, i % 3) - h_j * _ppmq[2](j, i % 3) - g_j * _ppmq[3](j, i % 3);
-        _guessVectors[2](j, i) =
-            g_j * _ppmq[0](j, i % 3) + h_j * _ppmq[1](j, i % 3) + e_j * _ppmq[2](j, i % 3) + f_j * _ppmq[3](j, i % 3);
-        _guessVectors[3](j, i) =
-            h_j * _ppmq[0](j, i % 3) + g_j * _ppmq[1](j, i % 3) + f_j * _ppmq[2](j, i % 3) + e_j * _ppmq[3](j, i % 3);
+        _guessVectors[0](ia, i) =
+            e_j * _ppmq[0](ia, i % 3) + f_j * _ppmq[1](ia, i % 3) - g_j * _ppmq[2](ia, i % 3) - h_j * _ppmq[3](ia, i % 3);
+        _guessVectors[1](ia, i) =
+            f_j * _ppmq[0](ia, i % 3) + e_j * _ppmq[1](ia, i % 3) - h_j * _ppmq[2](ia, i % 3) - g_j * _ppmq[3](ia, i % 3);
+        _guessVectors[2](ia, i) =
+            g_j * _ppmq[0](ia, i % 3) + h_j * _ppmq[1](ia, i % 3) + e_j * _ppmq[2](ia, i % 3) + f_j * _ppmq[3](ia, i % 3);
+        _guessVectors[3](ia, i) =
+            h_j * _ppmq[0](ia, i % 3) + g_j * _ppmq[1](ia, i % 3) + f_j * _ppmq[2](ia, i % 3) + e_j * _ppmq[3](ia, i % 3);
       }
     }
   } /* End of initial guessVectors */
@@ -289,20 +278,24 @@ void ResponseSolver::precondition() {
   for (unsigned i = 0; i < _nEigen; ++i) {
     // Get corresponding frequency (it is more stable to use a finite value for omega in the static limit)
     double frequency = (_frequencies[i / 3] == 0) ? 1e-9 : _frequencies[i / 3];
-    if (_residualNorms(i) < _convergenceCriterion)
+    if (_residualNorms(i) < _convergenceCriterion) {
       continue;
+    }
     index += 1;
-    for (unsigned j = 0; j < _nDimension; ++j) {
+    for (unsigned ia = 0; ia < _nDimension; ++ia) {
       // Invert upper left block
-      double a_j = 1. / (_diagonal(j) - frequency / _diagonal(j) * frequency);
-      double b_j = a_j * frequency / _diagonal(j);
+      double a_j = 1. / (_diagonal(ia) - frequency / _diagonal(ia) * frequency);
+      double b_j = a_j * frequency / _diagonal(ia);
 
-      if (!_damped) {
-        _correctionVectors[0](j, index) = a_j * _residualVectors[0](j, i) + b_j * _residualVectors[1](j, i);
-        _correctionVectors[1](j, index) = b_j * _residualVectors[0](j, i) + a_j * _residualVectors[1](j, i);
+      if (_nSets == 1) {
+        _correctionVectors[0](ia, index) = 1 / (frequency - _diagonal(ia)) * _residualVectors[0](ia, i);
       }
-      else if (_damped) {
-        double c_j = _diagonal(j) + a_j * _damping * _damping;
+      else if (_nSets == 2) {
+        _correctionVectors[0](ia, index) = a_j * _residualVectors[0](ia, i) + b_j * _residualVectors[1](ia, i);
+        _correctionVectors[1](ia, index) = b_j * _residualVectors[0](ia, i) + a_j * _residualVectors[1](ia, i);
+      }
+      else if (_nSets == 4) {
+        double c_j = _diagonal(ia) + a_j * _damping * _damping;
         double d_j = -frequency + b_j * _damping * _damping;
 
         double e_j = 1. / (c_j - d_j / c_j * d_j);
@@ -311,14 +304,14 @@ void ResponseSolver::precondition() {
         double g_j = a_j * f_j * _damping + b_j * e_j * _damping;
         double h_j = a_j * e_j * _damping + b_j * f_j * _damping;
 
-        _correctionVectors[0](j, index) = e_j * _residualVectors[0](j, i) + f_j * _residualVectors[1](j, i) -
-                                          g_j * _residualVectors[2](j, i) - h_j * _residualVectors[3](j, i);
-        _correctionVectors[1](j, index) = f_j * _residualVectors[0](j, i) + e_j * _residualVectors[1](j, i) -
-                                          h_j * _residualVectors[2](j, i) - g_j * _residualVectors[3](j, i);
-        _correctionVectors[2](j, index) = g_j * _residualVectors[0](j, i) + h_j * _residualVectors[1](j, i) +
-                                          e_j * _residualVectors[2](j, i) + f_j * _residualVectors[3](j, i);
-        _correctionVectors[3](j, index) = h_j * _residualVectors[0](j, i) + g_j * _residualVectors[1](j, i) +
-                                          f_j * _residualVectors[2](j, i) + e_j * _residualVectors[3](j, i);
+        _correctionVectors[0](ia, index) = e_j * _residualVectors[0](ia, i) + f_j * _residualVectors[1](ia, i) -
+                                           g_j * _residualVectors[2](ia, i) - h_j * _residualVectors[3](ia, i);
+        _correctionVectors[1](ia, index) = f_j * _residualVectors[0](ia, i) + e_j * _residualVectors[1](ia, i) -
+                                           h_j * _residualVectors[2](ia, i) - g_j * _residualVectors[3](ia, i);
+        _correctionVectors[2](ia, index) = g_j * _residualVectors[0](ia, i) + h_j * _residualVectors[1](ia, i) +
+                                           e_j * _residualVectors[2](ia, i) + f_j * _residualVectors[3](ia, i);
+        _correctionVectors[3](ia, index) = h_j * _residualVectors[0](ia, i) + g_j * _residualVectors[1](ia, i) +
+                                           f_j * _residualVectors[2](ia, i) + e_j * _residualVectors[3](ia, i);
       }
     }
   }

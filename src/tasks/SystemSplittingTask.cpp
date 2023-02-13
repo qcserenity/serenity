@@ -69,7 +69,7 @@ void SystemSplittingTask<SCFMode>::checkInput() {
     case Options::SYSTEM_SPLITTING_ALGORITHM::ENFORCE_CHARGES: {
       int totCharge = _supersystem->getCharge();
       int totSpin = _supersystem->getSpin();
-      for (const auto subsystem : _subsystems) {
+      for (const auto& subsystem : _subsystems) {
         totCharge -= subsystem->getCharge();
         totSpin -= subsystem->getSpin();
       } // for subsystem

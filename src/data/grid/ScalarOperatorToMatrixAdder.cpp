@@ -38,9 +38,6 @@ ScalarOperatorToMatrixAdder<SCFMode>::ScalarOperatorToMatrixAdder(std::shared_pt
     _basisFunctionOnGridControllerB(basisFunctionOnGridController),
     _blockAveThreshold(blockAveThreshold) {
   assert(_basisFunctionOnGridControllerA);
-#ifdef _OPENMP
-  omp_init_lock(&_lock);
-#endif
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -54,63 +51,43 @@ ScalarOperatorToMatrixAdder<SCFMode>::ScalarOperatorToMatrixAdder(
   assert(_basisFunctionOnGridControllerB);
   assert(isDefinedOnSameGrid(*_basisFunctionOnGridControllerA, *_basisFunctionOnGridControllerB) &&
          "Both basis sets have to be evaluated on the same grid!");
-#ifdef _OPENMP
-  omp_init_lock(&_lock);
-#endif
 }
 
 template<Options::SCF_MODES SCFMode>
 void ScalarOperatorToMatrixAdder<SCFMode>::addScalarOperatorToMatrix(SPMatrix<SCFMode>& matrix,
                                                                      const GridPotential<SCFMode>& scalarOperator) {
   Timings::takeTime("Tech. -    Grid to Matrix Int.");
-  // checks
   assert(scalarOperator.isValid());
   assert(isDefinedOnSameGrid(scalarOperator, *_basisFunctionOnGridControllerA));
-  // Get number of grid blocks
-  const unsigned int nBlocks = _basisFunctionOnGridControllerA->getNBlocks();
-  // Build matrix for parallel computation
-  unsigned int nThreads = (unsigned int)omp_get_max_threads();
-  std::vector<std::unique_ptr<SPMatrix<SCFMode>>> threadMatrices(nThreads);
 
-#ifdef _OPENMP
+  unsigned nBlocks = _basisFunctionOnGridControllerA->getNBlocks();
+  unsigned nThreads = omp_get_max_threads();
+
+  auto nbA = _basisFunctionOnGridControllerA->getBasisController()->getNBasisFunctions();
+  auto nbB = _basisFunctionOnGridControllerB->getBasisController()->getNBasisFunctions();
+  std::vector<SPMatrix<SCFMode>> threadMatrices(nThreads, SPMatrix<SCFMode>(nbA, nbB));
+
   Eigen::setNbThreads(1);
-#endif
-#pragma omp parallel
-  {
-    unsigned int threadID = omp_get_thread_num();
-    threadMatrices[threadID].reset(
-        new SPMatrix<SCFMode>(_basisFunctionOnGridControllerA->getBasisController()->getNBasisFunctions(),
-                              _basisFunctionOnGridControllerB->getBasisController()->getNBasisFunctions()));
-
-    // Loop over blocks of grid points
-#pragma omp for schedule(static, 1)
-    for (unsigned int blockNumber = 0; blockNumber < nBlocks; ++blockNumber) {
-      // Data for this block
-      auto& blockDataA = _basisFunctionOnGridControllerA->getBlockOnGridData(blockNumber);
-      auto& blockDataB = _basisFunctionOnGridControllerB->getBlockOnGridData(blockNumber);
-      // Integrate and add to Fock matrix for this thread
-      addBlock(blockNumber, blockDataA, blockDataB, *threadMatrices[threadID], scalarOperator);
-    } /* loop over all blocks of grid points */
-  }   // end pragma omp parallel
-#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+  for (unsigned int iBlock = 0; iBlock < nBlocks; ++iBlock) {
+    unsigned iThread = omp_get_thread_num();
+    auto& blockDataA = _basisFunctionOnGridControllerA->getBlockOnGridData(iBlock);
+    auto& blockDataB = _basisFunctionOnGridControllerB->getBlockOnGridData(iBlock);
+    this->addBlock(iBlock, blockDataA, blockDataB, threadMatrices[iThread], scalarOperator);
+  }
   Eigen::setNbThreads(0);
-#endif
   for (auto& mat : threadMatrices) {
-    if (mat != nullptr) {
-      matrix += *mat;
-    }
+    matrix += mat;
   }
   Timings::timeTaken("Tech. -    Grid to Matrix Int.");
   return;
 }
 
 template<Options::SCF_MODES SCFMode>
-void ScalarOperatorToMatrixAdder<SCFMode>::addScalarOperatorToMatrix(
-    // TODO maybe a different type?
-    SPMatrix<SCFMode>& matrix, const GridPotential<SCFMode>& scalarOperator,
-    const Gradient<GridPotential<SCFMode>>& gradientOperator) {
+void ScalarOperatorToMatrixAdder<SCFMode>::addScalarOperatorToMatrix(SPMatrix<SCFMode>& matrix,
+                                                                     const GridPotential<SCFMode>& scalarOperator,
+                                                                     const Gradient<GridPotential<SCFMode>>& gradientOperator) {
   Timings::takeTime("Tech. -    Grid to Matrix Int.");
-  // checks
   assert(scalarOperator.isValid());
   assert(isDefinedOnSameGrid(scalarOperator, *_basisFunctionOnGridControllerA));
   assert(_basisFunctionOnGridControllerA->getHighestDerivative() >= 1);
@@ -120,39 +97,25 @@ void ScalarOperatorToMatrixAdder<SCFMode>::addScalarOperatorToMatrix(
     assert(component.isValid());
     assert(isDefinedOnSameGrid(component, *_basisFunctionOnGridControllerA));
   }
-  // Get number of grid blocks
-  const unsigned int nBlocks = _basisFunctionOnGridControllerA->getNBlocks();
-  // Build matrix for parallel computation
-  unsigned int nThreads = (unsigned int)omp_get_max_threads();
-  std::vector<std::unique_ptr<SPMatrix<SCFMode>>> threadMatrices(nThreads);
 
-#ifdef _OPENMP
+  unsigned nBlocks = _basisFunctionOnGridControllerA->getNBlocks();
+  unsigned nThreads = omp_get_max_threads();
+
+  auto nbA = _basisFunctionOnGridControllerA->getBasisController()->getNBasisFunctions();
+  auto nbB = _basisFunctionOnGridControllerB->getBasisController()->getNBasisFunctions();
+  std::vector<SPMatrix<SCFMode>> threadMatrices(nThreads, SPMatrix<SCFMode>(nbA, nbB));
+
   Eigen::setNbThreads(1);
-#endif
-#pragma omp parallel
-  {
-    unsigned int threadID = omp_get_thread_num();
-    threadMatrices[threadID].reset(
-        new SPMatrix<SCFMode>(_basisFunctionOnGridControllerA->getBasisController()->getNBasisFunctions(),
-                              _basisFunctionOnGridControllerB->getBasisController()->getNBasisFunctions()));
-
-    // Loop over blocks of grid points
-#pragma omp for schedule(static, 1)
-    for (unsigned int blockNumber = 0; blockNumber < nBlocks; ++blockNumber) {
-      // Data for this block
-      auto& blockDataA = _basisFunctionOnGridControllerA->getBlockOnGridData(blockNumber);
-      auto& blockDataB = _basisFunctionOnGridControllerB->getBlockOnGridData(blockNumber);
-      // Integrate and add to Fock matrix for this thread
-      addBlock(blockNumber, blockDataA, blockDataB, *threadMatrices[threadID], scalarOperator, gradientOperator);
-    } /* loop over all blocks of grid points */
-  }   // end pragma omp parallel
-#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+  for (unsigned iBlock = 0; iBlock < nBlocks; ++iBlock) {
+    unsigned iThread = omp_get_thread_num();
+    auto& blockDataA = _basisFunctionOnGridControllerA->getBlockOnGridData(iBlock);
+    auto& blockDataB = _basisFunctionOnGridControllerB->getBlockOnGridData(iBlock);
+    this->addBlock(iBlock, blockDataA, blockDataB, threadMatrices[iThread], scalarOperator, gradientOperator);
+  }
   Eigen::setNbThreads(0);
-#endif
   for (auto& mat : threadMatrices) {
-    if (mat != nullptr) {
-      matrix += *mat;
-    }
+    matrix += mat;
   }
   Timings::timeTaken("Tech. -    Grid to Matrix Int.");
   return;
@@ -180,28 +143,26 @@ void ScalarOperatorToMatrixAdder<SCFMode>::addBlock(
   // Get first index of this Block
   const unsigned int iGridStart = _basisFunctionOnGridControllerA->getFirstIndexOfBlock(iBlock);
   for_spin(m_AB, scalarPart) {
-    // Pre-multiply operator and weights
-    Eigen::VectorXd scalarW(blockSize);
-    scalarW.array() = scalarPart_spin.segment(iGridStart, blockSize).array() * weights.segment(iGridStart, blockSize).array();
-    double average = scalarW.cwiseAbs().sum();
-    average /= blockSize;
-    // cycle for_spin macro if non-significant
+    Eigen::VectorXd scalarW =
+        scalarPart_spin.segment(iGridStart, blockSize).cwiseProduct(weights.segment(iGridStart, blockSize));
+    double average = scalarW.cwiseAbs().sum() / blockSize;
+
     if (average < _blockAveThreshold)
       return;
-    // Contract with AO basis functions
-    if (!useSym) {
-      const Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
-      const Eigen::MatrixXd basisFuncVB = basisFunctionValuesB * pB;
-      const Eigen::MatrixXd tmp = (basisFuncVA.array().colwise() * scalarW.array()).matrix().transpose() * basisFuncVB;
-      m_AB_spin += pA * tmp * pB.transpose();
+
+    Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
+    Eigen::MatrixXd scalA = basisFuncVA.transpose() * scalarW.asDiagonal();
+
+    if (useSym) {
+      Eigen::MatrixXd tmp = scalA * basisFuncVA;
+      m_AB_spin.noalias() += pA * tmp * pB.transpose();
     }
     else {
-      const Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
-      const Eigen::MatrixXd tmp = (basisFuncVA.array().colwise() * scalarW.array()).matrix().transpose() * basisFuncVA;
-      m_AB_spin += pA * tmp * pB.transpose();
+      Eigen::MatrixXd basisFuncVB = basisFunctionValuesB * pB;
+      Eigen::MatrixXd tmp = scalA * basisFuncVB;
+      m_AB_spin.noalias() += pA * tmp * pB.transpose();
     }
   }; /* for_spin */
-  return;
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -232,59 +193,56 @@ void ScalarOperatorToMatrixAdder<SCFMode>::addBlock(
   auto& gradientPartZ = gradientPart.z;
   for_spin(m_AB, scalarPart, gradientPartX, gradientPartY, gradientPartZ) {
     // Pre-multiply operator and weights
-    Eigen::VectorXd scalarW(blockSize);
-    auto gradW = makeGradient<Eigen::VectorXd>(blockSize);
-    scalarW.array() = scalarPart_spin.segment(iGridStart, blockSize).array() * weights.segment(iGridStart, blockSize).array();
-    gradW.x.array() =
-        gradientPartX_spin.segment(iGridStart, blockSize).array() * weights.segment(iGridStart, blockSize).array();
-    gradW.y.array() =
-        gradientPartY_spin.segment(iGridStart, blockSize).array() * weights.segment(iGridStart, blockSize).array();
-    gradW.z.array() =
-        gradientPartZ_spin.segment(iGridStart, blockSize).array() * weights.segment(iGridStart, blockSize).array();
+    Eigen::VectorXd scalarW =
+        weights.segment(iGridStart, blockSize).cwiseProduct(scalarPart_spin.segment(iGridStart, blockSize));
+    Eigen::VectorXd gradWx =
+        weights.segment(iGridStart, blockSize).cwiseProduct(gradientPartX_spin.segment(iGridStart, blockSize));
+    Eigen::VectorXd gradWy =
+        weights.segment(iGridStart, blockSize).cwiseProduct(gradientPartY_spin.segment(iGridStart, blockSize));
+    Eigen::VectorXd gradWz =
+        weights.segment(iGridStart, blockSize).cwiseProduct(gradientPartZ_spin.segment(iGridStart, blockSize));
     // Calculate average for prescreening.
     double average = scalarW.cwiseAbs().sum();
-    average += gradW.x.cwiseAbs().sum();
-    average += gradW.y.cwiseAbs().sum();
-    average += gradW.z.cwiseAbs().sum();
-    average /= blockSize;
+    average += gradWx.cwiseAbs().sum();
+    average += gradWy.cwiseAbs().sum();
+    average += gradWz.cwiseAbs().sum();
     // cycle for_spin macro if non-significant
-    if (average < _blockAveThreshold)
+    if (average / blockSize < _blockAveThreshold)
       return;
 
-    Eigen::MatrixXd grad_AB;
-    Eigen::MatrixXd scalar_AB;
+    Eigen::MatrixXd scalar_grad_AB;
+
+    Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
+    Eigen::MatrixXd gradBasisFuncVA_x = gradBasisFunctionValuesA->x * pA;
+    Eigen::MatrixXd gradBasisFuncVA_y = gradBasisFunctionValuesA->y * pA;
+    Eigen::MatrixXd gradBasisFuncVA_z = gradBasisFunctionValuesA->z * pA;
+    Eigen::MatrixXd grad_A = gradWx.asDiagonal() * gradBasisFuncVA_x;
+    grad_A.noalias() += gradWy.asDiagonal() * gradBasisFuncVA_y;
+    grad_A.noalias() += gradWz.asDiagonal() * gradBasisFuncVA_z;
+
     if (useSym) {
-      const Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
-      const Eigen::MatrixXd gradBasisFuncVA_x = gradBasisFunctionValuesA->x * pA;
-      const Eigen::MatrixXd gradBasisFuncVA_y = gradBasisFunctionValuesA->y * pA;
-      const Eigen::MatrixXd gradBasisFuncVA_z = gradBasisFunctionValuesA->z * pA;
-      scalar_AB = (basisFuncVA.array().colwise() * scalarW.array()).matrix().transpose() * basisFuncVA;
-      const Eigen::MatrixXd grad_A = gradBasisFuncVA_x.array().colwise() * gradW.x.array() +
-                                     gradBasisFuncVA_y.array().colwise() * gradW.y.array() +
-                                     gradBasisFuncVA_z.array().colwise() * gradW.z.array();
-      grad_AB = basisFuncVA.transpose() * grad_A + grad_A.transpose() * basisFuncVA;
+      grad_A.noalias() += 0.5 * scalarW.asDiagonal() * basisFuncVA;
+      Eigen::MatrixXd tmp = basisFuncVA.transpose() * grad_A;
+      scalar_grad_AB = tmp;
+      scalar_grad_AB += tmp.transpose();
     }
     else {
-      const Eigen::MatrixXd basisFuncVA = basisFunctionValuesA * pA;
-      const Eigen::MatrixXd basisFuncVB = basisFunctionValuesB * pB;
-      const Eigen::MatrixXd gradBasisFuncVA_x = gradBasisFunctionValuesA->x * pA;
-      const Eigen::MatrixXd gradBasisFuncVA_y = gradBasisFunctionValuesA->y * pA;
-      const Eigen::MatrixXd gradBasisFuncVA_z = gradBasisFunctionValuesA->z * pA;
-      const Eigen::MatrixXd gradBasisFuncVB_x = gradBasisFunctionValuesB->x * pB;
-      const Eigen::MatrixXd gradBasisFuncVB_y = gradBasisFunctionValuesB->y * pB;
-      const Eigen::MatrixXd gradBasisFuncVB_z = gradBasisFunctionValuesB->z * pB;
-      scalar_AB = (basisFuncVA.array().colwise() * scalarW.array()).matrix().transpose() * basisFuncVB;
-      const Eigen::MatrixXd grad_A = gradBasisFuncVA_x.array().colwise() * gradW.x.array() +
-                                     gradBasisFuncVA_y.array().colwise() * gradW.y.array() +
-                                     gradBasisFuncVA_z.array().colwise() * gradW.z.array();
-      const Eigen::MatrixXd grad_B = gradBasisFuncVB_x.array().colwise() * gradW.x.array() +
-                                     gradBasisFuncVB_y.array().colwise() * gradW.y.array() +
-                                     gradBasisFuncVB_z.array().colwise() * gradW.z.array();
-      grad_AB = basisFuncVA.transpose() * grad_B + grad_A.transpose() * basisFuncVB;
+      Eigen::MatrixXd basisFuncVB = basisFunctionValuesB * pB;
+      Eigen::MatrixXd gradBasisFuncVB_x = gradBasisFunctionValuesB->x * pB;
+      Eigen::MatrixXd gradBasisFuncVB_y = gradBasisFunctionValuesB->y * pB;
+      Eigen::MatrixXd gradBasisFuncVB_z = gradBasisFunctionValuesB->z * pB;
+
+      scalar_grad_AB = basisFuncVA.transpose() * scalarW.asDiagonal() * basisFuncVB;
+
+      Eigen::MatrixXd grad_B = gradWx.asDiagonal() * gradBasisFuncVB_x;
+      grad_B.noalias() += gradWy.asDiagonal() * gradBasisFuncVB_y;
+      grad_B.noalias() += gradWz.asDiagonal() * gradBasisFuncVB_z;
+
+      scalar_grad_AB.noalias() += basisFuncVA.transpose() * grad_B;
+      scalar_grad_AB.noalias() += grad_A.transpose() * basisFuncVB;
     }
-    m_AB_spin += pA * (scalar_AB + grad_AB) * pB.transpose();
+    m_AB_spin.noalias() += pA * scalar_grad_AB * pB.transpose();
   }; /* for_spin */
-  return;
 }
 
 template class ScalarOperatorToMatrixAdder<Options::SCF_MODES::RESTRICTED>;

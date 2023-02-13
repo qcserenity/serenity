@@ -115,7 +115,7 @@ class IterativeSolver {
   /**
    * @brief Returns the current approximate eigenvalues.
    */
-  Eigen::VectorXd& getEigenvalues() {
+  Eigen::VectorXd getEigenvalues() {
     if (!_done) {
       this->solve();
     }

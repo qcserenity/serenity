@@ -190,7 +190,7 @@ std::shared_ptr<ElectronicStructure<SCFMode>> SystemSplittingTools<SCFMode>::res
   auto orbitalController = electronicStructure->getMolecularOrbitals();
   auto oldCoefficientMatrix = orbitalController->getCoefficients();
   auto oldEigenvalues = orbitalController->getEigenvalues();
-  auto oldCoreOrbitals = orbitalController->getCoreOrbitals();
+  auto oldCoreOrbitals = orbitalController->getOrbitalFlags();
   auto newCoefficientMatrixPtr = std::make_unique<CoefficientMatrix<SCFMode>>(newBasisController);
   auto newEigenvaluesPtr =
       std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(newBasisController->getNBasisFunctions());
@@ -224,7 +224,7 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   const unsigned int nBasisFunctions = basisController->getNBasisFunctions();
   const auto& superCoefficients = system->getActiveOrbitalController<SCFMode>()->getCoefficients();
   const auto& superEigenvalues = system->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-  const auto& superCoreOrbitals = system->getActiveOrbitalController<SCFMode>()->getCoreOrbitals();
+  const auto& superCoreOrbitals = system->getActiveOrbitalController<SCFMode>()->getOrbitalFlags();
   // Build coefficient matrix and eigenvalue vectors
   auto actCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
   auto actEigenPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(nBasisFunctions);
@@ -663,7 +663,6 @@ void SystemSplittingTools<SCFMode>::splitSupersystemBasedOnAssignment(std::share
   const auto nOccSuper = supersystem->getNOccupiedOrbitals<SCFMode>();
   for (unsigned int iFrag = 0; iFrag < nFragments; ++iFrag) {
     auto subsystem = fragments[iFrag];
-    //    subsystem->getAtomCenteredGridController()->notify();
     // Generate the final orbital selection based on the criteria constructed above.
     SpinPolarizedData<SCFMode, std::vector<bool>> orbitalSelection;
     for_spin(nOccSuper, orbitalSelection, assignment) {
@@ -694,7 +693,8 @@ void SystemSplittingTools<SCFMode>::splitSupersystemBasedOnAssignment(std::share
       DensityMatrix<SCFMode> projectedDensity =
           SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(selectedDensity, subsystem->getBasisController());
       subsystemES = std::make_shared<ElectronicStructure<SCFMode>>(
-          subsystem->getBasisController(), subsystem->getGeometry(), subsystemES->getNOccupiedOrbitals());
+          subsystem->getBasisController(), subsystem->getGeometry(), subsystemES->getNOccupiedOrbitals(),
+          subsystemES->getMolecularOrbitals()->getNCoreOrbitals());
       subsystemES->getDensityMatrixController()->setDensityMatrix(projectedDensity);
     }
     else {

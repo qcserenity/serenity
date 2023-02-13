@@ -39,7 +39,7 @@ class DIIS;
 class ADIIS;
 class EnergyComponentController;
 class OneElectronIntegralController;
-class Settings;
+struct Settings;
 /**
  * @class ConvergenceController ConvergenceController.h
  *

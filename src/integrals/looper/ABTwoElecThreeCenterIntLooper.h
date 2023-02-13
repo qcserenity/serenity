@@ -163,7 +163,7 @@ class ABTwoElecThreeCenterIntLooper {
     // intialize libint
     auto& libint = Libint::getInstance();
     libint.initialize(
-        _op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), 0.0, std::numeric_limits<double>::epsilon(), maxD,
+        _op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(), maxD,
         std::max(_basisControllerB->getMaxNumberOfPrimitives(),
                  std::max(_basisControllerA->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives())));
     auto& basisA = _basisControllerA->getBasis();

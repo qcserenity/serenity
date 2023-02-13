@@ -32,6 +32,7 @@
 #include "potentials/ExchangePotential.h"
 #include "potentials/FuncPotential.h"
 #include "settings/Settings.h"
+#include "tasks/LRSCFTask.h"
 #include <math.h>
 #include <Eigen/Dense>
 #include <iomanip>
@@ -49,20 +50,38 @@ void GWTask<SCFMode>::run() {
   if (_env.size() == 0 && settings.environmentScreening) {
     settings.environmentScreening = false;
   }
+  // Create LRSCFController
+  LRSCFTaskSettings settingsLRSCF;
+  settingsLRSCF.nafThresh = settings.nafThresh;
+  settingsLRSCF.frozenCore = settings.frozenCore;
+  settingsLRSCF.coreOnly = settings.coreOnly;
+  settingsLRSCF.densFitCache = settings.densFitCache;
+  auto lrscfContr = std::make_shared<LRSCFController<SCFMode>>(_act[0], settingsLRSCF);
+
+  auto C_old = lrscfContr->getCoefficients();
+  auto E_old = lrscfContr->getEigenvalues();
+
+  // Apply frozen core
+  if (settings.frozenCore) {
+    lrscfContr->applyFrozenCore();
+  }
+  else if (settings.coreOnly) {
+    lrscfContr->applyCoreOnly();
+  }
+
   if (settings.mbpttype == Options::MBPT::GW) {
     printSectionTitle("GW Module");
 
     if (_act.size() > 1) {
       throw SerenityError("Only one active subsystem supported!");
     }
-
-    // Initializing for GW calculation
     auto orb = _act[0]->template getElectronicStructure<SCFMode>()->getMolecularOrbitals();
-    auto coeffs = orb->getCoefficients();
-    auto orbEigenValues = orb->getEigenvalues();
-    const auto nOcc = _act[0]->getNOccupiedOrbitals<SCFMode>();
+    // Initializing for GW calculation
+    auto coeffs = lrscfContr->getCoefficients();
+    auto orbEigenValues = lrscfContr->getEigenvalues();
+    const auto nOcc = lrscfContr->getNOccupied();
     // Use truncated virtual orbital space if it was manipulated before
-    const auto nVirt = _act[0]->getNVirtualOrbitalsTruncated<SCFMode>();
+    const auto nVirt = lrscfContr->getNVirtual();
     // Initialize the quantities
     SpinPolarizedData<SCFMode, Eigen::VectorXd> qpEnergy = orbEigenValues;
     SpinPolarizedData<SCFMode, Eigen::VectorXd> correlation = orbEigenValues;
@@ -103,7 +122,7 @@ void GWTask<SCFMode>::run() {
     superSystemGeometry->deleteIdenticalAtoms();
     // supersystem grid
     std::shared_ptr<GridController> supersystemgrid =
-        GridControllerFactory::produce(superSystemGeometry, _act[0]->getSettings());
+        GridControllerFactory::produce(superSystemGeometry, _act[0]->getSettings().grid);
     _act[0]->setGridController(supersystemgrid);
     // XC Func
     auto functional = resolveFunctional(_act[0]->getSettings().dft.functional);
@@ -154,7 +173,7 @@ void GWTask<SCFMode>::run() {
           std::cout << " DIIS vectors stored       : " << settings.diisMaxStore << std::endl;
       }
       std::cout << " ------------------------------------------------ \n" << std::endl;
-      auto gw_analytic = std::make_shared<GW_Analytic<SCFMode>>(_act[0], settings, _env, nullptr, startOrb, endOrb);
+      auto gw_analytic = std::make_shared<GW_Analytic<SCFMode>>(lrscfContr, settings, _env, nullptr, startOrb, endOrb);
       gw_analytic->calculateGWOrbitalenergies(qpEnergy, vxc_energies, x_energies, correlation, dsigma_de, lienarizazion_z);
     }
     if (settings.gwtype == Options::GWALGORITHM::CD || settings.gwtype == Options::GWALGORITHM::AC) {
@@ -184,19 +203,39 @@ void GWTask<SCFMode>::run() {
         }
       }
       std::cout << " ------------------------------------------------ \n" << std::endl;
-      auto riInts = std::make_shared<RIIntegrals<SCFMode>>(_act[0], LIBINT_OPERATOR::coulomb, 0.0, true, startOrb,
-                                                           endOrb, settings.nafThresh, this->superMolGeo());
+      auto riInts = std::make_shared<RIIntegrals<SCFMode>>(lrscfContr, LIBINT_OPERATOR::coulomb, 0.0, true, startOrb,
+                                                           endOrb, this->superMolGeo());
       if (settings.gwtype == Options::GWALGORITHM::CD) {
-        auto gw_cd = std::make_shared<GW_ContourDeformation<SCFMode>>(_act[0], settings, _env, riInts, startOrb, endOrb);
+        auto gw_cd = std::make_shared<GW_ContourDeformation<SCFMode>>(lrscfContr, settings, _env, riInts, startOrb, endOrb);
         gw_cd->calculateGWOrbitalenergies(qpEnergy, vxc_energies, x_energies, correlation);
       }
       else if (settings.gwtype == Options::GWALGORITHM::AC) {
-        auto gw_ac = std::make_shared<GW_AnalyticContinuation<SCFMode>>(_act[0], settings, _env, riInts, startOrb, endOrb);
+        auto gw_ac = std::make_shared<GW_AnalyticContinuation<SCFMode>>(lrscfContr, settings, _env, riInts, startOrb, endOrb);
         gw_ac->calculateGWOrbitalenergies(qpEnergy, vxc_energies, x_energies, correlation, dsigma_de, lienarizazion_z);
       }
     }
     _correlationEnergies = correlation;
     printGWResult(orbEigenValues, qpEnergy, vxc_energies, x_energies, correlation, lienarizazion_z, dsigma_de, startOrb, endOrb);
+
+    if (settings.frozenCore) {
+      unsigned nCore = 0;
+      for (const auto& atom : _act[0]->getGeometry()->getAtoms()) {
+        nCore += atom->getNCoreElectrons();
+      }
+      nCore /= 2;
+
+      std::cout << "\n  ! Sorting back " << nCore << " core orbitals !" << std::endl;
+
+      coeffs = C_old;
+      for_spin(qpEnergy, E_old) {
+        Eigen::VectorXd qp = qpEnergy_spin;
+        unsigned len = qp.size();
+        for (unsigned j = 0; j < len; ++j) {
+          qpEnergy_spin(j) = (j < nCore) ? E_old_spin(j) : qp(j - nCore);
+        }
+      };
+    }
+
     // Set new orbital energies
     orb->setDiskMode(false, _act[0]->getHDF5BaseName(), _act[0]->getSettings().identifier);
     orb->updateOrbitals(coeffs, qpEnergy);
@@ -225,9 +264,9 @@ void GWTask<SCFMode>::run() {
     auto ener_x = exchange->getEnergy(
         _act[0]->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix());
 
-    auto riInts = std::make_shared<RIIntegrals<SCFMode>>(_act[0], LIBINT_OPERATOR::coulomb, 0.0, true, 0, 0,
-                                                         settings.nafThresh, this->superMolGeo());
-    auto mbpt = std::make_shared<MBPT<SCFMode>>(MBPT<SCFMode>(_act[0], settings, _env, riInts, 0, 0));
+    auto riInts =
+        std::make_shared<RIIntegrals<SCFMode>>(lrscfContr, LIBINT_OPERATOR::coulomb, 0.0, true, 0, 0, this->superMolGeo());
+    auto mbpt = std::make_shared<MBPT<SCFMode>>(MBPT<SCFMode>(lrscfContr, settings, _env, riInts, 0, 0));
     _correlationEnergy = mbpt->calculateRPACorrelationEnergy();
     std::cout << std::fixed << std::setprecision(9);
     std::cout << "\n Integration points        : " << settings.integrationPoints << std::endl;

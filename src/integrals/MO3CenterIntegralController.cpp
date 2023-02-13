@@ -151,7 +151,7 @@ void MO3CenterIntegralController::loadIntegrals(MO3CENTER_INTS mo3CenterType, co
     _integrals[mo3CenterType].second += kDomain;
   }
   HDF5::Filepath name(_fBaseName + ".mo3c." + _fileNames[mo3CenterType] + ".h5");
-  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
   HDF5::attribute_exists(file, "ID");
   HDF5::check_attribute(file, "ID", _id);
   for (Eigen::SparseVector<int>::InnerIterator itK(kDomain); itK; ++itK) {

@@ -28,7 +28,9 @@ namespace Options {
 template<>
 void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field) {
   static const std::map<std::string, ORBITAL_FILE_TYPES> m = {{"SERENITY", ORBITAL_FILE_TYPES::SERENITY},
-                                                              {"TURBOMOLE", ORBITAL_FILE_TYPES::TURBOMOLE}};
+                                                              {"TURBOMOLE", ORBITAL_FILE_TYPES::TURBOMOLE},
+                                                              {"MOLPRO", ORBITAL_FILE_TYPES::MOLPRO},
+                                                              {"MOLCAS", ORBITAL_FILE_TYPES::MOLCAS}};
   check(m, value, field);
 }
 

@@ -64,10 +64,12 @@ class ElectronicStructure {
    * =============================== */
 
   ElectronicStructure(std::shared_ptr<OneElectronIntegralController> oneEIntController,
-                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
+                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
+                      const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
 
   ElectronicStructure(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry,
-                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
+                      const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
+                      const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
 
   ElectronicStructure(std::shared_ptr<OrbitalController<SCFMode>> molecularOrbitals,
                       std::shared_ptr<OneElectronIntegralController> oneEIntController,

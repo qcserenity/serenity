@@ -21,6 +21,8 @@
 #include "postHF/LRSCF/Tools/ResponseLambda.h"
 
 /* Include Serenity Internal Headers */
+#include "dft/Functional.h"
+#include "postHF/LRSCF/Kernel/Kernel.h"
 #include "postHF/LRSCF/Sigmavectors/CoulombSigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/EOSigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/ExchangeSigmavector.h"
@@ -62,9 +64,6 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
   if (_settings.grimme) {
     _grimme = std::make_unique<GrimmeSigmavector<SCFMode>>(_lrscf);
     _usesKernel = false;
-    if (_lrscf.size() > 1) {
-      throw SerenityError("Coupled calculations are currently not supported with simplified TDDFT.");
-    }
   }
 
   // Exchange to be used
@@ -82,6 +81,7 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
       }
       _usesExchange = func.isHybrid() ? func.isHybrid() : _usesExchange;
       _usesLRExchange = func.isRSHybrid() ? func.isRSHybrid() : _usesLRExchange;
+      _usesDoubleHybrid = func.isDoubleHybrid() ? func.isDoubleHybrid() : _usesDoubleHybrid;
     }
   }
   auto naddXCfunc = resolveFunctional(_settings.embedding.naddXCFunc);
@@ -95,6 +95,20 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
 
   if (_usesLRExchange && _settings.rpaScreening) {
     throw SerenityError("RS-Hybrid Functional not supported for BSE calculations!");
+  }
+
+  if (_usesDoubleHybrid) {
+    printBigCaption("Double-Hybrid TDDFT");
+    _doubleHybridCorrRatio = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getHfCorrelRatio();
+    // Set spin scaling factors from functional.
+    _settings.sss = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getssScaling();
+    _settings.oss = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getosScaling();
+    printf("  WF corr. ratio        : %7.3f\n", _doubleHybridCorrRatio);
+    printf("  Same-spin scaling     : %7.3f\n", _settings.sss);
+    printf("  Opposite-spin scaling : %7.3f\n\n", _settings.oss);
+    if (_usesDoubleHybrid && _lrscf.size() > 1) {
+      throw SerenityError("Cannot use double-hybrids in a coupled calculation!");
+    }
   }
 
   // EO to be used
@@ -125,12 +139,42 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
 
   // Setup RI Integral cache for ADC(2) or CC2.
   bool isXWF = !(settings.method == Options::LR_METHOD::TDA || settings.method == Options::LR_METHOD::TDDFT);
-  if (isXWF || _settings.rpaScreening) {
-    _densFitK = true;
-    _lrscf[0]->initializeRIIntegrals(LIBINT_OPERATOR::coulomb, 0.0, true);
-    // ToDo: this needs to go at some point.
-    if (isXWF) {
-      _lrscf[0]->getRIIntegrals(LIBINT_OPERATOR::coulomb)->cacheAOIntegrals();
+  if (isXWF || _settings.rpaScreening || _usesDoubleHybrid) {
+    if (!_usesDoubleHybrid) {
+      _densFitK = true;
+      _settings.densFitK = _settings.densFitCache;
+    }
+    for (auto& lrscf : _lrscf) {
+      lrscf->initializeRIIntegrals(LIBINT_OPERATOR::coulomb, 0.0, true);
+      if (_settings.aocache) {
+        lrscf->getRIIntegrals(LIBINT_OPERATOR::coulomb)->cacheAOIntegrals();
+      }
+    }
+  }
+  if (isXWF || _usesDoubleHybrid) {
+    if (_settings.sss != 1.0 || _settings.oss != 1.0) {
+      printBigCaption("Custom spin-component scaling");
+      printf(" Same-spin     : %-6.3f\n", _settings.sss);
+      printf(" Opposite-spin : %-6.3f\n\n", _settings.oss);
+    }
+    if (_settings.ltconv != 0) {
+      printBigCaption("Laplace-Transform algorithms");
+      printf(" Threshold     : %-6.1e\n", _settings.ltconv);
+      printf(" Opposite-spin : %-6.3f\n\n", _settings.oss);
+    }
+    printSubSectionTitle("Ground-state Calculation");
+    for (auto& lrscf : _lrscf) {
+      // In case of double-hybrids, we fake the method to be CIS(D) to get the
+      // reduced sigma vector build which does not contain the CIS contributions.
+      if (_usesDoubleHybrid) {
+        auto oldmethod = _settings.method;
+        _settings.method = Options::LR_METHOD::CISD;
+        lrscf->initializeXWFController();
+        _settings.method = oldmethod;
+      }
+      else {
+        lrscf->initializeXWFController();
+      }
     }
   }
 
@@ -145,12 +189,13 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
   if (_usesKernel) {
     printBigCaption("Kernel");
     Timings::takeTime("LRSCF -  Kernel on Grid Eval.");
-    _kernel = std::make_shared<Kernel<SCFMode>>(_act, _env, _settings);
+    this->setupKernel(Options::GRID_PURPOSES::SMALL);
+    printf("  Grid:    %1i/%1i\n\n", _settings.grid.smallGridAccuracy, _settings.grid.accuracy);
     printf(" .. done.\n\n");
     Timings::timeTaken("LRSCF -  Kernel on Grid Eval.");
   }
 
-  if (!_settings.grimme) {
+  if (!_settings.grimme && !isXWF) {
     printBigCaption("Density Fitting");
     std::string fitting;
     Options::resolve<Options::DENS_FITS>(fitting, _settings.densFitJ);
@@ -166,6 +211,9 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
       printf("  LR-Exchange  :  %-10s\n", fitting.c_str());
     }
     printf("\n");
+  }
+  if (_settings.adaptivePrescreening) {
+    printf("  Using adaptive prescreening thresholds.\n\n");
   }
 }
 
@@ -352,14 +400,6 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
 
 template<Options::SCF_MODES SCFMode>
 void ResponseLambda<SCFMode>::setupCC2Lambdas() {
-  if (std::abs(_settings.sss - 1.0) > 1e-4 || std::abs(_settings.oss - 1.0) > 1e-4) {
-    printSmallCaption("Using custom spin-component scaling");
-    printf(" Same-spin     : %-6.3f\n", _settings.sss);
-    printf(" Opposite-spin : %-6.3f\n\n", _settings.oss);
-  }
-
-  _lrscf[0]->initializeXWFController();
-
   // lambda function for right transformation CC2/CIS(Dinf)/ADC(2)
   _rightXWF = [&](Eigen::Ref<Eigen::MatrixXd> guessVectors, Eigen::VectorXd guessValues) {
     auto sigma = std::make_unique<Eigen::MatrixXd>(guessVectors.rows(), guessVectors.cols());
@@ -377,6 +417,40 @@ void ResponseLambda<SCFMode>::setupCC2Lambdas() {
     }
     return sigma;
   };
+}
+
+template<Options::SCF_MODES SCFMode>
+SigmaCalculator ResponseLambda<SCFMode>::setEigensolverMode(bool fockDiagonal) {
+  // If TDA: ignore user input and solve symmetric problem.
+  if (_settings.method != Options::LR_METHOD::TDDFT) {
+    _settings.algorithm = Options::RESPONSE_ALGORITHM::SYMMETRIC;
+    return _TDA;
+  }
+  else {
+    // If not TDA and RPA requested, solve RPA.
+    if (_settings.algorithm == Options::RESPONSE_ALGORITHM::SYMPLECTIC) {
+      return _RPA;
+    }
+    // If not explicitly requested, solve symmetrized problem if possible and RPA problem otherwise.
+    else {
+      if (!fockDiagonal || _usesEO || _usesExchange || _usesLRExchange || _settings.partialResponseConstruction ||
+          _settings.grimme) {
+        // (A-B) is not diagonal, have to solve symplectic problem
+        _settings.algorithm = Options::RESPONSE_ALGORITHM::SYMPLECTIC;
+        return _RPA;
+      }
+      else {
+        // (A-B) is diagonal, might also solve the symmetrized problem
+        _settings.algorithm = Options::RESPONSE_ALGORITHM::SYMMETRIZED;
+        return _TDDFT;
+      }
+    }
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+void ResponseLambda<SCFMode>::setupKernel(Options::GRID_PURPOSES gridFineness) {
+  _kernel = std::make_shared<Kernel<SCFMode>>(_act, _env, _settings, gridFineness);
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -407,6 +481,16 @@ XWFSigmaCalculator ResponseLambda<SCFMode>::getLeftXWFSigma() {
 template<Options::SCF_MODES SCFMode>
 bool ResponseLambda<SCFMode>::usesKernel() {
   return _usesKernel;
+}
+
+template<Options::SCF_MODES SCFMode>
+bool ResponseLambda<SCFMode>::usesDoubleHybrid() {
+  return _usesDoubleHybrid;
+}
+
+template<Options::SCF_MODES SCFMode>
+double ResponseLambda<SCFMode>::getDHRatio() {
+  return _doubleHybridCorrRatio;
 }
 
 template<Options::SCF_MODES SCFMode>

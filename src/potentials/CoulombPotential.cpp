@@ -154,7 +154,6 @@ void CoulombPotential<SCFMode>::addToMatrix(FockMatrix<SCFMode>& F, const Densit
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
   auto actSystem = _actSystem.lock();
-  const auto& orbitalSet = actSystem->template getActiveOrbitalController<SCFMode>();
   auto atoms = actSystem->getAtoms();
   unsigned int nAtoms = atoms.size();
   Matrix<double> eriContr(nAtoms, 3);
@@ -325,7 +324,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
 #else
   eriContr = eriContrPriv[0];
 #endif
-  return eriContr;
+  return std::move(eriContr);
 }
 
 template class CoulombPotential<Options::SCF_MODES::RESTRICTED>;

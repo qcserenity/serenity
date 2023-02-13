@@ -81,13 +81,6 @@ class EigenvalueSolver : public IterativeSolver {
    */
   virtual ~EigenvalueSolver() = default;
 
- private:
-  /**
-   * @brief Initializes the eigenvalue solver by printing some info, getting the needed
-   *        matrices right, calculating the seed and the corresponding sigma vectors.
-   */
-  void initialize() override final;
-
   /**
    * @brief Performs one iteration of the eigenvalue solver.
    */
@@ -98,6 +91,13 @@ class EigenvalueSolver : public IterativeSolver {
    *        and/or normlizes the eigenvectors. Prints the converged eigenvalues in au.
    */
   void postProcessing() override;
+
+ private:
+  /**
+   * @brief Initializes the eigenvalue solver by printing some info, getting the needed
+   *        matrices right, calculating the seed and the corresponding sigma vectors.
+   */
+  void initialize() override final;
 
   /**
    * @brief Normalizes the eigenvectors

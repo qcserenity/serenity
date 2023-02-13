@@ -25,32 +25,35 @@
 #include "data/OrbitalController.h"
 #include "grid/GaussLegendre.h"
 #include "io/FormattedOutputStream.h"
+#include "math/LaplaceMinimaxWrapper.h"
 #include "math/diis/DIIS.h"
-#include "misc/HelperFunctions.h" //Sparse prjections from sparse maps.
+#include "math/linearAlgebra/MatrixFunctions.h" //Matrix sqrt
+#include "misc/HelperFunctions.h"               //Sparse prjections from sparse maps.
 #include "postHF/LRSCF/Tools/RIIntegrals.h"
 #include "system/SystemController.h"
+
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <iomanip>
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-MBPT<SCFMode>::MBPT(std::shared_ptr<SystemController> systemController, GWTaskSettings settings,
+MBPT<SCFMode>::MBPT(std::shared_ptr<LRSCFController<SCFMode>> lrscf, GWTaskSettings settings,
                     std::vector<std::shared_ptr<SystemController>> envSystemController,
                     std::shared_ptr<RIIntegrals<SCFMode>> riInts, int startOrb, int endOrb)
-  : _systemController(systemController),
+  : _lrscfController(lrscf),
     _settings(settings),
     _env(envSystemController),
     _riInts(riInts),
-    _orbEig(_systemController->getActiveOrbitalController<SCFMode>()->getEigenvalues()),
+    _orbEig(_lrscfController->getEigenvalues()),
     _startOrb(startOrb),
     _endOrb(endOrb),
     _Jia(nullptr),
     _Jpq(nullptr),
     _Jia_transformed(nullptr),
     _Jpq_transformed(nullptr),
-    _nOcc(_systemController->getNOccupiedOrbitals<SCFMode>()),
-    _nVirt(_systemController->getNVirtualOrbitalsTruncated<SCFMode>()) {
+    _nOcc(_lrscfController->getNOccupied()),
+    _nVirt(_lrscfController->getNVirtual()) {
   // Error and Warnings
   if (settings.nafThresh != 0 && _env.size() > 0) {
     throw SerenityError("NAF in combination with multiple subsystems not supported yet!");
@@ -84,20 +87,28 @@ MBPT<SCFMode>::MBPT(std::shared_ptr<SystemController> systemController, GWTaskSe
     _Jpq_transformed = std::make_shared<SpinPolarizedData<SCFMode, Eigen::MatrixXd>>(1, 1);
     // Calculate environment screening contributions and transformed jia
     if (_settings.environmentScreening) {
-      auto envResponse = this->environmentRespose();
-      Eigen::MatrixXd transformation;
-      _proj = this->calculateTransformation(transformation, envResponse);
+      _envResponse = this->environmentRespose();
+      auto auxtrafo = riInts->getAuxTrafoPtr();
+      auto metric = riInts->getAuxMetricPtr();
+      auto metricsqrt = mSqrt_Sym(*metric);
+      // V + V^{1/2}\PI^\env V^{1/2}
+      Eigen::MatrixXd coulAuxbasis = (*metric) + metricsqrt * _envResponse * metricsqrt;
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenvalueSolver(coulAuxbasis);
+      _eValues = eigenvalueSolver.eigenvalues();
+      Eigen::MatrixXd eigenVectors = eigenvalueSolver.eigenvectors();
+
       auto& jia_transformed = *_Jia_transformed;
       auto& jia = *_Jia;
+
       for_spin(jia_transformed, jia) {
-        jia_transformed_spin = jia_spin * transformation;
+        jia_transformed_spin = jia_spin * (*auxtrafo) * eigenVectors;
       };
       // tranformation of jpq in case of GW
       if (_Jpq) {
         auto& jpq_transformed = *_Jpq_transformed;
         auto& jpq = *_Jpq;
         for_spin(jpq_transformed, jpq) {
-          jpq_transformed_spin = jpq_spin * transformation;
+          jpq_transformed_spin = jpq_spin * (*auxtrafo) * eigenVectors;
         };
       }
     }
@@ -128,9 +139,9 @@ Eigen::MatrixXd MBPT<SCFMode>::environmentRespose() {
   for (auto& env : _env) {
     auto riInts_J =
         RIIntegrals<SCFMode>(env, LIBINT_OPERATOR::coulomb, 0.0, true, 0, 0, _settings.nafThresh, _riInts->getGeo());
-    auto orbEig_J = env->getActiveOrbitalController<SCFMode>()->getEigenvalues();
-    auto nOcc_J = env->getNOccupiedOrbitals<SCFMode>();
-    auto nVirt_J = env->getNVirtualOrbitalsTruncated<SCFMode>();
+    auto orbEig_J = env->template getActiveOrbitalController<SCFMode>()->getEigenvalues();
+    auto nOcc_J = env->template getNOccupiedOrbitals<SCFMode>();
+    auto nVirt_J = env->template getNVirtualOrbitalsTruncated<SCFMode>();
     auto e_ia_J = this->calculateEia(orbEig_J, nOcc_J, nVirt_J);
     auto& jia_J = *(riInts_J.getJiaPtr());
     for_spin(e_ia_J, jia_J) {
@@ -202,23 +213,115 @@ SpinPolarizedData<SCFMode, Eigen::MatrixXd> MBPT<SCFMode>::calculateWnmComplex()
       for_spin(_eia, jia, jia_transformed) {
         Eigen::VectorXd chi_temp =
             prefactor * (-2.0 * _eia_spin.array()) / (std::pow(_nodes(iFreq), 2) + _eia_spin.array().square());
-        dielectric.noalias() -= (jia_spin.transpose() * chi_temp.asDiagonal() * jia_spin).eval();
-        // addditional environmental screening
-        if (_env.size() > 0) {
+        if (_env.size() == 0) {
+          dielectric.noalias() -= (jia_spin.transpose() * chi_temp.asDiagonal() * jia_spin).eval();
+        }
+        else {
           auto dielectricScreen = (jia_transformed_spin.transpose() * chi_temp.asDiagonal() * jia_transformed_spin).eval();
-          dielectric.noalias() += (_proj * dielectricScreen * _proj.transpose()).eval();
+          dielectric.noalias() -= dielectricScreen * _eValues.asDiagonal();
         }
       };
-      dielectric = dielectric.llt().matrixL();
-      Eigen::MatrixXd transformed;
+
       // other screening contribution
       if (_env.size() > 0) {
-        transformed = dielectric.triangularView<Eigen::Lower>().solve(_proj * jpq_transformed_spin.transpose());
-        W_nm_spin.col(iFreq) -= (transformed.transpose() * transformed).diagonal();
+        Eigen::MatrixXd transformed;
+        transformed = dielectric.householderQr().solve(jpq_transformed_spin.transpose());
+        W_nm_spin.col(iFreq) = (jpq_transformed_spin * _eValues.asDiagonal() * transformed).diagonal() -
+                               (jpq_spin * jpq_spin.transpose()).diagonal();
       }
-      transformed = dielectric.triangularView<Eigen::Lower>().solve(jpq_spin.transpose());
-      W_nm_spin.col(iFreq) +=
-          (transformed.transpose() * transformed).diagonal() - (jpq_spin * jpq_spin.transpose()).diagonal();
+      else {
+        Eigen::LLT<Eigen::MatrixXd> llt;
+        dielectric = llt.compute(dielectric).matrixL();
+        if (llt.info() != Eigen::Success) {
+          OutputControl::mOut << "Cholesky decomposition failed!" << std::endl;
+        }
+        Eigen::MatrixXd transformed;
+        transformed = dielectric.triangularView<Eigen::Lower>().solve(jpq_spin.transpose());
+        W_nm_spin.col(iFreq) =
+            (transformed.transpose() * transformed).diagonal() - (jpq_spin * jpq_spin.transpose()).diagonal();
+      }
+    }
+  };
+  Timings::timeTaken("MBPT -      W_nm calculation");
+  OutputControl::mOut << " done" << std::endl;
+  return W_nm;
+}
+/* This Laplace-transform implementation is still experimental!
+   A manual entry and more documentation will be added after further verification*/
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, Eigen::MatrixXd> MBPT<SCFMode>::calculateWnmComplexLT() {
+  OutputControl::mOut << "\n Calculate W_nm(iw) ....... \n";
+  OutputControl::mOut.flush();
+  Timings::takeTime("MBPT -      W_nm calculation");
+  Eigen::MatrixXd unit = Eigen::MatrixXd::Identity(_nAux, _nAux);
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> W_nm;
+  // needed integrals
+  auto& jia = *(this->_Jia);
+  auto& jpq = *(this->_Jpq);
+  auto& jia_transformed = *(this->_Jia_transformed);
+  auto& jpq_transformed = *(this->_Jpq_transformed);
+  double min = 1000;
+  double max = 0.0;
+  double freqMin = _nodes(1);
+  for_spin(_orbEig, _nOcc) {
+    double LUMO = _orbEig_spin(_nOcc_spin);
+    double HOMO = _orbEig_spin(_nOcc_spin - 1);
+    double minSpin = std::pow((LUMO - HOMO), 2) + std::pow(freqMin, 2);
+
+    double HUMO = _orbEig_spin(_orbEig_spin.size() - 1);
+    double LOMO = _orbEig_spin(0);
+    double maxSpin = std::pow((HUMO - LOMO), 2);
+
+    min = std::min(minSpin, min);
+    max = std::max(maxSpin, max);
+  };
+  Eigen::VectorXd roots(0);
+  Eigen::VectorXd weights(0);
+  max = std::max(1e4, max);
+  getMinimaxRoots(roots, weights, min, max, _settings.ltconv);
+
+  auto intermediate = std::vector<Eigen::MatrixXd>(roots.size(), Eigen::MatrixXd::Zero(_nAux, _nAux));
+  for_spin(_eia, jia, jia_transformed) {
+    for (unsigned int m = 0; m < roots.size(); m++) {
+      Eigen::VectorXd prefactor = _eia_spin;
+      prefactor = -1.0 * prefactor.array().square().matrix() * roots(m);
+      prefactor = prefactor.array().exp().matrix();
+      prefactor = weights(m) * prefactor.cwiseProduct(_eia_spin);
+      if (_env.size() == 0) {
+        intermediate[m] += (jia_spin.transpose() * prefactor.asDiagonal() * jia_spin).eval();
+      }
+      else {
+        intermediate[m] +=
+            (jia_transformed_spin.transpose() * prefactor.asDiagonal() * jia_transformed_spin * _eValues.asDiagonal()).eval();
+      }
+    }
+  };
+  for_spin(W_nm, jpq, jpq_transformed) {
+    W_nm_spin.resize(jpq_spin.rows(), _nodes.size());
+    W_nm_spin.setZero();
+    for (unsigned int iFreq = 0; iFreq < _nodes.size(); iFreq++) {
+      double prefactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 2.0 : 1.0;
+      Eigen::MatrixXd dielectric = unit;
+      for (unsigned int m = 0; m < roots.size(); m++) {
+        dielectric -= -2.0 * prefactor * std::exp(-1.0 * std::pow(_nodes(iFreq), 2) * roots(m)) * intermediate[m];
+      }
+      if (_env.size() == 0) {
+        Eigen::LLT<Eigen::MatrixXd> llt;
+        dielectric = llt.compute(dielectric).matrixL();
+        if (llt.info() != Eigen::Success) {
+          OutputControl::mOut << "Cholesky decomposition failed!" << std::endl;
+        }
+        Eigen::MatrixXd transformed;
+        transformed = dielectric.triangularView<Eigen::Lower>().solve(jpq_spin.transpose());
+        W_nm_spin.col(iFreq) =
+            (transformed.transpose() * transformed).diagonal() - (jpq_spin * jpq_spin.transpose()).diagonal();
+      }
+      else {
+        Eigen::MatrixXd transformed;
+        transformed = dielectric.householderQr().solve(jpq_transformed_spin.transpose());
+        W_nm_spin.col(iFreq) = (jpq_transformed_spin * _eValues.asDiagonal() * transformed).diagonal() -
+                               (jpq_spin * jpq_spin.transpose()).diagonal();
+      }
     }
   };
   Timings::timeTaken("MBPT -      W_nm calculation");
@@ -343,7 +446,7 @@ void MBPT<SCFMode>::shiftByGap(SpinPolarizedData<SCFMode, Eigen::VectorXd>& qpEn
     double gap_occ = qpEner_spin(_startOrb) - startOrbEner_spin(_startOrb);
     double gap_lumo = qpEner_spin(_endOrb - 1) - startOrbEner_spin(_endOrb - 1);
     for (int iState = 0; iState < int(_nOcc_spin + _nVirt_spin); iState++) {
-      if (iState < _startOrb || iState > _endOrb) {
+      if (iState < _startOrb || iState > _endOrb - 1) {
         if ((unsigned int)iState < _nOcc_spin) {
           qpEner_spin(iState) = startOrbEner_spin(iState) + gap_occ;
         }
@@ -362,7 +465,6 @@ double MBPT<SCFMode>::calculateRPACorrelationEnergy() {
   double dRPA_correlation = 0.0;
   const Eigen::MatrixXd unit = Eigen::MatrixXd::Identity(_nAux, _nAux);
   auto& jia = *_Jia;
-  auto& jia_transformed = *_Jia_transformed;
 #pragma omp parallel for schedule(dynamic) reduction(+ : dRPA_correlation)
   for (unsigned int i = 0; i < _settings.integrationPoints; i++) {
     Eigen::MatrixXd pi_PQ = Eigen::MatrixXd::Zero(_nAux, _nAux);
@@ -374,12 +476,7 @@ double MBPT<SCFMode>::calculateRPACorrelationEnergy() {
     };
     // If additional environmental screening is taken into account
     if (_env.size() > 0) {
-      for_spin(jia_transformed, _eia) {
-        Eigen::VectorXd chi_temp2 =
-            prefactor * (-2.0 * _eia_spin.array()) / (std::pow(_nodes(i), 2) + _eia_spin.array().square());
-        Eigen::MatrixXd p_PQ_screen = jia_transformed_spin.transpose() * chi_temp2.asDiagonal() * jia_transformed_spin;
-        pi_PQ -= _proj * p_PQ_screen * _proj.transpose();
-      };
+      throw SerenityError("Environmental-Screened RPA not implemented!");
     }
     dRPA_correlation += (1.0 / (2.0 * PI)) * _weights(i) * (log((unit - pi_PQ.real()).determinant()) + pi_PQ.real().trace());
   }

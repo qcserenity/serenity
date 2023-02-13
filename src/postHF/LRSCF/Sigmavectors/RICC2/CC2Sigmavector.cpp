@@ -20,7 +20,7 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/RICC2/CC2Sigmavector.h"
-#include "integrals/looper/TwoElecThreeCenterIntLooper.h"
+#include "integrals/looper/TwoElecThreeCenterCalculator.h"
 #include "settings/LRSCFOptions.h"
 #include "tasks/LRSCFTask.h"
 
@@ -29,6 +29,7 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 CC2Sigmavector<SCFMode>::CC2Sigmavector(std::shared_ptr<LRSCFController<SCFMode>> lrscf)
   : XWFController<SCFMode>(lrscf) {
+  this->initialize();
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -71,61 +72,15 @@ Eigen::MatrixXd CC2Sigmavector<SCFMode>::transformedABFock(Eigen::Ref<Eigen::Vec
 
   Eigen::VectorXd XP = this->_riTrafo * XQ;
   unsigned nThreads = omp_get_max_threads();
-  Eigen::ArrayXd pseudoFock = Eigen::ArrayXd::Zero(nThreads * this->_nb * this->_nb);
+  Eigen::MatrixXd pseudoFock = Eigen::MatrixXd::Zero(this->_nb * this->_nb, nThreads);
 
-  double* YiaPtr = Yia.data();
-  double* etaptr = eta.data();
-  double* fockptr = pseudoFock.data();
-
-  // loop over all cached (mn|P)
-  double* jmnptr = this->_Jmn->data();
-#pragma omp parallel
-  {
-    size_t indexP;
-    size_t offset1 = omp_get_thread_num() * this->_nb * this->_nb;
-#pragma omp for schedule(dynamic)
-    for (size_t P = 0; P < this->_nxs; ++P) {
-      size_t offset2 = P * this->_nb * _no;
-      indexP = P * this->_nb * (this->_nb + 1) / 2;
-      for (size_t nu = 0; nu < this->_nb; ++nu) {
-        for (size_t mu = nu; mu < this->_nb; ++mu, ++indexP) {
-          double& integral = jmnptr[indexP];
-          if (std::abs(integral) > this->_prescreeningThreshold) {
-            fockptr[offset1 + nu * this->_nb + mu] += integral * XP(P);
-            if (mu != nu) {
-              fockptr[offset1 + mu * this->_nb + nu] += integral * XP(P);
-            }
-            for (size_t i = 0; i < _no; ++i) {
-              YiaPtr[offset2 + i * this->_nb + mu] += etaptr[i * this->_nb + nu] * integral;
-              if (mu != nu) {
-                YiaPtr[offset2 + i * this->_nb + nu] += etaptr[i * this->_nb + mu] * integral;
-              }
-            } /* i */
-          }   /* prescreen */
-        }     /* mu */
-      }       /* nu */
-    }         /* P */
-  }           /* parallel region */
-
-  // loop over the rest
-  if (this->_nxs < this->_nxb) {
-    auto loopFunc = [&](unsigned mu, unsigned nu, size_t P, double integral, size_t threadId) {
-      size_t offset1 = threadId * this->_nb * this->_nb;
-      fockptr[offset1 + nu * this->_nb + mu] += integral * XP(P);
-      if (mu != nu) {
-        fockptr[offset1 + mu * this->_nb + nu] += integral * XP(P);
-      }
-
-      size_t offset2 = P * this->_nb * _no;
-      for (unsigned i = 0; i < _no; ++i) {
-        YiaPtr[offset2 + i * this->_nb + mu] += etaptr[i * this->_nb + nu] * integral;
-        if (mu != nu) {
-          YiaPtr[offset2 + i * this->_nb + nu] += etaptr[i * this->_nb + mu] * integral;
-        }
-      }
-    };
-    this->_looper->loopNoDerivative(loopFunc);
-  }
+  auto distribute = [&](Eigen::Map<Eigen::MatrixXd> AO, size_t P, unsigned iThread) {
+    Eigen::Map<Eigen::MatrixXd> psf(pseudoFock.col(iThread).data(), this->_nb, this->_nb);
+    Eigen::Map<Eigen::MatrixXd> yia(Yia.col(P).data(), this->_nb, _no);
+    psf.noalias() += AO * XP(P);
+    yia.noalias() = AO * eta;
+  };
+  this->_integrals->loop(distribute);
 
   this->performRITransformation(Yia, _no);
 
@@ -133,13 +88,13 @@ Eigen::MatrixXd CC2Sigmavector<SCFMode>::transformedABFock(Eigen::Ref<Eigen::Vec
 
   // sum over all threads
   for (size_t iThread = 0; iThread < nThreads; ++iThread) {
-    Eigen::Map<Eigen::MatrixXd> psf(fockptr + iThread * this->_nb * this->_nb, this->_nb, this->_nb);
+    Eigen::Map<Eigen::MatrixXd> psf(pseudoFock.col(iThread).data(), this->_nb, this->_nb);
     Fab += spinFactor * coeffA.transpose() * psf * coeffB;
   }
 
   for (size_t Q = 0; Q < this->_nx; ++Q) {
     Eigen::Map<Eigen::MatrixXd> jia(JiaPtr + Q * _nv * _no, _nv, _no);
-    Eigen::Map<Eigen::MatrixXd> yia(YiaPtr + Q * this->_nb * _no, this->_nb, _no);
+    Eigen::Map<Eigen::MatrixXd> yia(Yia.col(Q).data(), this->_nb, _no);
     Fab -= coeffA.transpose() * yia * jia.transpose();
   }
 
@@ -249,16 +204,21 @@ void CC2Sigmavector<RESTRICTED>::calculateE() {
   _Eij = Eigen::MatrixXd::Zero(_no, _no);
   _Eab = Eigen::MatrixXd::Zero(_nv, _nv);
 
-  _Eij.diagonal() = _e.segment(0, _no);
-  _Eab.diagonal() = _e.segment(_no, _nv);
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the orbital energy differences: (e_a - e_i) b_{ai}.
+  if (_xwfModel != Options::LR_METHOD::CISD) {
+    _Eij.diagonal() = _e.segment(0, _no);
+    _Eab.diagonal() = _e.segment(_no, _nv);
+  }
 
   Eigen::VectorXd XQ = _Jia->transpose() * _singles;
   Eigen::Map<Eigen::MatrixXd> sgl(_singles.data(), _nv, _no);
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-    Eigen::Map<Eigen::MatrixXd> yia(_Yia.data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+    Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> yia(_Yia.col(Q).data(), _nv, _no);
     // ^Fij and ^Fab
     _Eij += 2 * bij * XQ(Q);
 
@@ -288,17 +248,22 @@ void CC2Sigmavector<UNRESTRICTED>::calculateE() {
   _Eab.alpha = Eigen::MatrixXd::Zero(_nv_a, _nv_a);
   _Eab.beta = Eigen::MatrixXd::Zero(_nv_b, _nv_b);
 
-  _Eij.alpha.diagonal() = _e.alpha.segment(0, _no_a);
-  _Eij.beta.diagonal() = _e.beta.segment(0, _no_b);
-  _Eab.alpha.diagonal() = _e.alpha.segment(_no_a, _nv_a);
-  _Eab.beta.diagonal() = _e.beta.segment(_no_b, _nv_b);
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the orbital energy differences: (e_a - e_i) b_{ai}.
+  if (_xwfModel != Options::LR_METHOD::CISD) {
+    _Eij.alpha.diagonal() = _e.alpha.segment(0, _no_a);
+    _Eij.beta.diagonal() = _e.beta.segment(0, _no_b);
+    _Eab.alpha.diagonal() = _e.alpha.segment(_no_a, _nv_a);
+    _Eab.beta.diagonal() = _e.beta.segment(_no_b, _nv_b);
+  }
 
   Eigen::VectorXd XQ = _Jia->alpha.transpose() * _singles.head(_alpha) + _Jia->beta.transpose() * _singles.tail(_beta);
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.col(Q).data(), _nv_a, _no_a);
     // ^Fij and ^Fab
     _Eij.alpha += bij_a * XQ(Q);
 
@@ -307,9 +272,9 @@ void CC2Sigmavector<UNRESTRICTED>::calculateE() {
     _Eij.alpha += jia_a.transpose() * yia_a;
     _Eab.alpha -= yia_a * jia_a.transpose();
 
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.col(Q).data(), _nv_b, _no_b);
     // ^Fij and ^Fab
     _Eij.beta += bij_b * XQ(Q);
 
@@ -348,26 +313,43 @@ void CC2Sigmavector<RESTRICTED>::calculateResidual() {
   res.noalias() -= sgl * _e.segment(0, _no).asDiagonal();
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _no * _nv, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
     fia.noalias() -= jia * sgl.transpose() * jia;
   }
 
   _Yia.setZero();
-  for (size_t i = 0; i < _no; ++i) {
-    for (size_t j = i; j < _no; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j);
-      _residual.segment(i * _nv, _nv).noalias() += tij * _Fia.segment(j * _nv, _nv);
-      _Yia.middleRows(i * _nv, _nv).noalias() += tij * _Jia->middleRows(j * _nv, _nv);
-      if (i != j) {
-        _residual.segment(j * _nv, _nv).noalias() += tij.transpose() * _Fia.segment(i * _nv, _nv);
-        _Yia.middleRows(j * _nv, _nv).noalias() += tij.transpose() * _Jia->middleRows(i * _nv, _nv);
+  if (_settings.ltconv == 0) {
+    for (size_t i = 0; i < _no; ++i) {
+      for (size_t j = i; j < _no; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j);
+        _residual.segment(i * _nv, _nv).noalias() += tij * _Fia.segment(j * _nv, _nv);
+        _Yia.middleRows(i * _nv, _nv).noalias() += tij * _Jia->middleRows(j * _nv, _nv);
+        if (i != j) {
+          _residual.segment(j * _nv, _nv).noalias() += tij.transpose() * _Fia.segment(i * _nv, _nv);
+          _Yia.middleRows(j * _nv, _nv).noalias() += tij.transpose() * _Jia->middleRows(i * _nv, _nv);
+        }
       }
+    }
+  }
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      Eigen::VectorXd param(_nv * _no);
+      for (size_t i = 0, ia = 0; i < _no; ++i) {
+        for (size_t a = _no; a < _no + _nv; ++a, ++ia) {
+          param(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e(a) - _e(i)) * _roots(iRoot));
+        }
+      }
+      Eigen::VectorXd Y = (*_Bia).transpose() * (param.asDiagonal() * _Fia);
+      _residual.noalias() -= param.asDiagonal() * (*_Bia) * Y;
+
+      Eigen::MatrixXd V = ((*_Bia).transpose() * param.asDiagonal() * (*_Jia));
+      _Yia.noalias() -= param.asDiagonal() * (*_Bia) * V;
     }
   }
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> yia(_Yia.data() + Q * _no * _nv, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+    Eigen::Map<Eigen::MatrixXd> yia(_Yia.col(Q).data(), _nv, _no);
     res.noalias() -= yia * bij;
   }
 
@@ -400,59 +382,87 @@ void CC2Sigmavector<UNRESTRICTED>::calculateResidual() {
   res_b.noalias() -= sgl_b * _e.beta.segment(0, _no_b).asDiagonal();
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _no_a * _nv_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
     fia_a.noalias() -= jia_a * sgl_a.transpose() * jia_a;
 
-    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _no_b * _nv_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
     fia_b.noalias() -= jia_b * sgl_b.transpose() * jia_b;
   }
   _Yia.alpha.setZero();
   _Yia.beta.setZero();
-  // alpha
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = i; j < _no_a; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
-      _residual.segment(i * _nv_a, _nv_a).noalias() += tij * _Fia.segment(j * _nv_a, _nv_a);
-      _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
-      if (i != j) {
-        _residual.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
-        _Yia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+  if (_settings.ltconv == 0) {
+    // alpha
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = i; j < _no_a; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
+        _residual.segment(i * _nv_a, _nv_a).noalias() += tij * _Fia.segment(j * _nv_a, _nv_a);
+        _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
+        if (i != j) {
+          _residual.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
+          _Yia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+        }
+      }
+    }
+
+    // beta
+    for (size_t i = 0; i < _no_b; ++i) {
+      for (size_t j = i; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
+        _residual.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
+        _Yia.beta.middleRows(i * _nv_b, _nv_b).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+        if (i != j) {
+          _residual.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * _Fia.segment(_alpha + i * _nv_b, _nv_b);
+          _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+        }
+      }
+    }
+
+    // mixed
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = 0; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
+        _residual.segment(i * _nv_a, _nv_a).noalias() += tij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
+        _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+
+        _residual.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
+        _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
       }
     }
   }
-
-  // beta
-  for (size_t i = 0; i < _no_b; ++i) {
-    for (size_t j = i; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
-      _residual.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
-      _Yia.beta.middleRows(i * _nv_b, _nv_b).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
-      if (i != j) {
-        _residual.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * _Fia.segment(_alpha + i * _nv_b, _nv_b);
-        _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      Eigen::VectorXd param_a(_alpha);
+      for (size_t i = 0, ia = 0; i < _no_a; ++i) {
+        for (size_t a = _no_a; a < _no_a + _nv_a; ++a, ++ia) {
+          param_a(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.alpha(a) - _e.alpha(i)) * _roots(iRoot));
+        }
       }
-    }
-  }
+      Eigen::VectorXd param_b(_beta);
+      for (size_t j = 0, jb = 0; j < _no_b; ++j) {
+        for (size_t b = _no_b; b < _no_b + _nv_b; ++b, ++jb) {
+          param_b(jb) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.beta(b) - _e.beta(j)) * _roots(iRoot));
+        }
+      }
+      Eigen::VectorXd Y_a = _Bia->alpha.transpose() * (param_a.asDiagonal() * _Fia.head(_alpha));
+      Eigen::VectorXd Y_b = _Bia->beta.transpose() * (param_b.asDiagonal() * _Fia.tail(_beta));
 
-  // mixed
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = 0; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
-      _residual.segment(i * _nv_a, _nv_a).noalias() += tij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
-      _Yia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += tij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+      _residual.head(_alpha).noalias() -= param_a.asDiagonal() * _Bia->alpha * Y_b;
+      _residual.tail(_beta).noalias() -= param_b.asDiagonal() * _Bia->beta * Y_a;
 
-      _residual.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
-      _Yia.beta.middleRows(j * _nv_b, _nv_b).noalias() += tij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+      Eigen::MatrixXd V_a = (_Bia->alpha.transpose() * param_a.asDiagonal() * _Jia->alpha);
+      Eigen::MatrixXd V_b = (_Bia->beta.transpose() * param_b.asDiagonal() * _Jia->beta);
+      _Yia.alpha.noalias() -= param_a.asDiagonal() * _Bia->alpha * V_b;
+      _Yia.beta.noalias() -= param_b.asDiagonal() * _Bia->beta * V_a;
     }
   }
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.col(Q).data(), _nv_a, _no_a);
     res_a.noalias() -= yia_a * bij_a;
 
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.col(Q).data(), _nv_b, _no_b);
     res_b.noalias() -= yia_b * bij_b;
   }
 
@@ -473,6 +483,12 @@ Eigen::VectorXd CC2Sigmavector<RESTRICTED>::getRightXWFSigma(Eigen::Ref<Eigen::V
 
   Eigen::VectorXd XQ = _Jia->transpose() * guessVector;
   sigmaVector = 2 * _Bia->operator*(XQ);
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the Coulomb term: (ai|jb) b_{bj}.
+  if (_xwfModel == Options::LR_METHOD::CISD) {
+    sigmaVector.setZero();
+  }
   Fia = 2 * _Jia->operator*(XQ);
 
   Eigen::Map<Eigen::MatrixXd> sigma(sigmaVector.data(), _nv, _no);
@@ -482,38 +498,73 @@ Eigen::VectorXd CC2Sigmavector<RESTRICTED>::getRightXWFSigma(Eigen::Ref<Eigen::V
   sigma.noalias() += _Eab * guess - guess * _Eij;
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
     fia.noalias() -= jia * guess.transpose() * jia;
   }
   Timings::timeTaken("Exc. State WF -    Q-Contraction");
 
   Timings::takeTime("Exc. State WF -  Amp-Contraction");
   _Zia.setZero();
-  for (size_t i = 0; i < _no; ++i) {
-    for (size_t j = i; j < _no; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j);
-      Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue);
-      sigmaVector.segment(i * _nv, _nv).noalias() += tij * Fia.segment(j * _nv, _nv);
-      sigmaVector.segment(i * _nv, _nv).noalias() += rij * _Fia.segment(j * _nv, _nv);
-      _Zia.middleRows(i * _nv, _nv).noalias() += rij * _Jia->middleRows(j * _nv, _nv);
-      if (i != j) {
-        sigmaVector.segment(j * _nv, _nv).noalias() += tij.transpose() * Fia.segment(i * _nv, _nv);
-        sigmaVector.segment(j * _nv, _nv).noalias() += rij.transpose() * _Fia.segment(i * _nv, _nv);
-        _Zia.middleRows(j * _nv, _nv).noalias() += rij.transpose() * _Jia->middleRows(i * _nv, _nv);
+  if (_settings.ltconv == 0) {
+    for (size_t i = 0; i < _no; ++i) {
+      for (size_t j = i; j < _no; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j);
+        Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue);
+        sigmaVector.segment(i * _nv, _nv).noalias() += tij * Fia.segment(j * _nv, _nv);
+        sigmaVector.segment(i * _nv, _nv).noalias() += rij * _Fia.segment(j * _nv, _nv);
+        _Zia.middleRows(i * _nv, _nv).noalias() += rij * _Jia->middleRows(j * _nv, _nv);
+        if (i != j) {
+          sigmaVector.segment(j * _nv, _nv).noalias() += tij.transpose() * Fia.segment(i * _nv, _nv);
+          sigmaVector.segment(j * _nv, _nv).noalias() += rij.transpose() * _Fia.segment(i * _nv, _nv);
+          _Zia.middleRows(j * _nv, _nv).noalias() += rij.transpose() * _Jia->middleRows(i * _nv, _nv);
+        }
       }
+    }
+  }
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      // CC2 amplitudes.
+      Eigen::VectorXd param(_nv * _no);
+      for (size_t i = 0, ia = 0; i < _no; ++i) {
+        for (size_t a = _no; a < _no + _nv; ++a, ++ia) {
+          param(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e(a) - _e(i)) * _roots(iRoot));
+        }
+      }
+      Eigen::VectorXd X = (*_Bia).transpose() * (param.asDiagonal() * Fia);
+      sigmaVector.noalias() -= param.asDiagonal() * (*_Bia) * X;
+
+      // Right doubles amplitudes.
+      param *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+
+      Eigen::VectorXd Y = (*_Bia).transpose() * (param.asDiagonal() * _Fia);
+      Eigen::VectorXd Z = _Xia.transpose() * (param.asDiagonal() * _Fia);
+
+      sigmaVector.noalias() -= param.asDiagonal() * _Xia * Y;
+      sigmaVector.noalias() -= param.asDiagonal() * (*_Bia) * Z;
+
+      Eigen::MatrixXd V = ((*_Bia).transpose() * param.asDiagonal() * (*_Jia));
+      Eigen::MatrixXd W = (_Xia.transpose() * param.asDiagonal() * (*_Jia));
+
+      _Zia.noalias() -= param.asDiagonal() * _Xia * V;
+      _Zia.noalias() -= param.asDiagonal() * (*_Bia) * W;
     }
   }
   Timings::timeTaken("Exc. State WF -  Amp-Contraction");
 
   Timings::takeTime("Exc. State WF -    Q-Contraction");
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> zia(_Zia.data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+    Eigen::Map<Eigen::MatrixXd> zia(_Zia.col(Q).data(), _nv, _no);
     sigma.noalias() -= zia * bij;
   }
   Timings::timeTaken("Exc. State WF -    Q-Contraction");
 
-  sigmaVector += this->getJ2GContribution(_Zia.data(), _Bij->data(), guessVector, false);
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the exchange term: (ab|ji) b_{bj}.
+  // To remove it, just pass a nullptr for the (Q|ji) integrals.
+  double* ijpointer = (_xwfModel == Options::LR_METHOD::CISD) ? nullptr : _Bij->data();
+  sigmaVector += this->getJ2GContribution(_Zia.data(), ijpointer, guessVector, false);
 
   return sigmaVector;
 } /* this->getRightXWFSigma() restricted */
@@ -530,6 +581,12 @@ Eigen::VectorXd CC2Sigmavector<UNRESTRICTED>::getRightXWFSigma(Eigen::Ref<Eigen:
   Eigen::VectorXd XQ = _Jia->alpha.transpose() * guessVector.head(_alpha) + _Jia->beta.transpose() * guessVector.tail(_beta);
   sigmaVector.head(_alpha).noalias() += _Bia->alpha * XQ;
   sigmaVector.tail(_beta).noalias() += _Bia->beta * XQ;
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the Coulomb term: (ai|jb) b_{bj}.
+  if (_xwfModel == Options::LR_METHOD::CISD) {
+    sigmaVector.setZero();
+  }
   Fia.head(_alpha).noalias() += _Jia->alpha * XQ;
   Fia.tail(_beta).noalias() += _Jia->beta * XQ;
 
@@ -545,10 +602,10 @@ Eigen::VectorXd CC2Sigmavector<UNRESTRICTED>::getRightXWFSigma(Eigen::Ref<Eigen:
   sigma_b.noalias() += _Eab.beta * guess_b - guess_b * _Eij.beta;
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _no_a * _nv_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
     fia_a.noalias() -= jia_a * guess_a.transpose() * jia_a;
 
-    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _no_b * _nv_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
     fia_b.noalias() -= jia_b * guess_b.transpose() * jia_b;
   }
   Timings::timeTaken("Exc. State WF -    Q-Contraction");
@@ -556,71 +613,124 @@ Eigen::VectorXd CC2Sigmavector<UNRESTRICTED>::getRightXWFSigma(Eigen::Ref<Eigen:
   Timings::takeTime("Exc. State WF -  Amp-Contraction");
   _Zia.alpha.setZero();
   _Zia.beta.setZero();
-  // alpha
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = i; j < _no_a; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
-      Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, 1);
-      sigmaVector.segment(i * _nv_a, _nv_a).noalias() += tij * Fia.segment(j * _nv_a, _nv_a);
-      sigmaVector.segment(i * _nv_a, _nv_a).noalias() += rij * _Fia.segment(j * _nv_a, _nv_a);
-      _Zia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += rij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
-      if (i != j) {
-        sigmaVector.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * Fia.segment(i * _nv_a, _nv_a);
-        sigmaVector.segment(j * _nv_a, _nv_a).noalias() += rij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
-        _Zia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += rij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+  if (_settings.ltconv == 0) {
+    // alpha
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = i; j < _no_a; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
+        Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, 1);
+        sigmaVector.segment(i * _nv_a, _nv_a).noalias() += tij * Fia.segment(j * _nv_a, _nv_a);
+        sigmaVector.segment(i * _nv_a, _nv_a).noalias() += rij * _Fia.segment(j * _nv_a, _nv_a);
+        _Zia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += rij * _Jia->alpha.middleRows(j * _nv_a, _nv_a);
+        if (i != j) {
+          sigmaVector.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * Fia.segment(i * _nv_a, _nv_a);
+          sigmaVector.segment(j * _nv_a, _nv_a).noalias() += rij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
+          _Zia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += rij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
+        }
+      }
+    }
+
+    // beta
+    for (size_t i = 0; i < _no_b; ++i) {
+      for (size_t j = i; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
+        Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, -1);
+        sigmaVector.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * Fia.segment(_alpha + j * _nv_b, _nv_b);
+        sigmaVector.segment(_alpha + i * _nv_b, _nv_b).noalias() += rij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
+        _Zia.beta.middleRows(i * _nv_b, _nv_b).noalias() += rij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+        if (i != j) {
+          sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * Fia.segment(_alpha + i * _nv_b, _nv_b);
+          sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() +=
+              rij.transpose() * _Fia.segment(_alpha + i * _nv_b, _nv_b);
+          _Zia.beta.middleRows(j * _nv_b, _nv_b).noalias() += rij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+        }
+      }
+    }
+
+    // mixed
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = 0; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
+        Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, 0);
+
+        sigmaVector.segment(i * _nv_a, _nv_a).noalias() += tij * Fia.segment(_alpha + j * _nv_b, _nv_b);
+        sigmaVector.segment(i * _nv_a, _nv_a).noalias() += rij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
+        _Zia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += rij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
+
+        sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * Fia.segment(i * _nv_a, _nv_a);
+        sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += rij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
+        _Zia.beta.middleRows(j * _nv_b, _nv_b).noalias() += rij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
       }
     }
   }
-
-  // beta
-  for (size_t i = 0; i < _no_b; ++i) {
-    for (size_t j = i; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
-      Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, -1);
-      sigmaVector.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * Fia.segment(_alpha + j * _nv_b, _nv_b);
-      sigmaVector.segment(_alpha + i * _nv_b, _nv_b).noalias() += rij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
-      _Zia.beta.middleRows(i * _nv_b, _nv_b).noalias() += rij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
-      if (i != j) {
-        sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * Fia.segment(_alpha + i * _nv_b, _nv_b);
-        sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += rij.transpose() * _Fia.segment(_alpha + i * _nv_b, _nv_b);
-        _Zia.beta.middleRows(j * _nv_b, _nv_b).noalias() += rij.transpose() * _Jia->beta.middleRows(i * _nv_b, _nv_b);
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      // CC2 amplitudes.
+      Eigen::VectorXd param_a(_alpha);
+      for (size_t i = 0, ia = 0; i < _no_a; ++i) {
+        for (size_t a = _no_a; a < _no_a + _nv_a; ++a, ++ia) {
+          param_a(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.alpha(a) - _e.alpha(i)) * _roots(iRoot));
+        }
       }
+      Eigen::VectorXd param_b(_beta);
+      for (size_t j = 0, jb = 0; j < _no_b; ++j) {
+        for (size_t b = _no_b; b < _no_b + _nv_b; ++b, ++jb) {
+          param_b(jb) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.beta(b) - _e.beta(j)) * _roots(iRoot));
+        }
+      }
+      Eigen::VectorXd X_a = _Bia->alpha.transpose() * (param_a.asDiagonal() * Fia.head(_alpha));
+      Eigen::VectorXd X_b = _Bia->beta.transpose() * (param_b.asDiagonal() * Fia.tail(_beta));
+      sigmaVector.head(_alpha).noalias() -= param_a.asDiagonal() * _Bia->alpha * X_b;
+      sigmaVector.tail(_beta).noalias() -= param_b.asDiagonal() * _Bia->beta * X_a;
+
+      // Right doubles amplitudes.
+      param_a *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+      param_b *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+
+      Eigen::VectorXd Y_a = _Bia->alpha.transpose() * (param_a.asDiagonal() * _Fia.head(_alpha));
+      Eigen::VectorXd Y_b = _Bia->beta.transpose() * (param_b.asDiagonal() * _Fia.tail(_beta));
+      Eigen::VectorXd Z_a = _Xia.alpha.transpose() * (param_a.asDiagonal() * _Fia.head(_alpha));
+      Eigen::VectorXd Z_b = _Xia.beta.transpose() * (param_b.asDiagonal() * _Fia.tail(_beta));
+
+      sigmaVector.head(_alpha).noalias() -= param_a.asDiagonal() * _Xia.alpha * Y_b;
+      sigmaVector.tail(_beta).noalias() -= param_b.asDiagonal() * _Xia.beta * Y_a;
+      sigmaVector.head(_alpha).noalias() -= param_a.asDiagonal() * _Bia->alpha * Z_b;
+      sigmaVector.tail(_beta).noalias() -= param_b.asDiagonal() * _Bia->beta * Z_a;
+
+      Eigen::MatrixXd V_a = (_Bia->alpha.transpose() * param_a.asDiagonal() * _Jia->alpha);
+      Eigen::MatrixXd V_b = (_Bia->beta.transpose() * param_b.asDiagonal() * _Jia->beta);
+      Eigen::MatrixXd W_a = (_Xia.alpha.transpose() * param_a.asDiagonal() * _Jia->alpha);
+      Eigen::MatrixXd W_b = (_Xia.beta.transpose() * param_b.asDiagonal() * _Jia->beta);
+
+      _Zia.alpha.noalias() -= param_a.asDiagonal() * _Xia.alpha * V_b;
+      _Zia.beta.noalias() -= param_b.asDiagonal() * _Xia.beta * V_a;
+      _Zia.alpha.noalias() -= param_a.asDiagonal() * _Bia->alpha * W_b;
+      _Zia.beta.noalias() -= param_b.asDiagonal() * _Bia->beta * W_a;
     }
   }
-
-  // mixed
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = 0; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
-      Eigen::MatrixXd rij = this->getRightAmplitudes(i, j, eigenvalue, 0);
-
-      sigmaVector.segment(i * _nv_a, _nv_a).noalias() += tij * Fia.segment(_alpha + j * _nv_b, _nv_b);
-      sigmaVector.segment(i * _nv_a, _nv_a).noalias() += rij * _Fia.segment(_alpha + j * _nv_b, _nv_b);
-      _Zia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += rij * _Jia->beta.middleRows(j * _nv_b, _nv_b);
-
-      sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * Fia.segment(i * _nv_a, _nv_a);
-      sigmaVector.segment(_alpha + j * _nv_b, _nv_b).noalias() += rij.transpose() * _Fia.segment(i * _nv_a, _nv_a);
-      _Zia.beta.middleRows(j * _nv_b, _nv_b).noalias() += rij.transpose() * _Jia->alpha.middleRows(i * _nv_a, _nv_a);
-    }
-  }
-
   Timings::takeTime("Exc. State WF -    Q-Contraction");
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.col(Q).data(), _nv_a, _no_a);
     sigma_a.noalias() -= zia_a * bij_a;
 
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.col(Q).data(), _nv_b, _no_b);
     sigma_b.noalias() -= zia_b * bij_b;
   }
   Timings::timeTaken("Exc. State WF -    Q-Contraction");
 
+  // If only the CIS(D) correction is requested, all sigma vector terms
+  // corresponding to the CIS matrix need to be removed from this sigma build.
+  // This one corresponds to the exchange term: (ab|ji) b_{bj}.
+  // To remove it, just pass a nullptr for the (Q|ji) integrals.
+  double* ijpointer_a = (_xwfModel == Options::LR_METHOD::CISD) ? nullptr : _Bij->alpha.data();
+  double* ijpointer_b = (_xwfModel == Options::LR_METHOD::CISD) ? nullptr : _Bij->beta.data();
   sigmaVector.head(_alpha).noalias() +=
-      this->getJ2GContribution(_Zia.alpha.data(), _Bij->alpha.data(), guessVector.head(_alpha), false, 1);
+      this->getJ2GContribution(_Zia.alpha.data(), ijpointer_a, guessVector.head(_alpha), false, 1);
   sigmaVector.tail(_beta).noalias() +=
-      this->getJ2GContribution(_Zia.beta.data(), _Bij->beta.data(), guessVector.tail(_beta), false, -1);
+      this->getJ2GContribution(_Zia.beta.data(), ijpointer_b, guessVector.tail(_beta), false, -1);
 
   return sigmaVector;
 } /* this->getRightXWFSigma() unrestricted */
@@ -642,16 +752,44 @@ Eigen::VectorXd CC2Sigmavector<RESTRICTED>::getLeftXWFSigma(Eigen::Ref<Eigen::Ve
   Timings::takeTime("Exc. State WF -  Amp-Contraction");
   _Xia.setZero();
   Eigen::VectorXd Tia = Eigen::VectorXd::Zero(_no * _nv);
-  for (size_t i = 0; i < _no; ++i) {
-    for (size_t j = i; j < _no; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j);
-      Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue);
-      Tia.segment(i * _nv, _nv).noalias() += tij * guessVector.segment(j * _nv, _nv);
-      _Xia.middleRows(i * _nv, _nv).noalias() += lij * _Bia->middleRows(j * _nv, _nv);
-      if (i != j) {
-        Tia.segment(j * _nv, _nv).noalias() += tij.transpose() * guessVector.segment(i * _nv, _nv);
-        _Xia.middleRows(j * _nv, _nv).noalias() += lij.transpose() * _Bia->middleRows(i * _nv, _nv);
+  if (_settings.ltconv == 0) {
+    for (size_t i = 0; i < _no; ++i) {
+      for (size_t j = i; j < _no; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j);
+        Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue);
+        Tia.segment(i * _nv, _nv).noalias() += tij * guessVector.segment(j * _nv, _nv);
+        _Xia.middleRows(i * _nv, _nv).noalias() += lij * _Bia->middleRows(j * _nv, _nv);
+        if (i != j) {
+          Tia.segment(j * _nv, _nv).noalias() += tij.transpose() * guessVector.segment(i * _nv, _nv);
+          _Xia.middleRows(j * _nv, _nv).noalias() += lij.transpose() * _Bia->middleRows(i * _nv, _nv);
+        }
       }
+    }
+  }
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      // CC2 amplitudes.
+      Eigen::VectorXd param(_nv * _no);
+      for (unsigned i = 0, ia = 0; i < _no; ++i) {
+        for (unsigned a = _no; a < _no + _nv; ++a, ++ia) {
+          param(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e(a) - _e(i)) * _roots(iRoot));
+        }
+      }
+
+      Eigen::VectorXd X = (*_Bia).transpose() * (param.asDiagonal() * guessVector);
+      Tia.noalias() -= param.asDiagonal() * (*_Bia) * X;
+
+      // Left doubles amplitudes.
+      param *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+      Eigen::MatrixXd V = ((*_Jia).transpose() * param.asDiagonal() * (*_Bia));
+      Eigen::MatrixXd W = (_Zia.transpose() * param.asDiagonal() * (*_Bia));
+      Eigen::MatrixXd Y = _Fia.transpose() * param.asDiagonal() * (*_Bia);
+      Eigen::MatrixXd Z = _trafoVector.transpose() * param.asDiagonal() * (*_Bia);
+
+      _Xia.noalias() -= param.asDiagonal() * _Zia * V;
+      _Xia.noalias() -= param.asDiagonal() * (*_Jia) * W;
+      _Xia.noalias() -= param.asDiagonal() * _trafoVector * Y;
+      _Xia.noalias() -= param.asDiagonal() * _Fia * Z;
     }
   }
   Timings::timeTaken("Exc. State WF -  Amp-Contraction");
@@ -661,9 +799,9 @@ Eigen::VectorXd CC2Sigmavector<RESTRICTED>::getLeftXWFSigma(Eigen::Ref<Eigen::Ve
   Eigen::Map<Eigen::MatrixXd> tia(Tia.data(), _nv, _no);
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-    Eigen::Map<Eigen::MatrixXd> xia(_Xia.data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+    Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> xia(_Xia.col(Q).data(), _nv, _no);
     sigma.noalias() -= jia * tia.transpose() * jia;
     sigma.noalias() -= xia * bij.transpose();
   }
@@ -703,47 +841,94 @@ Eigen::VectorXd CC2Sigmavector<UNRESTRICTED>::getLeftXWFSigma(Eigen::Ref<Eigen::
   Timings::takeTime("Exc. State WF -  Amp-Contraction");
   _Xia.alpha.setZero();
   _Xia.beta.setZero();
-  // alpha
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = i; j < _no_a; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
-      Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, 1);
-      Tia.segment(i * _nv_a, _nv_a).noalias() += tij * guessVector.segment(j * _nv_a, _nv_a);
-      _Xia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += lij * _Bia->alpha.middleRows(j * _nv_a, _nv_a);
-      if (i != j) {
-        Tia.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * guessVector.segment(i * _nv_a, _nv_a);
-        _Xia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += lij.transpose() * _Bia->alpha.middleRows(i * _nv_a, _nv_a);
+  if (_settings.ltconv == 0) {
+    // alpha
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = i; j < _no_a; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 1);
+        Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, 1);
+        Tia.segment(i * _nv_a, _nv_a).noalias() += tij * guessVector.segment(j * _nv_a, _nv_a);
+        _Xia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += lij * _Bia->alpha.middleRows(j * _nv_a, _nv_a);
+        if (i != j) {
+          Tia.segment(j * _nv_a, _nv_a).noalias() += tij.transpose() * guessVector.segment(i * _nv_a, _nv_a);
+          _Xia.alpha.middleRows(j * _nv_a, _nv_a).noalias() += lij.transpose() * _Bia->alpha.middleRows(i * _nv_a, _nv_a);
+        }
+      }
+    }
+
+    // beta
+    for (size_t i = 0; i < _no_b; ++i) {
+      for (size_t j = i; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
+        Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, -1);
+        Tia.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * guessVector.segment(_alpha + j * _nv_b, _nv_b);
+        _Xia.beta.middleRows(i * _nv_b, _nv_b).noalias() += lij * _Bia->beta.middleRows(j * _nv_b, _nv_b);
+        if (i != j) {
+          Tia.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * guessVector.segment(_alpha + i * _nv_b, _nv_b);
+          _Xia.beta.middleRows(j * _nv_b, _nv_b).noalias() += lij.transpose() * _Bia->beta.middleRows(i * _nv_b, _nv_b);
+        }
+      }
+    }
+
+    // mixed
+    for (size_t i = 0; i < _no_a; ++i) {
+      for (size_t j = 0; j < _no_b; ++j) {
+        Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
+        Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, 0);
+
+        Tia.segment(i * _nv_a, _nv_a).noalias() += tij * guessVector.segment(_alpha + j * _nv_b, _nv_b);
+        _Xia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += lij * _Bia->beta.middleRows(j * _nv_b, _nv_b);
+
+        Tia.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * guessVector.segment(i * _nv_a, _nv_a);
+        _Xia.beta.middleRows(j * _nv_b, _nv_b).noalias() += lij.transpose() * _Bia->alpha.middleRows(i * _nv_a, _nv_a);
       }
     }
   }
-
-  // beta
-  for (size_t i = 0; i < _no_b; ++i) {
-    for (size_t j = i; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, -1);
-      Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, -1);
-      Tia.segment(_alpha + i * _nv_b, _nv_b).noalias() += tij * guessVector.segment(_alpha + j * _nv_b, _nv_b);
-      _Xia.beta.middleRows(i * _nv_b, _nv_b).noalias() += lij * _Bia->beta.middleRows(j * _nv_b, _nv_b);
-      if (i != j) {
-        Tia.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * guessVector.segment(_alpha + i * _nv_b, _nv_b);
-        _Xia.beta.middleRows(j * _nv_b, _nv_b).noalias() += lij.transpose() * _Bia->beta.middleRows(i * _nv_b, _nv_b);
+  else {
+    for (int iRoot = 0; iRoot < _roots.size(); ++iRoot) {
+      // CC2 amplitudes.
+      Eigen::VectorXd param_a(_alpha);
+      for (size_t i = 0, ia = 0; i < _no_a; ++i) {
+        for (size_t a = _no_a; a < _no_a + _nv_a; ++a, ++ia) {
+          param_a(ia) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.alpha(a) - _e.alpha(i)) * _roots(iRoot));
+        }
       }
+      Eigen::VectorXd param_b(_beta);
+      for (size_t j = 0, jb = 0; j < _no_b; ++j) {
+        for (size_t b = _no_b; b < _no_b + _nv_b; ++b, ++jb) {
+          param_b(jb) = std::sqrt(_oss * _weights(iRoot)) * std::exp(-(_e.beta(b) - _e.beta(j)) * _roots(iRoot));
+        }
+      }
+
+      Eigen::VectorXd X_a = _Bia->alpha.transpose() * (param_a.asDiagonal() * guessVector.head(_alpha));
+      Eigen::VectorXd X_b = _Bia->beta.transpose() * (param_b.asDiagonal() * guessVector.tail(_beta));
+      Tia.head(_alpha).noalias() -= param_a.asDiagonal() * _Bia->alpha * X_b;
+      Tia.tail(_beta).noalias() -= param_b.asDiagonal() * _Bia->beta * X_a;
+
+      // Left doubles amplitudes.
+      param_a *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+      param_b *= std::exp(0.5 * eigenvalue * _roots(iRoot));
+
+      Eigen::MatrixXd V_a = (_Jia->alpha.transpose() * param_a.asDiagonal() * _Bia->alpha);
+      Eigen::MatrixXd V_b = (_Jia->beta.transpose() * param_b.asDiagonal() * _Bia->beta);
+      Eigen::MatrixXd W_a = (_Zia.alpha.transpose() * param_a.asDiagonal() * _Bia->alpha);
+      Eigen::MatrixXd W_b = (_Zia.beta.transpose() * param_b.asDiagonal() * _Bia->beta);
+      Eigen::MatrixXd Y_a = _Fia.head(_alpha).transpose() * param_a.asDiagonal() * _Bia->alpha;
+      Eigen::MatrixXd Y_b = _Fia.tail(_beta).transpose() * param_b.asDiagonal() * _Bia->beta;
+      Eigen::MatrixXd Z_a = _trafoVector.head(_alpha).transpose() * param_a.asDiagonal() * _Bia->alpha;
+      Eigen::MatrixXd Z_b = _trafoVector.tail(_beta).transpose() * param_b.asDiagonal() * _Bia->beta;
+
+      _Xia.alpha.noalias() -= param_a.asDiagonal() * _Zia.alpha * V_b;
+      _Xia.beta.noalias() -= param_b.asDiagonal() * _Zia.beta * V_a;
+      _Xia.alpha.noalias() -= param_a.asDiagonal() * _Jia->alpha * W_b;
+      _Xia.beta.noalias() -= param_b.asDiagonal() * _Jia->beta * W_a;
+      _Xia.alpha.noalias() -= param_a.asDiagonal() * _trafoVector.head(_alpha) * Y_b;
+      _Xia.beta.noalias() -= param_b.asDiagonal() * _trafoVector.tail(_beta) * Y_a;
+      _Xia.alpha.noalias() -= param_a.asDiagonal() * _Fia.head(_alpha) * Z_b;
+      _Xia.beta.noalias() -= param_b.asDiagonal() * _Fia.tail(_beta) * Z_a;
     }
   }
-
-  // mixed
-  for (size_t i = 0; i < _no_a; ++i) {
-    for (size_t j = 0; j < _no_b; ++j) {
-      Eigen::MatrixXd tij = this->getAmplitudes(i, j, 0);
-      Eigen::MatrixXd lij = this->getLeftAmplitudes(i, j, eigenvalue, 0);
-
-      Tia.segment(i * _nv_a, _nv_a).noalias() += tij * guessVector.segment(_alpha + j * _nv_b, _nv_b);
-      _Xia.alpha.middleRows(i * _nv_a, _nv_a).noalias() += lij * _Bia->beta.middleRows(j * _nv_b, _nv_b);
-
-      Tia.segment(_alpha + j * _nv_b, _nv_b).noalias() += tij.transpose() * guessVector.segment(i * _nv_a, _nv_a);
-      _Xia.beta.middleRows(j * _nv_b, _nv_b).noalias() += lij.transpose() * _Bia->alpha.middleRows(i * _nv_a, _nv_a);
-    }
-  }
+  Timings::timeTaken("Exc. State WF -  Amp-Contraction");
 
   Timings::takeTime("Exc. State WF -    Q-Contraction");
   XQ = _Jia->alpha.transpose() * Tia.head(_alpha) + _Jia->beta.transpose() * Tia.tail(_beta);
@@ -751,15 +936,15 @@ Eigen::VectorXd CC2Sigmavector<UNRESTRICTED>::getLeftXWFSigma(Eigen::Ref<Eigen::
   sigmaVector.tail(_beta).noalias() += _Jia->beta * XQ;
 
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.col(Q).data(), _nv_a, _no_a);
     sigma_a.noalias() -= jia_a * tia_a.transpose() * jia_a;
     sigma_a.noalias() -= xia_a * bij_a.transpose();
 
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.col(Q).data(), _nv_b, _no_b);
     sigma_b.noalias() -= jia_b * tia_b.transpose() * jia_b;
     sigma_b.noalias() -= xia_b * bij_b.transpose();
   }
@@ -817,7 +1002,7 @@ void CC2Sigmavector<RESTRICTED>::calcDensityMatrices(std::vector<Eigen::MatrixXd
     _Fai = 2 * _Jia->operator*(_Jia->transpose() * rightEigenvector);
     Eigen::MatrixXd rev = Eigen::Map<Eigen::MatrixXd>(rightEigenvector.data(), _nv, _no);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
       _Fai -= jia * rev.transpose() * jia;
     }
 
@@ -866,8 +1051,8 @@ void CC2Sigmavector<RESTRICTED>::calcDensityMatrices(std::vector<Eigen::MatrixXd
       Eigen::MatrixXd rg = -1 * rev.transpose() * gsl;
       Eigen::MatrixXd gr = -1 * gsl * rev.transpose();
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-        Eigen::Map<Eigen::MatrixXd> xia(_Xia.data() + Q * _nv * _no, _nv, _no);
+        Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+        Eigen::Map<Eigen::MatrixXd> xia(_Xia.col(Q).data(), _nv, _no);
         xia = jia * rg + gr * jia;
       }
       for (size_t i = 0; i < _no; ++i) {
@@ -945,8 +1130,8 @@ void CC2Sigmavector<RESTRICTED>::calcDensityMatrices(std::vector<Eigen::MatrixXd
       Eigen::MatrixXd rg = -1 * rev * gsl.transpose();
       Eigen::MatrixXd gr = -1 * gsl.transpose() * rev;
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _no * _nv, _no, _nv);
-        Eigen::Map<Eigen::MatrixXd> xia(_Xia.data() + Q * _no * _nv, _no, _nv);
+        Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _no, _nv);
+        Eigen::Map<Eigen::MatrixXd> xia(_Xia.col(Q).data(), _no, _nv);
         xia = gr * jia + jia * rg;
       }
       this->performTransformation(_Zia, excLagrange, true);
@@ -1063,10 +1248,10 @@ void CC2Sigmavector<UNRESTRICTED>::calcDensityMatrices(std::vector<Eigen::Matrix
     Eigen::MatrixXd rev_a = Eigen::Map<Eigen::MatrixXd>(rightEigenvector.data(), _nv_a, _no_a);
     Eigen::MatrixXd rev_b = Eigen::Map<Eigen::MatrixXd>(rightEigenvector.data() + _alpha, _nv_b, _no_b);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
       mfai_a -= jia_a * rev_a.transpose() * jia_a;
 
-      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
       mfai_b -= jia_b * rev_b.transpose() * jia_b;
     }
 
@@ -1164,12 +1349,12 @@ void CC2Sigmavector<UNRESTRICTED>::calcDensityMatrices(std::vector<Eigen::Matrix
       Eigen::MatrixXd rg_b = -1 * rev_b.transpose() * gsl_b;
       Eigen::MatrixXd gr_b = -1 * gsl_b * rev_b.transpose();
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-        Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+        Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+        Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.col(Q).data(), _nv_a, _no_a);
         xia_a = jia_a * rg_a + gr_a * jia_a;
 
-        Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-        Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+        Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+        Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.col(Q).data(), _nv_b, _no_b);
         xia_b = jia_b * rg_b + gr_b * jia_b;
       }
       for (size_t i = 0; i < _no_a; ++i) {
@@ -1340,12 +1525,12 @@ void CC2Sigmavector<UNRESTRICTED>::calcDensityMatrices(std::vector<Eigen::Matrix
       Eigen::MatrixXd rg_b = -1 * rev_b * gsl_b.transpose();
       Eigen::MatrixXd gr_b = -1 * gsl_b.transpose() * rev_b;
       for (size_t Q = 0; Q < _nx; ++Q) {
-        Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _no_a * _nv_a, _no_a, _nv_a);
-        Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.data() + Q * _no_a * _nv_a, _no_a, _nv_a);
+        Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _no_a, _nv_a);
+        Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.col(Q).data(), _no_a, _nv_a);
         xia_a = gr_a * jia_a + jia_a * rg_a;
 
-        Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _no_b * _nv_b, _no_b, _nv_b);
-        Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.data() + Q * _no_b * _nv_b, _no_b, _nv_b);
+        Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _no_b, _nv_b);
+        Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.col(Q).data(), _no_b, _nv_b);
         xia_b = gr_b * jia_b + jia_b * rg_b;
       }
       this->performTransformation(_Zia.alpha, excLagrange.head(_alpha), true, 1);
@@ -1494,9 +1679,9 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
     _Fai = 2 * _Jia->operator*(XQ);
 
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-      Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-      Eigen::Map<Eigen::MatrixXd> zia(_Zia.data() + Q * _nv * _no, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+      Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> zia(_Zia.col(Q).data(), _nv, _no);
       // ^Fij and ^Fab
       Eij.noalias() += 2 * bij * XQ(Q);
 
@@ -1519,7 +1704,7 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
 
     rightHandSide += 2 * _Jia->operator*(_Jia->transpose() * Tia);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _no * _nv, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
       rhs -= jia * tia.transpose() * jia;
     }
 
@@ -1528,8 +1713,8 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
     Eigen::MatrixXd gr = -1 * gsl * rev.transpose();
     _Xia.resize(_nv * _no, _nx);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-      Eigen::Map<Eigen::MatrixXd> xia(_Xia.data() + Q * _nv * _no, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> xia(_Xia.col(Q).data(), _nv, _no);
       xia = jia * rg + gr * jia;
     }
 
@@ -1562,8 +1747,8 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
     }
 
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-      Eigen::Map<Eigen::MatrixXd> yia(_Yia.data() + Q * _no * _nv, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+      Eigen::Map<Eigen::MatrixXd> yia(_Yia.col(Q).data(), _nv, _no);
       rhs -= yia * bij.transpose();
     }
     rightHandSide += this->getJ2GContribution(_Yia.data(), nullptr, nullVector, true);
@@ -1580,9 +1765,9 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
     }
     rightHandSide += 2 * _Jia->operator*(_Xia.transpose() * _gsLagrange);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-      Eigen::Map<Eigen::MatrixXd> jia(_Jia->data() + Q * _nv * _no, _nv, _no);
-      Eigen::Map<Eigen::MatrixXd> yia(_Yia.data() + Q * _nv * _no, _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+      Eigen::Map<Eigen::MatrixXd> jia(_Jia->col(Q).data(), _nv, _no);
+      Eigen::Map<Eigen::MatrixXd> yia(_Yia.col(Q).data(), _nv, _no);
 
       // right transformed Bab/Bij
       Eigen::MatrixXd _bab = -1 * rev * jia.transpose();
@@ -1602,7 +1787,7 @@ void CC2Sigmavector<RESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::vec
 
   eigenvectors[2] = this->lagrangianSubspaceSolve(rightHandSides, eigenvalues);
 
-  printf("\n  Norm of lagrange-multiplier singles (0th root is the ground state):\n\n");
+  printf("\n  Norm of Lagrange-multiplier singles (0th root is the ground state):\n\n");
   printTableHead(" root     norm ");
   printf("%6i %11.6f\n", 0, _gsLagrange.norm());
   for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
@@ -1698,9 +1883,9 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
     _Fai.tail(_beta) = _Jia->beta * XQ;
 
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.col(Q).data(), _nv_a, _no_a);
       // ^Fij and ^Fab
       Eij_a.noalias() += bij_a * XQ(Q);
 
@@ -1711,9 +1896,9 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
 
       fai_a.noalias() -= jia_a * rev_a.transpose() * jia_a;
 
-      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.col(Q).data(), _nv_b, _no_b);
       // ^Fij and ^Fab
       Eij_b.noalias() += bij_b * XQ(Q);
 
@@ -1740,10 +1925,10 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
     rightHandSide.head(_alpha) += _Jia->alpha * XQ;
     rightHandSide.tail(_beta) += _Jia->beta * XQ;
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _no_a * _nv_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
       rhs_a -= jia_a * tia_a.transpose() * jia_a;
 
-      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _no_b * _nv_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
       rhs_b -= jia_b * tia_b.transpose() * jia_b;
     }
 
@@ -1755,12 +1940,12 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
     _Xia.alpha.resize(_nv_a * _no_a, _nx);
     _Xia.beta.resize(_nv_b * _no_b, _nx);
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> xia_a(_Xia.alpha.col(Q).data(), _nv_a, _no_a);
       xia_a = jia_a * rg_a + gr_a * jia_a;
 
-      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> xia_b(_Xia.beta.col(Q).data(), _nv_b, _no_b);
       xia_b = jia_b * rg_b + gr_b * jia_b;
     }
 
@@ -1828,12 +2013,12 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
     }
 
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.data() + Q * _no_a * _nv_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.col(Q).data(), _nv_a, _no_a);
       rhs_a -= yia_a * bij_a.transpose();
 
-      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.data() + Q * _no_b * _nv_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.col(Q).data(), _nv_b, _no_b);
       rhs_b -= yia_b * bij_b.transpose();
     }
     rightHandSide.head(_alpha) += this->getJ2GContribution(_Yia.alpha.data(), nullptr, nullVector, true, 1);
@@ -1871,9 +2056,9 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
     rightHandSide.head(_alpha) += _Jia->alpha * XQ;
     rightHandSide.tail(_beta) += _Jia->beta * XQ;
     for (size_t Q = 0; Q < _nx; ++Q) {
-      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
-      Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> jia_a(_Jia->alpha.col(Q).data(), _nv_a, _no_a);
+      Eigen::Map<Eigen::MatrixXd> yia_a(_Yia.alpha.col(Q).data(), _nv_a, _no_a);
 
       // right transformed Bab/Bij
       Eigen::MatrixXd _bab_a = -1 * rev_a * jia_a.transpose();
@@ -1885,9 +2070,9 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
 
       yia_a.noalias() = gsl_a * _bij_a.transpose();
 
-      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
-      Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> jia_b(_Jia->beta.col(Q).data(), _nv_b, _no_b);
+      Eigen::Map<Eigen::MatrixXd> yia_b(_Yia.beta.col(Q).data(), _nv_b, _no_b);
 
       // right transformed Bab/Bij
       Eigen::MatrixXd _bab_b = -1 * rev_b * jia_b.transpose();
@@ -1909,7 +2094,7 @@ void CC2Sigmavector<UNRESTRICTED>::calcTransitionMomentLagrangeMultiplier(std::v
 
   eigenvectors[2] = this->lagrangianSubspaceSolve(rightHandSides, eigenvalues);
 
-  printf("\n  Norm of lagrange-multiplier singles (0th root is the ground state):\n\n");
+  printf("\n  Norm of Lagrange-multiplier singles (0th root is the ground state):\n\n");
   printTableHead(" root     norm ");
   printf("%6i %11.6f\n", 0, _gsLagrange.norm());
   for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
@@ -1940,8 +2125,8 @@ void CC2Sigmavector<RESTRICTED>::calcGroundStateLagrangeMultiplier() {
   Eigen::MatrixXd rightHandSide = _Fia;
   Eigen::Map<Eigen::MatrixXd> rhs(rightHandSide.data(), _nv, _no);
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij(_Bij->data() + Q * _no * _no, _no, _no);
-    Eigen::Map<Eigen::MatrixXd> zia(_Zia.data() + Q * _nv * _no, _nv, _no);
+    Eigen::Map<Eigen::MatrixXd> bij(_Bij->col(Q).data(), _no, _no);
+    Eigen::Map<Eigen::MatrixXd> zia(_Zia.col(Q).data(), _nv, _no);
     rhs -= zia * bij.transpose();
   }
   Eigen::VectorXd nullVector = Eigen::VectorXd::Zero(_nv * _no);
@@ -1996,12 +2181,12 @@ void CC2Sigmavector<UNRESTRICTED>::calcGroundStateLagrangeMultiplier() {
   Eigen::Map<Eigen::MatrixXd> rhs_a(rightHandSide.data(), _nv_a, _no_a);
   Eigen::Map<Eigen::MatrixXd> rhs_b(rightHandSide.data() + _alpha, _nv_b, _no_b);
   for (size_t Q = 0; Q < _nx; ++Q) {
-    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.data() + Q * _no_a * _no_a, _no_a, _no_a);
-    Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.data() + Q * _nv_a * _no_a, _nv_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> bij_a(_Bij->alpha.col(Q).data(), _no_a, _no_a);
+    Eigen::Map<Eigen::MatrixXd> zia_a(_Zia.alpha.col(Q).data(), _nv_a, _no_a);
     rhs_a -= zia_a * bij_a.transpose();
 
-    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.data() + Q * _no_b * _no_b, _no_b, _no_b);
-    Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.data() + Q * _nv_b * _no_b, _nv_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> bij_b(_Bij->beta.col(Q).data(), _no_b, _no_b);
+    Eigen::Map<Eigen::MatrixXd> zia_b(_Zia.beta.col(Q).data(), _nv_b, _no_b);
     rhs_b -= zia_b * bij_b.transpose();
   }
   Eigen::VectorXd nullVector = Eigen::VectorXd::Zero(_nDim);

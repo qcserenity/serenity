@@ -110,7 +110,7 @@ SuperpositionOfAtomicPotentials::calculateInitialGuess(const std::shared_ptr<Sys
   potToMatrix.addScalarOperatorToMatrix(fock, potential);
 
   // Construct ElectronicStructure
-  auto orbitals = std::make_shared<OrbitalController<RESTRICTED>>(basis);
+  auto orbitals = std::make_shared<OrbitalController<RESTRICTED>>(basis, system->getNCoreElectrons() / 2);
   auto es = std::make_unique<ElectronicStructure<RESTRICTED>>(orbitals, system->getOneElectronIntegralController(),
                                                               system->getNOccupiedOrbitals<RESTRICTED>());
 
