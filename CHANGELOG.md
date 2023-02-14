@@ -1,8 +1,16 @@
 Changelog
 ===============================
 
+Release 1.5.1 (14.02.2023)
+-------------------------------
+
+#### Bug Fixes
+
+- Delete removed libxc functional from Serenity
+
+
 Release 1.5.0 (13.02.2023)
---------------------------
+-------------------------------
 
 ### Technical Features
 
@@ -10,7 +18,7 @@ Release 1.5.0 (13.02.2023)
 
 #### Dependencies
 
-- Updates the default Libxc library to libecpint v6.1.0
+- Updates the default Libxc library to libxc v6.1.0
 - Updates the default ECP library to libecpint v1.0.7
 - Updates the default GTest version to v1.13.0
 - Updates the default Pybind11 version to v2.10.3
@@ -49,7 +57,7 @@ Release 1.5.0 (13.02.2023)
 - The ReadOrbitalsTask is now able to read Molpro-xml orbital files and
   Molcas-HDF5 orbital files (Moritz Bensberg).
 - The ReadOrbitalsTask may now replace the orbital definition in a Molcas-HDF5
-  file by Serenity orbitals (Moritz Bensberg).
+  file by Serenity's orbitals (Moritz Bensberg).
 - The unrelaxed density is now available for RI-MP2 and DLPNO-MP2 and can 
   be used in embedding calculations (Lukas Lampe).
 - Valence virtual orbitals may now be mapped between structures with the DOS algorithm (Moritz Bensberg).

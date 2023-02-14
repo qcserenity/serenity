@@ -334,9 +334,6 @@ int getLibXCAlias(const BASIC_FUNCTIONALS& functional) {
     case BASIC_FUNCTIONALS::X_HCTH_A:
       alias = XC_GGA_X_HCTH_A;
       break;
-    case BASIC_FUNCTIONALS::X_HERMAN:
-      alias = XC_GGA_X_HERMAN;
-      break;
     case BASIC_FUNCTIONALS::X_HJS_B88:
       alias = XC_GGA_X_HJS_B88;
       break;

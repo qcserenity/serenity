@@ -135,7 +135,6 @@ GGA  X  LIBXC X_G96              XC_GGA_X_G96                   -
 GGA  X  LIBXC X_GAM              XC_GGA_X_GAM                   -
 GGA  X  LIBXC X_GG99             XC_GGA_X_GG99                  -
 GGA  X  LIBXC X_HCTH_A           XC_GGA_X_HCTH_A                -
-GGA  X  LIBXC X_HERMAN           XC_GGA_X_HERMAN                -
 GGA  X  LIBXC X_HJS_B88          XC_GGA_X_HJS_B88               -
 GGA  X  LIBXC X_HJS_B88_V2       XC_GGA_X_HJS_B88_V2            -
 GGA  X  LIBXC X_HJS_B97X         XC_GGA_X_HJS_B97X              -
