@@ -97,7 +97,10 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   lrscfAB.settings.grid.smallGridAccuracy = 7;
   lrscfAB.settings.grid.accuracy = 7;
+  // Test partial response construction along ..
   lrscfAB.settings.partialResponseConstruction = true;
+  // .. and to write the response matrix on disk.
+  lrscfAB.settings.saveResponseMatrix = true;
   lrscfAB.run();
 
   // Serenity Feb 2021.
@@ -457,6 +460,8 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDDFT_Level) {
   lrscfAB.settings.grid.smallGridAccuracy = 7;
   lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
+  lrscfAB.settings.partialResponseConstruction = true;
+
   lrscfAB.run();
 
   auto excitationsActUncoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);

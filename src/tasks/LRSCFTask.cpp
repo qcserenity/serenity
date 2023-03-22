@@ -121,6 +121,19 @@ void LRSCFTask<SCFMode>::run() {
 
   LRSCFSetup<SCFMode>::setupLRSCFController(settings, _act, _env, _lrscf);
 
+  // Sanity check for gauge-origin input.
+  if (settings.gaugeOrigin.size() != 3) {
+    throw SerenityError("Gauge-origin expects three cartesian coordinates!");
+  }
+
+  // Stability analysis printout.
+  if (settings.scfstab != Options::STABILITY_ANALYSIS::NONE) {
+    LRSCFSetup<SCFMode>::prepareStabilityAnalysis(_lrscf, settings);
+  }
+
+  // Information about the TDDFT calculation.
+  LRSCFSetup<SCFMode>::printInfo(_lrscf, settings, _env, type);
+
   Eigen::VectorXd diagonal = LRSCFSetup<SCFMode>::getDiagonal(_lrscf);
   unsigned nDimension = diagonal.size();
   if (nDimension == 0) {
@@ -128,19 +141,11 @@ void LRSCFTask<SCFMode>::run() {
   }
   settings.nEigen = std::min(settings.nEigen, nDimension);
 
-  // sanity check for gauge-origin input
-  if (settings.gaugeOrigin.size() != 3) {
-    throw SerenityError("Gauge-origin expects three cartesian coordinates!");
-  }
-
-  // information about the TDDFT calculation
-  LRSCFSetup<SCFMode>::printInfo(_lrscf, settings, _env, type);
-
-  // dipole integrals (electric (length/velocity) and magnetic)
+  // Dipole integrals (electric (length/velocity) and magnetic).
   auto gaugeOrigin = LRSCFSetup<SCFMode>::getGaugeOrigin(settings, _act, _env);
   auto dipoles = std::make_shared<DipoleIntegrals<SCFMode>>(_lrscf, gaugeOrigin);
 
-  // prepare solutionvectors, eigenvectors and eigenvalues
+  // Prepare solutionvectors, eigenvectors and eigenvalues.
   std::shared_ptr<std::vector<Eigen::MatrixXd>> solutionvectors = nullptr;
   std::shared_ptr<std::vector<Eigen::MatrixXd>> eigenvectors = nullptr;
   std::shared_ptr<std::vector<Eigen::MatrixXd>> transDensityMatrices = nullptr;
@@ -171,6 +176,7 @@ void LRSCFTask<SCFMode>::run() {
   }
   if (!fockDiagonal) {
     WarningTracker::printWarning(" Fock matrix is not diagonal, please make sure this is intended.", true);
+    WarningTracker::printWarning(" Ignore this warning in the case of a Spin-Flip TDDFT calculation.", true);
   }
 
   // Setup lambda functions for response matrix sigmavectors.
@@ -401,6 +407,7 @@ void LRSCFTask<SCFMode>::run() {
   if (settings.analysis) {
     if (eigenvectors) {
       _excitations = Eigen::MatrixXd::Zero(settings.nEigen, 6);
+      _excitations.col(0) = eigenvalues;
       // Prints dominant contributions etc.
       LRSCFAnalysis<SCFMode>::printDominantContributions(_lrscf, (*eigenvectors), eigenvalues, settings.dominantThresh);
       // Print delta s^2 values in unrestricted case.
@@ -409,6 +416,10 @@ void LRSCFTask<SCFMode>::run() {
           DeltaSpinSquared<SCFMode> spinSquared(_lrscf, settings.nEigen, settings.method, type);
           spinSquared.print();
         }
+      }
+      // No excitation spectrum for triplet excitations or stability analyses.
+      if (settings.triplet || settings.scfstab != Options::STABILITY_ANALYSIS::NONE) {
+        transDensityMatrices = nullptr;
       }
       if (transDensityMatrices) {
         // Prints excitation and CD spectrum (oscillator and rotatory strengths, respectively).
@@ -446,6 +457,13 @@ void LRSCFTask<SCFMode>::run() {
     }
   }
   iOOptions.printGridInfo = oldIOGridInfo;
+
+  // In case of stability anaysis: Rotate orbitals according to found instabilities.
+  if (settings.stabroot != 0) {
+    for (auto& lrscf : _lrscf) {
+      lrscf->rotateOrbitalsSCFInstability();
+    }
+  }
 }
 
 template<Options::SCF_MODES SCFMode>

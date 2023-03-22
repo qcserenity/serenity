@@ -76,6 +76,27 @@ enum class LR_METHOD { TDA = 0, TDDFT = 1, CC2 = 2, CISDINF = 3, CISD = 4, ADC2 
 template<>
 void resolve<LR_METHOD>(std::string& value, LR_METHOD& field);
 
+/**
+ * Different stability analyses:
+ *
+ * Real RHF -> Real RHF    : (A+B), singlet
+ * Real RHF -> Real UHF    : (A+B), triplet
+ * Real RHF -> Complex RHF : (A-B), singlet
+ *
+ * Real UHF -> Real UHF    : (A+B)
+ * Real UHF -> Complex UHF : (A-B)
+ *
+ * Spin-Flip:
+ *   1. Start from triplet reference: nElectrons(alpha) = nElectrons(beta) + 2
+ *   2. Occupied reference: alpha
+ *   3. Virtual reference: beta
+ *   4. No coupling matrix contributions from Coulomb and XC Kernel (only HF exchange).
+ *   5. Automatically done within the TDA.
+ */
+enum class STABILITY_ANALYSIS { NONE = 0, REAL = 1, NONREAL = 2, SPINFLIP = 3 };
+template<>
+void resolve<STABILITY_ANALYSIS>(std::string& value, STABILITY_ANALYSIS& field);
+
 } /* namespace Options */
 } /* namespace Serenity */
 

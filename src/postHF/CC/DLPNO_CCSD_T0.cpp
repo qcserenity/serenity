@@ -80,7 +80,6 @@ double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelation
     const MO3CenterIntegrals& iaK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
     const MO3CenterIntegrals& abK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ab_K, auxSuperDomain);
     const MO3CenterIntegrals& klK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::kl_K, auxSuperDomain);
-
     unsigned int nThreads = 1;
 #ifdef _OPENMP
     nThreads = omp_get_max_threads();
@@ -135,8 +134,8 @@ double DLPNO_CCSD_T0::calculateEnergyCorrection(std::shared_ptr<LocalCorrelation
     }
 #endif
   } // for orbitalTripleSet
-  averageNTNOs /= triples.size();
-  averageNAux /= triples.size();
+  averageNTNOs = (triples.size()) ? averageNTNOs / triples.size() : 0;
+  averageNAux = (triples.size()) ? averageNAux / triples.size() : 0;
 
   OutputControl::nOut << "  Average number of TNOs:                   " << averageNTNOs << std::endl;
   OutputControl::nOut << "  Average number of aux. functions:         " << averageNAux << std::endl;

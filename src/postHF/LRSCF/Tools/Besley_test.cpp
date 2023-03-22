@@ -55,11 +55,14 @@ TEST_F(BesleyTest, res) {
   systemController->getElectronicStructure<SCFMode>();
 
   // Define settings
-  LRSCFTaskSettings settings;
-  settings.besleyAtoms = 1;
-  settings.besleyCutoff = {0.25, 0.6};
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> tddft({systemController});
+  tddft.settings.besleyAtoms = 1;
+  tddft.settings.besleyCutoff = {0.25, 0.6};
+  tddft.settings.densFitJ = Options::DENS_FITS::NONE;
+  tddft.run();
 
-  Besley<SCFMode> besley(systemController, settings.besleyAtoms, settings.besleyCutoff);
+  // Compare directly.
+  Besley<SCFMode> besley(systemController, tddft.settings.besleyAtoms, tddft.settings.besleyCutoff);
   auto besleyList = besley.getWhiteList();
 
   for_spin(besleyList) {
@@ -71,6 +74,11 @@ TEST_F(BesleyTest, res) {
     EXPECT_EQ(besleyList[4], (unsigned int)7);
     EXPECT_EQ(besleyList[5], (unsigned int)8);
   };
+
+  // Compare via LRSCF Task.
+  // Serenity Feb 2023.
+  double ref_excitation = 0.3336001;
+  EXPECT_LE(std::abs(tddft.getTransitions()(0, 0) - ref_excitation), 1e-6);
 }
 
 } /* namespace Serenity */

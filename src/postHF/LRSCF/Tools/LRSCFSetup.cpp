@@ -26,6 +26,7 @@
 #include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
+#include "misc/WarningTracker.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/Tools/Besley.h"
 #include "settings/LRSCFOptions.h"
@@ -360,6 +361,48 @@ void LRSCFSetup<SCFMode>::setupLRSCFController(const LRSCFTaskSettings& settings
     if (settings.frozenVirtual != 0.0) {
       lrscf->applyFrozenVirtual();
     }
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFSetup<SCFMode>::prepareStabilityAnalysis(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
+                                                   LRSCFTaskSettings& settings) {
+  // Must enforce symmetric algorithms and the TDA lambda function for calculating the matrix--vector products.
+  settings.method = Options::LR_METHOD::TDA;
+
+  if (lrscf.size() > 1) {
+    WarningTracker::printWarning("Stability analysis only supported for isolated calculations. Use at your own risk.", true);
+  }
+
+  if (settings.scfstab == Options::STABILITY_ANALYSIS::REAL) {
+    if (settings.triplet && SCFMode == Options::SCF_MODES::RESTRICTED) {
+      printBigCaption("Performing RHF triplet (external) stability analysis: (A+B), triplet");
+    }
+    else {
+      if (SCFMode == Options::SCF_MODES::RESTRICTED) {
+        printBigCaption("Performing RHF singlet (internal) stability analysis: (A+B), singlet");
+      }
+      else {
+        printBigCaption("Performing UHF singlet (internal) stability analysis: (A+B)");
+      }
+    }
+  }
+  else if (settings.scfstab == Options::STABILITY_ANALYSIS::NONREAL) {
+    if (SCFMode == Options::SCF_MODES::RESTRICTED) {
+      printBigCaption("Performing RHF non-real (external) stability analysis: (A-B)");
+    }
+    else {
+      printBigCaption("Performing UHF non-real (external) stability analysis: (A-B)");
+    }
+  }
+  else if (settings.scfstab == Options::STABILITY_ANALYSIS::SPINFLIP) {
+    printBigCaption("Performing Spin-Flip TDDFT/TDHF within the TDA");
+    for (auto& ilrscf : lrscf) {
+      ilrscf->setupSpinFlipReference();
+    }
+  }
+  else {
+    throw SerenityError("Choose an SCF stability analysis.");
   }
 }
 

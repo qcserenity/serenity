@@ -70,10 +70,8 @@ void FXDTask<SCFMode>::run() {
       throw SerenityError("You have less excitations calculated than states you want to analyse!");
     Eigen::MatrixXd temp = (*_excVecs).leftCols(settings.states);
     (*_excVecs) = temp;
-    temp.resize(0, 0);
-    auto temp2 = (*_excEner).segment(0, settings.states);
+    Eigen::VectorXd temp2 = (*_excEner).segment(0, settings.states);
     (*_excEner) = temp2;
-    temp2.resize(0);
   }
 
   // Print the donor and acceptor atoms
@@ -169,7 +167,6 @@ void FXDTask<SCFMode>::run() {
         LE_counter += 1;
       }
     }
-
     Eigen::MatrixXd transformed = u_1.transpose() * (*_excEner).asDiagonal() * u_1;
 
     dx = u_1.transpose() * dx * u_1;
@@ -192,7 +189,8 @@ void FXDTask<SCFMode>::run() {
     }
 
     if (LE_counter != 0) {
-      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver_dx(dx.block(CT_counter, CT_counter, LE_counter, LE_counter));
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver_dx(
+          dx.block(CT_counter, CT_counter, LE_counter, LE_counter).eval());
       u_2_LE = eigenSolver_dx.eigenvectors();
       u_2_LE_eigenvalues = eigenSolver_dx.eigenvalues();
       if (CT_counter != 0) {

@@ -85,7 +85,11 @@ struct LRSCFTaskSettings {
       frozenVirtual(0),
       coreOnly(false),
       ltconv(0),
-      aocache(true) {
+      aocache(true),
+      triplet(false),
+      scfstab(Options::STABILITY_ANALYSIS::NONE),
+      stabroot(0),
+      stabscal(0.5) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
@@ -100,11 +104,12 @@ struct LRSCFTaskSettings {
               (Options::GAUGE)gauge, (std::vector<double>)gaugeOrigin, (std::vector<double>)frequencies,
               (std::vector<double>)frequencyRange, (double)damping, (std::vector<unsigned int>)couplingPattern,
               (bool)saveResponseMatrix, (Options::LR_METHOD)method, (bool)diis, (unsigned)diisStore, (double)preopt,
-              (bool)ccprops, (double)sss, (double)oss, (bool)naf, (double)nafThresh, (std::vector<unsigned int>)samedensity,
-              (std::vector<unsigned int>)subsystemgrid, (bool)rpaScreening, (bool)restart, (Options::DENS_FITS)densFitJ,
-              (Options::DENS_FITS)densFitK, (Options::DENS_FITS)densFitLRK, (Options::DENS_FITS)densFitCache,
-              (bool)transitionCharges, (bool)partialResponseConstruction, (bool)grimme, (bool)adaptivePrescreening,
-              (bool)frozenCore, (double)frozenVirtual, (bool)coreOnly, (double)ltconv, (bool)aocache)
+              (bool)ccprops, (double)sss, (double)oss, (bool)naf, (double)nafThresh,
+              (std::vector<unsigned int>)samedensity, (std::vector<unsigned int>)subsystemgrid, (bool)rpaScreening,
+              (bool)restart, (Options::DENS_FITS)densFitJ, (Options::DENS_FITS)densFitK, (Options::DENS_FITS)densFitLRK,
+              (Options::DENS_FITS)densFitCache, (bool)transitionCharges, (bool)partialResponseConstruction, (bool)grimme,
+              (bool)adaptivePrescreening, (bool)frozenCore, (double)frozenVirtual, (bool)coreOnly, (double)ltconv,
+              (bool)aocache, (bool)triplet, (Options::STABILITY_ANALYSIS)scfstab, (unsigned)stabroot, (double)stabscal)
  public:
   EmbeddingSettings embedding;
   GRID grid;
@@ -217,6 +222,11 @@ folder.
    *         -transitionCharges: Calculates transition charges and stores them on disk.
    *         -partialResponseConstruction: Exploit symmetry of FDEc.
    *         -grimme: Invokes simplified TDA/TDDFT for this task. Only works for one subsystem.
+   *         -triplet: Requests triplet instead of singlet excitations.
+   *         -scfstab: Switch for different types of stability analyses (real, nonreal, spinflip).
+   *         -stabroot: Instruct to rotate the orbitals along the direction devised by the instability indexed by
+stabroot (usually 1, i.e. the lowest). Another SCF needs to be run.
+   *         -stabscal: Mixing parameter for the new orbitals: C_new = C_old * U with U = exp(stabscal * F).
    */
   LRSCFTaskSettings settings;
 

@@ -79,7 +79,8 @@ long long MemoryManager::getAvailableSystemMemory() {
   if (KERN_SUCCESS != host_statistics(mach_host_self(), HOST_VM_INFO, (host_info_t)&vmstat, &count)) {
     assert(false && "Error while reading RAM infomation!");
   }
-  return vmstat.free_count * getpagesize();
+  long long freePages = vmstat.free_count + vmstat.inactive_count; // also accounts for cached files
+  return freePages * getpagesize();
 }
 
 #elif __linux__ || __unix__ || __unix

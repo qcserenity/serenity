@@ -25,7 +25,9 @@
 #include "basis/Shell.h"
 #include "memory/MemoryManager.h"
 /* Include Std and External Headers */
+#if __linux__ || __unix__ || __unix
 #include <malloc.h> //Free unused memory.
+#endif
 #include <vector>
 
 namespace Serenity {
@@ -111,7 +113,9 @@ void IntegralCachingController::creatMemManagingVec() {
 void IntegralCachingController::clearCache() {
   _cacheVector = nullptr;
   // Free unused memory.
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 void IntegralCachingController::notify() {

@@ -228,4 +228,23 @@ TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
 }
 
+/**
+ * @test
+ * @brief Restricted Hartree--Fock of H2 in a minimal basis using 2e-4c integral caching.
+ */
+TEST(BasicSCFTests, IntegralCaching) {
+  Settings settings;
+  settings.basis.label = "STO-6G";
+  settings.basis.intCondition = 1;
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
+  auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
+  auto path = systemController->getSystemPath();
+  EXPECT_NEAR(result->getEnergy(), -1.1253243671827655, 1e-6);
+  EXPECT_EQ(0, std::remove((path + "SomeTestSystem.energies.res").c_str()));
+  EXPECT_EQ(0, std::remove((path + "SomeTestSystem.dmat.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((path + "SomeTestSystem.orbs.res.h5").c_str()));
+  EXPECT_EQ(0, std::remove((path + "SomeTestSystem.settings").c_str()));
+  EXPECT_EQ(0, std::remove((path + "SomeTestSystem.xyz").c_str()));
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController);
+}
 } /* namespace Serenity */

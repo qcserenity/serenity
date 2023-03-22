@@ -66,7 +66,7 @@ User Manual
 }}\\
 \vspace{1cm}
 {\large\textbf{
-Program Version: 1.5.1\\
+Program Version: 1.5.2\\
 Manual Generated: \today
 }}\\
 \vspace{2cm}
@@ -135,9 +135,9 @@ The code has been tested and compiled on Linux with GCC/G++
 compilation with other compilers such as ICC should be
 possible on Linux.\\
 \\
-Furthermore, the code has been tested and
-compiled on MacOS using Clang, compilation with GCC on MacOS
-should most likely also be possible.\\
+Furthermore, the code has been compiled on macOS using Clang
+but may experience problems depending on the CPU architecture.
+Compilation with GCC on macOS should most likely also be possible.\\
 \\
 Compilation on and for Windows is not supported at the moment.
 \\
@@ -183,7 +183,7 @@ cmake ..
 \end{lstlisting}
 To compile Serenity for your specific CPU architecture, you can add:
 \begin{lstlisting}
-cmake .. -DSERENITY_MARCH=native
+cmake -DSERENITY_MARCH=native ..
 \end{lstlisting}
 (If the build folder is not located inside the main directory of \textsc{Serenity}
 please adapt the path accordingly.)
@@ -2465,7 +2465,35 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
     \item [\texttt{restart}]\hfill \\
     Tries restarting from (preferably converged) eigenpairs that the tasks
     looks for in the system folder.
-\end{description}
+    \item [\texttt{triplet}]\hfill \\
+    Used for triplet excitations. The default ist \ttt{false}.
+    \item [\texttt{scfstab}]\hfill \\
+    Used for SCF wavefunction stability analysis. Defaults to \ttt{NONE}. Available are
+    \begin{itemize}
+      \item Real RHF $\rightarrow$ Real RHF    : $(A+B)$, singlet \ttt{scfstab real} (internal)
+      \item Real RHF $\rightarrow$ Real UHF    : $(A+B)$, triplet \ttt{scfstab real} and \ttt{triplet true} (external)
+      \item Real RHF $\rightarrow$ Complex RHF : $(A-B)$, singlet \ttt{scfstab nonreal} (external)
+      \item Real UHF $\rightarrow$ Real UHF    : $(A+B)$ \ttt{scfstab real} (internal)
+      \item Real UHF $\rightarrow$ Complex UHF : $(A-B)$ \ttt{scfstab nonreal} (external)
+      \item Spin-Flip TD-HF/DFT \ttt{scfstab spinflip} (performed within the TDA)
+    \end{itemize}
+    The goal of an SCF is to minimize the energy with respect to orbital variation. At convergence of an SCF, the electronic gradient vanishes,
+    i.e. $F_{ia} = 0$ corresponding to a stationary point. A sufficient condition for this stationary point to be a true minimum is that the matrix of 
+    second derivatives with respect to to orbital variation (called the stability matrix) is positive definite. If it is not, there exist orbital rotations
+    between occupied and virtual orbitals that further minimze the energy. A stability analysis diagonalizes the stability matrix and can be used
+    to follow specific eigenvectors pointing towards the corresponding lower energy solution.
+    One differentiates between internal (keeping the constraints of the original SCF wavefunction) and external (lifting certain constraints of the original SCF wavefunction) stability analyses.
+    The [Real RHF $\rightarrow$ Real UHF] stability analysis (arguably most common), for example, can be used to identify triplet instabilities, i.e. finds
+    if there exists a lower triplet (UHF) wavefunction than the found singlet (RHF) one. Spin-Flip TDDFT is not a stability analysis, but was
+    implemented alongside them so it appears here for the sake of computational simplicity.
+    \item [\texttt{stabroot}]\hfill \\
+    Instruct to rotate the orbitals along the direction devised by the instability indexed by stabroot (usually 1, i.e. the lowest). 
+    Another SCF task needs to be run. This is only possible for internal stability analysis.
+    Defaults to \ttt{0}, which means that no root following will be done.
+    \item [\texttt{stabscal}]\hfill \\
+    Mixing parameter for the new orbitals. Defaults to \ttt{0.5}.\\
+    $C_\mathrm{new} = C_\mathrm{old} \cdot U $ where $U=\mathrm{exp}(\ttt{stabscal} F)$ and $F$ contains the orbital rotation parameters.
+    \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
     \item [\texttt{maxCycles}]\hfill \\
@@ -2950,6 +2978,12 @@ For all options pertaining the convergence please see the \ttt{scf} block option
   If the maximum number of SCF cycles is reached Serenity will continue even with non-converged orbitals. By default \ttt{false}.
   \item[\texttt{calculateMP2Energy}]\hfill \\
   If the correlation energy of double-hybrid functionals is calculated. By default \ttt{true}.
+  \item[\texttt{exca}]\hfill \\
+  A vector of excitations of alpha-electrons to start a $\Delta$SCF MOM/IMOM~\cite{Gilbert2008,Barca2018} calculation. \ttt{\{0 0\}} gives a HOMO$\rightarrow$LUMO transition, \ttt{\{1 1\}} a HOMO-1$\rightarrow$LUMO+1 transition. By using \ttt{\{0\}} it is possible to do a MOM/IMOM procedure without giving a excitation. By default \ttt{\{\}}.
+  \item[\texttt{excb}]\hfill \\
+  The same as \texttt{exca} for beta electrons. By default \ttt{\{\}}.
+  \item[\texttt{momCycles}]\hfill \\
+  Number of MOM cycles before transitioning into the IMOM procedure. By default \texttt{0}.
 \end{description}
 
 \subsection{Task: System-Splitting}

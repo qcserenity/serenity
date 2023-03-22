@@ -874,7 +874,8 @@ std::vector<std::shared_ptr<OrbitalTripleSet>> LocalCorrelationController::getOr
         } // if usedMemory >= maximumMemory
       }
     }
-    _orbitalTripleSets.push_back(newOrbitalTriplesSet);
+    if (newOrbitalTriplesSet->size())
+      _orbitalTripleSets.push_back(newOrbitalTriplesSet);
   }
   return _orbitalTripleSets;
 }
@@ -931,6 +932,8 @@ template<class OrbitalTuple>
 std::vector<std::shared_ptr<OrbitalTuple>>
 LocalCorrelationController::sortOrbitalPairs(std::vector<std::shared_ptr<OrbitalTuple>> orbitalPairs) {
   std::vector<std::shared_ptr<OrbitalTuple>> sortedList;
+  if (orbitalPairs.size() == 0)
+    return sortedList;
   // get the orbital pair with the largest extended fitting domain.
   const Eigen::VectorXi dummyDomain = Eigen::VectorXi::Constant(orbitalPairs[0]->getFittingDomain().rows(), 1);
   sortedList.push_back(extractOrbitalPairWithMaxOverlapDomain<OrbitalTuple>(orbitalPairs, dummyDomain));

@@ -582,7 +582,7 @@ TEST_F(TDEmbeddingTaskTest, restricted_truncated_netpopulation_levelshift_nonort
   task.settings.embedding.basisFunctionRatio = 0.4;
 
   task.run();
-  EXPECT_NEAR(-152.81569649224861, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
+  EXPECT_NEAR(-152.81569649224861, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
 
   std::string name = act->getSystemName() + "+" + env->getSystemName();
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);

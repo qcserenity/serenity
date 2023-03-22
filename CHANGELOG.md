@@ -1,6 +1,32 @@
 Changelog
 ===============================
 
+Release 1.5.2 (22.03.2023)
+-------------------------------
+
+### Functionalities
+
+- Added MOM and IMOM DeltaScf methods (Niklas Niemeyer, Niklas Göllmann)
+
+#### Linear-Response Framework
+
+- Added triplet exctations for TDHF/TDDFT (Niklas Niemeyer)
+- Added the following stability analyses for SCF wavefunctions and instability root following (Niklas Niemeyer)
+  - Real RHF -> Real RHF
+  - Real RHF -> Real UHF
+  - Real RHF -> Complex RHF
+  - Real UHF -> Real UHF
+  - Real UHF -> Complex UHF
+- Added spin-flip TDHF/TDDFT (Niklas Niemeyer)
+
+#### Bug Fixes
+
+- Fixed a bug where the T0-correction failed for only 2 electrons.
+- Fixed various incorrect settings files in the test resources.
+- Fixed an error in FXDTask.cpp.
+- Added a factor of one half for the restricted Levelshift potential to be consistent with the other EO potentials
+- Serenity is now compilable on macOS, functioning memory management (Apple M1 Pro)
+
 Release 1.5.1 (14.02.2023)
 -------------------------------
 

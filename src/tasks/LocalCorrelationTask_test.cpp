@@ -114,4 +114,26 @@ TEST_F(LocalCorrelationTaskTest, water_mp2_tight) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+/**
+ * @test
+ * @brief Test DLPNO-CCSD(T0) with tight settings. Check if the triples correction gives zero.
+ */
+TEST_F(LocalCorrelationTaskTest, h2_ccsdt0_tight) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
+  ScfTask<RESTRICTED> scf(act);
+  scf.run();
+  LocalCorrelationTask task(act);
+  task.settings.lcSettings.method = Options::PNO_METHOD::DLPNO_CCSD_T0;
+  task.settings.lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
+  task.run();
+  double ccsdCorrection =
+      act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+  double triplesCorrection =
+      act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::TRIPLES_CORRECTION);
+  // Canonical CCSD reference.
+  EXPECT_NEAR(-0.035726, ccsdCorrection, 1e-4);
+  EXPECT_NEAR(0.0, triplesCorrection, 1e-6);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } /*namespace Serenity*/

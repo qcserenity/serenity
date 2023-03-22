@@ -54,10 +54,10 @@ The code has been tested and compiled on Linux with GCC/G++
 compilation with other compilers such as ICC should be
 possible on Linux. Old GCC/G++ compilers (4.8.5 or older)
 are known to be insufficient.
-  
-Furthermore, the code has been tested and
-compiled on MacOS using Clang, compilation with GCC on MacOS
-should most likely also be possible.  
+
+Furthermore, the code has been compiled on macOS using Clang
+but may experience problems depending on the CPU architecture.
+Compilation with GCC on macOS should most likely also be possible.
   
 Compilation on and for Windows is not supported at the moment.
 
@@ -95,7 +95,7 @@ Then run cmake:
 > cmake ..  
 
 To compile Serenity for your specific CPU architecture, you can add:
-> cmake .. -DSERENITY_MARCH=native
+> cmake -DSERENITY_MARCH=native ..
 
 (If the build folder is not located inside the main directory of Serenity
 please adapt the path accordingly.)

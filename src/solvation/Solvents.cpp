@@ -49,119 +49,55 @@ void Solvents::printSolventInfo(const PCMSettings& settings) {
 }
 
 double Solvents::getProbeRadius(Options::PCM_SOLVENTS solvent) {
-  double radius = 0;
-  switch (solvent) {
-    case Options::PCM_SOLVENTS::WATER:
-      radius = 1.385;
-      break;
-    case Options::PCM_SOLVENTS::PROPYLENE_CARBONATE:
-      radius = 1.385;
-      break;
-    case Options::PCM_SOLVENTS::DMSO:
-      radius = 2.455;
-      break;
-    case Options::PCM_SOLVENTS::NITROMETHANE:
-      radius = 2.155;
-      break;
-    case Options::PCM_SOLVENTS::ACETONITRILE:
-      return 2.155;
-      break;
-    case Options::PCM_SOLVENTS::METHANOL:
-      radius = 1.855;
-      break;
-    case Options::PCM_SOLVENTS::ETHANOL:
-      radius = 2.180;
-      break;
-    case Options::PCM_SOLVENTS::ACETONE:
-      radius = 2.38;
-      break;
-    case Options::PCM_SOLVENTS::DICHLORETHANE:
-      radius = 2.505;
-      break;
-    case Options::PCM_SOLVENTS::METHYLENECHLORIDE:
-      radius = 2.27;
-      break;
-    case Options::PCM_SOLVENTS::THF:
-      radius = 2.9;
-      break;
-    case Options::PCM_SOLVENTS::ANILINE:
-      radius = 2.80;
-      break;
-    case Options::PCM_SOLVENTS::CHLOROBENZENE:
-      radius = 2.805;
-      break;
-    case Options::PCM_SOLVENTS::CHLOROFORM:
-      radius = 2.48;
-      break;
-    case Options::PCM_SOLVENTS::TOLUENE:
-      radius = 2.82;
-      break;
-    case Options::PCM_SOLVENTS::DIOXANE:
-      radius = 2.630;
-      break;
-    case Options::PCM_SOLVENTS::BENZENE:
-      radius = 2.630;
-      break;
-    case Options::PCM_SOLVENTS::CARBON_TETRACHLORIDE:
-      radius = 2.685;
-      break;
-    case Options::PCM_SOLVENTS::CYCLOHEXANE:
-      radius = 2.815;
-      break;
-    case Options::PCM_SOLVENTS::N_HEPTANE:
-      radius = 3.125;
-      break;
-    default:
-      throw SerenityError("Solvent data not tabulated.");
-  }
-  return radius * ANGSTROM_TO_BOHR;
+  const std::map<Options::PCM_SOLVENTS, double> radii = {{Options::PCM_SOLVENTS::WATER, 1.385},
+                                                         {Options::PCM_SOLVENTS::PROPYLENE_CARBONATE, 1.385},
+                                                         {Options::PCM_SOLVENTS::DMSO, 2.455},
+                                                         {Options::PCM_SOLVENTS::NITROMETHANE, 2.155},
+                                                         {Options::PCM_SOLVENTS::ACETONITRILE, 2.155},
+                                                         {Options::PCM_SOLVENTS::METHANOL, 1.855},
+                                                         {Options::PCM_SOLVENTS::ETHANOL, 2.180},
+                                                         {Options::PCM_SOLVENTS::ACETONE, 2.38},
+                                                         {Options::PCM_SOLVENTS::DICHLORETHANE, 2.505},
+                                                         {Options::PCM_SOLVENTS::METHYLENECHLORIDE, 2.27},
+                                                         {Options::PCM_SOLVENTS::THF, 2.9},
+                                                         {Options::PCM_SOLVENTS::ANILINE, 2.80},
+                                                         {Options::PCM_SOLVENTS::CHLOROBENZENE, 2.805},
+                                                         {Options::PCM_SOLVENTS::CHLOROFORM, 2.48},
+                                                         {Options::PCM_SOLVENTS::TOLUENE, 2.82},
+                                                         {Options::PCM_SOLVENTS::DIOXANE, 2.630},
+                                                         {Options::PCM_SOLVENTS::BENZENE, 2.630},
+                                                         {Options::PCM_SOLVENTS::CARBON_TETRACHLORIDE, 2.685},
+                                                         {Options::PCM_SOLVENTS::CYCLOHEXANE, 2.815},
+                                                         {Options::PCM_SOLVENTS::N_HEPTANE, 3.125}};
+  if (radii.find(solvent) == radii.end())
+    throw SerenityError("Solvent data not tabulated.");
+  return radii.at(solvent) * ANGSTROM_TO_BOHR;
 }
+
 double Solvents::getStaticPermittivity(Options::PCM_SOLVENTS solvent) {
-  switch (solvent) {
-    case Options::PCM_SOLVENTS::WATER:
-      return 78.39;
-    case Options::PCM_SOLVENTS::PROPYLENE_CARBONATE:
-      return 64.96;
-    case Options::PCM_SOLVENTS::DMSO:
-      return 46.7;
-    case Options::PCM_SOLVENTS::NITROMETHANE:
-      return 38.20;
-    case Options::PCM_SOLVENTS::ACETONITRILE:
-      return 36.64;
-    case Options::PCM_SOLVENTS::METHANOL:
-      return 32.63;
-    case Options::PCM_SOLVENTS::ETHANOL:
-      return 24.55;
-    case Options::PCM_SOLVENTS::ACETONE:
-      return 20.7;
-    case Options::PCM_SOLVENTS::DICHLORETHANE:
-      return 10.36;
-    case Options::PCM_SOLVENTS::METHYLENECHLORIDE:
-      return 8.93;
-    case Options::PCM_SOLVENTS::THF:
-      return 7.58;
-    case Options::PCM_SOLVENTS::ANILINE:
-      return 6.89;
-    case Options::PCM_SOLVENTS::CHLOROBENZENE:
-      return 5.621;
-    case Options::PCM_SOLVENTS::CHLOROFORM:
-      return 4.90;
-    case Options::PCM_SOLVENTS::TOLUENE:
-      return 2.379;
-    case Options::PCM_SOLVENTS::DIOXANE:
-      return 2.250;
-    case Options::PCM_SOLVENTS::BENZENE:
-      return 2.247;
-    case Options::PCM_SOLVENTS::CARBON_TETRACHLORIDE:
-      return 2.228;
-    case Options::PCM_SOLVENTS::CYCLOHEXANE:
-      return 2.023;
-    case Options::PCM_SOLVENTS::N_HEPTANE:
-      return 1.92;
-    default:
-      throw SerenityError("Solvent data not tabulated.");
-  }
-  return 78.39;
+  const std::map<Options::PCM_SOLVENTS, double> eps = {{Options::PCM_SOLVENTS::WATER, 78.39},
+                                                       {Options::PCM_SOLVENTS::PROPYLENE_CARBONATE, 64.96},
+                                                       {Options::PCM_SOLVENTS::DMSO, 46.7},
+                                                       {Options::PCM_SOLVENTS::NITROMETHANE, 38.20},
+                                                       {Options::PCM_SOLVENTS::ACETONITRILE, 36.64},
+                                                       {Options::PCM_SOLVENTS::METHANOL, 32.63},
+                                                       {Options::PCM_SOLVENTS::ETHANOL, 24.55},
+                                                       {Options::PCM_SOLVENTS::ACETONE, 20.7},
+                                                       {Options::PCM_SOLVENTS::DICHLORETHANE, 10.36},
+                                                       {Options::PCM_SOLVENTS::METHYLENECHLORIDE, 8.93},
+                                                       {Options::PCM_SOLVENTS::THF, 7.58},
+                                                       {Options::PCM_SOLVENTS::ANILINE, 6.89},
+                                                       {Options::PCM_SOLVENTS::CHLOROBENZENE, 5.621},
+                                                       {Options::PCM_SOLVENTS::CHLOROFORM, 4.90},
+                                                       {Options::PCM_SOLVENTS::TOLUENE, 2.379},
+                                                       {Options::PCM_SOLVENTS::DIOXANE, 2.250},
+                                                       {Options::PCM_SOLVENTS::BENZENE, 2.247},
+                                                       {Options::PCM_SOLVENTS::CARBON_TETRACHLORIDE, 2.228},
+                                                       {Options::PCM_SOLVENTS::CYCLOHEXANE, 2.023},
+                                                       {Options::PCM_SOLVENTS::N_HEPTANE, 1.92}};
+  if (eps.find(solvent) == eps.end())
+    throw SerenityError("Solvent data not tabulated.");
+  return eps.at(solvent);
 }
 
 double Solvents::getCavityFormationProbeRadius(Options::PCM_SOLVENTS solvent) {
@@ -355,7 +291,6 @@ std::vector<std::pair<unsigned int, std::shared_ptr<const AtomType>>> Solvents::
       types.push_back(std::make_pair(7, C));
       types.push_back(std::make_pair(16, H));
       break;
-      throw SerenityError("Solvent data not tabulated. AtomTypes.");
     default:
       throw SerenityError("Solvent data not tabulated. AtomTypes.");
   }

@@ -305,6 +305,17 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
    */
   void applyCoreOnly();
 
+  /**
+   * @brief Sets up this LRSCF Controller to be the reference for a Spin-Flip calculation.
+   */
+  void setupSpinFlipReference();
+
+  /**
+   * @brief Rotates the reference orbitals according to the found instabilites.
+   *
+   */
+  void rotateOrbitalsSCFInstability();
+
  private:
   // The system controller
   std::shared_ptr<SystemController> _system;

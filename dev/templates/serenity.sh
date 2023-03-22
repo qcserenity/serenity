@@ -40,4 +40,3 @@ export LD_LIBRARY_PATH=$SERENITY_HOME/lib/:$LD_LIBRARY_PATH
 
 # Add the Python module to the Python path
 export PYTHONPATH=$SERENITY_HOME/lib/:$PYTHONPATH
-

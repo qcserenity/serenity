@@ -251,7 +251,7 @@ inline void resolve<std::vector<int>>(std::string& value, std::vector<int>& fiel
     }
   }
   else {
-    std::string bad_symbols = ",?\\'\"&*()^%$#@!{}[]|<>?+-";
+    std::string bad_symbols = ",?\\'\"&*()^%$#@!{}[]|<>?+";
     for (auto& c : bad_symbols) {
       if (value.find(c) != std::string::npos)
         throw SerenityError("ERROR: List inputs require spaces as delimiters.");

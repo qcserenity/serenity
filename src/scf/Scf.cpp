@@ -35,7 +35,8 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
-                           std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged) {
+                           std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged,
+                           std::shared_ptr<SPMatrix<SCFMode>> momMatrix, int momCycles) {
   allowNotConverged = (allowNotConverged || settings.scf.allowNotConverged);
   es->setDiskMode(false, "", "");
   auto energyComponentController = es->getEnergyComponentController();
@@ -81,7 +82,18 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
      * Hook in for convergence acceleration
      */
     convergenceController.accelerateConvergence(F, es->getDensityMatrix());
-    orbitalController->updateOrbitals(convergenceController.getLevelshift(), F, es->getOneElectronIntegralController());
+    orbitalController->updateOrbitals(convergenceController.getLevelshift(), F, es->getOneElectronIntegralController(),
+                                      momMatrix);
+    // Update MOM matrix (MOM and not IMOM procedure).
+    if ((counter - 1 < (unsigned)momCycles || momCycles < 0) && momMatrix) {
+      auto& mom = (*momMatrix);
+      auto C = orbitalController->getCoefficients();
+      auto nocc = es->getNOccupiedOrbitals();
+      for_spin(mom, C, nocc) {
+        mom_spin = C_spin.leftCols(nocc_spin);
+      };
+    }
+
     if (counter % settings.scf.writeRestart == 0) {
       orbitalController->toHDF5(settings.path + "tmp", settings.identifier);
     }

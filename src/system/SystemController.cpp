@@ -429,6 +429,8 @@ void SystemController::setSpin(const int spin) {
 }
 
 void SystemController::setElectricField(std::vector<double> position, double fStrength, bool analytical, bool use) {
+  if (position.size() != 3)
+    throw SerenityError("Error: The electric field direction vector must have three coordinates.");
   _system->_settings.efield.use = use;
   _system->_settings.efield.analytical = analytical;
   _system->_settings.efield.pos2 = position;

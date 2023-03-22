@@ -157,10 +157,11 @@ FockMatrix<SCFMode>& HuzinagaFDEProjectionPotential<SCFMode>::getMatrix() {
           const auto& nonOrthogonalDensityMatrix = _notProjectedEnvDensities[iEnv]->getDensityMatrix();
           projectedMatrix -= nonOrthogonalDensityMatrix;
         }
-        double preFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
+        // A factor of one half for restricted to account for the factor of two in the density matrix.
+        double scfFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
         for_spin(f_AB, pot, projectedMatrix) {
           auto matrix = (f_AB_spin - _fermiShift * s_AB) * projectedMatrix_spin * s_AB.transpose();
-          pot_spin += -preFactor * (matrix + matrix.transpose());
+          pot_spin += -scfFactor * (matrix + matrix.transpose());
         };
       } // if _projectedEnvSystems[iEnv]
     }   // for iEnv

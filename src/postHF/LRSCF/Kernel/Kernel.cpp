@@ -919,8 +919,6 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getDensityOnGridController(std::shared
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> densityMatrixController = nullptr;
   // If restricted environment system is used, build unrestricted DensityMatrixController
   if (sys->getLastSCFMode() == Options::SCF_MODES::RESTRICTED) {
-    WarningTracker::printWarning(
-        (std::string) "WARNING: USE OF RESTRICTED ENVIRONMENT SYSTEM IN UNRESTRICTED EMBEDDING RESPONSE CALCULATION", true);
     // Build unrestricted CoefficientMatrix from restricted one
     auto c = std::make_unique<CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED>>(
         sys->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>()->getCoefficients());

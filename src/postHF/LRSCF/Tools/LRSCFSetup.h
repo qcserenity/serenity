@@ -107,6 +107,14 @@ class LRSCFSetup {
                                    const std::vector<std::shared_ptr<SystemController>>& act,
                                    const std::vector<std::shared_ptr<SystemController>>& env,
                                    const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscfAll);
+
+  /**
+   * @brief Prepares stability analysis to be done.
+   * @param lrscf The LRSCFController.
+   * @param settings LRSCFTaskSettings (are modified).
+   */
+  static void prepareStabilityAnalysis(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
+                                       LRSCFTaskSettings& settings);
 };
 
 } /* namespace Serenity */

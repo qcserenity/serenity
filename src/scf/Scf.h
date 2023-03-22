@@ -33,6 +33,8 @@ template<Options::SCF_MODES T>
 class PotentialBundle;
 template<Options::SCF_MODES T>
 class ElectronicStructure;
+template<Options::SCF_MODES T>
+class SPMatrix;
 /**
  * @class Scf Scf.h
  * @brief The algorithm of a self consistent field calculation.
@@ -54,13 +56,16 @@ class Scf {
    * different steps in the right order. For the function arguments see the corresponding classes
    * of those objects.
    *
-   * @param settings
-   * @param es
-   * @param potentials
-   * @param allowNotConverged
+   * @param settings The settings.
+   * @param es The electronic structure.
+   * @param potentials The potentials.
+   * @param allowNotConverged allows the SCF to finish even if there was no solution found yet.
+   * @param momMatrix Represents occupied orbitals according to MOM/IMOM procedure.
+   * @param momCycles number of cycles done with MOM procedure before switching over to IMOM.
    */
   static void perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
-                      std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged = false);
+                      std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged = false,
+                      std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr, int momCycles = 0);
 };
 
 } /* namespace Serenity */

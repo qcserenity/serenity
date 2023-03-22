@@ -565,4 +565,158 @@ TEST_F(LRSCFTaskTDDFTTest, FrozenCoreAndFrozenVirtual) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+TEST_F(LRSCFTaskTDDFTTest, TripletExcitations) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.basis.label = "DEF2-SVP";
+
+  // Test 1: LDA/TDA
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
+  auto sys1 =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+  LRSCFTask<RESTRICTED> tda({sys1});
+  tda.settings.triplet = true;
+  tda.settings.method = Options::LR_METHOD::TDA;
+  tda.run();
+
+  Eigen::VectorXd tda_ref(4);
+  tda_ref << 0.1150766, 0.2377234, 0.2624079, 0.2834016;
+  EXPECT_LE((tda.getTransitions().col(0) - tda_ref).cwiseAbs().maxCoeff(), 5e-6);
+
+  // Test 2: PBE/TDDFT
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  auto sys2 =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+  LRSCFTask<RESTRICTED> tddft({sys2});
+  tddft.settings.triplet = true;
+  tddft.run();
+
+  Eigen::VectorXd tddft_ref(4);
+  tddft_ref << 0.1143974, 0.2155707, 0.2570795, 0.2798955;
+  EXPECT_LE((tddft.getTransitions().col(0) - tddft_ref).cwiseAbs().maxCoeff(), 5e-6);
+
+  // Test 3: PBE0/RPA
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  auto sys3 =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+  LRSCFTask<RESTRICTED> rpa({sys3});
+  rpa.settings.triplet = true;
+  rpa.run();
+
+  Eigen::VectorXd rpa_ref(4);
+  rpa_ref << 0.1164686, 0.1945099, 0.2865134, 0.2883944;
+  EXPECT_LE((rpa.getTransitions().col(0) - rpa_ref).cwiseAbs().maxCoeff(), 5e-6);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskTDDFTTest, TDDFT_CoreOnly) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDDFT({sys});
+  lrscfTDDFT.settings.coreOnly = true;
+  lrscfTDDFT.run();
+
+  auto excitations = lrscfTDDFT.getTransitions().col(0);
+
+  Eigen::VectorXd referenceTDDFT(4);
+  referenceTDDFT << 9.9070248, 9.9841180, 10.0111261, 10.0210513;
+
+  EXPECT_LE((referenceTDDFT - excitations).cwiseAbs().maxCoeff(), LOOSE_D);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskTDDFTTest, TDDFT_SCFStab) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.basis.label = "DEF2-SVP";
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> real({sys});
+  real.settings.scfstab = Options::STABILITY_ANALYSIS::REAL;
+  real.settings.densFitJ = Options::DENS_FITS::NONE;
+  real.run();
+  double result = real.getTransitions()(0, 0);
+  // Turbomole 7.5.1 Feb 2023
+  double reference = 0.1603296108583212;
+  EXPECT_LE(std::abs(result - reference), 1e-4);
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> nonreal({sys});
+  nonreal.settings.scfstab = Options::STABILITY_ANALYSIS::NONREAL;
+  nonreal.settings.densFitJ = Options::DENS_FITS::NONE;
+  nonreal.run();
+  result = nonreal.getTransitions()(0, 0);
+  // Turbomole 7.5.1 Feb 2023
+  reference = 0.1352004022564944;
+  EXPECT_LE(result - reference, 1e-4);
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> real_triplet({sys});
+  real_triplet.settings.scfstab = Options::STABILITY_ANALYSIS::REAL;
+  real_triplet.settings.densFitJ = Options::DENS_FITS::NONE;
+  real_triplet.settings.triplet = true;
+  real_triplet.run();
+  result = real_triplet.getTransitions()(0, 0);
+  // Turbomole 7.5.1 Feb 2023
+  reference = 0.09958875581732934;
+  EXPECT_LE(result - reference, 1e-4);
+
+  sys->setSpin(2);
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> spinflip({sys});
+  spinflip.settings.scfstab = Options::STABILITY_ANALYSIS::SPINFLIP;
+  spinflip.settings.densFitJ = Options::DENS_FITS::NONE;
+  spinflip.run();
+  result = spinflip.getTransitions()(0, 0);
+  // Orca 5.0.3 Feb 2023
+  reference = -0.106860;
+  EXPECT_LE(result - reference, 1e-4);
+
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+  sys->setSpin(-2);
+  LRSCFTask<Options::SCF_MODES::UNRESTRICTED> spinflip2({sys});
+  spinflip2.settings.scfstab = Options::STABILITY_ANALYSIS::SPINFLIP;
+  spinflip2.settings.densFitJ = Options::DENS_FITS::NONE;
+  spinflip2.run();
+  result = spinflip2.getTransitions()(0, 0);
+  EXPECT_LE(result - reference, 1e-4);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskTDDFTTest, TDDFT_SCFStabRootFollowing) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.basis.label = "DEF2-SVP";
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE0;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> real({sys});
+  real.settings.scfstab = Options::STABILITY_ANALYSIS::REAL;
+  real.settings.densFitJ = Options::DENS_FITS::NONE;
+  real.settings.stabroot = 1;
+  real.settings.stabscal = 0.8;
+  real.run();
+  double result = real.getTransitions()(0, 0);
+  // Turbomole 7.5.1 Feb 2023
+  double reference = 0.1603296108583212;
+  EXPECT_LE(std::abs(result - reference), 1e-4);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } // namespace Serenity

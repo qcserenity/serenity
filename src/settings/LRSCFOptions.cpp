@@ -65,5 +65,15 @@ void resolve<LR_METHOD>(std::string& value, LR_METHOD& field) {
       {"CC2", LR_METHOD::CC2}, {"CISDINF", LR_METHOD::CISDINF}, {"CISD", LR_METHOD::CISD}, {"ADC2", LR_METHOD::ADC2}};
   check(m, value, field);
 }
+
+template<>
+void resolve<STABILITY_ANALYSIS>(std::string& value, STABILITY_ANALYSIS& field) {
+  static const std::map<std::string, STABILITY_ANALYSIS> m = {{"NONE", STABILITY_ANALYSIS::NONE},
+                                                              {"REAL", STABILITY_ANALYSIS::REAL},
+                                                              {"NONREAL", STABILITY_ANALYSIS::NONREAL},
+                                                              {"SPINFLIP", STABILITY_ANALYSIS::SPINFLIP}};
+  check(m, value, field);
+}
+
 } /* namespace Options */
 } /* namespace Serenity */

@@ -219,4 +219,53 @@ TEST_F(ScfTaskTest, Water_ADIIS) {
   EXPECT_NEAR(energyADIIS, energyDIIS, 1e-7);
   SystemController__TEST_SUPPLY::cleanUp();
 }
+
+TEST_F(ScfTaskTest, unrestricted_DeltaScf) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, true);
+  ScfTask<UNRESTRICTED> scf(sys);
+  scf.run();
+  double energy = sys->getElectronicStructure<UNRESTRICTED>()->getEnergy();
+  ScfTask<UNRESTRICTED> scf2(sys);
+  scf2.settings.exca = {0, 0};
+  scf2.run();
+  double energy_imom = sys->getElectronicStructure<UNRESTRICTED>()->getEnergy() - energy;
+  EXPECT_NEAR(0.289527, energy_imom, 1e-6);
+
+  ScfTask<UNRESTRICTED> scf3(sys);
+  scf3.run();
+  double energy2 = sys->getElectronicStructure<UNRESTRICTED>()->getEnergy();
+  ScfTask<UNRESTRICTED> scf4(sys);
+  scf4.settings.excb = {0, 0};
+  scf4.settings.momCycles = 100;
+  scf4.run();
+  double energy_mom = sys->getElectronicStructure<UNRESTRICTED>()->getEnergy() - energy2;
+  EXPECT_NEAR(0.289527, energy_mom, 1e-6);
+
+  EXPECT_NEAR(0, energy_imom - energy_mom, 1e-6);
+}
+
+TEST_F(ScfTaskTest, restricted_DeltaScf) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, true);
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+  double energy = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
+  ScfTask<RESTRICTED> scf2(sys);
+  scf2.settings.exca = {0, 0};
+  scf2.run();
+  double energy_imom = sys->getElectronicStructure<RESTRICTED>()->getEnergy() - energy;
+  EXPECT_NEAR(0.806179, energy_imom, 1e-6);
+
+  ScfTask<RESTRICTED> scf3(sys);
+  scf3.run();
+  double energy2 = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
+  ScfTask<RESTRICTED> scf4(sys);
+  scf4.settings.exca = {0, 0};
+  scf4.settings.momCycles = 100;
+  scf4.run();
+  double energy_mom = sys->getElectronicStructure<RESTRICTED>()->getEnergy() - energy2;
+  EXPECT_NEAR(0.806179, energy_mom, 1e-6);
+
+  EXPECT_NEAR(0, energy_imom - energy_mom, 1e-6);
+}
+
 } /*namespace Serenity*/

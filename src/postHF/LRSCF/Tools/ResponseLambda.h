@@ -202,6 +202,7 @@ class ResponseLambda {
 
   ///@brief The kernel.
   std::shared_ptr<Kernel<SCFMode>> _kernel = nullptr;
+  std::shared_ptr<Kernel<UNRESTRICTED>> _ukernel = nullptr;
 
   ///@brief The TDA sigma vector calculator.
   SigmaCalculator _TDA;

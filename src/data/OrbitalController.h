@@ -116,6 +116,16 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
   void updateOrbitals(const CoefficientMatrix<T>& updatedCoefficients,
                       const SpinPolarizedData<T, Eigen::VectorXd>& updatedEigenvalues);
 
+  /**
+   * @brief Resorts the coefficients and eigenvalues acording to the MOM/IMOM procedures.
+   * @param c  The new coefficients.
+   * @param eps   The new orbital energies.
+   * @param momMatrix     Represents occupied orbitals according to MOM/IMOM procedure.
+   * @param overlapMatrix The overlap integrals.
+   */
+  void applyMOMProcedure(CoefficientMatrix<T>& c, SpinPolarizedData<T, Eigen::VectorXd>& eps,
+                         const SPMatrix<T> momMatrix, const MatrixInBasis<RESTRICTED> overlapMatrix);
+
   /// @returns the orbital energies.
   SpinPolarizedData<T, Eigen::VectorXd> getEigenvalues();
   /// @returns Returns the core/Rydberg orbital flags: 1: Core orbital, 2: Rydberg orbital, 0: valence orbital
@@ -176,8 +186,10 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    * @param oneIntController One electron integrals.
    *                        (The overlap is needed to transform the Fock matrix into an orthogonal
    *                         basis.)
+   * @param momMatrix Represents occupied orbitals according to MOM/IMOM procedure.
    */
-  void updateOrbitals(const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController);
+  void updateOrbitals(const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController,
+                      std::shared_ptr<SPMatrix<T>> momMatrix = nullptr);
   /**
    * @brief Erases and recreates the owned molecular orbital coefficients and orbital energies.
    *        Adds a levelshift:
@@ -211,9 +223,11 @@ class OrbitalController : public NotifyingClass<OrbitalController<T>>, public Ob
    * @param oneIntController One electron integrals.
    *                        (The overlap is needed to transform the Fock matrix into an orthogonal
    *                         basis.)
+   * @param momMatrix Represents occupied orbitals according to MOM/IMOM procedure.
    */
   void updateOrbitals(const std::pair<Eigen::VectorXd, SpinPolarizedData<T, Eigen::VectorXd>> levelshift,
-                      const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController);
+                      const FockMatrix<T>& fockMatrix, std::shared_ptr<OneElectronIntegralController> oneIntController,
+                      std::shared_ptr<SPMatrix<T>> momMatrix = nullptr);
 
   ///@brief Notification
   void notify();

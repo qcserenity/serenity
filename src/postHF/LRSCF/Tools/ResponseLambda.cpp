@@ -257,7 +257,7 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
     }
 
     if (_usesKernel) {
-      F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, guessAPB, _kernel);
+      F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, guessAPB, _kernel, _ukernel);
     }
 
     if (_usesEO) {
@@ -268,7 +268,13 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
     for (unsigned iSet = 0; iSet < guessVectors.size(); ++iSet) {
       (*sigma)[iSet] += D->getSigma()[iSet];
       if (iSet % 2 == 0) {
-        (*sigma)[iSet] += 2.0 * _scfFactor * J->getSigma()[iSet / 2];
+        if (!(SCFMode == RESTRICTED && _settings.triplet)) {
+          (*sigma)[iSet] += 2.0 * _scfFactor * J->getSigma()[iSet / 2];
+        }
+        if (_usesKernel) {
+          double tripletFactor = (_settings.triplet ? 0.5 : 1.0);
+          (*sigma)[iSet] += 2.0 * tripletFactor * _scfFactor * F->getSigma()[iSet / 2];
+        }
       }
       if (DFK) {
         (*sigma)[iSet] -= DFK->getSigma()[iSet];
@@ -276,11 +282,8 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
       if (K) {
         (*sigma)[iSet] -= K->getSigma()[iSet];
       }
-      if (iSet % 2 == 0 && _usesKernel) {
-        (*sigma)[iSet] += 2.0 * _scfFactor * F->getSigma()[iSet / 2];
-      }
-      if (_usesEO) {
-        (*sigma)[iSet] += _scfFactor * EO->getSigma()[iSet];
+      if (EO) {
+        (*sigma)[iSet] += EO->getSigma()[iSet];
       }
     }
 
@@ -305,15 +308,18 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
     else {
       J = std::make_unique<CoulombSigmavector<SCFMode>>(_lrscf, transGuess);
     }
-    for (unsigned iSet = 0; iSet < guessVectors.size(); ++iSet) {
-      (*sigma)[iSet] += 2 * _scfFactor * J->getSigma()[iSet];
-    }
 
-    F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, transGuess, _kernel);
+    F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, transGuess, _kernel, _ukernel);
 
     for (unsigned iSet = 0; iSet < guessVectors.size(); ++iSet) {
       (*sigma)[iSet] += D->getSigma()[iSet];
-      (*sigma)[iSet] += 2 * _scfFactor * F->getSigma()[iSet];
+      if (!(SCFMode == RESTRICTED && _settings.triplet)) {
+        (*sigma)[iSet] += 2 * _scfFactor * J->getSigma()[iSet];
+      }
+      if (_usesKernel) {
+        double tripletFactor = (_settings.triplet ? 0.5 : 1.0);
+        (*sigma)[iSet] += 2 * _scfFactor * tripletFactor * F->getSigma()[iSet];
+      }
       (*sigma)[iSet] = (_diagonal.cwiseSqrt().asDiagonal() * (*sigma)[iSet]).eval();
     }
 
@@ -335,37 +341,65 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
     }
 
     if (_usesExchange || _usesLRExchange) {
-      std::vector<int> xc(guessVectors.size(), 0);
+      int exchange_sign = 0;
+      if (_settings.scfstab == Options::STABILITY_ANALYSIS::REAL) {
+        exchange_sign = 1;
+      }
+      else if (_settings.scfstab == Options::STABILITY_ANALYSIS::NONREAL) {
+        exchange_sign = -1;
+      }
+      else if (_settings.scfstab == Options::STABILITY_ANALYSIS::SPINFLIP) {
+        exchange_sign = 0;
+      }
+
+      std::vector<int> pm(guessVectors.size(), exchange_sign);
       if (_densFitK || _densFitLRK) {
-        DFK = std::make_unique<RIExchangeSigmavector<SCFMode>>(_lrscf, guessVectors, xc, _densFitK, _densFitLRK);
+        DFK = std::make_unique<RIExchangeSigmavector<SCFMode>>(_lrscf, guessVectors, pm, _densFitK, _densFitLRK);
       }
       if (!_densFitK || !_densFitLRK) {
-        K = std::make_unique<ExchangeSigmavector<SCFMode>>(_lrscf, guessVectors, xc, _densFitK, _densFitLRK);
+        K = std::make_unique<ExchangeSigmavector<SCFMode>>(_lrscf, guessVectors, pm, _densFitK, _densFitLRK);
       }
     }
 
     if (_usesKernel) {
-      F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, guessVectors, _kernel);
+      F = std::make_unique<KernelSigmavector<SCFMode>>(_lrscf, guessVectors, _kernel, _ukernel);
     }
 
     if (_usesEO) {
       EO = std::make_unique<EOSigmavector<SCFMode>>(_lrscf, guessVectors, _settings.embedding.levelShiftParameter,
                                                     _settings.embedding.embeddingMode);
     }
+
+    if (_grimme) {
+      (*sigma) = _grimme->getSigmavectors(guessVectors, std::vector<int>(guessVectors.size(), 0));
+    }
+
     for (unsigned iSet = 0; iSet < guessVectors.size(); ++iSet) {
       (*sigma)[iSet] += D->getSigma()[iSet];
-      (*sigma)[iSet] += _scfFactor * J->getSigma()[iSet];
+    }
+
+    for (unsigned iSet = 0; iSet < guessVectors.size() && !_settings.grimme; ++iSet) {
+      if (_settings.scfstab == Options::STABILITY_ANALYSIS::NONE || _settings.scfstab == Options::STABILITY_ANALYSIS::REAL) {
+        double aplusbFactor = (_settings.scfstab == Options::STABILITY_ANALYSIS::REAL ? 2.0 : 1.0);
+        if (!(SCFMode == RESTRICTED && _settings.triplet)) {
+          if (J) {
+            (*sigma)[iSet] += aplusbFactor * _scfFactor * J->getSigma()[iSet];
+          }
+        }
+        if (_usesKernel) {
+          double tripletFactor = (_settings.triplet ? 0.5 : 1.0);
+          (*sigma)[iSet] += tripletFactor * aplusbFactor * _scfFactor * F->getSigma()[iSet];
+        }
+      }
+
       if (DFK) {
         (*sigma)[iSet] -= DFK->getSigma()[iSet];
       }
       if (K) {
         (*sigma)[iSet] -= K->getSigma()[iSet];
       }
-      if (_usesKernel) {
-        (*sigma)[iSet] += _scfFactor * F->getSigma()[iSet];
-      }
-      if (_usesEO) {
-        (*sigma)[iSet] += _scfFactor * EO->getSigma()[iSet];
+      if (EO) {
+        (*sigma)[iSet] += EO->getSigma()[iSet];
       }
     }
 
@@ -451,6 +485,10 @@ SigmaCalculator ResponseLambda<SCFMode>::setEigensolverMode(bool fockDiagonal) {
 template<Options::SCF_MODES SCFMode>
 void ResponseLambda<SCFMode>::setupKernel(Options::GRID_PURPOSES gridFineness) {
   _kernel = std::make_shared<Kernel<SCFMode>>(_act, _env, _settings, gridFineness);
+  if (SCFMode == RESTRICTED && _settings.triplet) {
+    printf("  Setting up triplet kernel!\n\n");
+    _ukernel = std::make_shared<Kernel<UNRESTRICTED>>(_act, _env, _settings, gridFineness);
+  }
 }
 
 template<Options::SCF_MODES SCFMode>

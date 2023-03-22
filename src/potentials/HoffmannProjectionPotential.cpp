@@ -140,13 +140,14 @@ FockMatrix<SCFMode>& HoffmannProjectionPotential<SCFMode>::getMatrix() {
         DensityMatrix<SCFMode> projectedMatrix = _envDensityCont[iEnv]->getDensityMatrix();
         if (_notProjectedEnvDensities.size() > 0)
           projectedMatrix -= _notProjectedEnvDensities[iEnv]->getDensityMatrix();
-        double preFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
+        // A factor of one half for restricted to account for the factor of two in the density matrix.
+        double scfFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
         const FockMatrix<SCFMode> f_BB = _embeddingBundle[iEnv]->getFockMatrix(
             _envDensityCont[iEnv]->getDensityMatrix(), std::make_shared<EnergyComponentController>());
         const Eigen::MatrixXd s_AB = *_s_ABs[iEnv];
         for_spin(f_BB, pot, projectedMatrix) {
           pot_spin +=
-              preFactor * preFactor * (s_AB * projectedMatrix_spin * f_BB_spin * projectedMatrix_spin * s_AB.transpose());
+              scfFactor * scfFactor * (s_AB * projectedMatrix_spin * f_BB_spin * projectedMatrix_spin * s_AB.transpose());
         };
       } // if _s_ABs[iEnv]
     }   // for iEnv

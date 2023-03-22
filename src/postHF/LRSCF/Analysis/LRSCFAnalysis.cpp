@@ -24,6 +24,7 @@
 #include "parameters/Constants.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "settings/LRSCFOptions.h"
+#include "tasks/LRSCFTask.h"
 
 namespace Serenity {
 
@@ -31,8 +32,8 @@ template<Options::SCF_MODES SCFMode>
 void LRSCFAnalysis<SCFMode>::printDominantContributions(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
                                                         const std::vector<Eigen::MatrixXd>& eigenvectors,
                                                         const Eigen::VectorXd& eigenvalues, const double contribThresh) {
-  bool isNotXWF = lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA ||
-                  lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT;
+  auto settings = lrscf[0]->getLRSCFSettings();
+  bool isNotCC2 = settings.method == Options::LR_METHOD::TDA || settings.method == Options::LR_METHOD::TDDFT;
 
   Eigen::MatrixXd contributions;
   if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA || lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISD) {
@@ -85,46 +86,77 @@ void LRSCFAnalysis<SCFMode>::printDominantContributions(const std::vector<std::s
 
   printf("---------------------------------------------------------------------------------------\n");
   if (SCFMode == Options::SCF_MODES::RESTRICTED) {
-    if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
-      printf("                                    TDA Summary                                      \n\n");
+    if (settings.method == Options::LR_METHOD::TDA) {
+      if (settings.scfstab == Options::STABILITY_ANALYSIS::NONE) {
+        printf("                                    TDA Summary                                      \n\n");
+      }
+      else {
+        printf("                           SCF Stability Analysis Summary                            \n\n");
+      }
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+    else if (settings.method == Options::LR_METHOD::TDDFT) {
       printf("                                   TDDFT Summary                                     \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CC2) {
+    else if (settings.method == Options::LR_METHOD::CC2) {
       printf("                                    CC2 Summary                                      \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISDINF) {
+    else if (settings.method == Options::LR_METHOD::CISDINF) {
       printf("                                 CIS(Dinf) Summary                                   \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::ADC2) {
+    else if (settings.method == Options::LR_METHOD::ADC2) {
       printf("                                   ADC(2) Summary                                    \n\n");
     }
   }
   else {
-    if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDA) {
-      printf("                                  uTDA Summary                                       \n\n");
+    if (settings.method == Options::LR_METHOD::TDA) {
+      if (settings.scfstab == Options::STABILITY_ANALYSIS::NONE) {
+        printf("                                  uTDA Summary                                       \n\n");
+      }
+      else {
+        printf("                           SCF Stability Analysis Summary                            \n\n");
+      }
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::TDDFT) {
+    else if (settings.method == Options::LR_METHOD::TDDFT) {
       printf("                                 uTDDFT Summary                                      \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CC2) {
+    else if (settings.method == Options::LR_METHOD::CC2) {
       printf("                                  uCC2 Summary                                       \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::CISDINF) {
+    else if (settings.method == Options::LR_METHOD::CISDINF) {
       printf("                               uCIS(Dinf) Summary                                    \n\n");
     }
-    else if (lrscf[0]->getResponseMethod() == Options::LR_METHOD::ADC2) {
+    else if (settings.method == Options::LR_METHOD::ADC2) {
       printf("                                 uADC(2) Summary                                     \n\n");
     }
   }
+  printf("---------------------------------------------------------------------------------------\n");
+  if (SCFMode == Options::SCF_MODES::RESTRICTED && settings.scfstab == Options::STABILITY_ANALYSIS::NONE) {
+    if (settings.triplet) {
+      printf("                                Triplet Excitations.                                 \n\n");
+    }
+    else {
+      printf("                                Singlet Excitations.                                 \n\n");
+    }
+  }
+  printf("    Convergence Threshold            : %16.1e\n", settings.conv);
+  if (!isNotCC2) {
+    if (settings.ltconv != 0) {
+      printf("    Laplace Transformation Threshold : %16.1e\n", settings.ltconv);
+    }
+    if (settings.sss != 1.0 || settings.oss != 1.0) {
+      printf("    Same-Spin Scaling                : %16.3f\n", settings.sss);
+      printf("    Opposite-Spin Scaling            : %16.3f\n", settings.oss);
+    }
+  }
+
+  printf("---------------------------------------------------------------------------------------\n");
   printf("                               Dominant Contributions                                  \n");
   printf("---------------------------------------------------------------------------------------\n");
   printf(" %5s %27s %24s %5s %9s %11s\n", "state", "energy", "sys", "i", "a", "|c|^2*100");
   printf(" %15s %10s %10s %12s\n", "(a.u.)", "(eV)", "(nm)", "%singles");
   printf("---------------------------------------------------------------------------------------\n");
   for (unsigned iEigen = 0; iEigen < eigenvalues.size(); ++iEigen) {
-    if (isNotXWF && contributions.col(iEigen).sum() < 0.95) {
+    if (isNotCC2 && contributions.col(iEigen).sum() < 0.95) {
       printf("     Normalization of the following eigenvector is probably faulty. Be careful.\n");
     }
     // sort orbital transition by their squared coefficients

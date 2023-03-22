@@ -24,6 +24,7 @@
 #include "data/OrbitalController.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
+#include "io/FormattedOutputStream.h" //Filtered output.
 #include "misc/SerenityError.h"
 #include "misc/Timing.h"
 #include "postHF/MPn/LTMP2.h"
@@ -33,6 +34,7 @@
 #include "potentials/FuncPotential.h"
 #include "potentials/bundles/DFTPotentials.h"
 #include "potentials/bundles/PotentialBundle.h"
+#include "scf/DeltaScf.h"
 #include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
@@ -118,7 +120,7 @@ void ScfTask<SCFMode>::calculateDispersionCorrection() {
 }
 
 template<Options::SCF_MODES SCFMode>
-void ScfTask<SCFMode>::finalDFTEnergyEvaluation() {
+void ScfTask<SCFMode>::finalDFTEnergyEvaluation(std::shared_ptr<SPMatrix<SCFMode>> momMatrix) {
   const Settings& systemSettings = _systemController->getSettings();
   if (systemSettings.grid.accuracy != systemSettings.grid.smallGridAccuracy) {
     auto es = _systemController->getElectronicStructure<SCFMode>();
@@ -135,7 +137,7 @@ void ScfTask<SCFMode>::finalDFTEnergyEvaluation() {
     // Update orbitals/Fock matrix.
     auto orbitalController = es->getMolecularOrbitals();
     auto f = dftPotentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
-    orbitalController->updateOrbitals(f, es->getOneElectronIntegralController());
+    orbitalController->updateOrbitals(f, es->getOneElectronIntegralController(), momMatrix);
     // Set new Fock matrix of the final energy evaluation
     es->setFockMatrix(f);
     // Write everything to HDF5
@@ -251,7 +253,22 @@ template<Options::SCF_MODES SCFMode>
 void ScfTask<SCFMode>::performSCF(std::shared_ptr<PotentialBundle<SCFMode>> potentials) {
   auto es = _systemController->getElectronicStructure<SCFMode>();
   auto energyComponentController = es->getEnergyComponentController();
-  const Settings& systemSettings = _systemController->getSettings();
+
+  // Changing this from const reference to a copy to be able to safely turn off
+  // the levelshift in case of a Delta-SCF calculation (Jul 2022, NN).
+  Settings systemSettings = _systemController->getSettings();
+
+  auto momMatrix = DeltaScf<SCFMode>::prepareMOMMatrix(settings.exca, settings.excb, es);
+  // In case of a Delta-SCF calculation, turn off the levelshift
+  // And make sure you're starting from a proper reference electronic structure.
+  if (momMatrix != nullptr) {
+    OutputControl::nOut << " Turning off levelshift for Delta-SCF calculation." << std::endl << std::endl;
+    if (!es->checkFock()) {
+      throw SerenityError("Make sure you have a converged ground-state electronic structure before performing a "
+                          "Delta-SCF calculation.");
+    }
+    systemSettings.scf.useLevelshift = false;
+  }
   if (this->settings.skipSCF) {
     auto F = potentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
     if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
@@ -270,15 +287,15 @@ void ScfTask<SCFMode>::performSCF(std::shared_ptr<PotentialBundle<SCFMode>> pote
       iOOptions.printFinalOrbitalEnergies = false;
       iOOptions.gridAccuracyCheck = false;
 
-      Scf<SCFMode>::perform(systemSettings, es, potentials);
+      Scf<SCFMode>::perform(systemSettings, es, potentials, settings.allowNotConverged, momMatrix, settings.momCycles);
 
       iOOptions.printFinalOrbitalEnergies = tmp1;
       iOOptions.gridAccuracyCheck = tmp2;
 
-      finalDFTEnergyEvaluation();
+      finalDFTEnergyEvaluation(momMatrix);
     }
     else {
-      Scf<SCFMode>::perform(systemSettings, es, potentials, settings.allowNotConverged);
+      Scf<SCFMode>::perform(systemSettings, es, potentials, settings.allowNotConverged, momMatrix, settings.momCycles);
     }
   }
 }

@@ -42,6 +42,8 @@ HCorePotential<SCFMode>::HCorePotential(std::shared_ptr<SystemController> system
   : Potential<SCFMode>(system->getBasisController()), _system(system), _potential(nullptr), _extCharges(0) {
   this->_basis->addSensitiveObject(_self);
   auto ef = _system.lock()->getSettings().efield;
+  if (ef.pos1.size() != 3 || ef.pos2.size() != 3)
+    throw SerenityError("Error: The electric field direction/position vector must have three coordinates.");
   if (ef.use && !ef.analytical) {
     EFieldPlates plates(Eigen::Map<Eigen::Vector3d>(&ef.pos1[0]), Eigen::Map<Eigen::Vector3d>(&ef.pos2[0]), ef.distance,
                         ef.nRings, ef.radius, ef.fieldStrength, ef.nameOutput);

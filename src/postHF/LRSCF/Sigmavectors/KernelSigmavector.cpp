@@ -36,8 +36,9 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 KernelSigmavector<SCFMode>::KernelSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf,
-                                              std::vector<Eigen::MatrixXd> b, std::shared_ptr<Kernel<SCFMode>> kernel)
-  : Sigmavector<SCFMode>(lrscf, b), _kernel(kernel) {
+                                              std::vector<Eigen::MatrixXd> b, std::shared_ptr<Kernel<SCFMode>> kernel,
+                                              std::shared_ptr<Kernel<UNRESTRICTED>> ukernel)
+  : Sigmavector<SCFMode>(lrscf, b), _kernel(kernel), _ukernel(ukernel) {
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -312,29 +313,53 @@ void KernelSigmavector<RESTRICTED>::contractBlock(const unsigned int start, cons
                                                   GridPotential<RESTRICTED>& scalarPart,
                                                   Gradient<GridPotential<RESTRICTED>>& gradientPart, unsigned int I,
                                                   unsigned int J) {
-  auto ppptr = _kernel->getPP(I, J, size, start);
-  auto& pp = (*ppptr);
-  scalarPart.segment(start, size) += pp.cwiseProduct(pbb);
-  if (_kernel->isGGA()) {
-    auto pgptr = _kernel->getPG(I, J, size, start);
-    auto ggptr = _kernel->getGG(I, J, size, start);
-    auto& pg = (*pgptr);
-    auto& gg = (*ggptr);
-    scalarPart.segment(start, size) += pg.x.cwiseProduct(pnbb.x);
-    scalarPart.segment(start, size) += pg.y.cwiseProduct(pnbb.y);
-    scalarPart.segment(start, size) += pg.z.cwiseProduct(pnbb.z);
-    gradientPart.x.segment(start, size) += pg.x.cwiseProduct(pbb);
-    gradientPart.y.segment(start, size) += pg.y.cwiseProduct(pbb);
-    gradientPart.z.segment(start, size) += pg.z.cwiseProduct(pbb);
-    gradientPart.x.segment(start, size) += gg.xx.cwiseProduct(pnbb.x);
-    gradientPart.x.segment(start, size) += gg.xy.cwiseProduct(pnbb.y);
-    gradientPart.x.segment(start, size) += gg.xz.cwiseProduct(pnbb.z);
-    gradientPart.y.segment(start, size) += gg.xy.cwiseProduct(pnbb.x);
-    gradientPart.y.segment(start, size) += gg.yy.cwiseProduct(pnbb.y);
-    gradientPart.y.segment(start, size) += gg.yz.cwiseProduct(pnbb.z);
-    gradientPart.z.segment(start, size) += gg.xz.cwiseProduct(pnbb.x);
-    gradientPart.z.segment(start, size) += gg.yz.cwiseProduct(pnbb.y);
-    gradientPart.z.segment(start, size) += gg.zz.cwiseProduct(pnbb.z);
+  // Singlet case.
+  if (!_ukernel) {
+    auto pp = _kernel->getPP(I, J, size, start);
+    scalarPart.segment(start, size) += pp->cwiseProduct(pbb);
+    if (_kernel->isGGA()) {
+      auto pg = _kernel->getPG(I, J, size, start);
+      auto gg = _kernel->getGG(I, J, size, start);
+      scalarPart.segment(start, size) += pg->x.cwiseProduct(pnbb.x);
+      scalarPart.segment(start, size) += pg->y.cwiseProduct(pnbb.y);
+      scalarPart.segment(start, size) += pg->z.cwiseProduct(pnbb.z);
+      gradientPart.x.segment(start, size) += pg->x.cwiseProduct(pbb);
+      gradientPart.y.segment(start, size) += pg->y.cwiseProduct(pbb);
+      gradientPart.z.segment(start, size) += pg->z.cwiseProduct(pbb);
+      gradientPart.x.segment(start, size) += gg->xx.cwiseProduct(pnbb.x);
+      gradientPart.x.segment(start, size) += gg->xy.cwiseProduct(pnbb.y);
+      gradientPart.x.segment(start, size) += gg->xz.cwiseProduct(pnbb.z);
+      gradientPart.y.segment(start, size) += gg->xy.cwiseProduct(pnbb.x);
+      gradientPart.y.segment(start, size) += gg->yy.cwiseProduct(pnbb.y);
+      gradientPart.y.segment(start, size) += gg->yz.cwiseProduct(pnbb.z);
+      gradientPart.z.segment(start, size) += gg->xz.cwiseProduct(pnbb.x);
+      gradientPart.z.segment(start, size) += gg->yz.cwiseProduct(pnbb.y);
+      gradientPart.z.segment(start, size) += gg->zz.cwiseProduct(pnbb.z);
+    }
+  }
+  // Triplet case.
+  else {
+    auto pp = _ukernel->getPP(I, J, size, start);
+    scalarPart.segment(start, size) += (pp->aa - pp->ab).cwiseProduct(pbb);
+    if (_kernel->isGGA()) {
+      auto pg = _ukernel->getPG(I, J, size, start);
+      auto gg = _ukernel->getGG(I, J, size, start);
+      scalarPart.segment(start, size) += (pg->x.aa - pg->x.ab).cwiseProduct(pnbb.x);
+      scalarPart.segment(start, size) += (pg->y.aa - pg->y.ab).cwiseProduct(pnbb.y);
+      scalarPart.segment(start, size) += (pg->z.aa - pg->z.ab).cwiseProduct(pnbb.z);
+      gradientPart.x.segment(start, size) += (pg->x.aa - pg->x.ab).cwiseProduct(pbb);
+      gradientPart.y.segment(start, size) += (pg->y.aa - pg->y.ab).cwiseProduct(pbb);
+      gradientPart.z.segment(start, size) += (pg->z.aa - pg->z.ab).cwiseProduct(pbb);
+      gradientPart.x.segment(start, size) += (gg->xx.aa - gg->xx.ab).cwiseProduct(pnbb.x);
+      gradientPart.x.segment(start, size) += (gg->xy.aa - gg->xy.ab).cwiseProduct(pnbb.y);
+      gradientPart.x.segment(start, size) += (gg->xz.aa - gg->xz.ab).cwiseProduct(pnbb.z);
+      gradientPart.y.segment(start, size) += (gg->xy.aa - gg->xy.ab).cwiseProduct(pnbb.x);
+      gradientPart.y.segment(start, size) += (gg->yy.aa - gg->yy.ab).cwiseProduct(pnbb.y);
+      gradientPart.y.segment(start, size) += (gg->yz.aa - gg->yz.ab).cwiseProduct(pnbb.z);
+      gradientPart.z.segment(start, size) += (gg->xz.aa - gg->xz.ab).cwiseProduct(pnbb.x);
+      gradientPart.z.segment(start, size) += (gg->yz.aa - gg->yz.ab).cwiseProduct(pnbb.y);
+      gradientPart.z.segment(start, size) += (gg->zz.aa - gg->zz.ab).cwiseProduct(pnbb.z);
+    }
   }
 }
 

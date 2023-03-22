@@ -154,12 +154,6 @@ EOSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
             {environmentSystem}, std::make_shared<EmbeddingSettings>(this->_lrscf[I]->getLRSCFSettings().embedding), true);
         F_AB = abPotential->getABMatrix();
       }
-      // For restricted
-      if (SCFMode == Options::SCF_MODES::RESTRICTED) {
-        for_spin(F_AB) {
-          F_AB_spin *= 0.5;
-        };
-      }
     }
     for (unsigned int iSet = 0; iSet < this->_nSet; ++iSet) {
       for (unsigned int iGuess = 0; iGuess < this->_nGuess; ++iGuess) {
@@ -168,8 +162,7 @@ EOSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
         for_spin(f, p, F_AB) {
           if (_eoPot == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
             if (!sameDensity) {
-              f_spin += SAB * p_spin * SAB.transpose();
-              f_spin *= _levelShiftParameter;
+              f_spin += _levelShiftParameter * SAB * p_spin * SAB.transpose();
             }
             else {
               f_spin += SAB * p_spin * F_AB_spin.transpose();

@@ -46,12 +46,16 @@ struct ScfTaskSettings {
       fractionalDegeneracy(false),
       skipSCF(false),
       allowNotConverged(false),
-      calculateMP2Energy(true) {
+      calculateMP2Energy(true),
+      exca({}),
+      excb({}),
+      momCycles(0) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
     lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((bool)restart, (Options::MP2_TYPES)mp2Type, (double)maxResidual, (int)maxCycles,
-              (bool)fractionalDegeneracy, (bool)skipSCF, (bool)allowNotConverged, (bool)calculateMP2Energy)
+              (bool)fractionalDegeneracy, (bool)skipSCF, (bool)allowNotConverged, (bool)calculateMP2Energy,
+              (std::vector<int>)exca, (std::vector<int>)excb, (int)momCycles)
  public:
   LocalCorrelationSettings lcSettings;
 };
@@ -119,7 +123,7 @@ class ScfTask : public Task {
   void printResults();
   void printHeader();
   void loadRestartFiles();
-  void finalDFTEnergyEvaluation();
+  void finalDFTEnergyEvaluation(std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr);
   void calculateMP2Contribution();
   void calculateDispersionCorrection();
 };

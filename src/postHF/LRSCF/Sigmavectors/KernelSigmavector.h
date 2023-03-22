@@ -59,7 +59,7 @@ class KernelSigmavector : public Sigmavector<SCFMode> {
    *        (calculated at the beginning of the TDDFT calculation).
    */
   KernelSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, std::vector<Eigen::MatrixXd> b,
-                    std::shared_ptr<Kernel<SCFMode>> kernel);
+                    std::shared_ptr<Kernel<SCFMode>> kernel, std::shared_ptr<Kernel<UNRESTRICTED>> ukernel);
 
   /**
    * @brief Destructor.
@@ -96,6 +96,7 @@ class KernelSigmavector : public Sigmavector<SCFMode> {
 
   ///@brief Underlying kernel object.
   std::shared_ptr<Kernel<SCFMode>> _kernel;
+  std::shared_ptr<Kernel<UNRESTRICTED>> _ukernel;
 
 }; // class KernelSigmavector
 } // namespace Serenity

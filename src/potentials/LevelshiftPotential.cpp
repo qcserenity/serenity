@@ -58,10 +58,12 @@ FockMatrix<SCFMode>& LevelshiftPotential<SCFMode>::getMatrix() {
     _potential.reset(new FockMatrix<SCFMode>(this->_basis));
     auto& F = *_potential;
     auto envMat = _envDMatController->getDensityMatrix();
+    // A factor of one half for restricted to account for the factor of two in the density matrix.
+    double scfFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
     for_spin(F, envMat) {
       F_spin.setZero();
       F_spin = overlap.transpose() * envMat_spin * overlap;
-      F_spin *= _levelShiftParameter;
+      F_spin *= scfFactor * _levelShiftParameter;
     };
   }
   return *_potential;

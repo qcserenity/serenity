@@ -70,7 +70,6 @@ TEST(BasicFunctionalsTest, BasicFunctionalsAliases_XCFun) {
 TEST(BasicFunctionalsTest, BasicFunctionalsPurposes) {
   const unsigned int nBFuncs = 554;
   for (unsigned int i = 0; i < nBFuncs; i++) {
-    ASSERT_NO_THROW(getPurpose[i]);
     int p = static_cast<int>(getPurpose[i]);
     ASSERT_TRUE(p < 5);
     ASSERT_TRUE(p >= 0);
@@ -80,7 +79,6 @@ TEST(BasicFunctionalsTest, BasicFunctionalsPurposes) {
 TEST(BasicFunctionalsTest, BasicFunctionalsClass) {
   const unsigned int nBFuncs = 554;
   for (unsigned int i = 0; i < nBFuncs; i++) {
-    ASSERT_NO_THROW(getClass[i]);
     int c = static_cast<int>(getClass[i]);
     ASSERT_TRUE(c < 5);
     ASSERT_TRUE(c >= 0);

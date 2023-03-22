@@ -42,10 +42,24 @@ extern "C" void laplace_minimax_(double* errmax, double* xpnts, double* wghts, i
 
 static void getMinimaxRoots(Eigen::VectorXd& roots, Eigen::VectorXd& weights, double ymin, double ymax, double conv = 1e-6) {
 #ifdef SERENITY_USE_LAPLACE_MINIMAX
-  // Print header.
   printBigCaption("Laplace-Minimax");
   printf("   Lower Bound       : %-6.2f\n", ymin);
   printf("   Upper Bound       : %-6.2f\n", ymax);
+
+  std::string default_loc(std::getenv("SERENITY_HOME") ? std::getenv("SERENITY_HOME") : "");
+  default_loc += "/build/lib/laplace-minimax/";
+  std::ifstream file((default_loc + "/data/init_para.txt").c_str());
+  if (file.good()) {
+    setenv("LAPLACE_ROOT", default_loc.c_str(), true);
+  }
+  else {
+    std::string lroot(std::getenv("LAPLACE_ROOT") ? std::getenv("LAPLACE_ROOT") : "");
+    std::ifstream file((lroot + "/data/init_para.txt").c_str());
+    if (!file.good()) {
+      throw SerenityError("Cannot find laplace-minimax file 'init_para.txt'."
+                          " Please set $LAPLACE_ROOT so that Serenity finds it in $LAPLACE_ROOT/data/init_para.txt.");
+    }
+  }
 
   int nPoints;
   double errmax = 0;
@@ -54,25 +68,6 @@ static void getMinimaxRoots(Eigen::VectorXd& roots, Eigen::VectorXd& weights, do
     double xpnts[nPoints];
     double wghts[nPoints];
 
-    // Check validity of environment variable.
-    try {
-      std::string lroot = std::getenv("LAPLACE_ROOT");
-      std::string data_file = lroot + "/data/init_para.txt";
-      std::ifstream file(data_file.c_str());
-      if (!file.good()) {
-        throw SerenityError("Cannot find laplace-minimax files in " + lroot + ". Check the environment variable $LAPLACE_ROOT!");
-      }
-    }
-    // Try default location.
-    catch (...) {
-      std::string default_loc = std::getenv("SERENITY_HOME");
-      default_loc += "/build/ext-laplace-minimax/src/laplace-minimax-static";
-      std::ifstream file((default_loc + "/data/init_para.txt").c_str());
-      if (!file.good()) {
-        throw SerenityError("Cannot find laplace-minimax files. Check the environment variable $LAPLACE_ROOT!");
-      }
-      setenv("LAPLACE_ROOT", default_loc.c_str(), true);
-    }
     // Make actual call to the library.
     laplace_minimax_(&errmax, xpnts, wghts, &nPoints, &ymin, &ymax);
 

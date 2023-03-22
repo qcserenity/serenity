@@ -30,7 +30,9 @@
 #include "misc/HelperFunctions.h"      //Sparse projections from sparse maps.
 #include "misc/WarningTracker.h"       //Warnings.
 /* Include Std and External Headers */
-#include <malloc.h>   //Free unused memory.
+#if __linux__ || __unix__ || __unix
+#include <malloc.h> //Free unused memory.
+#endif
 #include <sys/stat.h> //Check for an already existing file on disk.
 
 namespace Serenity {
@@ -61,7 +63,9 @@ MO3CenterIntegralController::~MO3CenterIntegralController() {
     } // if checkDisk(type)
   }   // for type
   // Free unused memory.
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 void MO3CenterIntegralController::removeFromMemory(MO3CENTER_INTS mo3CenterType) {
@@ -85,7 +89,9 @@ void MO3CenterIntegralController::flushIntegrals(MO3CENTER_INTS mo3CenterType) {
   _integrals[mo3CenterType].first = nullptr;
   _integrals[mo3CenterType].second = Eigen::SparseVector<int>(0);
   // Free unused memory.
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 void MO3CenterIntegralController::setDiskMode(bool diskMode) {
@@ -499,7 +505,9 @@ void MO3CenterIntegralController::removeIntegralsByDomain(const Eigen::SparseVec
     } // for K
   }
   // Free unused memory.
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 } /* namespace Serenity */

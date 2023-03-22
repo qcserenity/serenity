@@ -27,7 +27,9 @@
 /* Include Std and External Headers */
 #include <H5Cpp.h>
 #include <hdf5.h>
-#include <malloc.h>
+#if __linux__ || __unix__ || __unix
+#include <malloc.h> //Free unused memory.
+#endif
 
 namespace Serenity {
 
@@ -209,7 +211,9 @@ void CDStorageController::setDiskMode() {
   }
   this->updateDataSets();
   *(_diskMode) = true;
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 void CDStorageController::flushFile() {

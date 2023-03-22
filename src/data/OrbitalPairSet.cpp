@@ -24,7 +24,9 @@
 #include "io/HDF5.h"            //Write to disk.
 #include "misc/SerenityError.h" //Errors.
 /* Include Std and External Headers */
+#if __linux__ || __unix__ || __unix
 #include <malloc.h> //Free unused memory.
+#endif
 namespace Serenity {
 
 OrbitalPairSet::OrbitalPairSet() = default;
@@ -54,7 +56,9 @@ void OrbitalPairSet::removeInteralsFromMemory() {
   }
   _inMemory = false;
   // Free unused memory.
+#if __linux__ || __unix__ || __unix
   malloc_trim(0);
+#endif
 }
 
 void OrbitalPairSet::setInMemory(bool inMemory) {

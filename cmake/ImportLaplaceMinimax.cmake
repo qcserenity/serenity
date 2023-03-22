@@ -25,7 +25,7 @@ function(import_laplace_minimax)
     CONFIGURE_COMMAND cmake ../laplace-minimax-static -DCMAKE_Fortran_FLAGS=-fPIC -DCMAKE_Fortran_COMPILER=${LAPLACE_COMPILER}
     BUILD_COMMAND make VERBOSE=1
     UPDATE_COMMAND ""
-    INSTALL_COMMAND cp <BINARY_DIR>/liblaplace-minimax.a ${CMAKE_CURRENT_BINARY_DIR}/lib/liblaplace-minimax.a
+    INSTALL_COMMAND cp <BINARY_DIR>/liblaplace-minimax.a ${CMAKE_CURRENT_BINARY_DIR}/lib/liblaplace-minimax.a && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/data/ && cp -r <SOURCE_DIR>/data/ ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/
   )
 
   add_library(laplace-minimax STATIC IMPORTED)

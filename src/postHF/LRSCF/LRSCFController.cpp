@@ -30,6 +30,7 @@
 #include "io/HDF5.h"
 #include "math/linearAlgebra/MatrixFunctions.h" //Matrix sqrt
 #include "math/linearAlgebra/Orthogonalization.h"
+#include "misc/WarningTracker.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/ADC2Sigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/CC2Sigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/RICC2/XWFController.h"
@@ -268,19 +269,54 @@ std::shared_ptr<BasisController> LRSCFController<SCFMode>::getBasisController(Op
   return _system->getBasisController(basisPurpose);
 }
 
-template<Options::SCF_MODES SCFMode>
-std::shared_ptr<SPMatrix<SCFMode>> LRSCFController<SCFMode>::getMOFockMatrix() {
-  if (!_system->template getElectronicStructure<SCFMode>()->checkFock()) {
+template<>
+std::shared_ptr<SPMatrix<RESTRICTED>> LRSCFController<RESTRICTED>::getMOFockMatrix() {
+  if (!_system->template getElectronicStructure<RESTRICTED>()->checkFock()) {
+    throw SerenityError("LRSF: No Fock matrix present in your system.");
+  }
+  auto fock = _system->template getElectronicStructure<RESTRICTED>()->getFockMatrix();
+  if (!_settings.rpaScreening) {
+    unsigned nb = _nOcc + _nVirt;
+    fock = (_coefficients.leftCols(nb).transpose() * fock * _coefficients.leftCols(nb)).eval();
+  }
+  else {
+    Eigen::MatrixXd temp = _orbitalEnergies.segment(0, _nOcc + _nVirt).asDiagonal();
+    fock = temp;
+  }
+  _fock = std::make_shared<SPMatrix<RESTRICTED>>(fock);
+  return _fock;
+}
+
+template<>
+std::shared_ptr<SPMatrix<UNRESTRICTED>> LRSCFController<UNRESTRICTED>::getMOFockMatrix() {
+  if (!_system->template getElectronicStructure<UNRESTRICTED>()->checkFock()) {
     throw SerenityError("lrscf: no fock matrix present in your system.");
   }
-  auto fock = _system->template getElectronicStructure<SCFMode>()->getFockMatrix();
+  auto fock = _system->template getElectronicStructure<UNRESTRICTED>()->getFockMatrix();
   if (!_settings.rpaScreening) {
-    // since this doesn't really cost anything, each time the mo fock matrix is
-    // requested, it is built again to make sure the newest coefficients are used
-    for_spin(_coefficients, fock, _nOcc, _nVirt) {
-      unsigned nb = _nOcc_spin + _nVirt_spin;
-      fock_spin = (_coefficients_spin.leftCols(nb).transpose() * fock_spin * _coefficients_spin.leftCols(nb)).eval();
-    };
+    if (_settings.scfstab != Options::STABILITY_ANALYSIS::SPINFLIP) {
+      for_spin(_coefficients, fock, _nOcc, _nVirt) {
+        unsigned nb = _nOcc_spin + _nVirt_spin;
+        fock_spin = (_coefficients_spin.leftCols(nb).transpose() * fock_spin * _coefficients_spin.leftCols(nb)).eval();
+      };
+    }
+    else {
+      // For Spin-Flip TDDFT, the reference orbitals are occupied (spin excess) and the respective other spin as the
+      // virtuals. Therefore, only one orbital transition space is needed which is the alpha part of everything here. To
+      // have a correct MO representation of the Fock matrix, the constructed alpha part here must contain the alpha
+      // occ-occ block and the beta virt-virt block. This needs to be taken account of. Check out the
+      // setupSpinFlipReference() member function of this class to understand this better.
+      unsigned nmos = _nOcc.alpha + _nVirt.alpha;
+      Eigen::MatrixXd F = Eigen::MatrixXd::Zero(nmos, nmos);
+      F.topLeftCorner(_nOcc.alpha, _nOcc.alpha) = _coefficients.alpha.middleCols(0, _nOcc.alpha).transpose() *
+                                                  (_system->getSpin() > 0 ? fock.alpha : fock.beta) *
+                                                  _coefficients.alpha.middleCols(0, _nOcc.alpha);
+      F.bottomRightCorner(_nVirt.alpha, _nVirt.alpha) =
+          _coefficients.alpha.middleCols(_nOcc.alpha, _nVirt.alpha).transpose() *
+          (_system->getSpin() > 0 ? fock.beta : fock.alpha) * _coefficients.alpha.middleCols(_nOcc.alpha, _nVirt.alpha);
+      fock.alpha = F;
+      fock.beta = F;
+    }
   }
   else {
     for_spin(fock, _orbitalEnergies, _nOcc, _nVirt) {
@@ -288,7 +324,7 @@ std::shared_ptr<SPMatrix<SCFMode>> LRSCFController<SCFMode>::getMOFockMatrix() {
       fock_spin = temp;
     };
   }
-  _fock = std::make_shared<SPMatrix<SCFMode>>(fock);
+  _fock = std::make_shared<SPMatrix<UNRESTRICTED>>(fock);
   return _fock;
 }
 
@@ -507,16 +543,17 @@ void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vec
     // Update orbitals
     auto oldCoefficients = _coefficients_spin;
     auto oldOrbitalEnergies = _orbitalEnergies_spin;
+    unsigned oldnOcc = _nOcc_spin;
+
     _coefficients_spin.setZero();
+    _orbitalEnergies_spin.setZero();
     _nOcc_spin = 0;
     _nVirt_spin = 0;
-    // Adapt occupation vector and orbital energies
-    _orbitalEnergies_spin.resize(indexWhiteList_spin.size());
 
     for (unsigned iMO = 0; iMO < indexWhiteList_spin.size(); ++iMO) {
       _coefficients_spin.col(iMO) = oldCoefficients.col(indexWhiteList_spin[iMO]);
       _orbitalEnergies_spin(iMO) = oldOrbitalEnergies(indexWhiteList_spin[iMO]);
-      if (indexWhiteList_spin[iMO] <= _nOcc_spin) {
+      if (indexWhiteList_spin[iMO] < oldnOcc) {
         _nOcc_spin += 1;
       }
       else {
@@ -527,16 +564,23 @@ void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vec
     // Print info
     if (SCFMode == Options::SCF_MODES::RESTRICTED) {
       std::cout << " System: " << system << " \n";
-      printf(" NEW Reference orbitals : \n");
+      printf(" New reference orbitals (occ | virt): \n");
     }
     else {
       std::cout << " System: " << system << " \n";
-      printf("%s NEW Reference orbitals : \n", (iSpin == 0) ? "Alpha" : "Beta");
+      printf("%s New reference orbitals (occ | virt): \n", (iSpin == 0) ? "Alpha" : "Beta");
     }
+
+    bool printedOccVirtSep = false;
     for (unsigned iMO = 0; iMO < indexWhiteList_spin.size(); ++iMO) {
+      if (indexWhiteList_spin[iMO] >= oldnOcc && !printedOccVirtSep) {
+        printf("   |");
+        printedOccVirtSep = true;
+      }
       printf("%4i", indexWhiteList_spin[iMO] + 1);
-      if ((iMO + 1) % 10 == 0)
+      if ((iMO + 1) % 10 == 0) {
         printf("\n");
+      }
     }
     printf("\n");
     iSpin += 1;
@@ -636,6 +680,124 @@ void LRSCFController<SCFMode>::applyCoreOnly() {
     _nOcc_spin = nCore;
   };
   OutputControl::nOut << std::endl;
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::setupSpinFlipReference() {
+  if (SCFMode == Options::SCF_MODES::RESTRICTED || !(_system->getSpin() != 2 || _system->getSpin() != -2)) {
+    throw SerenityError("Spin-Flip TDDFT/TDHF only possible for unrestricted triplet reference!");
+  }
+
+  unsigned noa = 0, nva = 0;
+  unsigned nob = 0, nvb = 0;
+
+  Eigen::MatrixXd ca, cb;
+  Eigen::VectorXd ea, eb;
+
+  unsigned iSpin = 0;
+  for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+    if (iSpin == 0) {
+      noa = _nOcc_spin;
+      nva = _nVirt_spin;
+      ca = _coefficients_spin;
+      ea = _orbitalEnergies_spin;
+    }
+    else {
+      nob = _nOcc_spin;
+      nvb = _nVirt_spin;
+      cb = _coefficients_spin;
+      eb = _orbitalEnergies_spin;
+    }
+    iSpin = iSpin + 1;
+  };
+
+  if (noa > nob) {
+    Eigen::MatrixXd C = Eigen::MatrixXd::Zero(ca.rows(), noa + nvb);
+    Eigen::VectorXd e = Eigen::VectorXd::Zero(noa + nvb);
+
+    C.middleCols(0, noa) = ca.middleCols(0, noa);
+    e.middleRows(0, noa) = ea.middleRows(0, noa);
+
+    C.middleCols(noa, nvb) = cb.middleCols(nob, nvb);
+    e.middleRows(noa, nvb) = eb.middleRows(nob, nvb);
+
+    iSpin = 0;
+    for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+      if (iSpin == 0) {
+        _nOcc_spin = noa;
+        _nVirt_spin = nvb;
+
+        _coefficients_spin = C;
+        _orbitalEnergies_spin = e;
+      }
+      else {
+        _nOcc_spin = 0;
+        _nVirt_spin = 0;
+
+        _coefficients_spin.setZero();
+        _orbitalEnergies_spin.setZero();
+      }
+      iSpin = iSpin + 1;
+    };
+  }
+  else {
+    Eigen::MatrixXd C = Eigen::MatrixXd::Zero(ca.rows(), nob + nva);
+    Eigen::VectorXd e = Eigen::VectorXd::Zero(nob + nva);
+
+    C.middleCols(0, nob) = cb.middleCols(0, nob);
+    e.middleRows(0, nob) = eb.middleRows(0, nob);
+
+    C.middleCols(nob, nva) = ca.middleCols(noa, nva);
+    e.middleRows(nob, nva) = ea.middleRows(noa, nva);
+
+    iSpin = 0;
+    for_spin(_nOcc, _nVirt, _coefficients, _orbitalEnergies) {
+      if (iSpin == 0) {
+        _nOcc_spin = nob;
+        _nVirt_spin = nva;
+
+        _coefficients_spin = C;
+        _orbitalEnergies_spin = e;
+      }
+      else {
+        _nOcc_spin = 0;
+        _nVirt_spin = 0;
+
+        _coefficients_spin.setZero();
+        _orbitalEnergies_spin.setZero();
+      }
+      iSpin = iSpin + 1;
+    };
+  }
+}
+
+template<Options::SCF_MODES SCFMode>
+void LRSCFController<SCFMode>::rotateOrbitalsSCFInstability() {
+  printBigCaption("SCF Instability Orbital Rotation");
+  if (_settings.scfstab != Options::STABILITY_ANALYSIS::REAL) {
+    WarningTracker::printWarning(
+        " You are following roots that are not result of a real stability analysis, make sure this is intended.", true);
+  }
+  printf(" Following instability root : %5i\n", _settings.stabroot);
+  printf(" Orbital mixing parameter   : %5.1f\n\n", _settings.stabscal);
+  if (_settings.stabroot > _settings.nEigen) {
+    throw SerenityError(
+        "The stabroot keyword must be lower or equal to the number of roots determined in the first place.");
+  }
+
+  unsigned iSpinStart = 0;
+  for_spin(_coefficients, _nOcc, _nVirt) {
+    Eigen::Map<Eigen::MatrixXd> xai((*_excitationVectors)[0].col(_settings.stabroot - 1).data() + iSpinStart,
+                                    _nVirt_spin, _nOcc_spin);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(_nOcc_spin + _nVirt_spin, _nOcc_spin + _nVirt_spin);
+    A.topRightCorner(_nOcc_spin, _nVirt_spin) = xai.transpose();
+    A.bottomLeftCorner(_nVirt_spin, _nOcc_spin) = -xai;
+    Eigen::MatrixXd U = matrixExp(_settings.stabscal * A);
+
+    _coefficients_spin *= U;
+    iSpinStart = _nOcc_spin * _nVirt_spin;
+  };
+  _system->getActiveOrbitalController<SCFMode>()->updateOrbitals(_coefficients, _orbitalEnergies);
 }
 
 template class LRSCFController<Options::SCF_MODES::RESTRICTED>;

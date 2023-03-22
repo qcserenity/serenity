@@ -618,7 +618,8 @@ void DelleySurfaceConstructor::calculateCylinderRadiiAndParameters() {
       } // if dij <= S_i + S_j
     }   // for jSphere
   }     // for iSphere
-  _cylinderRadii = Eigen::SparseMatrix<double>(nSpheres, nSpheres);
+  _cylinderRadii.resize(0, 0);
+  _cylinderRadii.resize(nSpheres, nSpheres);
   _cylinderRadii.setFromTriplets(radii.begin(), radii.end());
 }
 

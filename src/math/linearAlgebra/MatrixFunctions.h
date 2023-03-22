@@ -23,6 +23,8 @@
 
 /* Include Serenity Internal Headers */
 #include "data/matrices/MatrixInBasis.h"
+#include "io/FormattedOutputStream.h"
+#include "math/FloatMaths.h"
 #include "misc/SerenityError.h" //Error messages
 /* Include Std and External Headers */
 #include <Eigen/Dense> //Dense matrices and eigenvalue decompositions.
@@ -129,6 +131,37 @@ inline Eigen::MatrixXd orthogonalize_chol(const Eigen::MatrixXd& mat, const Eige
   Eigen::LLT<Eigen::MatrixXd> llt = (mat.transpose() * metric * mat).llt();
   const Eigen::MatrixXd l = llt.matrixL();
   return (mat * (l.inverse()).transpose()).eval();
+}
+
+/**
+ * @brief Primitive implementation of U = exp(A) to avoid using Eigen3/Unsupported.
+ * @param A The matrix to calculate the exponential for.
+ * @param conv Stops the expansion if this threshold is fallen below.
+ */
+inline Eigen::MatrixXd matrixExp(const Eigen::MatrixXd& A, const double conv = NORMAL_D) {
+  Eigen::MatrixXd U = Eigen::MatrixXd::Identity(A.rows(), A.cols());
+  double norm = std::numeric_limits<double>::infinity();
+  unsigned order = 1;
+  do {
+    Eigen::MatrixXd temp = A;
+    for (unsigned i = 2; i <= order; ++i) {
+      temp *= A;
+    }
+    // tgamma(i+1) = factorial(i)
+    temp /= tgamma(order + 1);
+    U += temp;
+    norm = temp.norm();
+    order = order + 1;
+    if (order == 25) {
+      throw SerenityError("Taylor expansion for calculating matrix expotential did not converge after 25 orders.");
+    }
+  } while (norm > conv);
+
+  OutputControl::nOut << " Stopped Taylor expansion for calculating U=exp(A) at order : " << order << std::endl;
+  OutputControl::nOut << " Norm of the last matrix increment                          : " << norm << std::endl
+                      << std::endl;
+
+  return U;
 }
 
 } /* namespace Serenity */

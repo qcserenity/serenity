@@ -161,16 +161,18 @@ void OrbitalController<SCFMode>::calculateTransformationX(std::shared_ptr<OneEle
 
 template<Options::SCF_MODES SCFMode>
 void OrbitalController<SCFMode>::updateOrbitals(const FockMatrix<SCFMode>& fockMatrix,
-                                                std::shared_ptr<OneElectronIntegralController> oneIntController) {
+                                                std::shared_ptr<OneElectronIntegralController> oneIntController,
+                                                std::shared_ptr<SPMatrix<SCFMode>> momMatrix) {
   auto shift = std::make_pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
       Eigen::VectorXd(Eigen::VectorXd::Zero(2)), SpinPolarizedData<SCFMode, Eigen::VectorXd>(Eigen::VectorXd(0)));
-  this->updateOrbitals(shift, fockMatrix, oneIntController);
+  this->updateOrbitals(shift, fockMatrix, oneIntController, momMatrix);
 }
 
 template<Options::SCF_MODES SCFMode>
 void OrbitalController<SCFMode>::updateOrbitals(const std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> levelshift,
                                                 const FockMatrix<SCFMode>& fockMatrix,
-                                                std::shared_ptr<OneElectronIntegralController> oneIntController) {
+                                                std::shared_ptr<OneElectronIntegralController> oneIntController,
+                                                std::shared_ptr<SPMatrix<SCFMode>> momMatrix) {
   Timings::takeTime("Tech. -    Fock Matrix Solving");
 
   auto& occupation = levelshift.second;
@@ -236,11 +238,64 @@ void OrbitalController<SCFMode>::updateOrbitals(const std::pair<Eigen::VectorXd,
       eps_spin.segment(0, newEigenvalues.size()) = newEigenvalues;
     };
   }
+
+  if (momMatrix) {
+    auto& mom = (*momMatrix);
+    const auto& S = oneIntController->getOverlapIntegrals();
+    this->applyMOMProcedure(c, eps, mom, S);
+  }
+
   _firstIteration = false;
   this->updateOrbitals(c, eps);
   // Conserve the number of core orbitals. And assign them according to the Aufbau principle.
   this->setCoreOrbitalsFirstN(this->getNCoreOrbitals());
   Timings::timeTaken("Tech. -    Fock Matrix Solving");
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::applyMOMProcedure(CoefficientMatrix<SCFMode>& c,
+                                                   SpinPolarizedData<SCFMode, Eigen::VectorXd>& eps,
+                                                   const SPMatrix<SCFMode> momMatrix,
+                                                   const MatrixInBasis<RESTRICTED> overlapMatrix) {
+  for_spin(momMatrix, c, eps) {
+    Eigen::MatrixXd overlap = momMatrix_spin.transpose() * overlapMatrix * c_spin;
+    Eigen::VectorXd p = overlap.colwise().norm();
+    std::vector<std::pair<double, unsigned>> sortme;
+    for (unsigned q = 0; q < p.size(); ++q) {
+      sortme.push_back(std::pair<double, unsigned>(p(q), q));
+    }
+    std::stable_sort(sortme.begin(), sortme.end());
+    std::reverse(sortme.begin(), sortme.end());
+
+    auto cOld = c_spin;
+    auto epsOld = eps_spin;
+
+    for (unsigned q = 0; q < p.size(); ++q) {
+      c_spin.col(q) = cOld.col(sortme[q].second);
+      eps_spin(q) = epsOld(sortme[q].second);
+    }
+
+    // Sort occupied and virtual orbitals by eigenvalue separately.
+    unsigned iMin;
+
+    unsigned nocc = momMatrix_spin.cols();
+    Eigen::Ref<Eigen::VectorXd> epsOcc = eps_spin.head(nocc);
+    Eigen::Ref<Eigen::MatrixXd> cOcc = c_spin.leftCols(nocc);
+    for (unsigned i = 0; i < nocc; ++i) {
+      epsOcc.tail(nocc - i).minCoeff(&iMin);
+      epsOcc.row(i).swap(epsOcc.row(iMin + i));
+      cOcc.col(i).swap(cOcc.col(iMin + i));
+    }
+
+    unsigned nvirt = p.size() - nocc;
+    Eigen::Ref<Eigen::VectorXd> epsVirt = eps_spin.tail(nvirt);
+    Eigen::Ref<Eigen::MatrixXd> cVirt = c_spin.rightCols(nvirt);
+    for (unsigned a = 0; a < nvirt; ++a) {
+      epsVirt.tail(nvirt - a).minCoeff(&iMin);
+      epsVirt.row(a).swap(epsVirt.row(iMin + a));
+      cVirt.col(a).swap(cVirt.col(iMin + a));
+    }
+  };
 }
 
 template<Options::SCF_MODES SCFMode>
