@@ -44,9 +44,10 @@ class EOSigmavector : public Sigmavector<SCFMode> {
    * not used in the present implementation, also be calculated for more than two sets of test vectors.
    * @param levelShiftParameter The levelshift for the levelshift projection operator.
    * @param eoPot The embedding mode used for the sTDDFT calculation.
+   * @param fermiShift The shift of the Fermi-shifted Huzinaga operator.
    */
   EOSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, std::vector<Eigen::MatrixXd> b,
-                const double levelShiftParameter, const Options::KIN_EMBEDDING_MODES eoPot);
+                const double levelShiftParameter, const Options::KIN_EMBEDDING_MODES eoPot, const double fermiShift);
   virtual ~EOSigmavector() = default;
 
  private:
@@ -55,10 +56,13 @@ class EOSigmavector : public Sigmavector<SCFMode> {
   calcF(unsigned int I, unsigned int J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) final;
 
   // The levelshift for the levelshift projection operator.
-  double _levelShiftParameter;
+  const double _levelShiftParameter;
 
   // The embedding mode used in the sTDDFT calculation.
   Options::KIN_EMBEDDING_MODES _eoPot;
+
+  // The fermi shift of the levelshifted Huzinaga projection operator.
+  const double _fermiShift;
 };
 
 } /* namespace Serenity */

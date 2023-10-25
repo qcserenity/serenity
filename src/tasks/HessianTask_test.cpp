@@ -55,7 +55,10 @@ class HessianTaskTest : public ::testing::Test {
 TEST_F(HessianTaskTest, h2Hf) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "DEF2-SVP";
@@ -116,7 +119,10 @@ TEST_F(HessianTaskTest, h2Hf) {
 TEST_F(HessianTaskTest, h2FaT) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "STO-3G";
@@ -194,7 +200,10 @@ TEST_F(HessianTaskTest, h2FaT) {
 TEST_F(HessianTaskTest, h2actFaT) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.scf.energyThreshold = 1e-6;
   settings.scf.rmsdThreshold = 1e-6;
   settings.basis.label = "STO-3G";

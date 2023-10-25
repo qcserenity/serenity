@@ -117,7 +117,7 @@ class RI_J_IntegralController : public ObjectSensitiveClass<Basis> {
    */
   template<class Func>
   __attribute__((always_inline)) inline void loopOver3CInts(Func distribute) {
-    auto prescreen = [](const unsigned, const unsigned, const double) { return false; };
+    auto prescreen = [](const unsigned, const unsigned, const unsigned, const double) { return false; };
     loopOver3CInts(distribute, prescreen);
   }
 

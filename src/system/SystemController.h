@@ -248,6 +248,19 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    */
   std::shared_ptr<BasisController> getBasisController(Options::BASIS_PURPOSES basisPurpose = Options::BASIS_PURPOSES::DEFAULT) const;
   /**
+   * @param   auxBasisPurpose The type of integrals the auxiliary basis is tailored towards.
+   * @param   dfMode          The mode of density-fitting used (i.e. RI, ACD, ACCD)
+   * @returns the associated auxiliary basis controller (for the specified basisPurpose)
+   */
+  std::shared_ptr<BasisController> getAuxBasisController(Options::AUX_BASIS_PURPOSES auxBasisPurpose,
+                                                         Options::DENS_FITS dfMode) const;
+  /**
+   * @param   auxBasisPurpose The type of integrals the auxiliary basis is tailored towards.
+   * @param   dfMode          The mode of density-fitting used (i.e. RI, ACD, ACCD)
+   * @returns the associated basis purpose option (for the specified auxiliary basis purpose)
+   */
+  Options::BASIS_PURPOSES resolveAuxBasisPurpose(Options::AUX_BASIS_PURPOSES auxBasisPurpose, Options::DENS_FITS dfMode) const;
+  /**
    * Currently we only use atom-centered basis sets, but that may change in the future, e.g. if you
    * think about embedded calculations where you have basis functions on atoms this system does not
    * know anything about. Because of that we have this additional function call and interface.

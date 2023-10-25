@@ -52,6 +52,9 @@ class FiniteFieldTaskTest : public ::testing::Test {
  */
 TEST_F(FiniteFieldTaskTest, numerStatPolyFFvsLRSCF) {
   auto sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF);
+  Settings settings = sysDummy->getSettings();
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
 
   FiniteFieldTask ff(sysDummy);
   ff.settings.frequency = 0;
@@ -73,6 +76,9 @@ TEST_F(FiniteFieldTaskTest, numerStatPolyFFvsLRSCF) {
  */
 TEST_F(FiniteFieldTaskTest, analyDynPolyFFvsLRSCF) {
   auto sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF);
+  Settings settings = sysDummy->getSettings();
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
   FiniteFieldTask ff(sysDummy);
   ff.settings.frequency = 1.0;
   ff.run();
@@ -93,6 +99,9 @@ TEST_F(FiniteFieldTaskTest, analyDynPolyFFvsLRSCF) {
  */
 TEST_F(FiniteFieldTaskTest, analyStatPolyFFvsLRSCF) {
   auto sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF);
+  Settings settings = sysDummy->getSettings();
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
   FiniteFieldTask ff(sysDummy);
   ff.settings.frequency = 0;
   ff.run();
@@ -114,6 +123,9 @@ TEST_F(FiniteFieldTaskTest, analyStatPolyFFvsLRSCF) {
  */
 TEST_F(FiniteFieldTaskTest, staticstatic) {
   auto sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF);
+  Settings settings = sysDummy->getSettings();
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
   FiniteFieldTask ff(sysDummy);
   ff.settings.frequency = 0;
   ff.settings.hyperPolarizability = true;

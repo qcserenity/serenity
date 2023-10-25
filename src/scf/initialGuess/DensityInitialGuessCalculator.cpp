@@ -75,7 +75,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
         systemController->getSharedPtr(), dMatController, 1.0, systemController->getSettings().basis.integralThreshold,
         systemController->getSettings().basis.integralIncrementThresholdStart,
         systemController->getSettings().basis.integralIncrementThresholdEnd,
-        systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
+        systemController->getSettings().basis.incrementalSteps, 0.0, 0.3, false));
     pot = std::make_shared<HFPotentials<Options::SCF_MODES::RESTRICTED>>(hcore, hf, pcm, systemController->getGeometry());
   }
   else {
@@ -88,34 +88,12 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
         systemController, dMatController, systemController->getGridController(), functional));
     // J
     std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>> J;
-    if (!functional.isHybrid()) {
-      double thresh = systemController->getSettings().basis.integralThreshold;
-      if (systemController->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
-        J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>>(new CoulombPotential<Options::SCF_MODES::RESTRICTED>(
-            systemController->getSharedPtr(), dMatController,
-            RI_J_IntegralControllerFactory::getInstance().produce(
-                systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),
-                systemController->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)),
-            thresh, systemController->getSettings().basis.integralIncrementThresholdStart,
-            systemController->getSettings().basis.integralIncrementThresholdEnd,
-            systemController->getSettings().basis.incrementalSteps));
-      }
-      else {
-        J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>>(new ERIPotential<Options::SCF_MODES::RESTRICTED>(
-            systemController->getSharedPtr(), dMatController, 0.0, thresh,
-            systemController->getSettings().basis.integralIncrementThresholdStart,
-            systemController->getSettings().basis.integralIncrementThresholdEnd,
-            systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
-      }
-    }
-    else {
-      double thresh = systemController->getSettings().basis.integralThreshold;
-      J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>>(new ERIPotential<Options::SCF_MODES::RESTRICTED>(
-          systemController->getSharedPtr(), dMatController, functional.getHfExchangeRatio(), thresh,
-          systemController->getSettings().basis.integralIncrementThresholdStart,
-          systemController->getSettings().basis.integralIncrementThresholdEnd,
-          systemController->getSettings().basis.incrementalSteps, true, 0.0, 0.3, false));
-    }
+    double thresh = systemController->getSettings().basis.integralThreshold;
+    J = std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>>(new ERIPotential<Options::SCF_MODES::RESTRICTED>(
+        systemController->getSharedPtr(), dMatController, functional.getHfExchangeRatio(), thresh,
+        systemController->getSettings().basis.integralIncrementThresholdStart,
+        systemController->getSettings().basis.integralIncrementThresholdEnd,
+        systemController->getSettings().basis.incrementalSteps, 0.0, 0.3, false));
 
     // Bundle
     pot = std::make_shared<DFTPotentials<Options::SCF_MODES::RESTRICTED>>(

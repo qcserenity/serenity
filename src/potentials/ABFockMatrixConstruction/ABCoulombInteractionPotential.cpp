@@ -37,14 +37,14 @@ ABCoulombInteractionPotential<SCFMode>::ABCoulombInteractionPotential(
     std::shared_ptr<SystemController> actSystem, std::shared_ptr<BasisController> basisA,
     std::shared_ptr<BasisController> basisB,
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensityMatrixController, bool topDown,
-    Options::DENS_FITS densityFitting, std::shared_ptr<BasisController> auxBasisAB,
+    Options::DENS_FITS densFitJ, std::shared_ptr<BasisController> auxBasisAB,
     std::vector<std::shared_ptr<BasisController>> envAuxBasisController)
   : ABPotential<SCFMode>(basisA, basisB),
     _actSystem(actSystem),
     _envDMatController(envDensityMatrixController),
     _libint(Libint::getSharedPtr()),
     _topDown(topDown),
-    _mode(densityFitting),
+    _mode(densFitJ),
     _auxBasisControllerAB(auxBasisAB),
     _envAuxBasisController(envAuxBasisController) {
   // Setting the notifying system up and sanity checks.

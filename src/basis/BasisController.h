@@ -205,13 +205,13 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    */
   void notify();
   /**
-   * @returns true iff all basis function shells are cartesian
+   * @returns true if all basis function shells are cartesian
    */
   bool isPureCartesian() const {
     return _pureCartesian;
   }
   /**
-   * @returns true iff all basis function shells are spherical
+   * @returns true if all basis function shells are spherical
    */
   bool isPureSpherical() const {
     return _pureSpherical;
@@ -266,6 +266,12 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    * @return A prescreening threshold to be used in e.g. 4c loopers.
    */
   double getPrescreeningThreshold();
+  /**
+   * @brief Checks if the underlying basis in an ACD or ACCD auxiliary basis.
+   *
+   * @return A flag, if the basis is Cholesky based.
+   */
+  bool isAtomicCholesky();
 
  protected:
   void produceBasis();

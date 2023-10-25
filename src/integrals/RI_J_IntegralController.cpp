@@ -84,7 +84,7 @@ const Eigen::LLT<Eigen::MatrixXd>& RI_J_IntegralController::getLLTMetric() {
   if (!_lltM) {
     _lltM = std::make_shared<Eigen::LLT<Eigen::MatrixXd>>(this->getMetric().llt());
     if (_lltM->info() != Eigen::Success)
-      throw SerenityError("Cholesky decomposition failed! Not positive definite!");
+      throw SerenityError("Cholesky decomposition (Eigen::LLT) failed! Matrix might not be positive definite!");
   }
   return *_lltM;
 }

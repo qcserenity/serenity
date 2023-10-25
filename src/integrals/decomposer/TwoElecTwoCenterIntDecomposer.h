@@ -65,6 +65,12 @@ class TwoElecTwoCenterIntDecomposer {
    */
   std::vector<unsigned int> getCholeskyBasis();
 
+  /**
+   * @brief Setter function for a non-default decomposition threshold
+   * @param cdThresh The new decomposition threshold
+   */
+  void setThreshold(double cdThresh);
+
  private:
   // The settings of the system
   const Settings& _settings;

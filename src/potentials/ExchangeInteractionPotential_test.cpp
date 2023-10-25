@@ -26,6 +26,7 @@
 #include "potentials/CoulombInteractionPotential.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/Potential.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -39,6 +40,11 @@ class ExchangeInteractionPotentialTest : public ::testing::Test {
     : systemControllerAct(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE)),
       systemControllerEnv(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE)),
       systemControllerWater(SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DISTORTED_MINBAS)) {
+    auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, true);
+    Settings settings = sys->getSettings();
+    settings.basis.densFitJ = Options::DENS_FITS::NONE;
+    systemControllerAct =
+        SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   }
 
   virtual ~ExchangeInteractionPotentialTest() = default;

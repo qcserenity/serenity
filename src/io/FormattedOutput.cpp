@@ -75,7 +75,7 @@ void printProgramHead() {
   std::cout << "#" << std::setw(78) << std::left << centerHeadlines("A quantum chemistry code") << "#" << std::endl;
   std::cout << "#" << std::setw(78) << std::left << centerHeadlines("developed in the group of Johannes Neugebauer")
             << "#" << std::endl;
-  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("at the WWU Münster.") << " #" << std::endl;
+  std::cout << "#" << std::setw(78) << std::left << centerHeadlines("at the University of Münster.") << " #" << std::endl;
   std::cout << "#" << std::setw(78) << " "
             << "#" << std::endl;
   std::cout << "#==============================================================================#" << std::endl;
@@ -97,12 +97,15 @@ void printRunStartInfo() {
    * FIXME works only for Linux
    */
   printSmallCaption("Program Info");
-  std::cout << "    Version           :   1.5.2" << std::endl;
+  std::cout << "    Version           :   1.5.3" << std::endl;
 
 #ifndef GIT_BRANCH
 #define GIT_BRANCH "UNKNOWN"
 #endif
-  std::cout << "    Git Branch        :   " << GIT_BRANCH << std::endl << std::endl;
+  std::cout << "    Git Branch        :   " << GIT_BRANCH << std::endl;
+  std::cout << "    Serenity Home     :   "
+            << std::string(std::getenv("SERENITY_HOME") ? std::getenv("SERENITY_HOME") : "$SERENITY_HOME UNKNOWN") << std::endl
+            << std::endl;
 
   printSmallCaption("Program started");
   std::cout << "    Time              :   " << dateAndTime << std::endl;

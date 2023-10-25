@@ -159,6 +159,35 @@ void HFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Options
     *(Fx + jl) -= *(D + ik) * exc;
   };
 
+  auto distributeNoExc = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
+    unsigned long ij = i * nBFs + j;
+    unsigned long kl = k * nBFs + l;
+    if (integral != integral)
+      throw SerenityError("NAN detected during Hartree-Fock Fock matrix build for 4-center integral");
+
+    auto Fc = fc[threadId].data();
+    auto D = densityMatrix.data();
+
+    /*
+     * Restricted Hartree-Fock Coulomb:
+     * F(i,j) = [(ij|kl)] D(k,l)
+     *
+     * First, recall that we exploit the eigthfold integral symmetry in the looper
+     * so we can expect the above contraction to be performed eight times.
+     * However, both the density and Fock matrix are symmetric and so we can save
+     * some time by only performing half of the actually needed operations and
+     * recover the missing contribution by a symmetrization after the Fock build.
+     * This is why we have four contractions for the exchange and Coulomb matrix
+     * (actually only two because two of the four contractions are in turn
+     * identical so we end up with a factor of 2.0).
+     */
+
+    // Coulomb.
+    const double coul = 2.0 * integral;
+    *(Fc + ij) += *(D + kl) * coul;
+    *(Fc + kl) += *(D + ij) * coul;
+  };
+
   const auto maxDensMat = densityMatrix.shellWiseAbsMax();
   const auto maxDens = maxDensMat.maxCoeff();
   auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwartz) {
@@ -184,7 +213,12 @@ void HFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Options
   /*
    * Run
    */
-  looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+  if (_xRatio != 0.0) {
+    looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+  }
+  else {
+    looper.loopNoDerivative(distributeNoExc, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+  }
   for (unsigned int i = 1; i < nThreads; ++i) {
     fc[0] += fc[i];
     fx[0] += fx[i];

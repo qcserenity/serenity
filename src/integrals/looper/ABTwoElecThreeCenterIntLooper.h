@@ -76,6 +76,7 @@ class ABTwoElecThreeCenterIntLooper {
   template<class Func>
   __attribute__((always_inline)) inline void loop(Func distribute, double maxD = 1) {
     const auto& shellPairsAB = ABShellPairCalculator::calculateShellPairData_AB(_basisControllerA, _basisControllerB);
+    bool normAux = !(_auxbasis->isAtomicCholesky());
     // intialize libint
     auto& libint = Libint::getInstance();
     libint.initialize(
@@ -124,7 +125,7 @@ class ABTwoElecThreeCenterIntLooper {
         const unsigned int nIA = basisA[iA]->getNContracted();
         const unsigned int nJB = basisB[jB]->getNContracted();
         // calculate integrals
-        if (libint.compute(_op, _deriv, auxbasK, basIA, basJB, integrals[threadId])) {
+        if (libint.compute(_op, _deriv, auxbasK, basIA, basJB, integrals[threadId], normAux)) {
           // unpack and run
           for (unsigned int K = 0; K < nK; ++K) {
             const unsigned int kk = _auxbasis->extendedIndex(shellK) + K;
@@ -160,6 +161,7 @@ class ABTwoElecThreeCenterIntLooper {
   template<class Func>
   __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, double maxD = 1) {
     const auto& shellPairsAB = ABShellPairCalculator::calculateShellPairData_AB(_basisControllerA, _basisControllerB);
+    bool normAux = !(_auxbasis->isAtomicCholesky());
     // intialize libint
     auto& libint = Libint::getInstance();
     libint.initialize(
@@ -209,7 +211,7 @@ class ABTwoElecThreeCenterIntLooper {
         const unsigned int nIA = basisA[iA]->getNContracted();
         const unsigned int nJB = basisB[jB]->getNContracted();
         // calculate integrals
-        if (libint.compute(_op, 0, auxbasK, basIA, basJB, integrals[threadId])) {
+        if (libint.compute(_op, 0, auxbasK, basIA, basJB, integrals[threadId], normAux)) {
           const double* intptr = integrals[threadId].data();
           for (unsigned int K = 0; K < nK; ++K) {
             const unsigned int kk = _auxbasis->extendedIndex(shellK) + K;

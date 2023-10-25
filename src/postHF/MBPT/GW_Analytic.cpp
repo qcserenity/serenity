@@ -64,12 +64,15 @@ void GW_Analytic<SCFMode>::calculateGWOrbitalenergies(SpinPolarizedData<SCFMode,
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> temp;
   temp.push_back(lrscf);
 
+  std::vector<Eigen::MatrixXd> xpm = {(*eigenvectors)[0] + (*eigenvectors)[1]};
+  eigenvectors = nullptr;
+
   std::shared_ptr<Sigmavector<SCFMode>> coulomb;
-  if (lrscf->getSysSettings().basis.densityFitting == Options::DENS_FITS::RI) {
-    coulomb = std::make_shared<RICoulombSigmavector<SCFMode>>(temp, (*eigenvectors));
+  if (lrscf->getSysSettings().basis.densFitCorr == Options::DENS_FITS::RI) {
+    coulomb = std::make_shared<RICoulombSigmavector<SCFMode>>(temp, xpm);
   }
   else {
-    coulomb = std::make_shared<CoulombSigmavector<SCFMode>>(temp, (*eigenvectors));
+    coulomb = std::make_shared<CoulombSigmavector<SCFMode>>(temp, xpm);
   }
   // Get perturbed Fock Matrix
   auto perturbedFockMatrices = coulomb->getPerturbedFockMatrix();

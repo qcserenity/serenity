@@ -1,5 +1,5 @@
 /**
- * @file ReadOrbitalsTask.h
+ * @file OrbitalsIOTask.h
  *
  * @date Dec 9, 2020
  * @author Moritz Bensberg
@@ -18,8 +18,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-#ifndef TASKS_READORBITALSTASK_H_
-#define TASKS_READORBITALSTASK_H_
+#ifndef TASKS_ORBITALSIOTASK_H_
+#define TASKS_ORBITALSIOTASK_H_
 /* Include Serenity Internal Headers */
 #include "data/matrices/CoefficientMatrix.h"
 #include "settings/Reflection.h"
@@ -32,36 +32,39 @@
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
+class Geometry;
 using namespace Serenity::Reflection;
-struct ReadOrbitalsTaskSettings {
-  ReadOrbitalsTaskSettings()
-    : fileFormat(Options::ORBITAL_FILE_TYPES::TURBOMOLE), path("."), resetCoreOrbitals(false), replaceInFile(false) {
+struct OrbitalsIOTaskSettings {
+  OrbitalsIOTaskSettings()
+    : fileFormat(Options::ORBITAL_FILE_TYPES::TURBOMOLE), path("."), resetCoreOrbitals(false), replaceInFile(false), write(false) {
   }
-  REFLECTABLE((Options::ORBITAL_FILE_TYPES)fileFormat, (std::string)path, (bool)resetCoreOrbitals, (bool)replaceInFile)
+  REFLECTABLE((Options::ORBITAL_FILE_TYPES)fileFormat, (std::string)path, (bool)resetCoreOrbitals, (bool)replaceInFile,
+              (bool)write)
 };
 
 /**
  * @class
- * @brief Reads orbitals from external files and assigns them to the given system.
+ * @brief Reads orbitals from external files and assigns them to the given system. Can also write files.
  *
  * Currently supported:\n
  *    - turbomole ASCII-MO files, spherical harmonics.\n
  *    - serenity HDF5 files.
  *    - molpro xml files.
  *    - molcas HDF5 files.
+ *    - Molden files for both spherical and cartesian harmonics.
  */
 template<Options::SCF_MODES SCFMode>
-class ReadOrbitalsTask : public Task {
+class OrbitalsIOTask : public Task {
  public:
   /**
    * @brief Constructor.
    * @param system The system controller.
    */
-  ReadOrbitalsTask(std::shared_ptr<SystemController> system);
+  OrbitalsIOTask(std::shared_ptr<SystemController> system);
   /**
    * @brief Default destructor.
    */
-  virtual ~ReadOrbitalsTask();
+  virtual ~OrbitalsIOTask();
   /**
    * @brief Execute the task.
    */
@@ -73,8 +76,9 @@ class ReadOrbitalsTask : public Task {
    *   -resetCoreOrbitals: Reset the core orbital assignment according to the geometry and eigenvalues.
    *   -replaceInFile:     If true, copies the original orbital file and replaces the coefficients in this file
    *                       by Serenity's coefficients. (Only implemented for Molcas HDF5 files).
+   *   -write              Write files in either Turbomole or Molden format.
    */
-  ReadOrbitalsTaskSettings settings;
+  OrbitalsIOTaskSettings settings;
 
  private:
   std::shared_ptr<SystemController> _system;
@@ -84,9 +88,23 @@ class ReadOrbitalsTask : public Task {
    */
   void readTurbomoleOrbitals(CoefficientMatrix<SCFMode>& coeffs, SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues);
   /*
-   * Read a turbomole orbital file.
+   * Write the coefficients and eigenvalues from Serenity to a Turbomole File.
+   * Takes care of RESTRICTED vs. UNRESTRICTED
+   */
+  void writeTurbomoleOrbitals(CoefficientMatrix<SCFMode>& coefficients, SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues);
+  /*
+   * Write a Molden File.
+   */
+  void writeMoldenOrbitals();
+  /*
+   * Read a Turbomole orbital file.
    */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> readTurbomoleOrbitalFile(std::string filePath, unsigned int nBFs);
+  /*
+   * Write a Turbomole orbital file.
+   */
+  void writeTurbomoleOrbitalFile(std::string filePath, unsigned int nBFs, const Eigen::VectorXd& eigenvalues,
+                                 const Eigen::MatrixXd& coefficients);
   /**
    * Get the next eigenvalue.
    */
@@ -109,9 +127,21 @@ class ReadOrbitalsTask : public Task {
    */
   Eigen::MatrixXd resortCoefficients(const Eigen::MatrixXd& coefficients);
   /*
-   * Create all sorting matrices.
+   * Reformat Number to ASCII format.
+   */
+  std::string reformatNumber(double number, std::string exponentSymbol = "D");
+  /*
+   * Initialize sorting matrices for Turbomole.
    */
   void initTurboSortingMatrices();
+  /*
+   * Initialize spherical sorting matrices for Molden.
+   */
+  void initSphericalMoldenSortingMatrices();
+  /*
+   * Initialize cartesian sorting matrices for Molden.
+   */
+  void initCartesianMoldenSortingMatrices();
   /*
    * Check if the task input allows reading of turbomole orbitals.
    */
@@ -198,4 +228,4 @@ class ReadOrbitalsTask : public Task {
 
 } /* namespace Serenity */
 
-#endif /* TASKS_READORBITALSTASK_H_ */
+#endif /* TASKS_ORBITALSIOTASK_H_ */

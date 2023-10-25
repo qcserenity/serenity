@@ -23,13 +23,13 @@
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyComponentController.h" //Assign and get energy contributions.
 #include "energies/EnergyContributions.h"       //Assign and get energy contributions.
-#include "io/FormattedOutput.h"                 //Table heads.
 #include "io/FormattedOutputStream.h"
-#include "misc/WarningTracker.h"     //Warnings for incorrect energy handling.
-#include "postHF/MPn/LTMP2.h"        //Laplace-Transform SOS RI MP2.
-#include "postHF/MPn/LocalMP2.h"     //Local MP2.
-#include "postHF/MPn/MP2.h"          //Canonical MP2.
-#include "postHF/MPn/RIMP2.h"        //RI MP2.
+#include "misc/WarningTracker.h" //Warnings for incorrect energy handling.
+#include "postHF/MPn/LTMP2.h"    //Laplace-Transform SOS RI MP2.
+#include "postHF/MPn/LocalMP2.h" //Local MP2.
+#include "postHF/MPn/MP2.h"      //Canonical MP2.
+#include "postHF/MPn/RIMP2.h"    //RI MP2.
+#include "settings/Settings.h"
 #include "system/SystemController.h" //Access to electronic structure.
 /* Include Std and External Headers */
 #include <iomanip> //std::setw(...) for ostream
@@ -59,7 +59,7 @@ void MP2Task<SCFMode>::run() {
       WarningTracker::printWarning("You have set the ltconv threshold but did not request LT as the MP2 type.", 1);
     };
   }
-  if (settings.mp2Type == Options::MP2_TYPES::RI) {
+  if (settings.mp2Type == Options::MP2_TYPES::DF) {
     RIMP2<SCFMode> rimp2(_systemController, settings.sss, settings.oss);
     mp2EnergyCorrections << rimp2.calculateCorrection();
     if (settings.unrelaxedDensity) {
@@ -120,7 +120,7 @@ void MP2Task<SCFMode>::run() {
   /*
    * Print final results
    */
-  if (settings.mp2Type == Options::MP2_TYPES::RI) {
+  if (settings.mp2Type == Options::MP2_TYPES::DF) {
     printSectionTitle("(RI-)MP2 Results");
   }
   if (settings.mp2Type == Options::MP2_TYPES::LT) {
@@ -134,7 +134,20 @@ void MP2Task<SCFMode>::run() {
   }
   // get scf energy
   auto es = _systemController->getElectronicStructure<SCFMode>();
-  double energy = es->getEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY);
+  double energy = 0.0;
+  if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+    energy = es->getEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY);
+  }
+  else if (_systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+    WarningTracker::printWarning("Warning: Orbitals for the MP2 Task were calculated using DFT - A Görling-Levy "
+                                 "Kohn-Sham perturbation theory calculation was performed (based on the KS orbitals). "
+                                 "If you want conventional MP2 select \"method HF\" in the system settings",
+                                 true);
+    energy = es->getEnergy(ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY);
+  }
+  else
+    throw SerenityError("No fitting electronic structure method selected for MP2 Task");
+
   if (_environmentSystems.size() > 0 || settings.mp2Type != Options::MP2_TYPES::LOCAL) {
     if (es->checkEnergy(ENERGY_CONTRIBUTIONS::PBE_SUPERSYSTEM_ENERGY_WFT_DFT)) {
       energy = es->getEnergy(ENERGY_CONTRIBUTIONS::PBE_SUPERSYSTEM_ENERGY_WFT_DFT);
@@ -156,6 +169,7 @@ void MP2Task<SCFMode>::run() {
             true);
     }
   }
+
   unsigned int lineLength = 80;
   unsigned int indent = 2;
   unsigned int numberLength = lineLength - 8 - 34 - 2 * indent;

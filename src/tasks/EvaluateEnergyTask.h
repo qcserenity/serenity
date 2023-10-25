@@ -44,7 +44,7 @@ struct EvaluateEnergyTaskSettings {
       orthogonalizationScheme(Options::ORTHOGONALIZATION_ALGORITHMS::LOEWDIN),
       useDifferentXCFunc(false),
       XCfunctional(CompositeFunctionals::XCFUNCTIONALS::BP86),
-      mp2Type(Options::MP2_TYPES::RI),
+      mp2Type(Options::MP2_TYPES::DF),
       maxResidual(1e-5),
       maxCycles(100) {
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;

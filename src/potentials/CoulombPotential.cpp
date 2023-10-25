@@ -165,6 +165,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
 
   auto basisController = actSystem->getAtomCenteredBasisController();
   auto auxBasisController = actSystem->getAtomCenteredBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
+  bool normAux = !(auxBasisController->isAtomicCholesky());
 
   auto basisIndicesRed = actSystem->getAtomCenteredBasisController()->getBasisIndicesRed();
   auto mapping = actSystem->getAtomCenteredBasisController()->getAtomIndicesOfBasisShells();
@@ -258,7 +259,7 @@ Eigen::MatrixXd CoulombPotential<SCFMode>::getGeomGradients() {
       const unsigned int nAuxK = auxBasis[auxK]->getNContracted();
       unsigned int offauxK = auxBasisController->extendedIndex(auxK);
 
-      if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasis[auxJ], *auxBasis[auxK], intDerivs)) {
+      if (libint.compute(LIBINT_OPERATOR::coulomb, 1, *auxBasis[auxJ], *auxBasis[auxK], intDerivs, normAux)) {
         double perm = (auxJ == auxK ? 1.0 : 2.0);
 
         Eigen::MatrixXd prefac = 0.5 * perm * Dvec.segment(offauxJ, nAuxJ) * Dvec.segment(offauxK, nAuxK).transpose();

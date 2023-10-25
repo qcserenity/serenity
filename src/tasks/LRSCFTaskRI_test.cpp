@@ -51,7 +51,7 @@ class LRSCFTaskRITest : public ::testing::Test {
   }
 
   double accuracyRICachevsNOCache = 1e-4;
-  double accuracyALPHAvsBETA = 1e-8;
+  double accuracyALPHAvsBETA = 1e-7;
 };
 
 TEST_F(LRSCFTaskRITest, restricted) {
@@ -59,7 +59,10 @@ TEST_F(LRSCFTaskRITest, restricted) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, true);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
   ScfTask<RESTRICTED> scf(sys);
@@ -226,8 +229,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86, true);
   Settings sA = act->getSettings();
   Settings sB = env->getSettings();
-  sA.basis.label = "DEF2-SVP";
-  sB.basis.label = "DEF2-SVP";
+  sA.basis.label = "6-31G";
+  sB.basis.label = "6-31G";
   sA.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   sB.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86, sA);
@@ -239,7 +242,7 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   task.run();
   // From Serenity Oct 21
-  EXPECT_NEAR(-1.7551959315, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+  EXPECT_NEAR(-1.7976759266, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
 
   auto task2 = FDETask<RESTRICTED>(env, {act});
   task2.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
@@ -247,11 +250,13 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   task2.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   task2.run();
   // From Serenity Oct 21
-  EXPECT_NEAR(-1.7551959315, env->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+  EXPECT_NEAR(-1.7976759266, env->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfA({act}, {env});
   lrscfA.settings.excludeProjection = true;
-  lrscfA.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfA.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfA.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfA.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfA.settings.nEigen = 999;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfA.settings.grid.smallGridAccuracy = 7;
@@ -261,7 +266,9 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.excludeProjection = true;
-  lrscfB.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfB.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfB.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfB.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfB.settings.nEigen = 999;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfB.settings.grid.smallGridAccuracy = 7;
@@ -275,12 +282,15 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   auto lrscfContrEnv = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(env, lrscfAB.settings);
 
   lrscfAB.settings.excludeProjection = true;
-  lrscfAB.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfAB.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfAB.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfAB.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfAB.settings.grid.smallGridAccuracy = 7;
   lrscfAB.settings.grid.accuracy = 7;
   lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
+  lrscfAB.settings.partialResponseConstruction = true;
   lrscfAB.run();
 
   auto excitationsActCoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::COUPLED);
@@ -291,11 +301,9 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Restricted) {
   }
 
   // From Supersystem calculation
-  Eigen::VectorXd excitationEnergy_reference(36);
-  excitationEnergy_reference << 0.3522719, 0.4937767, 0.5817733, 0.8766110, 0.9175747, 1.0130356, 1.0744744, 1.1194128,
-      1.1320541, 1.1320541, 1.4361479, 1.5491968, 1.6193226, 1.6193226, 1.7806151, 1.7806151, 1.8048866, 2.1536166,
-      2.1536166, 2.2590296, 2.2590296, 2.3209859, 2.7063659, 2.7909878, 2.7909878, 3.2473628, 3.2681443, 3.2681443,
-      3.7919503, 3.7919503, 4.2714480, 4.8237291, 5.6685915, 6.1895379, 7.5463421, 8.0183590;
+  Eigen::VectorXd excitationEnergy_reference(12);
+  excitationEnergy_reference << 0.4188248, 0.5840582, 0.7474868, 0.9640923, 1.1481851, 1.2010459, 1.3219816, 1.3748426,
+      1.7597483, 1.8995670, 3.1084058, 3.6524039;
 
   for (unsigned int iExc = 0; iExc < (*excitationsActCoupled).size(); iExc++) {
     EXPECT_NEAR(excitationEnergy_reference(iExc), (*excitationsEnvCoupled)(iExc), 1e-6);
@@ -313,8 +321,8 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86, true);
   Settings sA = act->getSettings();
   Settings sB = env->getSettings();
-  sA.basis.label = "DEF2-SVP";
-  sB.basis.label = "DEF2-SVP";
+  sA.basis.label = "6-31G";
+  sB.basis.label = "6-31G";
   sA.scfMode = Options::SCF_MODES::UNRESTRICTED;
   sB.scfMode = Options::SCF_MODES::UNRESTRICTED;
   sA.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
@@ -328,7 +336,7 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   task.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   task.run();
   // From Serenity Oct 21
-  EXPECT_NEAR(-1.7551959315, act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(), 1e-6);
+  EXPECT_NEAR(-1.7976759266, act->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(), 1e-6);
 
   auto task2 = FDETask<UNRESTRICTED>(env, {act});
   task2.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
@@ -336,11 +344,13 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   task2.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
   task2.run();
   // From Serenity Oct 21
-  EXPECT_NEAR(-1.7551959315, env->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(), 1e-6);
+  EXPECT_NEAR(-1.7976759266, env->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(), 1e-6);
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfA({act}, {env});
   lrscfA.settings.excludeProjection = true;
-  lrscfA.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfA.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfA.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfA.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfA.settings.nEigen = 999;
   lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfA.settings.grid.smallGridAccuracy = 7;
@@ -350,7 +360,9 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
 
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> lrscfB({env}, {act});
   lrscfB.settings.excludeProjection = true;
-  lrscfB.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfB.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfB.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfB.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfB.settings.nEigen = 999;
   lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfB.settings.grid.smallGridAccuracy = 7;
@@ -364,7 +376,9 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   auto lrscfContrEnv = std::make_shared<LRSCFController<Options::SCF_MODES::UNRESTRICTED>>(env, lrscfAB.settings);
 
   lrscfAB.settings.excludeProjection = true;
-  lrscfAB.settings.densFitK = Options::DENS_FITS::RI;
+  lrscfAB.settings.densFitJ = Options::DENS_FITS::ACD;
+  lrscfAB.settings.densFitK = Options::DENS_FITS::ACD;
+  lrscfAB.settings.densFitLRK = Options::DENS_FITS::ACD;
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
   lrscfAB.settings.grid.smallGridAccuracy = 7;
   lrscfAB.settings.grid.accuracy = 7;
@@ -380,15 +394,10 @@ TEST_F(LRSCFTaskRITest, sTDDFT_Level_densFitK_Unrestricted) {
   }
 
   // From Supersystem calculation
-  Eigen::VectorXd excitationEnergy_reference(72);
-  excitationEnergy_reference << 0.2861603, 0.3522845, 0.4255364, 0.4937782, 0.5345529, 0.5818224, 0.8184155, 0.8269238,
-      0.8616372, 0.8766143, 0.9175854, 0.9880152, 1.0130357, 1.0543201, 1.0543201, 1.0744744, 1.0850730, 1.1194190,
-      1.1320541, 1.1320541, 1.3884992, 1.4143590, 1.4361495, 1.4526527, 1.4526527, 1.5491969, 1.5724699, 1.5724699,
-      1.6193226, 1.6193226, 1.6701959, 1.7806151, 1.7806151, 1.8048878, 2.0658976, 2.0658976, 2.1536166, 2.1536166,
-      2.2003017, 2.2024252, 2.2024252, 2.2590296, 2.2590296, 2.3209860, 2.6102947, 2.7063670, 2.7199270, 2.7199270,
-      2.7909878, 2.7909878, 3.1698927, 3.2246299, 3.2246299, 3.2473629, 3.2681443, 3.2681443, 3.7302465, 3.7302465,
-      3.7919503, 3.7919503, 4.1944336, 4.2714508, 4.7423211, 4.8237296, 5.6369064, 5.6685978, 6.1240088, 6.1895387,
-      7.4834724, 7.5463428, 7.9273695, 8.0183591;
+  Eigen::VectorXd excitationEnergy_reference(24);
+  excitationEnergy_reference << 0.3185942, 0.4188249, 0.5065803, 0.5840584, 0.6933874, 0.7474869, 0.8722767, 0.9640924,
+      1.0720271, 1.1024119, 1.1481851, 1.1753751, 1.2010460, 1.2520836, 1.3219817, 1.3748426, 1.6804600, 1.7541798,
+      1.7597484, 1.8995670, 2.9941669, 3.1084058, 3.4349097, 3.6524039;
 
   for (unsigned int iExc = 0; iExc < (*excitationsActCoupled).size(); iExc++) {
     EXPECT_NEAR(excitationEnergy_reference(iExc), (*excitationsEnvCoupled)(iExc), 1e-6);

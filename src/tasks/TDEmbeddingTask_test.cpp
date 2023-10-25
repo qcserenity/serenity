@@ -87,7 +87,7 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybridBasisSetChange) {
   task.run();
   task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   task.parseGeneralSettings();
-  task.settings.mp2Type = Options::MP2_TYPES::RI;
+  task.settings.mp2Type = Options::MP2_TYPES::DF;
   // Changed (12.02.2020) due to separate evaluation of Coulomb and XX
   EXPECT_NEAR(-1.78715623152954, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
   std::string name = "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
@@ -105,10 +105,21 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_NORI) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-SVP";
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
+
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
+  Settings settingsEnv = env->getSettings();
+  settingsEnv.basis.densFitJ = Options::DENS_FITS::NONE;
+  settingsEnv.basis.densFitK = Options::DENS_FITS::NONE;
+  settingsEnv.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settingsEnv.basis.densFitCorr = Options::DENS_FITS::NONE;
+  env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE, settingsEnv);
+
   auto task = TDEmbeddingTask<RESTRICTED>(act, env);
   task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
   task.parseGeneralSettings();
@@ -117,7 +128,7 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_NORI) {
   task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::NORMAL;
   task.parseGeneralSettings();
   // The difference between RI and no-fitting is around 1.8e-5.
-  EXPECT_NEAR(-1.7871461096196728, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
+  EXPECT_NEAR(-1.7871348696588256, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-7);
   std::string name = "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUp();
@@ -132,7 +143,10 @@ TEST_F(TDEmbeddingTaskTest, restrictedDoubleHybrid_LOCAL) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-SVP";
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);
@@ -161,7 +175,10 @@ TEST_F(TDEmbeddingTaskTest, restrictedCCSDinDoubleHybrid_LOCAL) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE);
   Settings settings = act->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-SVP";
   act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, settings);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE);

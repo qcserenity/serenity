@@ -43,11 +43,11 @@ void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field);
 /**
  * Various MP2 types:
  *   AO      Employ full four center integrals.
- *   RI      Use RI approximation for four center integrals.
- *   Local   Use orbital invariant formulation of MP2 using PNO, RI and pair approximation.
- *   LT      Use a Laplace transformation of the energy demoninator to obtain N4 scaling.
+ *   DF      Use the density-fitting approximation for four center integrals.
+ *   Local   Use an orbital invariant formulation of MP2 with PNO, RI, and the pair approximation.
+ *   LT      Use a Laplace transformation of the energy denominator to obtain N4 scaling (SOS-MP2 only).
  */
-enum class MP2_TYPES { AO = 0, RI = 1, LOCAL = 2, LT = 3 };
+enum class MP2_TYPES { AO = 0, DF = 1, LOCAL = 2, LT = 3 };
 template<>
 void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field);
 /**************************************************************************************************/

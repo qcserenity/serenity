@@ -69,8 +69,25 @@ class CombinedShellPair : public Shell {
    * @param angularMomentum The angular momentum of the shell product.
    * @param spherical A Flag if spherical or cartesian basis functions are used.
    */
-  CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB, libint2::svector<double> expo,
-                    libint2::svector<double> contr, unsigned int angularMom, bool spherical);
+  CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB, std::vector<double> expo,
+                    std::vector<double> contr, unsigned int angularMom, bool spherical);
+  /**
+   * @brief Constructor that allows to manually set the angular momentum, the exponents
+   *                and contractions  of the shell product. This also adjusts the normalization accordingly.
+   *
+   * @param shellA The first shell in the shell product.
+   * @param shellB The second shell in the shell product.
+   * @param expo The exponents used for the combined shell.
+   * @param contr The contractions for the combined shells.
+   * @param angularMomentum The angular momentum of the shell product.
+   * @param spherical A Flag if spherical or cartesian basis functions are used.
+   * @param coords The coordinates of the base atom.
+   * @param element The element string of the base atom.
+   */
+  CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB, std::vector<double> expo,
+                    std::vector<double> contr, unsigned int angularMomentum, bool spherical,
+                    std::array<double, 3> coords, std::string element);
+
   /**
    * @brief A getter for the first base shell of the product
    *
@@ -96,7 +113,7 @@ class CombinedShellPair : public Shell {
    * @param shellB The second shell to get exponents from.
    * @return
    */
-  libint2::svector<double> generateExponents(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB);
+  std::vector<double> generateExponents(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB);
 
   /**
    * @brief Generates the set of unique correctly normalized contraction
@@ -107,8 +124,17 @@ class CombinedShellPair : public Shell {
    * @param angularMomentum The angular momentum assigned to the shell contractions are generated for.
    * @return
    */
-  libint2::svector<double> generateContractions(std::shared_ptr<const Shell> shellA,
-                                                std::shared_ptr<const Shell> shellB, unsigned int angularMomentum);
+  std::vector<double> generateContractions(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB,
+                                           unsigned int angularMomentum);
+  /**
+   * @brief Generates the set of unique contraction
+   *                coefficients for the shell product without additional renormalization.
+   *
+   * @param shellA The first shell to get contractions from.
+   * @param shellB The second shell to get contractions from.
+   * @return
+   */
+  std::vector<double> generateContractionsNoNorm(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB);
 
   /**
    * @brief Reverses the normalization that is always done by libint. This is important as the
@@ -119,8 +145,7 @@ class CombinedShellPair : public Shell {
    * @param angularMomentum The angular momentum of the shell.
    * @return The coefficients scalled by the inverse of their normalization factors.
    */
-  libint2::svector<double> reverseNormalization(libint2::svector<double> expo, libint2::svector<double> contr,
-                                                unsigned int angularMomentum);
+  std::vector<double> reverseNormalization(std::vector<double> expo, std::vector<double> contr, unsigned int angularMomentum);
   /**
    * @brief Function used to assert that both shells are defined on the same center
    *                during construction.

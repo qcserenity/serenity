@@ -66,7 +66,7 @@ User Manual
 }}\\
 \vspace{1cm}
 {\large\textbf{
-Program Version: 1.5.2\\
+Program Version: 1.5.3\\
 Manual Generated: \today
 }}\\
 \vspace{2cm}
@@ -408,6 +408,15 @@ All settings available pertaining the SCF and its convergence are given in this 
    \item [\texttt{minimumLevelshift}]\hfill \\
    Minimum diagonal level-shift to be used. Default is $0.0$. Typical values are $0.3$ or $0.1$. Setting this to values larger than $0$ will
    help non-converging SCF procedures. However, it increases the number of iterations.
+   \item [\texttt{rohf}]\hfill \\
+   Can be used to invoke a restricted open-shell HF or KS calculation (ground-state). 
+   Available are two flavors: \ttt{SUHF} [Chem. Phys. Lett. 183, 423 (1991)] and \ttt{CUHF} [J. Chem. Phys. 133, 141102 (2010)].
+   Both are implemented as constrained UHF procedures. SUHF also requires a parameter (\texttt{suhfLambda}) which interpolates between
+   UHF ($\lambda = 0$) and ROHF ($\lambda = \infty$). As a result, \ttt{SUHF} does not yield the \textit{exact} ROHF wavefunction with
+   zero spin contamination in practice. \ttt{SUHF} may also struggle with convergence issues for $\lambda > 10$ and \ttt{CUHF} should
+   basically always be preferred. Defaults to \ttt{NONE}.
+   \item [\texttt{suhfLambda}]\hfill\\
+   Scaling parameter for the SUHF procedure. Defaults to \ttt{0.01}.
 \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
@@ -496,13 +505,22 @@ uppercase.
     Final integral prescreening threshold. Default it is equal to \texttt{integralThreshold}.
     \item [\texttt{incrementalSteps}]\hfill \\
     SCF-step interval to tighten the integral threshold by a factor of 100. Default is $5$.
-    \item [\texttt{densityFitting}]\hfill \\
-    The density fitting approach to be used. By default the \ttt{RI} approximation is used for the electron-electron
-    Coulomb integrals. Furthermore, different approaches using the Cholesky decomposition can be chosen, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densityFitting}. 
+    \item [\texttt{densFitJ}]\hfill \\
+    The density fitting approach to be used for Coulomb contributions. By default the \ttt{RI} approximation is used. Furthermore, different approaches using the Cholesky decomposition can be chosen, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densFitJ}.
+    \item [\texttt{densFitK}]\hfill \\
+    The density fitting approach to be used for exchange contributions. By default no density fitting is used. Besides that the \ttt{RI} approximation, different approaches using the Cholesky decomposition, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}, can be chosen.
+    \item [\texttt{densFitLRK}]\hfill \\
+    The density fitting approach to be used for long-range exchange contributions. By default no density fitting is used. Besides that the \ttt{RI} approximation, different approaches using the Cholesky decomposition, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}, can be chosen.
+    \item [\texttt{densFitCorr}]\hfill \\
+    The density fitting approach to be used to calculate correlation related contributions. By default the \ttt{RI} approximation is used. Furthermore, different approaches using the Cholesky decomposition can be chosen, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densFitCorr}.
     \item [\texttt{cdThreshold}]\hfill\\
     Decomposition threshold for all Cholesky decomposition based methods. The default is \ttt{1e-6}.
     \item [\texttt{extendSphericalACDShells}]\hfill\\
     The scheme to generate complete spherical basis function products represented as a spherical function. \ttt{NONE} uses the pure product of the spherical basis functions. With the default setting \ttt{SIMPLE} a single additional basis function is added to account for missing contributions. Using \ttt{COMLETE} the full product is approximated.
+    \item [\texttt{secondCD}]\hfill\\
+    The decomposition threshold for the secondary decomposition. This threshold is used if an ACD or ACCD auxiliary basis set is generated for a spherical basis sets. The default value is \ttt{1e-8}.
+    \item [\texttt{cdOffset}]\hfill\\
+    Offset value used if an ACD or ACCD auxiliary basis set is generated for spherical basis sets. The default value is \ttt{1e-2}.
     \item[\texttt{intCondition}]
     Threshold to determine whether a four center integral should be cached or not.
     The caching criterion is based on the number of primitive  functions entering each basis function and their angular
@@ -2222,7 +2240,11 @@ This task performs Many-Body-Perturbtaion Theory (MBPT) calculations. Either for
   The HOMO-LUMO gap convergence threshold for qpiterations/evGW cycles. The default is \ttt{1e-6} a.u..
   \item [\texttt{densFitCache}]\hfill \\
   The type of density fitting used for the four center integrals (\ttt{RI},\ttt{ACD},\ttt{ACCD}). The default is \ttt{RI}.
-\end{description}
+  \item [\texttt{ltconv}]\hfill \\
+  Convergence parameter for the Laplace transformation if LT-(AC)-GW is used. By default \ttt{0}, which implies that the LT is not used.
+  \item [\texttt{frozenCore}]\hfill \\
+  Removes core orbitals from the reference orbitals (tabulated number for each atom type). The default is \ttt{false}.
+  \end{description}
 \subsubsection{Advanced Keywords}
 \begin{description}
   \item [\texttt{gridCutOff}]\hfill \\
@@ -2253,6 +2275,8 @@ This task performs Many-Body-Perturbtaion Theory (MBPT) calculations. Either for
   Whether to shift occupied and virtual orbitals not included in the GW caclulation by the gap of change of the highest/lowest included occupied/virtual orbital. The default is \ttt{false}.
   \item [\texttt{environmentScreening}]\hfill \\
   Whether environmental screening is included in an embedded calculation if environmental subsystems are set. The default ist \ttt{true}.
+  \item [\texttt{coreOnly}]\hfill \\
+  Removes all but core orbitals from the reference orbitals. The default is \ttt{false}.
 \end{description}
 
 
@@ -2586,7 +2610,7 @@ Additionally, Bethe--Salpeter equation (BSE) calculations with and without the T
     \item[\texttt{coreOnly}]\hfill\\
     Removes all but core orbitals from the reference orbitals (can be used to perform X-ray calculations). The default is \ttt{false}.
     \item[\texttt{ltconv}]\hfill \\
-	  Convergence paramter for the Laplace transformation if LT-SOS-CC2/ADC(2) is used. By default \ttt{1e-5}.
+	  Convergence parameter for the Laplace transformation if LT-SOS-CC2/ADC(2) is used. By default \ttt{1e-5}.
     \item[\texttt{aocache}]\hfill \\
 	  Triggers that three center integrals are kept in memory for CC2/ADC(2) calculations. By default \ttt{true}.
 \end{description}
@@ -2625,11 +2649,11 @@ correlation version of this task (see Sec.~\ref{task:localization}).
   \item[\texttt{maxResidual}]\hfill \\
 	Convergence threshold for the local MP2 calculation. By default \ttt{1.0e-5}.
   \item[\texttt{sss}]\hfill \\
-	Scaling paramter for same-spin contributions. By default \ttt{1.0}.
+	Scaling parameter for same-spin contributions. By default \ttt{1.0}.
   \item[\texttt{oss}]\hfill \\
-	Scaling paramter for same-spin contributions. By default \ttt{1.0}.
+	Scaling parameter for same-spin contributions. By default \ttt{1.0}.
   \item[\texttt{ltconv}]\hfill \\
-	Convergence paramter for the Laplace transformation if LT-SOS-MP2 is used. By default \ttt{1e-5}.
+	Convergence parameter for the Laplace transformation if LT-SOS-MP2 is used. By default \ttt{1e-5}.
   \item[\texttt{maxCycles}]\hfill \\
   Maximum number of iterations before cancelling the amplitude optimization in local MP2. By default \ttt{100}.
   \item[\texttt{unrelaxedDensity}]\hfill \\
@@ -2878,12 +2902,21 @@ This task allows the calculation of quasi-restricted orbitals (QROs)~\cite{Neese
   and the purely virtual orbitals to diagonalize the alpha-Fock matrix.
 \end{description}
 
-\subsection{Task: Read Orbitals}
+\subsection{Task: Read/Write Orbitals}
 
-This task allows to read orbitals from (non)-serenity output files.
-Currently the ASCII-format for Turbomole is supported and the xml format for Molpro are supported up to g functions.
-Molcas orbitals may be read up to arbitrary angular momentum.
-Furthermore, the task may read orbital files from Serenity.
+This task allows to read and write orbitals from and to (non)-serenity output files.\newline
+Reading orbitals:
+\begin{itemize}
+  \item The ASCII-format for Turbomole is supported up to g functions.
+  \item The xml format for Molpro is supported up to g functions.
+  \item Molcas orbitals may be read up to arbitrary angular momentum.
+  \item Furthermore, the task may read orbital files from Serenity.
+\end{itemize}
+Writing orbitals:
+\begin{itemize}
+  \item The ASCII-format for Turbomole is supported up to g functions. If a non-standard energy convergence threshold is used in Turbomole, this has to be changed in the written files afterwards.
+  \item Molden files are supported up to g functions. Supports both spherical and cartesian harmonics.
+\end{itemize}
 Note that Serenity does not account for symmetry. Hence, the orbitals must be defined without any symmetry.
 \subsubsection{Example Input}
 \begin{lstlisting}
@@ -2897,7 +2930,7 @@ Note that Serenity does not account for symmetry. Hence, the orbitals must be de
 \subsubsection{Basic Keywords}
 \begin{description}
  \item [\texttt{name}]\hfill \\
-  Aliases for this task are \ttt{READORBS} and \ttt{READ}.
+  Aliases for this task are \ttt{READORBS}, \ttt{READ}, \ttt{WRITEORBS}, \ttt{WRITE} and \ttt{IO}.
  \item [\texttt{activeSystems}]\hfill \\
   The system to which the orbitals should be read.
  \item [\texttt{fileFormat}]\hfill \\
@@ -2912,6 +2945,8 @@ Note that Serenity does not account for symmetry. Hence, the orbitals must be de
  \item [\texttt{replaceInFile}]\hfill \\
   If true, copies the original orbital file and replaces the coefficients in this file by Serenity's coefficients. (Only implemented for Molcas HDF5 files).
   By default \ttt{false}.
+ \item [\texttt{write}]\hfill \\
+  If true, a file will be written instead of being read. By default \ttt{false}.
 \end{description}
 
 \subsection{Task: SCF}
@@ -3414,9 +3449,6 @@ In the case of general feedback and questions or specific comments about the man
 \input{cholesky/cholesky}
 
 
-\includepdf[landscape = true, pages=-]{cc2/cc2.pdf}
-
-
 % ========================
 %   Citation and License
 % ========================
@@ -3550,6 +3582,31 @@ A continuum solvation model can be enabled by changing the flag 'use' in the PCM
   act watera
 -task
 \end{lstlisting}
+Density-fitting for different contributions can be controlled with the appropriate keywords in the Basis-block. If Cholesky related methods are used they can also be controlled in that block:
+\begin{lstlisting}
+  +system
+    name watera
+    geometry watera.xyz
+    method dft
+    scfmode restricted
+    +dft
+      functional cam-b3lyp
+    -dft
+    +basis
+      label def2-TZVP
+      densfitJ RI
+      densfitK NONE
+      densfitLRK ACD
+      cdThreshold 1e-6
+      secondCD 1e-8
+      extendSphericalACDShells COMPLETE
+    -basis
+  -system
+  
+  +task scf
+    act watera
+  -task
+  \end{lstlisting}
 
 \section{Coupled Cluster Calculation}
 This example shows how to perform a (frozen core) DLPNO-CCSD calculation:

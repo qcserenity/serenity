@@ -276,10 +276,9 @@ Eigen::MatrixXd FiniteFieldTask::perturbedSCF(unsigned direction, double fStreng
         scf.run();
         LRSCFTask<SCFMode> lrscf({_activeSystem});
         lrscf.settings.frequencies = {frequency};
-        auto densFit = _activeSystem->getSettings().basis.densityFitting;
-        lrscf.settings.densFitJ = densFit;
-        lrscf.settings.densFitK = densFit;
-        lrscf.settings.densFitLRK = densFit;
+        lrscf.settings.densFitJ = _activeSystem->getSettings().basis.densFitJ;
+        lrscf.settings.densFitK = _activeSystem->getSettings().basis.densFitK;
+        lrscf.settings.densFitLRK = _activeSystem->getSettings().basis.densFitLRK;
         lrscf.settings.nEigen = 0;
         lrscf.run();
         property = std::get<1>(lrscf.getProperties()[0]);
@@ -291,10 +290,9 @@ Eigen::MatrixXd FiniteFieldTask::perturbedSCF(unsigned direction, double fStreng
         LRSCFTask<SCFMode> lrscf({_activeSystem}, _environmentSystems);
         lrscf.settings.embedding = settings.embedding;
         lrscf.settings.frequencies = {frequency};
-        auto densFit = _activeSystem->getSettings().basis.densityFitting;
-        lrscf.settings.densFitJ = densFit;
-        lrscf.settings.densFitK = densFit;
-        lrscf.settings.densFitLRK = densFit;
+        lrscf.settings.densFitJ = _activeSystem->getSettings().basis.densFitJ;
+        lrscf.settings.densFitK = _activeSystem->getSettings().basis.densFitK;
+        lrscf.settings.densFitLRK = _activeSystem->getSettings().basis.densFitLRK;
         lrscf.settings.nEigen = 0;
         lrscf.run();
         property = std::get<1>(lrscf.getProperties()[0]);

@@ -211,6 +211,8 @@ void MO3CenterIntegralController::calculateIntegrals(MO3CENTER_INTS mo3CenterTyp
   auto auxShells_K = _auxilliaryBasisController->getBasis();
   auto aoShells = _basisController->getBasis();
 
+  bool normAux = !(_auxilliaryBasisController->isAtomicCholesky());
+
   // Construction of the projection matrices is not allowed within a parallel region.
   // Thus, we will ensure that they are available upon integral calculation.
   this->getProjection(ORBITAL_TYPE::OCCUPIED);
@@ -279,7 +281,7 @@ void MO3CenterIntegralController::calculateIntegrals(MO3CENTER_INTS mo3CenterTyp
         const unsigned int nSigma = aoShells[shellIndexS]->getNContracted();
         // Calculate integral, normalize and store in i_K
         if (libint.compute(LIBINT_OPERATOR::coulomb, 0, shellK, *aoShells[shellIndexR], *aoShells[shellIndexS],
-                           integrals[threadId])) {
+                           integrals[threadId], normAux)) {
           for (unsigned int K = 0; K < nK; ++K) {
             unsigned int blockLength = nRho * nSigma;
             unsigned int startRow = K * blockLength;

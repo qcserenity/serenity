@@ -43,8 +43,10 @@ namespace Options {
  * ATOMIC_CHOLESKY:  The universal auxiliary basis generated using the atomic Cholesky decomposition.
  * ATOMIC_COMPACT_CHOLESKY:  The universal auxiliary basis generated using the atomic-compact Cholesky decomposition.
  * ERF_ATOMIC_CHOLESKY: The auxiliary basis generated for long-range contributions using the atomic Cholesky
- * decomposition. ERF_ATOMIC_COMPACT_CHOLESKY: The auxiliary basis generated for long-range contributions using the
- * atomic-compact Cholesky decomposition.
+ *                    decomposition.
+ * ERF_ATOMIC_COMPACT_CHOLESKY: The auxiliary basis generated for long-range contributions using the
+ *                    atomic-compact Cholesky decomposition.
+ * AUX_JK:  The auxiliary basis for density fitting to evaluate Coulomb and exchange contributions.
  */
 enum class BASIS_PURPOSES {
   DEFAULT = 0,
@@ -57,10 +59,25 @@ enum class BASIS_PURPOSES {
   ATOMIC_CHOLESKY = 7,
   ATOMIC_COMPACT_CHOLESKY = 8,
   ERF_ATOMIC_CHOLESKY = 9,
-  ERF_ATOMIC_COMPACT_CHOLESKY = 10
+  ERF_ATOMIC_COMPACT_CHOLESKY = 10,
+  AUX_JK = 11
 };
 template<>
 void resolve<BASIS_PURPOSES>(std::string& value, BASIS_PURPOSES& field);
+
+/**************************************************************************************************/
+/*                                           Basis                                                */
+/**************************************************************************************************/
+/**
+ * For what a certain basis set should be used.\n
+ * COULOMB:          Auxiliary basis used to calculate Coulomb contributions.
+ * EXCHANGE:         Auxiliary basis used to calculate Exchange (and Coulomb) contributions.
+ * LREXCHANGE:       Auxiliary basis used to calculate Long-range Exchange contributions.
+ * CORRELATION       Auxiliary basis used to calculate correlation contributions (e.g. MP2)
+ */
+enum class AUX_BASIS_PURPOSES { COULOMB = 0, EXCHANGE = 1, LREXCHANGE = 2, CORRELATION = 3 };
+template<>
+void resolve<AUX_BASIS_PURPOSES>(std::string& value, AUX_BASIS_PURPOSES& field);
 
 /**************************************************************************************************/
 /*                                     Density Fitting                                            */
@@ -93,10 +110,11 @@ void resolve<DENS_FITS>(std::string& value, DENS_FITS& field);
  * combined shell:
  *  NONE: no extension is applied
  *  SIMPLE: only one additional basis function is added for lower am.
+ *  FIRST: Mixture of the COMPLETE (for the first correction) and SIMPLE procedure.
  *  COMPLETE: three additional basis functions are added for each basis functions of higher am.  (This
  *  is an experimental setting and can produce numeric problems for some systems!)
  */
-enum class EXTEND_ACD { NONE = 0, SIMPLE = 1, COMPLETE = 2 };
+enum class EXTEND_ACD { NONE = 0, SIMPLE = 1, FIRST = 2, COMPLETE = 3 };
 template<>
 void resolve<EXTEND_ACD>(std::string& value, EXTEND_ACD& field);
 

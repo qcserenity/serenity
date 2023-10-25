@@ -53,10 +53,12 @@ class ABERIPotentialTest : public ::testing::Test {
 TEST_F(ABERIPotentialTest, H2_dimer_rFockMatrixAA) {
   const auto SPIN = Options::SCF_MODES::RESTRICTED;
   auto basisA = systemControllerA->getBasisController();
+  auto auxBasisA = systemControllerA->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
   std::vector<std::shared_ptr<DensityMatrixController<SPIN>>> densityMatrixController = {
       systemControllerA->getElectronicStructure<SPIN>()->getDensityMatrixController()};
 
-  ABERIPotential<SPIN> abHFPot(systemControllerA, basisA, basisA, densityMatrixController, 1.0);
+  ABERIPotential<SPIN> abHFPot(systemControllerA, basisA, basisA, densityMatrixController, 1.0, 0.0, 0.0, false,
+                               Options::DENS_FITS::RI, auxBasisA);
 
   ERIPotential<SPIN> hfPotential(systemControllerA,
                                  systemControllerA->getElectronicStructure<SPIN>()->getDensityMatrixController(), 1.0,

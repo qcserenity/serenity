@@ -66,6 +66,7 @@ Eigen::Ref<Eigen::MatrixXd> TwoElecThreeCenterCalculator::calculateIntegrals(uns
   auto& basisA = _basisControllerA->getBasis();
   auto& basisB = _basisControllerB->getBasis();
   auto& auxbasis = _auxbasis->getBasis();
+  bool normAux = !(_auxbasis->isAtomicCholesky());
 
   const auto& auxPrescreening = _auxbasis->getRIPrescreeningFactors();
   unsigned np = auxbasis[P]->getNContracted();
@@ -87,7 +88,7 @@ Eigen::Ref<Eigen::MatrixXd> TwoElecThreeCenterCalculator::calculateIntegrals(uns
     // Number of basis functions in I and J shells.
     unsigned ni = basisA[I]->getNContracted();
     unsigned nj = basisB[J]->getNContracted();
-    if (_libint->compute(_op, 0, *auxbasis[P], *basisB[J], *basisA[I], dummy)) {
+    if (_libint->compute(_op, 0, *auxbasis[P], *basisB[J], *basisA[I], dummy, normAux)) {
       const double* intptr = dummy.data();
       for (unsigned p = 0; p < np; ++p) {
         unsigned long offset = p * _nb_A * _nb_B;

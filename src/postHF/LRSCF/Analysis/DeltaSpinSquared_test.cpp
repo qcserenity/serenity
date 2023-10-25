@@ -50,7 +50,10 @@ class DeltaSpinSquaredTest : public ::testing::Test {
 TEST_F(DeltaSpinSquaredTest, TDA) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE, true);
   Settings settings = sys->getSettings();
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE, settings);
 
   std::vector<std::shared_ptr<SystemController>> active;
@@ -75,7 +78,10 @@ TEST_F(DeltaSpinSquaredTest, TDA) {
 TEST_F(DeltaSpinSquaredTest, TDDFT) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE, true);
   Settings settings = sys->getSettings();
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE, settings);
 
   std::vector<std::shared_ptr<SystemController>> active;

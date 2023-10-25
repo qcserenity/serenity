@@ -39,7 +39,17 @@ void resolve<BASIS_PURPOSES>(std::string& value, BASIS_PURPOSES& field) {
       {"ATOMIC_CHOLESKY", BASIS_PURPOSES::ATOMIC_CHOLESKY},
       {"ATOMIC_COMPACT_CHOLESKY", BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY},
       {"ATOMIC_CHOLESKY_ERF", BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY},
-      {"ATOMIC_COMPACT_CHOLESKY_ERF", BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY}};
+      {"ATOMIC_COMPACT_CHOLESKY_ERF", BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY},
+      {"AUX_JK", BASIS_PURPOSES::AUX_JK}};
+  check(m, value, field);
+}
+
+template<>
+void resolve<AUX_BASIS_PURPOSES>(std::string& value, AUX_BASIS_PURPOSES& field) {
+  static const std::map<std::string, AUX_BASIS_PURPOSES> m = {{"COULOMB", AUX_BASIS_PURPOSES::COULOMB},
+                                                              {"EXCHANGE", AUX_BASIS_PURPOSES::EXCHANGE},
+                                                              {"LREXCHANGE", AUX_BASIS_PURPOSES::LREXCHANGE},
+                                                              {"CORRELATION", AUX_BASIS_PURPOSES::CORRELATION}};
   check(m, value, field);
 }
 
@@ -53,8 +63,10 @@ void resolve<DENS_FITS>(std::string& value, DENS_FITS& field) {
 
 template<>
 void resolve<EXTEND_ACD>(std::string& value, EXTEND_ACD& field) {
-  static const std::map<std::string, EXTEND_ACD> m = {
-      {"NONE", EXTEND_ACD::NONE}, {"SIMPLE", EXTEND_ACD::SIMPLE}, {"COMPLETE", EXTEND_ACD::COMPLETE}};
+  static const std::map<std::string, EXTEND_ACD> m = {{"NONE", EXTEND_ACD::NONE},
+                                                      {"SIMPLE", EXTEND_ACD::SIMPLE},
+                                                      {"FIRST", EXTEND_ACD::FIRST},
+                                                      {"COMPLETE", EXTEND_ACD::COMPLETE}};
   check(m, value, field);
 }
 

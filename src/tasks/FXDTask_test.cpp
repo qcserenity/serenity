@@ -55,7 +55,10 @@ TEST_F(FXDTaskTest, FED) {
   auto he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, true);
   const auto SCFMode = Options::SCF_MODES::RESTRICTED;
   Settings settings = he2->getSettings();
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::HF;
   he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, settings);
   // SCF
@@ -90,7 +93,10 @@ TEST_F(FXDTaskTest, FCD) {
   auto he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, true);
   const auto SCFMode = Options::SCF_MODES::RESTRICTED;
   Settings settings = he2->getSettings();
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::HF;
   he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, settings);
   // SCF
@@ -126,7 +132,10 @@ TEST_F(FXDTaskTest, FXD) {
   auto he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, true);
   const auto SCFMode = Options::SCF_MODES::RESTRICTED;
   Settings settings = he2->getSettings();
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::HF;
   he2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::He2_def2SVP_BP86, settings);
   // SCF

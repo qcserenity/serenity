@@ -42,6 +42,10 @@ namespace Serenity {
 TEST(BasicSCFTests, H2_MinimalBasis_RHF) {
   Settings settings;
   settings.basis.label = "STO-6G";
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   auto path = systemController->getSystemPath();
@@ -60,6 +64,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_RHF) {
 TEST(BasicSCFTests, H2_MinimalBasis_RHF_ADIIS) {
   Settings settings;
   settings.basis.label = "STO-6G";
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.scf.useADIIS = true;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -81,6 +89,10 @@ TEST(BasicSCFTests, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.scf.useADIIS = true;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   auto systemController =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -103,6 +115,10 @@ TEST(BasicSCFTests, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
 TEST(BasicSCFTests, H2_MinimalBasis_UHF) {
   Settings settings;
   settings.basis.label = "STO-6G";
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
   auto path = systemController->getSystemPath();
@@ -126,7 +142,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -147,7 +166,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
@@ -171,7 +193,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -192,7 +217,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -214,7 +242,10 @@ TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
   settings.spin = 2;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
@@ -236,6 +267,10 @@ TEST(BasicSCFTests, IntegralCaching) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.basis.intCondition = 1;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   auto result = systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   auto path = systemController->getSystemPath();

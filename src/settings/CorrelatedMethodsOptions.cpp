@@ -38,7 +38,7 @@ void resolve<CC_LEVEL>(std::string& value, CC_LEVEL& field) {
 template<>
 void resolve<MP2_TYPES>(std::string& value, MP2_TYPES& field) {
   static const std::map<std::string, MP2_TYPES> m = {
-      {"AO", MP2_TYPES::AO}, {"RI", MP2_TYPES::RI}, {"LOCAL", MP2_TYPES::LOCAL}, {"LT", MP2_TYPES::LT}};
+      {"AO", MP2_TYPES::AO}, {"DF", MP2_TYPES::DF}, {"LOCAL", MP2_TYPES::LOCAL}, {"LT", MP2_TYPES::LT}};
   check(m, value, field);
 }
 

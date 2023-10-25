@@ -491,7 +491,7 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
           MP2Correlation = functional.getHfCorrelRatio() * localMP2.calculateEnergyCorrection().sum();
           break;
         }
-        case Options::MP2_TYPES::RI: {
+        case Options::MP2_TYPES::DF: {
           if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC)
             WarningTracker::printWarning(
                 "WARNING: The virtual orbital space contains occupied environment orbitals.\n"
@@ -613,7 +613,7 @@ void FDETask<SCFMode>::calculateUnrelaxedMP2Density(std::shared_ptr<PotentialBun
       densityCorrection = localMP2.calculateDensityCorrection();
       break;
     }
-    case Options::MP2_TYPES::RI: {
+    case Options::MP2_TYPES::DF: {
       if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC)
         WarningTracker::printWarning("WARNING: The virtual orbital space contains occupied environment orbitals.\n"
                                      "         This may lead to an error. Use \"mp2Type local\" to avoid this issue.",

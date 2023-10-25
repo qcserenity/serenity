@@ -29,8 +29,6 @@ namespace Serenity {
 
 template<Options::SCF_MODES>
 class CDCoulombPotential;
-template<Options::SCF_MODES>
-class CDExchangePotential;
 class CDIntegralController;
 class CDStorageController;
 

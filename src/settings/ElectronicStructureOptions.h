@@ -33,7 +33,7 @@ namespace Options {
  *   MOLPRO:    Molpro-xml orbital file.
  *   MOLCAS:    Molcas hdf5 file format (.scf.h5 files).
  */
-enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1, MOLPRO = 2, MOLCAS = 3 };
+enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1, MOLPRO = 2, MOLCAS = 3, MOLDEN = 4 };
 template<>
 void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field);
 
@@ -45,6 +45,15 @@ void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field);
 enum class SCF_MODES { RESTRICTED = 0, UNRESTRICTED = 1 };
 template<>
 void resolve<SCF_MODES>(std::string& value, SCF_MODES& field);
+/**
+ * The type of ROHF method (both constrained UHF variants.
+ * NONE: No ROHF.
+ * CUHF: J. Chem. Phys. 133, 141102 (2010).
+ * SUHF: Chem. Phys. Lett. 183, 423 (1991).
+ */
+enum class ROHF_TYPES { NONE = 0, CUHF = 1, SUHF = 2 };
+template<>
+void resolve<ROHF_TYPES>(std::string& value, ROHF_TYPES& field);
 /**
  * The electronic structure theory which is used on the single particle level.
  * HF:  Hartree-Fock

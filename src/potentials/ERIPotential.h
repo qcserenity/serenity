@@ -60,17 +60,15 @@ class ERIPotential : public Potential<SCFMode>,
    * @param prescreeningIncrementStart The start integrals prescreening threshold for the incremental Fock-matrix build
    * @param prescreeningIncrementEnd   The end integrals prescreening threshold for the incremental Fock-matrix build
    * @param incrementSteps             The number of steps of an incremental Fock-matrix build until it gets rebuild
-   * @param externalSplitting          This parameter enforces a split evaluation of exchange and Coulomb interactions
-   *                                     in DFT if true, and if density fitting is allowed [default true].
    * @param lrxRatio                   The amount of long-range exchange added [default 0.0].
    * @param mu                         The range separation paramter (only used if lrxRatio !=0) [default 0.3].
    * @param clear4CenterCache          If true, the 4-center integral cache is deleted upon destruction of the
    *                                   potential.
    */
-  ERIPotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
-               const double xRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
-               double prescreeningIncrementEnd, unsigned int incrementSteps, bool externalSplitting = true,
-               double lrxRatio = 0.0, double mu = 0.3, bool clear4CenterCache = true);
+  ERIPotential(std::shared_ptr<SystemController> systemController,
+               std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double xRatio,
+               const double prescreeningThreshold, double prescreeningIncrementStart, double prescreeningIncrementEnd,
+               unsigned int incrementSteps, double lrxRatio = 0.0, double mu = 0.3, bool clear4CenterCache = true);
   /// @brief Default destructor.
   virtual ~ERIPotential() = default;
   /**

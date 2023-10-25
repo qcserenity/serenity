@@ -58,6 +58,12 @@ class TwoElecFourCenterIntDecomposer {
   void run();
 
   /**
+   * @brief Setter function for a non-default decomposition threshold
+   * @param cdThresh The new decomposition threshold
+   */
+  void setThreshold(double cdThresh);
+
+  /**
    * @brief Get the Cholesky basis. Performs the Cholesky decomposition if needed.
    * @return A vector of the indices contributin to the Cholesky Vectors.
    */

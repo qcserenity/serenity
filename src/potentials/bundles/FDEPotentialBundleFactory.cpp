@@ -82,21 +82,24 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
   }
   if (environmentSystems.size() == 0)
     return potBundle;
+  auto densFitJ = activeSystem->getSettings().basis.densFitJ;
   // The collected atoms and geometries will be needed further down for ECPs and Coulomb interaction.
   std::vector<std::shared_ptr<const Geometry>> environmentGeometries;
   std::vector<std::shared_ptr<BasisController>> environmentAuxilliaryBasisSets;
   std::vector<std::shared_ptr<Atom>> environmentAtoms;
   for (auto env : environmentSystems) {
     environmentGeometries.push_back(env->getGeometry());
-    environmentAuxilliaryBasisSets.push_back(env->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB));
   }
   for (auto envGeom : environmentGeometries)
     environmentAtoms.insert(environmentAtoms.begin(), envGeom->getAtoms().begin(), envGeom->getAtoms().end());
   std::shared_ptr<PotentialBundle<SCFMode>> esiPot;
-  if (activeSystem->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
+  if (densFitJ != Options::DENS_FITS::NONE) {
+    for (auto env : environmentSystems) {
+      environmentAuxilliaryBasisSets.push_back(env->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, densFitJ));
+    }
     esiPot = std::make_shared<ESIPotentials<SCFMode>>(
         activeSystem, environmentSystems, activeDensMatController, activeSystem->getGeometry(), envDensMatController,
-        environmentGeometries, activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB),
+        environmentGeometries, activeSystem->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, densFitJ),
         environmentAuxilliaryBasisSets, firstPassiveSystemIndex);
   }
   else {

@@ -45,6 +45,7 @@ void Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(MatrixInBasis
    */
   metric.setZero();
   auto auxBasisController = metric.getBasisController();
+  bool normAux = !(auxBasisController->isAtomicCholesky());
   auto libint = Libint::getSharedPtr();
   libint->initialize(LIBINT_OPERATOR::coulomb, 0, 2);
   const auto& auxBasis = auxBasisController->getBasis();
@@ -60,7 +61,7 @@ void Ao2MoExchangeIntegralTransformer::calculateTwoCenterIntegrals(MatrixInBasis
       const auto& shellB = *auxBasis[j];
 
       Eigen::MatrixXd ints;
-      if (libint->compute(LIBINT_OPERATOR::coulomb, 0, shellA, shellB, ints)) {
+      if (libint->compute(LIBINT_OPERATOR::coulomb, 0, shellA, shellB, ints, normAux)) {
         Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
         metric.block(qStart, pStart, nJ, nI) = tmp;
         metric.block(pStart, qStart, nI, nJ) = tmp.transpose();

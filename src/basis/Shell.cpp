@@ -46,6 +46,26 @@ Shell::Shell(libint2::svector<double> exponents, libint2::svector<double> contra
   }
 }
 
+Shell::Shell(libint2::svector<double> exponents, libint2::svector<double> exponents1, libint2::svector<double> contractions,
+             unsigned int angularMomentum, bool spherical, std::array<double, 3> coords, std::string element)
+  : libint2::Shell(std::move(exponents), {{(int)angularMomentum, spherical, contractions}}, coords),
+    _normFactors(
+        new Eigen::VectorXd(!(this->contr[0].pure) ? N_SHELL_CART[this->contr[0].l] : N_SHELL_SPH[this->contr[0].l])),
+    _contractions(contractions),
+    _exponents(exponents1),
+    _element(element) {
+  if (!this->contr[0].pure) {
+    const double undoLibint = 1.0 / Normalization::finalNormalization(this->contr[0].l, 0, 0);
+    for (int aX = this->contr[0].l, index = 0; aX >= 0; --aX) {
+      for (int aY = this->contr[0].l - aX; aY >= 0; --aY) {
+        int aZ = this->contr[0].l - aY - aX;
+        (*_normFactors)[index] = undoLibint * Normalization::finalNormalization(aX, aY, aZ);
+        ++index;
+      }
+    }
+  }
+}
+
 Shell::Shell(const Shell& other) : libint2::Shell(other), NotifyingClass<Shell>() {
   _normFactors.reset(
       new Eigen::VectorXd(!(this->contr[0].pure) ? N_SHELL_CART[this->contr[0].l] : N_SHELL_SPH[this->contr[0].l]));

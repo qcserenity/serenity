@@ -28,10 +28,11 @@
 
 namespace Serenity {
 
-void removeSystemFiles(std::string path, std::string systemName) {
+void removeSystemFiles(std::string path, std::string systemName, std::string basisLabel) {
   /* TODO
    * Replace with std::filesystem when c++17 is available
    */
+  std::cout << "\n" << path << std::endl;
   std::string baseName = path + systemName;
   std::remove((baseName + ".settings").c_str());
   std::remove((baseName + ".xyz").c_str());
@@ -62,6 +63,15 @@ void removeSystemFiles(std::string path, std::string systemName) {
   std::remove((baseName + "_lrscf_resp.tddft.fdec.unres.h5").c_str());
   std::remove((baseName + ".exspectrum.txt").c_str());
   std::remove((baseName + ".transitioncharges.txt").c_str());
+  std::remove((baseName + ".cd.h-ERF.h5").c_str());
+  std::remove((baseName + ".cd.h-ERF_EXPANDED.h5").c_str());
+  std::remove((baseName + ".cd.h.h5").c_str());
+  std::remove((baseName + ".cd.h_EXPANDED.h5").c_str());
+  std::remove((baseName + ".cd.AO.h5").c_str());
+  std::remove((path + "ACD-" + basisLabel).c_str());
+  std::remove((path + "ACD-" + basisLabel + "-ERF").c_str());
+  std::remove((path + "ACCD-" + basisLabel).c_str());
+  std::remove((path + "ACCD-" + basisLabel + "-ERF").c_str());
   std::remove((path).c_str());
   std::remove("WARNING");
 }

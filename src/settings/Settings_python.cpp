@@ -53,7 +53,10 @@ void export_Settings(py::module& spy) {
       .def_readwrite("diisStartError", &SCF::diisStartError)
       .def_readwrite("diisMaxStore", &SCF::diisMaxStore)
       .def_readwrite("diisThreshold", &SCF::diisThreshold)
-      .def_readwrite("useADIIS", &SCF::useADIIS);
+      .def_readwrite("useADIIS", &SCF::useADIIS)
+      .def_readwrite("allowNotConverged", &SCF::allowNotConverged)
+      .def_readwrite("rohf", &SCF::rohf)
+      .def_readwrite("suhfLambda", &SCF::suhfLambda);
 
   py::class_<BASIS>(spy, "BasisSettings", "Basis settings all set to their default values.")
       .def_readwrite("label", &BASIS::label)
@@ -61,8 +64,20 @@ void export_Settings(py::module& spy) {
       .def_readwrite("auxJLabel", &BASIS::auxJLabel)
       .def_readwrite("makeSphericalBasis", &BASIS::makeSphericalBasis)
       .def_readwrite("integralThreshold", &BASIS::integralThreshold)
-      .def_readwrite("densityFitting", &BASIS::densityFitting)
-      .def_readwrite("basisLibPath", &BASIS::basisLibPath);
+      .def_readwrite("densFitJ", &BASIS::densFitJ)
+      .def_readwrite("densFitJ", &BASIS::densFitK)
+      .def_readwrite("densFitJ", &BASIS::densFitLRK)
+      .def_readwrite("densFitJ", &BASIS::densFitCorr)
+      .def_readwrite("basisLibPath", &BASIS::basisLibPath)
+      .def_readwrite("integralIncrementThresholdStart", &BASIS::integralIncrementThresholdStart)
+      .def_readwrite("integralIncrementThresholdEnd", &BASIS::integralIncrementThresholdEnd)
+      .def_readwrite("incrementalSteps", &BASIS::incrementalSteps)
+      .def_readwrite("firstECP", &BASIS::firstECP)
+      .def_readwrite("cdThreshold", &BASIS::cdThreshold)
+      .def_readwrite("extendSphericalACDShells", &BASIS::extendSphericalACDShells)
+      .def_readwrite("secondCD", &BASIS::secondCD)
+      .def_readwrite("cdOffset", &BASIS::cdOffset)
+      .def_readwrite("intCondition", &BASIS::intCondition);
 
   py::class_<GRID>(spy, "GridSettings", "Grid settings all set to their default values.")
       .def_readwrite("gridType", &GRID::gridType)
@@ -74,7 +89,8 @@ void export_Settings(py::module& spy) {
       .def_readwrite("blockAveThreshold", &GRID::blockAveThreshold)
       .def_readwrite("basFuncRadialThreshold", &GRID::basFuncRadialThreshold)
       .def_readwrite("weightThreshold", &GRID::weightThreshold)
-      .def_readwrite("smoothing", &GRID::smoothing);
+      .def_readwrite("smoothing", &GRID::smoothing)
+      .def_readwrite("gridPointSorting", &GRID::gridPointSorting);
 
   py::class_<Settings>(spy, "Settings")
       .def(py::init<>())

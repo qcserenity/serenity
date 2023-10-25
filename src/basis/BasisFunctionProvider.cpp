@@ -207,16 +207,16 @@ unsigned int BasisFunctionProvider::resolveAngularMomentumChar(char type, std::s
   else if (type == 'i') {
     angularMomentum = 6;
   }
-  else if (type == 'j') {
+  else if (type == 'k') {
     angularMomentum = 7;
   }
-  else if (type == 'k') {
+  else if (type == 'm') {
     angularMomentum = 8;
   }
-  else if (type == 'l') {
+  else if (type == 'n') {
     angularMomentum = 9;
   }
-  else if (type == 'm') {
+  else if (type == 'o') {
     angularMomentum = 10;
   }
   if (angularMomentum == 999999) {

@@ -28,6 +28,7 @@
 #include "dft/functionals/CompositeFunctionals.h"                     //Resolving of settings.
 #include "geometry/Geometry.h"                                        //Combined AB geometries.
 #include "grid/GridControllerFactory.h"                               //Combinded AB grids.
+#include "integrals/CDIntegralController.h"                           //Generate AB aCD-auxiliary basis
 #include "integrals/OneElectronIntegralController.h"                  //Mulliken populations/Hybrid approach.
 #include "misc/SystemSplittingTools.h" //Environment density matrix controller construction.
 #include "potentials/ABFockMatrixConstruction/ABCoreHamiltonian.h"
@@ -91,14 +92,36 @@ template<Options::SCF_MODES SCFMode>
 std::shared_ptr<BasisController>
 ABEmbeddedBundleFactory<SCFMode>::getABAuxBasisController(std::shared_ptr<SystemController> activeSystem,
                                                           std::shared_ptr<Geometry> geometryB) {
+  auto densFitJ = activeSystem->getSettings().basis.densFitJ;
   auto combinedGeometry = std::make_shared<Geometry>();
   auto actGeom = activeSystem->getGeometry();
   *combinedGeometry += *actGeom;
   *combinedGeometry += *geometryB;
   combinedGeometry->deleteIdenticalAtoms();
-  auto abAuxBasisController = AtomCenteredBasisControllerFactory::produce(
-      combinedGeometry, activeSystem->getSettings().basis.basisLibPath, activeSystem->getSettings().basis.makeSphericalBasis,
-      false, activeSystem->getSettings().basis.firstECP, activeSystem->getSettings().basis.auxJLabel);
+  std::shared_ptr<BasisController> abAuxBasisController;
+  if (densFitJ == Options::DENS_FITS::NONE) {
+    throw SerenityError("An AB auxiliary basis controller was requested but no densityfitting was specified.");
+  }
+  else if (densFitJ == Options::DENS_FITS::RI) {
+    abAuxBasisController = AtomCenteredBasisControllerFactory::produce(
+        combinedGeometry, activeSystem->getSettings().basis.basisLibPath, activeSystem->getSettings().basis.makeSphericalBasis,
+        false, activeSystem->getSettings().basis.firstECP, activeSystem->getSettings().basis.auxJLabel);
+  }
+  else if (densFitJ == Options::DENS_FITS::ACD) {
+    activeSystem->getCDIntegralController()->generateACDBasis(combinedGeometry, activeSystem->getSettings().basis.label, "-AB");
+    std::string label = "ACD-" + activeSystem->getSettings().basis.label + "-AB";
+    abAuxBasisController = AtomCenteredBasisControllerFactory::produce(
+        combinedGeometry, activeSystem->getSettings().path, activeSystem->getSettings().basis.makeSphericalBasis, false,
+        activeSystem->getSettings().basis.firstECP, label);
+  }
+  else if (densFitJ == Options::DENS_FITS::ACCD) {
+    activeSystem->getCDIntegralController()->generateACCDBasis(combinedGeometry, activeSystem->getSettings().basis.label, "-AB");
+    std::string label = "ACCD-" + activeSystem->getSettings().basis.label + "-AB";
+    abAuxBasisController = AtomCenteredBasisControllerFactory::produce(
+        combinedGeometry, activeSystem->getSettings().path, activeSystem->getSettings().basis.makeSphericalBasis, false,
+        activeSystem->getSettings().basis.firstECP, label);
+  }
+
   return abAuxBasisController;
 }
 
@@ -119,9 +142,10 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
 
   auto environmentDensityControllers = SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(environmentSystems);
   std::vector<std::shared_ptr<BasisController>> envAuxBasis;
-  if (activeSystem->getSettings().basis.densityFitting == Options::DENS_FITS::RI) {
+  if (activeSystem->getSettings().basis.densFitJ != Options::DENS_FITS::NONE) {
     for (const auto& envSys : environmentSystems) {
-      envAuxBasis.push_back(envSys->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB));
+      envAuxBasis.push_back(envSys->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB,
+                                                          activeSystem->getSettings().basis.densFitJ));
     }
   }
   else {
@@ -137,7 +161,10 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   *combinedGeometry += *activeSystem->getGeometry();
   *combinedGeometry += *geometryB;
   combinedGeometry->deleteIdenticalAtoms();
-  auto abAuxBasisController = getABAuxBasisController(activeSystem, geometryB);
+  std::shared_ptr<Serenity::BasisController> abAuxBasisController = nullptr;
+  if (activeSystem->getSettings().basis.densFitJ != Options::DENS_FITS::NONE) {
+    abAuxBasisController = getABAuxBasisController(activeSystem, geometryB);
+  }
   const auto activeFunctional = resolveFunctional(activeSystem->getSettings().dft.functional);
   double exchangeRatioActive = (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF)
                                    ? 1.0
@@ -148,17 +175,15 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> actDensityMatrixController = {
       activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController()};
   auto activeCoulomb = std::make_shared<ABERIPotential<SCFMode>>(
-      activeSystem, basisContA, basisControllerB, actDensityMatrixController, exchangeRatioActive,
-      lrExchangeRatioActive, rangeSeperationParameterActive, topDown, activeSystem->getSettings().basis.densityFitting,
-      abAuxBasisController, actAuxVec);
+      activeSystem, basisContA, basisControllerB, actDensityMatrixController, exchangeRatioActive, lrExchangeRatioActive,
+      rangeSeperationParameterActive, topDown, activeSystem->getSettings().basis.densFitJ, abAuxBasisController, actAuxVec);
   const auto naddXCFunc = resolveFunctional(embeddingSettings->naddXCFunc);
   double exchangeRatioNAdd = naddXCFunc.getHfExchangeRatio();
   double rangeSeperationParameterNAdd = naddXCFunc.getRangeSeparationParameter();
   double lrExchangeRatioNAdd = naddXCFunc.getLRExchangeRatio();
   auto environmentCoulomb = std::make_shared<ABERIPotential<SCFMode>>(
       activeSystem, basisContA, basisControllerB, environmentDensityControllers, exchangeRatioNAdd, lrExchangeRatioNAdd,
-      rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().basis.densityFitting, abAuxBasisController,
-      envAuxBasis);
+      rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().basis.densFitJ, abAuxBasisController, envAuxBasis);
   // Build A+B grid controller
   std::shared_ptr<GridController> grid_AB =
       GridControllerFactory::produce(combinedGeometry, activeSystem->getSettings().grid);

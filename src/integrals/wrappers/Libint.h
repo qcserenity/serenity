@@ -282,10 +282,11 @@ class Libint {
    * @param a      The first shell.
    * @param b      The second shell.
    * @param ints   The integrals stored per set (see class description for more information).
+   * @param normAux Flag for normalization of integrals corresponding to auxiliary basis functions.
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
   bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-               Eigen::MatrixXd& ints);
+               Eigen::MatrixXd& ints, bool normAux = true);
   /**
    * @brief Computes a set (operator/derivative) of integrals for the given shells.
    * @param op     The kernel/operator as libint enum.
@@ -293,33 +294,37 @@ class Libint {
    * @param a      The first shell.
    * @param b      The second shell.
    * @param ints   The integrals stored per set (see class description for more information).
-   * @return Boolean. True if integrals were calculated, false if they were screened out.
-   */
-  bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b, Eigen::MatrixXd& ints);
-  /**
-   * @brief Computes a set (operator/derivative) of integrals for the given shells.
-   * @param op     The kernel/operator as libint enum.
-   * @param deriv  The derivative level.
-   * @param a      The first shell.
-   * @param b      The second shell.
-   * @param c      The third shell.
-   * @param ints   The integrals stored per set (see class description for more information).
-   * @return Boolean. True if integrals were calculated, false if they were screened out.
-   */
-  bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-               const libint2::Shell& c, Eigen::MatrixXd& ints);
-  /**
-   * @brief Computes a set (operator/derivative) of integrals for the given shells.
-   * @param op     The kernel/operator as libint enum.
-   * @param deriv  The derivative level.
-   * @param a      The first shell.
-   * @param b      The second shell.
-   * @param c      The third shell.
-   * @param ints   The integrals stored per set (see class description for more information).
+   * @param normAux Flag for normalization of integrals corresponding to auxiliary basis functions.
    * @return Boolean. True if integrals were calculated, false if they were screened out.
    */
   bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-               const libint2::Shell& c, Eigen::MatrixXd& ints);
+               Eigen::MatrixXd& ints, bool normAux = true);
+  /**
+   * @brief Computes a set (operator/derivative) of integrals for the given shells.
+   * @param op     The kernel/operator as libint enum.
+   * @param deriv  The derivative level.
+   * @param a      The first shell.
+   * @param b      The second shell.
+   * @param c      The third shell.
+   * @param ints   The integrals stored per set (see class description for more information).
+   * @param normAux Flag for normalization of integrals corresponding to auxiliary basis functions.
+   * @return Boolean. True if integrals were calculated, false if they were screened out.
+   */
+  bool compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, Eigen::MatrixXd& ints, bool normAux = true);
+  /**
+   * @brief Computes a set (operator/derivative) of integrals for the given shells.
+   * @param op     The kernel/operator as libint enum.
+   * @param deriv  The derivative level.
+   * @param a      The first shell.
+   * @param b      The second shell.
+   * @param c      The third shell.
+   * @param ints   The integrals stored per set (see class description for more information).
+   * @param normAux Flag for normalization of integrals corresponding to auxiliary basis functions.
+   * @return Boolean. True if integrals were calculated, false if they were screened out.
+   */
+  bool compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
+               const libint2::Shell& c, Eigen::MatrixXd& ints, bool normAux = true);
   /**
    * @brief Computes a set (operator/derivative) of integrals for the given shells.
    * @param op     The kernel/operator as libint enum.
@@ -440,6 +445,11 @@ class Libint {
    * @param op The operator.
    */
   static LIBINT_OPERATOR resolveLibintOperator(libint2::Operator op);
+  /**
+   * @brief Getter for the maximum number of primitive functions in a shell.
+   * @return The maximum number of primitive functions in a shell.
+   */
+  static unsigned int getNPrimMax();
 
  private:
   /**

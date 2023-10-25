@@ -333,6 +333,84 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huz) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Fermi_Shifted_Huz) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86, true);
+  auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86, true);
+
+  auto task = TDEmbeddingTask<RESTRICTED>(act, env);
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  task.run();
+
+  EXPECT_NEAR(-1.8155753808, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+
+  auto task2 = FDETask<RESTRICTED>(env, {act});
+  task2.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  task2.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  task2.run();
+
+  EXPECT_NEAR(-1.8155753808, env->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfA({act}, {env});
+  lrscfA.settings.method = Options::LR_METHOD::TDA;
+  lrscfA.settings.excludeProjection = true;
+  lrscfA.settings.nEigen = 6;
+  lrscfA.settings.densFitJ = Options::DENS_FITS::NONE;
+  lrscfA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
+  lrscfA.run();
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
+  lrscfB.settings.method = Options::LR_METHOD::TDA;
+  lrscfB.settings.excludeProjection = true;
+  lrscfB.settings.nEigen = 6;
+  lrscfB.settings.densFitJ = Options::DENS_FITS::NONE;
+  lrscfB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
+  lrscfB.run();
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
+
+  auto lrscfContrAct = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(act, lrscfAB.settings);
+  auto lrscfContrEnv = std::make_shared<LRSCFController<Options::SCF_MODES::RESTRICTED>>(env, lrscfAB.settings);
+
+  lrscfAB.settings.method = Options::LR_METHOD::TDA;
+  lrscfAB.settings.excludeProjection = true;
+  lrscfAB.settings.nEigen = 12;
+  lrscfAB.settings.densFitJ = Options::DENS_FITS::NONE;
+  lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
+  lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA;
+  lrscfAB.run();
+
+  auto excitationsActUncoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
+  auto excitationsActCoupled = lrscfContrAct->getExcitationEnergies(Options::LRSCF_TYPE::COUPLED);
+  auto excitationsEnvUnoupled = lrscfContrEnv->getExcitationEnergies(Options::LRSCF_TYPE::UNCOUPLED);
+  auto excitationsEnvCoupled = lrscfContrEnv->getExcitationEnergies(Options::LRSCF_TYPE::COUPLED);
+
+  for (unsigned int iExc = 0; iExc < (*excitationsActCoupled).size(); iExc++) {
+    EXPECT_NEAR((*excitationsActCoupled)(iExc), (*excitationsEnvCoupled)(iExc), 1e-6);
+  }
+
+  // From Supersystem calculation
+  Eigen::VectorXd excitationEnergy_reference(12);
+  excitationEnergy_reference << 0.408893, 0.574051, 0.758401, 0.944049, 1.102164, 1.179569, 1.318655, 1.372784,
+      1.722485, 1.875651, 3.086483, 3.627045;
+
+  for (unsigned int iExc = 0; iExc < (*excitationsActCoupled).size(); iExc++) {
+    EXPECT_NEAR(excitationEnergy_reference(iExc), (*excitationsEnvCoupled)(iExc), 1e-6);
+  }
+
+  std::string name = act->getSystemName() + "+" + env->getSystemName();
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Hof) {
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE_BP86, true);
   auto env = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE_BP86, true);

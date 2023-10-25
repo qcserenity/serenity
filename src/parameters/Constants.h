@@ -33,12 +33,12 @@ constexpr unsigned int AM_MAX = 6;
  * Number of basis functions in a shell with angular momentum [index]
  * (Cartesian)
  */
-constexpr std::array<unsigned int, 8> N_SHELL_CART = {{1, 3, 6, 10, 15, 21, 28, 35}};
+constexpr std::array<unsigned int, 11> N_SHELL_CART = {{1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66}};
 /**
  * Number of basis functions in a shell with angular momentum [index]
  * (Spherical)
  */
-constexpr std::array<unsigned int, 8> N_SHELL_SPH = {{1, 3, 5, 7, 9, 11, 13, 15}};
+constexpr std::array<unsigned int, 11> N_SHELL_SPH = {{1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21}};
 /**
  * basis function labels for given angular momentum
  */
@@ -48,7 +48,7 @@ constexpr std::array<char, 20> ANGMOM_TO_LABEL = {
  * @enum ANGULAR_QUANTUM_NUMBER
  * @brief also called azimuthal quantum number
  */
-enum class ANGULAR_QUANTUM_NUMBER { s = 0, p = 1, d = 2, f = 3, g = 4, h = 5, i = 6, j = 7, k = 8, l = 9, m = 10 };
+enum class ANGULAR_QUANTUM_NUMBER { s = 0, p = 1, d = 2, f = 3, g = 4, h = 5, i = 6, k = 7, m = 8, n = 9, o = 10 };
 /***************************************************************************
  * The data below are taken from:                                          *
  * Peter J. Mohr, David B. Newell, Barry N. Taylor,                        *

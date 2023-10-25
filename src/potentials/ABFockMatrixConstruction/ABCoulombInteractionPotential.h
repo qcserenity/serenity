@@ -59,14 +59,14 @@ class ABCoulombInteractionPotential : public ABPotential<SCFMode>,
    * @param envDensityMatrixController The density matrix controllers which represent the interacting densities (system
    * C).
    * @param topDown Flag whether the calculation is a top down calculation. Reduces the cost of some evaluations.
-   * @param densityFitting Flag for the density fitting which is used.
+   * @param densFitJ Flag for the density fitting which is used.
    * @param auxBasisAB The auxillary basis controller for A+B.
    * @param envAuxBasisController The auxiallary basis controller for the environment systems.
    */
   ABCoulombInteractionPotential(std::shared_ptr<SystemController> actSystem, std::shared_ptr<BasisController> basisA,
                                 std::shared_ptr<BasisController> basisB,
                                 std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensityMatrixController,
-                                bool topDown = false, Options::DENS_FITS densityFitting = Options::DENS_FITS::NONE,
+                                bool topDown = false, Options::DENS_FITS densFitJ = Options::DENS_FITS::NONE,
                                 std::shared_ptr<BasisController> auxBasisAB = nullptr,
                                 std::vector<std::shared_ptr<BasisController>> envAuxBasisController = {});
 

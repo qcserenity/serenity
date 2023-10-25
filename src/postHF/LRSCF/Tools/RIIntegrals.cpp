@@ -82,50 +82,25 @@ void RIIntegrals<SCFMode>::printInfo() {
   auto densFit = _lrscf.lock()->getLRSCFSettings().densFitCache;
   if (densFit == Options::DENS_FITS::NONE) {
     WarningTracker::printWarning("You have chosen NONE as density fitting for RIIntegrals. Will use RI instead", true);
+    densFit = Options::DENS_FITS::RI;
   }
-
-  // Determine basis purpose.
-  auto basisPurpose = Options::BASIS_PURPOSES::AUX_CORREL;
-  if (_op == LIBINT_OPERATOR::coulomb) {
-    if (densFit == Options::DENS_FITS::ACD)
-      basisPurpose = Options::BASIS_PURPOSES::ATOMIC_CHOLESKY;
-    if (densFit == Options::DENS_FITS::ACCD)
-      basisPurpose = Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY;
+  if (densFit == Options::DENS_FITS::CD) {
+    WarningTracker::printWarning("You have chosen CD as density fitting for RIIntegrals. Will use ACD instead", true);
+    densFit = Options::DENS_FITS::ACD;
   }
-  else if (_op == LIBINT_OPERATOR::erf_coulomb) {
-    if (densFit == Options::DENS_FITS::ACD)
-      basisPurpose = Options::BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY;
-    if (densFit == Options::DENS_FITS::ACCD)
-      basisPurpose = Options::BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY;
-  }
-
-  // Print basis name.
-  auto basisSettings = _lrscf.lock()->getSysSettings().basis;
-  std::string name = basisSettings.label;
-  if (densFit == Options::DENS_FITS::RI) {
-    name = (basisSettings.auxCLabel == "") ? name + "-RI-C" : basisSettings.auxCLabel;
-  }
-  else if (densFit == Options::DENS_FITS::ACD) {
-    name = "ACD-" + name;
-  }
-  else if (densFit == Options::DENS_FITS::ACCD) {
-    name = "ACCD-" + name;
-  }
-  if (_op == LIBINT_OPERATOR::erf_coulomb) {
-    name = "ERF-" + name;
-  }
-  printf("  Auxiliary Basis Set         : %15s\n\n", name.c_str());
 
   // New custom auxbasis controller dependent on the given geometry.
-  std::shared_ptr<BasisController> auxBasContr;
   if (_geo) {
     _auxBasContr = AtomCenteredBasisControllerFactory::produce(
-        _geo, _lrscf.lock()->getSysSettings().basis.basisLibPath, _lrscf.lock()->getSysSettings().basis.makeSphericalBasis,
-        false, 999999999, _lrscf.lock()->getBasisController(basisPurpose)->getBasisString());
+        _geo, _lrscf.lock()->getSysSettings().basis.basisLibPath,
+        _lrscf.lock()->getSysSettings().basis.makeSphericalBasis, false, 999999999,
+        _lrscf.lock()->getSys()->getAuxBasisController(Options::AUX_BASIS_PURPOSES::CORRELATION, densFit)->getBasisString());
   }
   else {
-    _auxBasContr = _lrscf.lock()->getBasisController(basisPurpose);
+    _auxBasContr = _lrscf.lock()->getSys()->getAuxBasisController(Options::AUX_BASIS_PURPOSES::CORRELATION, densFit);
   }
+
+  printf("  Auxiliary Basis Set         : %15s\n\n", _auxBasContr->getBasisString().c_str());
 
   _nb = _basContr->getNBasisFunctions();
   _nxb = _auxBasContr->getNBasisFunctions();

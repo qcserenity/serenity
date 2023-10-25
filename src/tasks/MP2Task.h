@@ -37,7 +37,7 @@ using namespace Serenity::Reflection;
 
 struct MP2TaskSettings {
   MP2TaskSettings()
-    : mp2Type(Options::MP2_TYPES::RI),
+    : mp2Type(Options::MP2_TYPES::DF),
       sss(1.0),
       oss(1.0),
       ltconv(0.0),

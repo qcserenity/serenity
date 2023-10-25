@@ -71,7 +71,6 @@ void TwoElecFourCenterIntDecomposer::run() {
   const auto& basis = _basisController->getBasis();
   auto& libint = Libint::getInstance();
   libint.initialize(_op, 0, 4, std::vector<std::shared_ptr<Atom>>(0), _mu);
-
   /*
    * This function calculates columns of the integral super-matrix M_{ij,kl}
    * using a vector with column indices as input. The function works similarly
@@ -255,6 +254,10 @@ std::vector<unsigned int> TwoElecFourCenterIntDecomposer::getCholeskyBasis() {
   if (!_decomposer)
     this->run();
   return _decomposer->getCholeskyBasis();
+}
+
+void TwoElecFourCenterIntDecomposer::setThreshold(double cdThresh) {
+  _cdThresh = cdThresh;
 }
 
 } /* namespace Serenity */

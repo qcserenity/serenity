@@ -45,15 +45,14 @@ class ABERIPotential : public ABPotential<SCFMode>,
    * @param basisB The basis controller B.
    * @param exchangeRatio The exchange ratio.
    * @param topDown Special flag for a TD calculation. Reduces the number of RI integrals.
-   * @param densityFitting Choice of density fitting.
+   * @param densFitJ Choice of Coulomb density fitting.
    * @param auxBasisAB Auxiliary basis spanning the space of system A and B
    * @param envAuxBasisController Auxiliary basis spanning the space of the environment.
    */
   ABERIPotential(std::shared_ptr<SystemController> system, std::shared_ptr<BasisController> basisA,
                  std::shared_ptr<BasisController> basisB, std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> dMats,
                  double exchangeRatio, double LRexchangeRatio = 0.0, double mu = 0.0, bool topDown = false,
-                 Options::DENS_FITS densityFitting = Options::DENS_FITS::NONE,
-                 std::shared_ptr<BasisController> auxBasisAB = nullptr,
+                 Options::DENS_FITS densFitJ = Options::DENS_FITS::NONE, std::shared_ptr<BasisController> auxBasisAB = nullptr,
                  std::vector<std::shared_ptr<BasisController>> envAuxBasisController = {});
   virtual ~ABERIPotential() = default;
 

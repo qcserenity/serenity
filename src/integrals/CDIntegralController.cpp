@@ -88,6 +88,7 @@ bool CDIntegralController::getACDVectors(std::shared_ptr<BasisController> basisC
 
 void CDIntegralController::generateACDVectors(std::shared_ptr<BasisController> basisController,
                                               std::shared_ptr<BasisController> auxBasisController) {
+  bool normAux = !(auxBasisController->isAtomicCholesky());
   // Get the Storage controller to handle the generated vectors
   auto aoController = this->getStorageController("ACDAO");
 
@@ -180,7 +181,7 @@ void CDIntegralController::generateACDVectors(std::shared_ptr<BasisController> b
         const unsigned int nK = auxbasis[K]->getNContracted();
         const auto firstK = auxBasisController->extendedIndex(K);
 
-        bool significant = libint.compute(LIBINT_OPERATOR::coulomb, 0, auxbasK, basI, basJ, integrals[threadId]);
+        bool significant = libint.compute(LIBINT_OPERATOR::coulomb, 0, auxbasK, basI, basJ, integrals[threadId], normAux);
 
         if (significant) {
           unsigned int koffset = n * nI - nK;
@@ -261,7 +262,6 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
   // Loop over all found combinations
   for (auto const& atom : atomTypes) {
     // Perform aCD for found combination
-
     std::string atomLabel = atom.first;
     atomLabel += op_label;
 
@@ -275,7 +275,6 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
     }
 
     auto customBasisController = std::make_shared<CustomBasisController>(constShells, atomLabel);
-
     // Generate the Cholesky Basis
     std::shared_ptr<TwoElecFourCenterIntDecomposer> eriDecomposer = std::make_shared<TwoElecFourCenterIntDecomposer>(
         _settings, customBasisController, this->shared_from_this(), atomLabel);
@@ -283,9 +282,7 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
       eriDecomposer = std::make_shared<TwoElecFourCenterIntDecomposer>(_settings, customBasisController,
                                                                        this->shared_from_this(), atomLabel, op, mu);
     }
-
     std::vector<unsigned int> cBasis = eriDecomposer->getCholeskyBasis();
-
     // sort Cholesky Basis
     std::sort(cBasis.begin(), cBasis.end());
 
@@ -359,6 +356,7 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
           }
         }
       }
+
       std::shared_ptr<CustomBasisController> customExpandedBasisController(
           new CustomBasisController(expandedCombinedShells, atomLabel + "_EXPANDED"));
 
@@ -369,12 +367,12 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
         eriDecomposer1 = std::make_shared<TwoElecTwoCenterIntDecomposer>(
             _settings, customExpandedBasisController, this->shared_from_this(), atomLabel + "_EXPANDED", op, mu);
       }
+      eriDecomposer1->setThreshold(_settings.basis.secondCD);
       std::vector<unsigned int> cBasisExpanded = eriDecomposer1->getCholeskyBasis();
 
       // sort Cholesky Basis
       std::sort(cBasisExpanded.begin(), cBasisExpanded.end());
 
-      //      unsigned int nShells = (*geom)[atom.second]->getNBasisFunctions();
       auto extendedBasis = customExpandedBasisController->getBasis();
       unsigned int nShells = extendedBasis.size();
 
@@ -440,11 +438,18 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
       //==================================== //
       //         BLOCK FOR CARTESIAN BASIS SETS             //
       //====================================//
+      unsigned int maxNPrimCart = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
 
       // Write shell split
       for (unsigned int k = 0; k < selectedPairs.size(); k++) {
         // creat product-shell of the two shells in the selected shallpair
-        CombinedShellPair tmpShellPair(shells[selectedPairs[k].first], shells[selectedPairs[k].second],
+
+        unsigned int am = shells[selectedPairs[k].first]->getAngularMomentum();
+        am += shells[selectedPairs[k].second]->getAngularMomentum();
+        while (am > AM_MAX)
+          am -= 2;
+
+        CombinedShellPair tmpShellPair(shells[selectedPairs[k].first], shells[selectedPairs[k].second], am,
                                        _settings.basis.makeSphericalBasis);
         // Limitation due to the limits of libint. However, contributions are so small they can be neglected
         if (tmpShellPair.getAngularMomentum() > AM_MAX) {
@@ -453,7 +458,7 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
         int nPrim = tmpShellPair.getNPrimitives();
         while (nPrim > 0) {
           shellSplit.push_back(k);
-          nPrim -= 20;
+          nPrim -= maxNPrimCart;
         }
       }
       // First write the shell splitting
@@ -471,33 +476,33 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
       // Loop over selectedPairs
       for (unsigned int k = 0; k < selectedPairs.size(); k++) {
         // creat product-shell of the two shells in the selected shallpair
-        CombinedShellPair tmpShellPair(shells[selectedPairs[k].first], shells[selectedPairs[k].second],
-                                       _settings.basis.makeSphericalBasis);
+        unsigned int am = shells[selectedPairs[k].first]->getAngularMomentum();
+        am += shells[selectedPairs[k].second]->getAngularMomentum();
+        while (am > AM_MAX)
+          am -= 2;
 
+        CombinedShellPair tmpShellPair(shells[selectedPairs[k].first], shells[selectedPairs[k].second], am,
+                                       _settings.basis.makeSphericalBasis);
         // Limitation due to the limits of libint. However, contributions are so small they can be neglected
         if (tmpShellPair.getAngularMomentum() > AM_MAX) {
           continue;
         }
-
         unsigned int nPrim = tmpShellPair.getNPrimitives();
-        if (nPrim > 20) { // split the shell if nPrim is larger than libint->N_PRIM_MAX
+        if (nPrim > maxNPrimCart) { // split the shell if nPrim is larger than libint->N_PRIM_MAX
           libint2::svector<double> contr = tmpShellPair.getNormContractions();
           libint2::svector<double> expo = tmpShellPair.getExponents();
-
           unsigned int i = 0;
-          unsigned int step = 20;
+          unsigned int step = maxNPrimCart;
           while (i < nPrim) {
             unsigned int am = tmpShellPair.getAngularMomentum();
 
             if (i + step >= nPrim)
               step = nPrim - i;
-            libint2::svector<double> split_contr(contr.begin() + i, contr.begin() + i + step);
-            libint2::svector<double> split_expo(expo.begin() + i, expo.begin() + i + step);
-
+            std::vector<double> split_contr(contr.begin() + i, contr.begin() + i + step);
+            std::vector<double> split_expo(expo.begin() + i, expo.begin() + i + step);
             std::shared_ptr<const CombinedShellPair> splitShellPair =
                 std::make_shared<const CombinedShellPair>(shells[selectedPairs[k].first], shells[selectedPairs[k].second],
                                                           split_expo, split_contr, am, _settings.basis.makeSphericalBasis);
-
             auto expo = splitShellPair->getExponents();
             auto cont = splitShellPair->getContractions();
             auto nPrim = splitShellPair->getNPrimitives();
@@ -530,7 +535,7 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
     else {
       throw SerenityError("custom ACD basis is not pure spherical or cartesian");
     }
-  }
+  } // end loop over atom types
   file << "*\n$end";
   // restore state of cout
   std::cout.flags(f);
@@ -676,6 +681,8 @@ void CDIntegralController::generateACCDBasis(std::shared_ptr<Geometry> geom, std
 
       auto nShells = basController->getReducedNBasisFunctions();
 
+      auto nbfs = basController->getNBasisFunctions();
+
       const auto& basis = basController->getBasis();
 
       /*
@@ -694,29 +701,71 @@ void CDIntegralController::generateACCDBasis(std::shared_ptr<Geometry> geom, std
       Eigen::MatrixXd twoC(nShells, nShells);
       twoC.setZero();
 
+      Eigen::MatrixXd twoCFull(nbfs, nbfs);
+      twoCFull.setZero();
+
       std::vector<Eigen::MatrixXd> ints(1);
 
       for (unsigned int i = 0; i < nShells; i++) {
         const auto& basI = *basis[i];
         const unsigned int nI = basis[i]->getNContracted();
+        const auto& firstI = basController->extendedIndex(i);
 
         for (unsigned int j = 0; j < nShells; j++) {
           const auto& basJ = *basis[j];
           const unsigned int nJ = basis[j]->getNContracted();
+          const auto& firstJ = basController->extendedIndex(j);
 
-          bool significant = libint.compute(op, 0, basI, basJ, ints[0]);
+          bool significant = libint.compute(op, 0, basI, basJ, ints[0], false);
           if (!significant)
             continue;
 
           for (unsigned int ii = 0; ii < nI; ii++) {
             for (unsigned int jj = 0; jj < nJ; jj++) {
               twoC(i, j) += std::abs(ints[0].col(0)[jj + nJ * ii]);
+              twoCFull(firstI + ii, firstJ + jj) = ints[0].col(0)[jj + nJ * ii];
             }
           }
         }
       }
 
       libint.finalize(op, 0, 2);
+
+      std::vector<unsigned int> cbasShells;
+
+      {
+        auto matCopy = twoCFull;
+        auto vec = twoCFull;
+        vec.setZero();
+        Eigen::VectorXd diag = matCopy.diagonal();
+
+        double thresh = _settings.basis.cdThreshold;
+
+        unsigned int index = 0;
+        unsigned int counter = 0;
+        std::vector<unsigned int> cbas;
+        while (true) {
+          if (diag.maxCoeff(&index) <= thresh)
+            break;
+
+          cbas.push_back(index);
+          double factor = 1.0 / std::sqrt(diag[index]);
+          vec.col(counter) = factor * matCopy.col(index);
+          matCopy -= vec.col(counter) * vec.col(counter).transpose();
+          matCopy.col(index).setZero();
+          matCopy.row(index).setZero();
+
+          diag = matCopy.diagonal();
+
+          counter++;
+        }
+
+        for (auto i : cbas) {
+          cbasShells.push_back(basController->reducedIndex(i));
+        }
+        std::sort(cbasShells.begin(), cbasShells.end());
+        cbasShells.erase(std::unique(cbasShells.begin(), cbasShells.end()), cbasShells.end());
+      }
 
       // Decompose reduced integral matrix for comparison
       // This decomposition is done in a direct implementation, since the matrix twoC will always fit in memory
@@ -746,8 +795,13 @@ void CDIntegralController::generateACCDBasis(std::shared_ptr<Geometry> geom, std
         counter++;
       }
 
+      cbas = cbasShells;
       // sort Cholesky Basis
       std::sort(cbas.begin(), cbas.end());
+
+      if (cbas.size() == 0) {
+        continue;
+      }
 
       // create custom basis controller of accd basis to determine fitted contraction coefficients
       std::vector<std::shared_ptr<const Shell>> newACCDBas;
@@ -784,7 +838,7 @@ void CDIntegralController::generateACCDBasis(std::shared_ptr<Geometry> geom, std
             const auto& basJ = *basis[j];
             const unsigned int nJ = basis[j]->getNContracted();
 
-            bool significant = libint.compute(op, 0, basI, basJ, ints[0]);
+            bool significant = libint.compute(op, 0, basI, basJ, ints[0], false);
             if (!significant)
               continue;
 
@@ -858,16 +912,16 @@ char CDIntegralController::getAngularMomentumChar(unsigned int angularMom) {
       angularMomChar = 'i';
       break;
     case 7:
-      angularMomChar = 'j';
-      break;
-    case 8:
       angularMomChar = 'k';
       break;
+    case 8:
+      angularMomChar = 'm';
+      break;
     case 9:
-      angularMomChar = 'l';
+      angularMomChar = 'n';
       break;
     case 10:
-      angularMomChar = 'm';
+      angularMomChar = 'o';
       break;
   }
   if (angularMomChar == 'z')
@@ -1075,7 +1129,7 @@ std::pair<Eigen::VectorXd, Eigen::MatrixXd> CDIntegralController::generatePseudo
 std::vector<std::shared_ptr<CombinedShellPair>>
 CDIntegralController::generateCompleteCombinedSphericalShell(std::shared_ptr<CombinedShellPair> tmpShellPair) {
   bool expandExponents = true;
-  if (_settings.basis.extendSphericalACDShells == Options::EXTEND_ACD::NONE)
+  if (_settings.basis.extendSphericalACDShells == Options::EXTEND_ACD::SIMPLE)
     expandExponents = false;
   std::vector<std::shared_ptr<CombinedShellPair>> completeShell;
 
@@ -1084,23 +1138,32 @@ CDIntegralController::generateCompleteCombinedSphericalShell(std::shared_ptr<Com
 
   completeShell.push_back(tmpShellPair);
 
+  if (_settings.basis.extendSphericalACDShells == Options::EXTEND_ACD::NONE)
+    return completeShell;
+
   if (tmpShellPair->isCartesian())
     return completeShell;
 
   unsigned int am = tmpShellPair->getAngularMomentum();
 
-  libint2::svector<double> lastContr = tmpShellPair->getNormContractions();
-  libint2::svector<double> lastExpo = tmpShellPair->getExponents();
+  libint2::svector<double> lastLContr = tmpShellPair->getNormContractions();
+  libint2::svector<double> lastLExpo = tmpShellPair->getExponents();
+  std::vector<double> lastContr(lastLContr.begin(), lastLContr.end());
+  std::vector<double> lastExpo(lastLExpo.begin(), lastLExpo.end());
 
-  double offset = 0.01;
+  double offset = _settings.basis.cdOffset;
   double op = 1.0 + offset;
   double om = 1 / (1.0 + offset);
 
-  while (am > 1) {
+  int lA = tmpShellPair->getBaseShellA()->getAngularMomentum();
+  int lB = tmpShellPair->getBaseShellB()->getAngularMomentum();
+  unsigned int minL = std::abs(lA - lB);
+
+  while (am > minL + 1) {
     am -= 2;
 
-    libint2::svector<double> addExpo;
-    libint2::svector<double> addContr;
+    std::vector<double> addExpo;
+    std::vector<double> addContr;
 
     for (unsigned int i = 0; i < lastContr.size(); i++) {
       // generate additional contractions and exponents
@@ -1124,12 +1187,37 @@ CDIntegralController::generateCompleteCombinedSphericalShell(std::shared_ptr<Com
         addContr.push_back(lastContr[i]);
       }
     }
+    // Check for identical exponents and summarize
+    std::vector<std::pair<double, double>> pairVector;
+    for (unsigned int i = 0; i < addExpo.size(); i++) {
+      pairVector.push_back(std::make_pair(addExpo[i], addContr[i]));
+    }
+    std::sort(pairVector.begin(), pairVector.end());
+
+    addExpo.clear();
+    addContr.clear();
+    double expo = pairVector[0].first;
+    double contr = pairVector[0].second;
+    for (unsigned int i = 1; i < pairVector.size(); i++) {
+      if (pairVector[i].first == expo) {
+        contr += pairVector[i].second;
+      }
+      else {
+        addExpo.push_back(expo);
+        addContr.push_back(contr);
+        expo = pairVector[i].first;
+        contr = pairVector[i].second;
+      }
+    }
+    addExpo.push_back(expo);
+    addContr.push_back(contr);
+
     // add new complete shell
     std::shared_ptr<CombinedShellPair> addShellPair =
         std::make_shared<CombinedShellPair>(shellI, shellJ, addExpo, addContr, am, _settings.basis.makeSphericalBasis);
     completeShell.push_back(addShellPair);
 
-    if (_settings.basis.extendSphericalACDShells == Options::EXTEND_ACD::SIMPLE)
+    if (_settings.basis.extendSphericalACDShells == Options::EXTEND_ACD::FIRST)
       expandExponents = false;
 
     lastContr = addContr;
@@ -1144,7 +1232,7 @@ CDIntegralController::splitPrimitives(std::shared_ptr<CombinedShellPair> tmpShel
   std::vector<std::shared_ptr<const CombinedShellPair>> splitShells;
 
   unsigned int nPrim = tmpShellPair->getNPrimitives();
-  unsigned int nPrimMax = 20;
+  unsigned int nPrimMax = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
   auto shellI = tmpShellPair->getBaseShellA();
   auto shellJ = tmpShellPair->getBaseShellB();
 
@@ -1158,8 +1246,8 @@ CDIntegralController::splitPrimitives(std::shared_ptr<CombinedShellPair> tmpShel
       unsigned int am = tmpShellPair->getAngularMomentum();
       if (i + step >= nPrim)
         step = nPrim - i;
-      libint2::svector<double> split_contr(contr.begin() + i, contr.begin() + i + step);
-      libint2::svector<double> split_expo(expo.begin() + i, expo.begin() + i + step);
+      std::vector<double> split_contr(contr.begin() + i, contr.begin() + i + step);
+      std::vector<double> split_expo(expo.begin() + i, expo.begin() + i + step);
 
       std::shared_ptr<const CombinedShellPair> splitShellPair = std::make_shared<const CombinedShellPair>(
           shellI, shellJ, split_expo, split_contr, am, _settings.basis.makeSphericalBasis);

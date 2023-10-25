@@ -227,12 +227,25 @@ std::vector<MatrixInBasis<SCFMode>> Sigmavector<SCFMode>::getPerturbedFockMatrix
     }
   }
 
-  // Detailed significance screening.
-  // ToDo: It happens, that a guess vector in the set of guess vectors is significant while others
-  //      are not. Insignificant guess vectors should be excluded from the set of guess vectors
-  //      and their sigma vector should be set to zero.
+  // Restrict number of Fock matrix copies for integral-direct algorithms.
+  size_t nb_I = _lrscf[0]->getBasisController()->getNBasisFunctions();
+  size_t memDemand = nb_I * nb_I * _nGuess * _nSet * sizeof(double);
+  size_t available = 0.8 * MemoryManager::getInstance()->getAvailableSystemMemory();
 
+  unsigned nFock = available / memDemand;
+  _nThreads = std::min(nFock, _maxThreads);
+  if (_nThreads < _maxThreads) {
+    OutputControl::nOut << "   Maximum Threads            : " << _maxThreads << std::endl;
+    OutputControl::nOut << "   Used Threads               : " << _nThreads << std::endl;
+    OutputControl::nOut << "   Number of Fock matrices    : " << _nGuess * _nSet << std::endl;
+    OutputControl::nOut << "   Memory demand for max (GB) : "
+                        << (nb_I * nb_I * _nGuess * _nSet * sizeof(double) * _maxThreads) / 1e9 << std::endl;
+    OutputControl::nOut << "   Actual memory demand  (GB) : "
+                        << (nb_I * nb_I * _nGuess * _nSet * sizeof(double) * _nThreads) / 1e9 << std::endl;
+  }
+  omp_set_num_threads(_nThreads);
   auto F_IJ = this->calcF(0, 0, std::move(P_J));
+  omp_set_num_threads(_maxThreads);
 
   auto perturbedFockMatrix = (*F_IJ)[0];
   if ((*F_IJ).size() > 1) {

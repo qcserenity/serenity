@@ -40,8 +40,8 @@ class RI_J_IntegralController;
  *  @brief This class is a singleton to generate RI_J_IntegralController.
  */
 class RI_J_IntegralControllerFactory
-  : public RememberingFactory<RI_J_IntegralController, std::shared_ptr<BasisController>,
-                              std::shared_ptr<BasisController>, std::shared_ptr<BasisController>> {
+  : public RememberingFactory<RI_J_IntegralController, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>,
+                              std::shared_ptr<BasisController>, const LIBINT_OPERATOR, const double> {
  public:
   /**
    * @brief One of two singleton 'Constructors'
@@ -74,13 +74,25 @@ class RI_J_IntegralControllerFactory
 
   std::shared_ptr<RI_J_IntegralController> produce(std::shared_ptr<BasisController> basisControllerA,
                                                    std::shared_ptr<BasisController> auxBasisController) {
-    return this->getOrProduce(basisControllerA, auxBasisController, nullptr);
+    return this->getOrProduce(basisControllerA, auxBasisController, nullptr, LIBINT_OPERATOR::coulomb, 0.0);
   }
 
   std::shared_ptr<RI_J_IntegralController> produce(std::shared_ptr<BasisController> basisControllerA,
                                                    std::shared_ptr<BasisController> auxBasisController,
                                                    std::shared_ptr<BasisController> basisControllerB) {
-    return this->getOrProduce(basisControllerA, auxBasisController, basisControllerB);
+    return this->getOrProduce(basisControllerA, auxBasisController, basisControllerB, LIBINT_OPERATOR::coulomb, 0.0);
+  }
+
+  std::shared_ptr<RI_J_IntegralController> produce(std::shared_ptr<BasisController> basisControllerA,
+                                                   std::shared_ptr<BasisController> auxBasisController,
+                                                   LIBINT_OPERATOR op, double mu) {
+    return this->getOrProduce(basisControllerA, auxBasisController, nullptr, op, mu);
+  }
+
+  std::shared_ptr<RI_J_IntegralController>
+  produce(std::shared_ptr<BasisController> basisControllerA, std::shared_ptr<BasisController> auxBasisController,
+          std::shared_ptr<BasisController> basisControllerB, LIBINT_OPERATOR op, double mu) {
+    return this->getOrProduce(basisControllerA, auxBasisController, basisControllerB, op, mu);
   }
 
  private:
@@ -89,11 +101,11 @@ class RI_J_IntegralControllerFactory
    */
   RI_J_IntegralControllerFactory() = default;
 
-  std::unique_ptr<RI_J_IntegralController> produceNew(std::shared_ptr<BasisController> basisControllerA,
-                                                      std::shared_ptr<BasisController> auxBasisController,
-                                                      std::shared_ptr<BasisController> basisControllerB) override final {
+  std::unique_ptr<RI_J_IntegralController>
+  produceNew(std::shared_ptr<BasisController> basisControllerA, std::shared_ptr<BasisController> auxBasisController,
+             std::shared_ptr<BasisController> basisControllerB, LIBINT_OPERATOR op, double mu) override final {
     return std::unique_ptr<RI_J_IntegralController>(
-        new RI_J_IntegralController(basisControllerA, auxBasisController, basisControllerB));
+        new RI_J_IntegralController(basisControllerA, auxBasisController, basisControllerB, op, mu));
   }
 };
 

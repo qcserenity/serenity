@@ -41,14 +41,23 @@ template<Options::SCF_MODES T>
 class OrbitalController : public NotifyingClass<OrbitalController<T>>, public ObjectSensitiveClass<Basis> {
  public:
   /**
-   * @param coefficientMatrix with data defined for the basis
+   * @param coefficientMatrix with data defined for the basis.
    * @param basis             for which the orbitals in coefficientMatrix are defined.
-   * @param eigenvalues       the orbital energies
+   * @param eigenvalues       the orbital energies.
    * @param isCoreOrbital     Flag for core orbitals.
    */
   OrbitalController(std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
                     std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues,
                     std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> isCoreOrbital);
+  /**
+   * @param isCoreOrbital     Flag for core orbitals.
+   * @param coefficients      with data defined for the basis.
+   * @param basisController   for which the orbitals in coefficients are defined.
+   * @param eigenvalues       the orbital energies.
+   */
+  OrbitalController(std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXi>> isCoreOrbital,
+                    std::unique_ptr<CoefficientMatrix<T>> coefficients, std::shared_ptr<BasisController> basisController,
+                    std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvalues);
   /**
    * @param coefficientMatrix with data defined for the basis
    * @param basis             for which the orbitals in coefficientMatrix are defined.

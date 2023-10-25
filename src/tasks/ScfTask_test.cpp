@@ -45,6 +45,11 @@ TEST_F(ScfTaskTest, restricted_cart_ethane) {
   settings.basis.makeSphericalBasis = false;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
   settings.scf.initialguess = Options::INITIAL_GUESSES::H_CORE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, settings);
 
   ScfTask<RESTRICTED> scfCart(sys);
@@ -53,7 +58,10 @@ TEST_F(ScfTaskTest, restricted_cart_ethane) {
   double eCart = sys->getElectronicStructure<RESTRICTED>()->getEnergy();
   EXPECT_NEAR(-79.1786812939, eCart, 1e-8);
 
-  settings.basis.densityFitting = Options::DENS_FITS::ACD;
+  settings.basis.densFitJ = Options::DENS_FITS::ACD;
+  settings.basis.densFitK = Options::DENS_FITS::ACD;
+  settings.basis.densFitLRK = Options::DENS_FITS::ACD;
+  settings.basis.densFitCorr = Options::DENS_FITS::ACD;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86, settings);
 
   ScfTask<RESTRICTED> scfChol(sys);
@@ -63,7 +71,10 @@ TEST_F(ScfTaskTest, restricted_cart_ethane) {
   EXPECT_NEAR(eCart, eCartChol, 1e-4);
 
   settings.basis.makeSphericalBasis = true;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP, settings);
 
   ScfTask<RESTRICTED> scfSph(sys);
@@ -101,7 +112,7 @@ TEST_F(ScfTaskTest, unrestricted_doubleHybridFunctional) {
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<UNRESTRICTED> scf(sys);
-  scf.settings.mp2Type = Options::MP2_TYPES::RI;
+  scf.settings.mp2Type = Options::MP2_TYPES::DF;
   scf.run();
 
   // Changed (12.02.2020) due to separate evaluation of Coulomb and XX
@@ -134,7 +145,10 @@ TEST_F(ScfTaskTest, restricted_doubleHybridFunctional_Full4CenterMP2) {
   Settings settings = sys->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B2PLYP;
   settings.basis.label = "DEF2-SVP";
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
 
   ScfTask<RESTRICTED> scf(sys);
@@ -266,6 +280,30 @@ TEST_F(ScfTaskTest, restricted_DeltaScf) {
   EXPECT_NEAR(0.806179, energy_mom, 1e-6);
 
   EXPECT_NEAR(0, energy_imom - energy_mom, 1e-6);
+}
+
+TEST_F(ScfTaskTest, rohf) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings sysSettings = sys->getSettings();
+  sysSettings.scf.rohf = Options::ROHF_TYPES::CUHF;
+  sysSettings.basis.label = "DEF2-SVP";
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, sysSettings);
+  sys->setSpin(2);
+
+  // Orca 5.0.3 (June 2023) reference: -113.67554181 Eh
+
+  ScfTask<UNRESTRICTED> cuhf(sys);
+  cuhf.run();
+  EXPECT_NEAR(-113.6755418076, sys->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-6);
+
+  sysSettings.scf.rohf = Options::ROHF_TYPES::SUHF;
+  sysSettings.basis.label = "DEF2-SVP";
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, sysSettings);
+  sys->setSpin(2);
+
+  ScfTask<UNRESTRICTED> suhf(sys);
+  suhf.run();
+  EXPECT_NEAR(-113.6843639808, sys->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-6);
 }
 
 } /*namespace Serenity*/

@@ -1,5 +1,5 @@
 /**
- * @file ReadOrbitalsTask_test.cpp
+ * @file OrbitalsIOTask_test.cpp
  *
  * @date   Dec 15, 2020
  * @author Moritz Bensberg
@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-#include "tasks/ReadOrbitalsTask.h"                   //To be tested.
+#include "tasks/OrbitalsIOTask.h"                     //To be tested.
 #include "data/ElectronicStructure.h"                 //GetEnergy.
 #include "geometry/Atom.h"                            //Manually construct geometry.
 #include "geometry/AtomTypeFactory.h"                 //Manually construct geometry.
@@ -33,18 +33,18 @@
 #include <string>        //SERENITY_RESOURCES
 
 namespace Serenity {
-class ReadOrbitalsTaskTest : public ::testing::Test {
+class OrbitalsIOTaskTest : public ::testing::Test {
  protected:
-  ReadOrbitalsTaskTest() {
+  OrbitalsIOTaskTest() {
   }
-  virtual ~ReadOrbitalsTaskTest() = default;
+  virtual ~OrbitalsIOTaskTest() = default;
 
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
   }
 };
 
-TEST_F(ReadOrbitalsTaskTest, restricted_molpro_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, restricted_molpro_h2o_qzvp) {
   auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 1.8588136904 * ANGSTROM_TO_BOHR, 0.0, 0.0);
   auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 2.4432381548 * ANGSTROM_TO_BOHR,
                                    0.1743648456 * ANGSTROM_TO_BOHR, -0.7451535006 * ANGSTROM_TO_BOHR);
@@ -58,7 +58,7 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molpro_h2o_qzvp) {
   settings.basis.integralIncrementThresholdStart = 1e-12;
 
   auto sys = std::make_shared<SystemController>(geom, settings);
-  ReadOrbitalsTask<RESTRICTED> read(sys);
+  OrbitalsIOTask<RESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/molpro_orbitals/h2o_orbitals_hf_qzvp.xml";
@@ -79,12 +79,12 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molpro_h2o_qzvp) {
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-7);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-7);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water_qzvp/", "water_qzvp");
 }
 
-TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, restricted_molcas_h2o_qzvp) {
   auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0.0);
   auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
                                    1.4 * ANGSTROM_TO_BOHR);
@@ -98,7 +98,7 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp) {
   settings.basis.integralIncrementThresholdStart = 1e-12;
 
   auto sys = std::make_shared<SystemController>(geom, settings);
-  ReadOrbitalsTask<RESTRICTED> read(sys);
+  OrbitalsIOTask<RESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/molcas_orbitals/";
@@ -119,12 +119,12 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp) {
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-7);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-7);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water/", "water");
 }
 
-TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp_replace) {
+TEST_F(OrbitalsIOTaskTest, restricted_molcas_h2o_qzvp_replace) {
   auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0.0);
   auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.4 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR,
                                    1.4 * ANGSTROM_TO_BOHR);
@@ -145,7 +145,7 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp_replace) {
   else {
     throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
   }
-  ReadOrbitalsTask<RESTRICTED> replace(sys);
+  OrbitalsIOTask<RESTRICTED> replace(sys);
   replace.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLCAS;
   replace.settings.path = pathToTestsResources;
   replace.settings.replaceInFile = true;
@@ -159,7 +159,7 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp_replace) {
   dst << src.rdbuf();
   dst.flush();
 
-  ReadOrbitalsTask<RESTRICTED> read(sys);
+  OrbitalsIOTask<RESTRICTED> read(sys);
   read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLCAS;
   read.settings.path = ".";
   read.run();
@@ -173,22 +173,22 @@ TEST_F(ReadOrbitalsTaskTest, restricted_molcas_h2o_qzvp_replace) {
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
 
   std::remove(destinationFilePath.c_str());
   std::remove(originalFilePath.c_str());
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory("./water/", "water");
 }
 
-TEST_F(ReadOrbitalsTaskTest, restricted_turbomole_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, restricted_turbomole_h2o_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
   settings.basis.label = "DEF2-QZVP";
   settings.basis.incrementalSteps = 1;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
-  ReadOrbitalsTask<RESTRICTED> read(sys);
+  OrbitalsIOTask<RESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/" + settings.name;
@@ -209,19 +209,19 @@ TEST_F(ReadOrbitalsTaskTest, restricted_turbomole_h2o_qzvp) {
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
-TEST_F(ReadOrbitalsTaskTest, unrestricted_turbomole_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, unrestricted_turbomole_h2o_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
   settings.basis.label = "DEF2-QZVP";
   settings.basis.incrementalSteps = 1;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
-  ReadOrbitalsTask<UNRESTRICTED> read(sys);
+  OrbitalsIOTask<UNRESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/" + settings.name;
@@ -242,19 +242,19 @@ TEST_F(ReadOrbitalsTaskTest, unrestricted_turbomole_h2o_qzvp) {
 
   ScfTask<UNRESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
-TEST_F(ReadOrbitalsTaskTest, unrestricted_turbomole_methyl_qzvp) {
+TEST_F(OrbitalsIOTaskTest, unrestricted_turbomole_methyl_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
   settings.basis.label = "DEF2-QZVP";
   settings.basis.incrementalSteps = 1;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, settings, 0, 1);
-  ReadOrbitalsTask<UNRESTRICTED> read(sys);
+  OrbitalsIOTask<UNRESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/" + settings.name;
@@ -275,19 +275,19 @@ TEST_F(ReadOrbitalsTaskTest, unrestricted_turbomole_methyl_qzvp) {
 
   ScfTask<UNRESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
-TEST_F(ReadOrbitalsTaskTest, restricted_serenity_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, restricted_serenity_h2o_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
   settings.basis.label = "DEF2-QZVP";
   settings.basis.incrementalSteps = 1;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
-  ReadOrbitalsTask<RESTRICTED> read(sys);
+  OrbitalsIOTask<RESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/" + settings.name + "/def2-QZVP/";
@@ -308,12 +308,12 @@ TEST_F(ReadOrbitalsTaskTest, restricted_serenity_h2o_qzvp) {
 
   ScfTask<RESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
-TEST_F(ReadOrbitalsTaskTest, unrestricted_serenity_h2o_qzvp) {
+TEST_F(OrbitalsIOTaskTest, unrestricted_serenity_h2o_qzvp) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
   Settings settings = sys->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
@@ -321,7 +321,7 @@ TEST_F(ReadOrbitalsTaskTest, unrestricted_serenity_h2o_qzvp) {
   settings.basis.incrementalSteps = 1;
   settings.scfMode = UNRESTRICTED;
   sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
-  ReadOrbitalsTask<UNRESTRICTED> read(sys);
+  OrbitalsIOTask<UNRESTRICTED> read(sys);
   std::string pathToTestsResources;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToTestsResources = (std::string)env_p + "testresources/" + settings.name + "/def2-QZVP/";
@@ -343,9 +343,250 @@ TEST_F(ReadOrbitalsTaskTest, unrestricted_serenity_h2o_qzvp) {
 
   ScfTask<UNRESTRICTED> scf(sys);
   scf.run();
-  double energy_aftter_scf = eStruc->getEnergy();
-  EXPECT_NEAR(energy_without_scf, energy_aftter_scf, 1e-9);
+  double energy_after_scf = eStruc->getEnergy();
+  EXPECT_NEAR(energy_without_scf, energy_after_scf, 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(OrbitalsIOTaskTest, restricted_turbomole_write) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = RESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<RESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::TURBOMOLE;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT/mos");
+  getline(input, line);
+  EXPECT_EQ(line, "$scfmo scfconv=7 format(4d20.14)");
+  for (unsigned int i = 0; i < 109; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line.substr(0, 8), "-.671812");
+
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/mos");
+}
+
+TEST_F(OrbitalsIOTaskTest, unrestricted_turbomole_write) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = UNRESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<UNRESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<UNRESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::TURBOMOLE;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT/alpha");
+  getline(input, line);
+  EXPECT_EQ(line, "$uhfmo_alpha scfconv=8 format(4d20.14)");
+  for (unsigned int i = 0; i < 109; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line.substr(0, 8), "-.671812");
+
+  std::ifstream input2("./TestSystem_WaterMonOne_6_31Gs_DFT/beta");
+  getline(input2, line);
+  EXPECT_EQ(line, "$uhfmo_beta scfconv=8 format(4d20.14)");
+  for (unsigned int i = 0; i < 109; i++) {
+    getline(input2, line);
+  }
+  EXPECT_EQ(line.substr(0, 8), "-.671812");
+
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/alpha");
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/beta");
+}
+
+TEST_F(OrbitalsIOTaskTest, restricted_molden_write_spherical) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = RESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<RESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLDEN;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+  for (unsigned int i = 0; i < 5; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  for (unsigned int i = 0; i < 6; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "0.18731136960000E+02 0.21493544890030E+00");
+  for (unsigned int i = 0; i < 436; i++) {
+    getline(input, line);
+  }
+  std::string first, second;
+  std::istringstream iss(line);
+  iss >> first;
+  iss >> second;
+
+  EXPECT_EQ(first, "18");
+  EXPECT_NEAR(std::stod(second), 0.73522649940754e-09, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+}
+
+TEST_F(OrbitalsIOTaskTest, unrestricted_molden_write_spherical) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = UNRESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<UNRESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<UNRESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLDEN;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+  for (unsigned int i = 0; i < 5; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  for (unsigned int i = 0; i < 6; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "0.18731136960000E+02 0.21493544890030E+00");
+  for (unsigned int i = 0; i < 832; i++) {
+    getline(input, line);
+  }
+  std::string first, second;
+  std::istringstream iss(line);
+  iss >> first;
+  iss >> second;
+
+  EXPECT_EQ(first, "18");
+  EXPECT_NEAR(std::stod(second), 0.37189481855855e-08, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+}
+
+TEST_F(OrbitalsIOTaskTest, restricted_molden_write_cartesian) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = RESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  settings.basis.makeSphericalBasis = false;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<RESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<RESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLDEN;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+  for (unsigned int i = 0; i < 5; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  for (unsigned int i = 0; i < 6; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "0.18731136960000E+02 0.33494604341300E-01");
+  for (unsigned int i = 0; i < 474; i++) {
+    getline(input, line);
+  }
+  std::string first, second;
+  std::istringstream iss(line);
+  iss >> first;
+  iss >> second;
+
+  EXPECT_EQ(first, "19");
+  EXPECT_NEAR(std::stod(second), 0.71161568457949e-11, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+}
+
+TEST_F(OrbitalsIOTaskTest, unrestricted_molden_write_cartesian) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+  settings.scfMode = UNRESTRICTED;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  settings.basis.makeSphericalBasis = false;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, settings);
+  ScfTask<UNRESTRICTED> scf(sys);
+  scf.run();
+
+  OrbitalsIOTask<UNRESTRICTED> write(sys);
+  write.settings.fileFormat = Options::ORBITAL_FILE_TYPES::MOLDEN;
+  write.settings.write = true;
+  write.run();
+
+  std::string line;
+  std::ifstream input("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
+  for (unsigned int i = 0; i < 5; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  for (unsigned int i = 0; i < 6; i++) {
+    getline(input, line);
+  }
+  EXPECT_EQ(line, "0.18731136960000E+02 0.33494604341300E-01");
+  for (unsigned int i = 0; i < 911; i++) {
+    getline(input, line);
+  }
+  std::string first, second;
+  std::istringstream iss(line);
+  iss >> first;
+  iss >> second;
+
+  EXPECT_EQ(first, "19");
+  EXPECT_NEAR(std::stod(second), -.19732803490635e-08, 1e-7);
+  SystemController__TEST_SUPPLY::cleanUp();
+  std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT.molden.input");
 }
 
 } /*namespace Serenity*/

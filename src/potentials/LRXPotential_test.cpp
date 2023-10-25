@@ -70,7 +70,10 @@ TEST(LRXPotential, CAMB3LYP_open_shell) {
   settings.name = "TestSystem_WATER_DEF2_SVP";
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   auto systemController =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DEF2_SVP_CAMB3LYP, settings, 0, 2);
   auto es = systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();

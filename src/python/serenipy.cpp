@@ -49,7 +49,7 @@ void export_MultipoleMomentTask(py::module& spy);
 void export_Options(py::module& spy);
 void export_PlotTask(py::module& spy);
 void export_ProjectionBasedEmbTask(py::module& spy);
-void export_ReadOrbitalsTask(py::module& spy);
+void export_OrbitalsIOTask(py::module& spy);
 void export_ScfTask(py::module& spy);
 void export_Settings(py::module& spy);
 void export_SystemController(py::module& spy);
@@ -88,5 +88,5 @@ PYBIND11_MODULE(serenipy, spy) {
   export_MultipoleMomentTask(spy);
   export_ProjectionBasedEmbTask(spy);
   export_ScfTask(spy);
-  export_ReadOrbitalsTask(spy);
+  export_OrbitalsIOTask(spy);
 }

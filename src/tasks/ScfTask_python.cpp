@@ -33,7 +33,13 @@ void export_ScfTask(py::module& spy) {
       .def_readwrite("maxCycles", &ScfTaskSettings::maxCycles)
       .def_readwrite("mp2Type", &ScfTaskSettings::mp2Type)
       .def_readwrite("fractionalDegeneracy", &ScfTaskSettings::fractionalDegeneracy)
-      .def_readwrite("lcSettings", &ScfTaskSettings::lcSettings);
+      .def_readwrite("lcSettings", &ScfTaskSettings::lcSettings)
+      .def_readwrite("skipSCF", &ScfTaskSettings::skipSCF)
+      .def_readwrite("allowNotConverged", &ScfTaskSettings::allowNotConverged)
+      .def_readwrite("calculateMP2Energy", &ScfTaskSettings::calculateMP2Energy)
+      .def_readwrite("exca", &ScfTaskSettings::exca)
+      .def_readwrite("excb", &ScfTaskSettings::excb)
+      .def_readwrite("momCycles", &ScfTaskSettings::momCycles);
 
   py::class_<ScfTask<Options::SCF_MODES::RESTRICTED>>(spy, "ScfTask_R")
       .def(py::init<std::shared_ptr<SystemController>>())

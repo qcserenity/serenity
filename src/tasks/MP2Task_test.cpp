@@ -72,7 +72,7 @@ TEST_F(MP2TaskTest, MP2Restricted) {
  */
 TEST_F(MP2TaskTest, MP2RestrictedRI) {
   MP2Task<Options::SCF_MODES::RESTRICTED> mp2Task(systemController, {});
-  mp2Task.settings.mp2Type = Options::MP2_TYPES::RI;
+  mp2Task.settings.mp2Type = Options::MP2_TYPES::DF;
   mp2Task.run();
   auto energyComponentController =
       systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergyComponentController();

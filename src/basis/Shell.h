@@ -70,7 +70,8 @@ class Shell : public libint2::Shell, public NotifyingClass<Shell> {
    */
   Shell(libint2::svector<double> exponents, libint2::svector<double> contractions, unsigned int angularMomentum,
         bool spherical, std::array<double, 3> coords, std::string element = "");
-
+  Shell(libint2::svector<double> exponents, libint2::svector<double> exponents1, libint2::svector<double> contractions,
+        unsigned int angularMomentum, bool spherical, std::array<double, 3> coords, std::string element = "");
   /**
    * @brief Copy constructor.
    *

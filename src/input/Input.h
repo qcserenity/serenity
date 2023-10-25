@@ -51,12 +51,12 @@
 #include "tasks/LocalizationTask.h"
 #include "tasks/MP2Task.h"
 #include "tasks/MultipoleMomentTask.h"
+#include "tasks/OrbitalsIOTask.h"
 #include "tasks/OrthogonalizationTask.h"
 #include "tasks/PCMInteractionEnergyTask.h"
 #include "tasks/PlotTask.h"
 #include "tasks/PopAnalysisTask.h"
 #include "tasks/QuasiRestrictedOrbitalsTask.h"
-#include "tasks/ReadOrbitalsTask.h"
 #include "tasks/ScfTask.h"
 #include "tasks/SystemAdditionTask.h"
 #include "tasks/SystemSplittingTask.h"
@@ -504,8 +504,9 @@ class Input {
         else if (!copy.compare("QRO") or !copy.compare("QUASIRESTRICTEDORBITALS")) {
           createTaskAE(QuasiRestrictedOrbitalsTask, activeSystem[0]->getSCFMode(), activeSystem[0], environmentSystem);
         }
-        else if (!copy.compare("READORBS") or !copy.compare("READ")) {
-          createTaskA(ReadOrbitalsTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
+        else if (!copy.compare("READORBS") or !copy.compare("READ") or !copy.compare("WRITEORBS") or
+                 !copy.compare("WRITE") or !copy.compare("IO")) {
+          createTaskA(OrbitalsIOTask, activeSystem[0]->getSCFMode(), activeSystem[0]);
         }
         else if (!copy.compare("SCFTASK") or !copy.compare("SCF")) {
           createTaskA(ScfTask, activeSystem[0]->getSCFMode(), activeSystem[0]);

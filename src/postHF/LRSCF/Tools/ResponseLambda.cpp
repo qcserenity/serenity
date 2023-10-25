@@ -121,6 +121,9 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
   if (_settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
     _usesEO = true;
   }
+  if (_settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA) {
+    _usesEO = true;
+  }
   for (auto eo : _settings.embedding.embeddingModeList) {
     if (eo == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
       _usesEO = true;
@@ -129,6 +132,9 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
       _usesEO = true;
     }
     if (eo == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
+      _usesEO = true;
+    }
+    if (eo == Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA) {
       _usesEO = true;
     }
   }
@@ -262,7 +268,7 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
 
     if (_usesEO) {
       EO = std::make_unique<EOSigmavector<SCFMode>>(_lrscf, guessVectors, _settings.embedding.levelShiftParameter,
-                                                    _settings.embedding.embeddingMode);
+                                                    _settings.embedding.embeddingMode, _settings.embedding.fermiShift);
     }
 
     for (unsigned iSet = 0; iSet < guessVectors.size(); ++iSet) {
@@ -367,7 +373,7 @@ void ResponseLambda<SCFMode>::setupTDDFTLambdas() {
 
     if (_usesEO) {
       EO = std::make_unique<EOSigmavector<SCFMode>>(_lrscf, guessVectors, _settings.embedding.levelShiftParameter,
-                                                    _settings.embedding.embeddingMode);
+                                                    _settings.embedding.embeddingMode, _settings.embedding.fermiShift);
     }
 
     if (_grimme) {

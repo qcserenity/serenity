@@ -40,7 +40,7 @@ using namespace Serenity::Reflection;
 struct ScfTaskSettings {
   ScfTaskSettings()
     : restart(false),
-      mp2Type(Options::MP2_TYPES::RI),
+      mp2Type(Options::MP2_TYPES::DF),
       maxResidual(1e-5),
       maxCycles(100),
       fractionalDegeneracy(false),

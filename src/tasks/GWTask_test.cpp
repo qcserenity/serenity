@@ -246,8 +246,12 @@ TEST_F(GWTaskTest, GW_CD_CD_R) {
   Settings settings = waterMon->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
-  settings.basis.densityFitting = Options::DENS_FITS::ACD;
+  settings.basis.densFitJ = Options::DENS_FITS::ACD;
+  settings.basis.densFitK = Options::DENS_FITS::ACD;
+  settings.basis.densFitLRK = Options::DENS_FITS::ACD;
+  settings.basis.densFitCorr = Options::DENS_FITS::ACD;
   settings.basis.cdThreshold = 1e-12;
+  settings.basis.extendSphericalACDShells = Options::EXTEND_ACD::COMPLETE;
   settings.basis.label = "DEF2-SVP";
   waterMon = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, settings);
   // Perform SCF
@@ -276,6 +280,7 @@ TEST_F(GWTaskTest, GW_CD_CD_R) {
       EXPECT_NEAR(correlationEnergy_spin(i) * HARTREE_TO_EV, correlationEnergyTurbo_eV(i), 3.3e-3);
     }
   };
+  std::remove((waterMon->getSettings().path + "ACD-DEF2-SVP").c_str());
 }
 
 TEST_F(GWTaskTest, GW_CD_U) {

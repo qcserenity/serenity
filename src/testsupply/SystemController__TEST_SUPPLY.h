@@ -183,7 +183,7 @@ class SystemController__TEST_SUPPLY {
    * @param path          The path.
    * @param systemName    The system name-
    */
-  static void cleanUpSystemDirectory(std::string path, std::string systemName);
+  static void cleanUpSystemDirectory(std::string path, std::string systemName, std::string basisLabel = "");
   /**
    * @brief Remove all system files for the given system controller.
    * @param systemController    The system controller.

@@ -46,17 +46,15 @@ CDHFPotential<SCFMode>::CDHFPotential(std::shared_ptr<SystemController> systemCo
   this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
 
-  if (systemController->getSettings().basis.densityFitting == Options::DENS_FITS::ACD ||
-      systemController->getSettings().basis.densityFitting == Options::DENS_FITS::ACCD) {
-    _storageLabel = "ACDAO";
+  if (systemController->getSettings().basis.densFitJ != Options::DENS_FITS::CD ||
+      systemController->getSettings().basis.densFitK != Options::DENS_FITS::CD) {
+    throw SerenityError("A CDHFPotential was generated but density-fitting was not set to CD");
   }
-  else { // Options::DENS_FITS::CD
-    _storageLabel = "AO";
-    // Generate vectors here
-    TwoElecFourCenterIntDecomposer decomposer(systemController->getSettings(), systemController->getBasisController(),
-                                              systemController->getCDIntegralController(), "AO");
-    decomposer.run();
-  }
+  _storageLabel = "AO";
+  // Generate vectors here
+  TwoElecFourCenterIntDecomposer decomposer(systemController->getSettings(), systemController->getBasisController(),
+                                            systemController->getCDIntegralController(), _storageLabel);
+  decomposer.run();
 };
 
 template<>

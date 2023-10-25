@@ -77,21 +77,25 @@ struct SCF {
       diisThreshold(5e-7),
       canOrthThreshold(1.0e-7),
       useADIIS(false),
-      allowNotConverged(false) {
+      allowNotConverged(false),
+      rohf(Options::ROHF_TYPES::NONE),
+      suhfLambda(0.01) {
   }
 
  public:
   REFLECTABLE((Options::INITIAL_GUESSES)initialguess, (unsigned int)maxCycles, (unsigned int)writeRestart,
-              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping, (double)seriesDampingStart,
-              (double)seriesDampingEnd, (double)seriesDampingStep, (double)seriesDampingInitialSteps,
-              (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift, (bool)useOffDiagLevelshift,
-              (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError, (unsigned int)diisMaxStore,
-              (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS, (bool)allowNotConverged)
+              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping,
+              (double)seriesDampingStart, (double)seriesDampingEnd, (double)seriesDampingStep,
+              (double)seriesDampingInitialSteps, (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift,
+              (bool)useOffDiagLevelshift, (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError,
+              (unsigned int)diisMaxStore, (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS,
+              (bool)allowNotConverged, (Options::ROHF_TYPES)rohf, (double)suhfLambda)
 };
 struct BASIS {
   BASIS()
     : label("6-31GS"),
       auxJLabel("RI_J_WEIGEND"),
+      auxJKLabel(""),
       auxCLabel(""),
       makeSphericalBasis(true),
       integralThreshold(0),
@@ -100,18 +104,24 @@ struct BASIS {
       incrementalSteps(5),
       basisLibPath(""),
       firstECP(37),
-      densityFitting(Options::DENS_FITS::RI),
+      densFitJ(Options::DENS_FITS::RI),
+      densFitK(Options::DENS_FITS::NONE),
+      densFitLRK(Options::DENS_FITS::NONE),
+      densFitCorr(Options::DENS_FITS::RI),
       cdThreshold(1e-6),
       extendSphericalACDShells(Options::EXTEND_ACD::SIMPLE),
-      intCondition(-1) {
+      intCondition(-1),
+      secondCD(1e-8),
+      cdOffset(1e-2) {
   }
 
  public:
-  REFLECTABLE((std::string)label, (std::string)auxJLabel, (std::string)auxCLabel, (bool)makeSphericalBasis,
-              (double)integralThreshold, (double)integralIncrementThresholdStart, (double)integralIncrementThresholdEnd,
-              (unsigned int)incrementalSteps, (std::string)basisLibPath, (unsigned int)firstECP,
-              (Options::DENS_FITS)densityFitting, (double)cdThreshold, (Options::EXTEND_ACD)extendSphericalACDShells,
-              (int)intCondition)
+  REFLECTABLE((std::string)label, (std::string)auxJLabel, (std::string)auxJKLabel, (std::string)auxCLabel,
+              (bool)makeSphericalBasis, (double)integralThreshold, (double)integralIncrementThresholdStart,
+              (double)integralIncrementThresholdEnd, (unsigned int)incrementalSteps, (std::string)basisLibPath,
+              (unsigned int)firstECP, (Options::DENS_FITS)densFitJ, (Options::DENS_FITS)densFitK,
+              (Options::DENS_FITS)densFitLRK, (Options::DENS_FITS)densFitCorr, (double)cdThreshold,
+              (Options::EXTEND_ACD)extendSphericalACDShells, (int)intCondition, (double)secondCD, (double)cdOffset)
 };
 
 struct GRID {

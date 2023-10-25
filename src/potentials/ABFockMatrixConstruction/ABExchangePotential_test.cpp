@@ -58,13 +58,15 @@ class ABExchangePotentialTest : public ::testing::Test {
 TEST_F(ABExchangePotentialTest, H2_dimer_rFockMatrixAAA) {
   const auto SPIN = Options::SCF_MODES::RESTRICTED;
   auto basisA = systemControllerA->getBasisController();
+  auto auxBasisA = systemControllerA->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB);
   //  auto basisB = systemControllerA->getBasisController();
   std::vector<std::shared_ptr<DensityMatrixController<SPIN>>> envDmat(
       1, systemControllerA->getElectronicStructure<SPIN>()->getDensityMatrixController());
 
   ABExchangePotential<SPIN> abExchangePot(systemControllerA, basisA, basisA, envDmat, 1.0);
 
-  ABCoulombInteractionPotential<SPIN> abCoulombIntPot(systemControllerA, basisA, basisA, envDmat);
+  ABCoulombInteractionPotential<SPIN> abCoulombIntPot(systemControllerA, basisA, basisA, envDmat, false,
+                                                      Options::DENS_FITS::RI, auxBasisA);
 
   ERIPotential<SPIN> hfPotential(systemControllerA, envDmat[0], 1.0, 1E-10, 0.0, 0.0, 0, false);
 

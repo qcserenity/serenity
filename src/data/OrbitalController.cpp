@@ -276,7 +276,7 @@ void OrbitalController<SCFMode>::applyMOMProcedure(CoefficientMatrix<SCFMode>& c
     }
 
     // Sort occupied and virtual orbitals by eigenvalue separately.
-    unsigned iMin;
+    unsigned iMin = 0;
 
     unsigned nocc = momMatrix_spin.cols();
     Eigen::Ref<Eigen::VectorXd> epsOcc = eps_spin.head(nocc);

@@ -221,7 +221,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.basis.basisLibPath = basisPath;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.grid.accuracy = 7;
       settings.grid.smallGridAccuracy = 7;
       settings.grid.blockAveThreshold = 0;
@@ -236,7 +239,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.basis.basisLibPath = basisPath;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.grid.accuracy = 7;
       settings.grid.smallGridAccuracy = 7;
       settings.grid.blockAveThreshold = 0;
@@ -251,7 +257,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.name = "TestSystem_H2_DEF2_TZVP_HF";
       settings.basis.basisLibPath = basisPath;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       _testSystemControllers[kind] =
           std::make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF), settings);
     } break;
@@ -262,7 +271,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
       settings.basis.basisLibPath = basisPath;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       _testSystemControllers[kind] =
           std::make_shared<SystemController>(getGeometry(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF_UNRESTRICTED), settings);
     } break;
@@ -582,7 +594,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       Settings settings;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::BP86;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE_BP86_Supermolecular";
       settings.basis.basisLibPath = basisPath;
@@ -617,7 +632,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       Settings settings;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::BP86;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE_BP86";
       settings.basis.basisLibPath = basisPath;
@@ -718,7 +736,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ACTIVE_FDE_B3LYP";
       settings.basis.basisLibPath = basisPath;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.integralIncrementThresholdStart = 1e-12;
       settings.grid.accuracy = 7;
       settings.grid.smallGridAccuracy = 7;
@@ -750,7 +771,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       Settings settings;
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::BP86;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE_BP86";
       settings.grid.accuracy = 7;
@@ -772,7 +796,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
       settings.basis.label = "6-31GS";
       settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE_B3LYP";
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.integralIncrementThresholdStart = 1e-12;
       settings.grid.accuracy = 7;
       settings.grid.smallGridAccuracy = 7;
@@ -975,7 +1002,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.name = "TestSystem_WATER_DEF2_SVP";
       settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::CAMB3LYP;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       settings.basis.basisLibPath = basisPath;
       settings.basis.incrementalSteps = 0;
       _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
@@ -1174,7 +1204,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.basis.basisLibPath = basisPath;
       settings.grid.accuracy = 2;
       settings.grid.smallGridAccuracy = 2;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       if (fromScratch) {
         _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
       }
@@ -1191,7 +1224,10 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.name = "TestSystem_H2_6_31Gs_ENVIRONMENT_FDE";
       settings.grid.accuracy = 2;
       settings.grid.smallGridAccuracy = 2;
-      settings.basis.densityFitting = Options::DENS_FITS::NONE;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitK = Options::DENS_FITS::NONE;
+      settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
       if (fromScratch) {
         _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
       }
@@ -2716,7 +2752,7 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H1, H2, O2, H3, H4});
     } break;
     case TEST_SYSTEM_CONTROLLERS::Water_Def2_TZVP_DFT: {
-      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.8948052 * ANGSTROM_TO_BOHR,
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.8948052 * ANGSTROM_TO_BOHR,
                                        -0.4686013 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR);
       auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -0.0257715 * ANGSTROM_TO_BOHR,
                                        -0.1879168 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR);
@@ -2752,11 +2788,12 @@ void SystemController__TEST_SUPPLY::cleanUp() {
 }
 
 void SystemController__TEST_SUPPLY::cleanUpSystemDirectory(std::shared_ptr<SystemController> systemController) {
-  cleanUpSystemDirectory(systemController->getSystemPath(), systemController->getSystemName());
+  cleanUpSystemDirectory(systemController->getSystemPath(), systemController->getSystemName(),
+                         systemController->getSettings().basis.label);
 }
 
-void SystemController__TEST_SUPPLY::cleanUpSystemDirectory(std::string path, std::string systemName) {
-  removeSystemFiles(path, systemName);
+void SystemController__TEST_SUPPLY::cleanUpSystemDirectory(std::string path, std::string systemName, std::string basisLabel) {
+  removeSystemFiles(path, systemName, basisLabel);
 }
 
 } /* namespace Serenity */

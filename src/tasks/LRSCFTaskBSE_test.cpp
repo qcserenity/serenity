@@ -53,7 +53,10 @@ TEST_F(LRSCFTaskBSETest, RPAScreeningTDA_R) {
   auto a_noRI = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF, true);
   Settings settings = a_noRI->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   auto a_RI = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF, settings);
   // SCF
@@ -88,7 +91,10 @@ TEST_F(LRSCFTaskBSETest, RPAScreeningTDDFT_R) {
   auto a_noRI = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF, true);
   Settings settings = a_noRI->getSettings();
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   auto a_RI = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_HF, settings);
   // SCF
@@ -251,7 +257,10 @@ TEST_F(LRSCFTaskBSETest, BSE_TDDFT_U) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, true);
   Settings settings = system->getSettings();
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::HF;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   system =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::MethylRad_def2_SVP_PBE, settings, 0, 1);
   // Perform SCF

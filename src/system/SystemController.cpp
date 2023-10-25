@@ -171,6 +171,60 @@ std::shared_ptr<BasisController> SystemController::getBasisController(Options::B
   return _system->_basisControllers[basisPurpose];
 }
 
+std::shared_ptr<BasisController> SystemController::getAuxBasisController(Options::AUX_BASIS_PURPOSES auxBasisPurpose,
+                                                                         Options::DENS_FITS dfMode) const {
+  return this->getBasisController(this->resolveAuxBasisPurpose(auxBasisPurpose, dfMode));
+}
+
+Options::BASIS_PURPOSES SystemController::resolveAuxBasisPurpose(Options::AUX_BASIS_PURPOSES auxBasisPurpose,
+                                                                 Options::DENS_FITS dfMode) const {
+  if (dfMode == Options::DENS_FITS::RI) {
+    switch (auxBasisPurpose) {
+      case Options::AUX_BASIS_PURPOSES::COULOMB:
+        return Options::BASIS_PURPOSES::AUX_COULOMB;
+      case Options::AUX_BASIS_PURPOSES::EXCHANGE:
+      case Options::AUX_BASIS_PURPOSES::LREXCHANGE:
+        return Options::BASIS_PURPOSES::AUX_JK;
+      case Options::AUX_BASIS_PURPOSES::CORRELATION:
+        return Options::BASIS_PURPOSES::AUX_CORREL;
+    }
+  }
+  else if (dfMode == Options::DENS_FITS::ACD) {
+    switch (auxBasisPurpose) {
+      case Options::AUX_BASIS_PURPOSES::COULOMB:
+      case Options::AUX_BASIS_PURPOSES::EXCHANGE:
+      case Options::AUX_BASIS_PURPOSES::CORRELATION:
+        return Options::BASIS_PURPOSES::ATOMIC_CHOLESKY;
+      case Options::AUX_BASIS_PURPOSES::LREXCHANGE:
+        return Options::BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY;
+    }
+  }
+  else if (dfMode == Options::DENS_FITS::ACCD) {
+    switch (auxBasisPurpose) {
+      case Options::AUX_BASIS_PURPOSES::COULOMB:
+      case Options::AUX_BASIS_PURPOSES::EXCHANGE:
+      case Options::AUX_BASIS_PURPOSES::CORRELATION:
+        return Options::BASIS_PURPOSES::ATOMIC_COMPACT_CHOLESKY;
+      case Options::AUX_BASIS_PURPOSES::LREXCHANGE:
+        return Options::BASIS_PURPOSES::ERF_ATOMIC_COMPACT_CHOLESKY;
+    }
+  }
+  else if (dfMode == Options::DENS_FITS::CD) {
+    WarningTracker::printWarning(
+        "WARNING: Full CD treatment is only available for standard SCF calculations. Will use aCD prodcedure instead!", true);
+    switch (auxBasisPurpose) {
+      case Options::AUX_BASIS_PURPOSES::COULOMB:
+      case Options::AUX_BASIS_PURPOSES::EXCHANGE:
+      case Options::AUX_BASIS_PURPOSES::CORRELATION:
+        return Options::BASIS_PURPOSES::ATOMIC_CHOLESKY;
+      case Options::AUX_BASIS_PURPOSES::LREXCHANGE:
+        return Options::BASIS_PURPOSES::ERF_ATOMIC_CHOLESKY;
+    }
+  }
+  throw SerenityError("You tried to get an auxiliary basis controller for a density-fitting mode that does not use "
+                      "auxiliary basis sets!");
+}
+
 template<>
 void SystemController::produceScfTask<RESTRICTED>() {
   _restrictedScfTask.reset(new ScfTask<RESTRICTED>(shared_from_this()));
@@ -546,8 +600,8 @@ SystemController::getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORI
   J = std::make_shared<ERIPotential<RESTRICTED>>(
       this->getSharedPtr(), _system->_restrictedElectronicStructure->getDensityMatrixController(),
       functional.getHfExchangeRatio(), thresh, this->getSettings().basis.integralIncrementThresholdStart,
-      this->getSettings().basis.integralIncrementThresholdEnd, this->getSettings().basis.incrementalSteps, true,
-      functional.getLRExchangeRatio(), functional.getRangeSeparationParameter());
+      this->getSettings().basis.integralIncrementThresholdEnd, this->getSettings().basis.incrementalSteps,
+      functional.getLRExchangeRatio(), functional.getRangeSeparationParameter(), true);
   bool usesPCM = _system->_settings.pcm.use;
   auto pcm = std::make_shared<PCMPotential<RESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
@@ -580,8 +634,8 @@ SystemController::getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEO
   J = std::make_shared<ERIPotential<UNRESTRICTED>>(
       this->getSharedPtr(), _system->_unrestrictedElectronicStructure->getDensityMatrixController(),
       functional.getHfExchangeRatio(), thresh, this->getSettings().basis.integralIncrementThresholdStart,
-      this->getSettings().basis.integralIncrementThresholdEnd, this->getSettings().basis.incrementalSteps, true,
-      functional.getLRExchangeRatio(), functional.getRangeSeparationParameter());
+      this->getSettings().basis.integralIncrementThresholdEnd, this->getSettings().basis.incrementalSteps,
+      functional.getLRExchangeRatio(), functional.getRangeSeparationParameter(), true);
   bool usesPCM = _system->_settings.pcm.use;
   auto pcm = std::make_shared<PCMPotential<UNRESTRICTED>>(
       _system->_settings.pcm, this->getBasisController(), this->getGeometry(),
@@ -715,6 +769,14 @@ void SystemController::produceBasisController(const Options::BASIS_PURPOSES basi
   }
   else if (basisPurpose == Options::BASIS_PURPOSES::AUX_COULOMB) {
     label = _system->_settings.basis.auxJLabel;
+  }
+  else if (basisPurpose == Options::BASIS_PURPOSES::AUX_JK) {
+    label = _system->_settings.basis.auxJKLabel;
+    if (label == "") {
+      label = "DEF2-UNIVERSAL-JKFIT";
+      WarningTracker::printWarning(
+          "WARNING: No auxiliary basis for RIJK set. Will use DEF2-UNIVERSAL-JKFIT auxiliary basis set.", true);
+    }
   }
   else if (basisPurpose == Options::BASIS_PURPOSES::SCF_DENS_GUESS) {
     label = "DEF2-QZVP";

@@ -35,6 +35,7 @@
 #include "potentials/bundles/DFTPotentials.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "scf/DeltaScf.h"
+#include "scf/ROHF.h"
 #include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
@@ -60,6 +61,7 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
   auto functional = resolveFunctional(systemSettings.dft.functional);
   double MP2Correlation = 0.0;
   if (functional.isDoubleHybrid() && settings.calculateMP2Energy) {
+    Timings::takeTime("Active System -    DH-MP2 Corr.");
     // perform MP2 for double hybrids
     switch (this->settings.mp2Type) {
       case Options::MP2_TYPES::LOCAL: {
@@ -80,9 +82,11 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
         MP2Correlation = localMP2.calculateEnergyCorrection().sum();
         break;
       }
-      case Options::MP2_TYPES::RI: {
-        RIMP2<SCFMode> rimp2(_systemController, functional.getssScaling(), functional.getosScaling());
-        MP2Correlation = rimp2.calculateCorrection();
+      case Options::MP2_TYPES::DF: {
+        if (_systemController->getSettings().basis.densFitCorr != Options::DENS_FITS::NONE) {
+          RIMP2<SCFMode> rimp2(_systemController, functional.getssScaling(), functional.getosScaling());
+          MP2Correlation = rimp2.calculateCorrection();
+        }
         break;
       }
       case Options::MP2_TYPES::LT: {
@@ -101,6 +105,7 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
       }
     }
     MP2Correlation *= functional.getHfCorrelRatio();
+    Timings::timeTaken("Active System -    DH-MP2 Corr.");
   }
 
   // add energy to the EnergyController
@@ -137,6 +142,9 @@ void ScfTask<SCFMode>::finalDFTEnergyEvaluation(std::shared_ptr<SPMatrix<SCFMode
     // Update orbitals/Fock matrix.
     auto orbitalController = es->getMolecularOrbitals();
     auto f = dftPotentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
+    if (systemSettings.scf.rohf != Options::ROHF_TYPES::NONE) {
+      ROHF<SCFMode>::addConstraint(f, es, systemSettings.scf.rohf, systemSettings.scf.suhfLambda);
+    }
     orbitalController->updateOrbitals(f, es->getOneElectronIntegralController(), momMatrix);
     // Set new Fock matrix of the final energy evaluation
     es->setFockMatrix(f);
@@ -187,10 +195,6 @@ void ScfTask<SCFMode>::printHeader() {
     Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
     printf("%4s Functional:            %15s\n", "", functional.c_str());
     printf("%4s Grid Accuracy:         %13d/%1d\n", "", systemSettings.grid.smallGridAccuracy, systemSettings.grid.accuracy);
-    std::string fitting;
-    auto fit = systemSettings.basis.densityFitting;
-    Options::resolve<Options::DENS_FITS>(fitting, fit);
-    printf("%4s Density Fitting:       %15s\n", "", fitting.c_str());
     std::string dispersion;
     auto disp = systemSettings.dft.dispersion;
     Options::resolve<Options::DFT_DISPERSION_CORRECTIONS>(dispersion, disp);
@@ -222,6 +226,23 @@ void ScfTask<SCFMode>::printHeader() {
     Options::resolve<Options::INITIAL_GUESSES>(init_guess, ig);
     printf("%4s Initial Guess:         %15s\n", "", init_guess.c_str());
   }
+  std::string fittingA;
+  printf("\n%4s Density Fitting:\n", "");
+  auto fitj = systemSettings.basis.densFitJ;
+  Options::resolve<Options::DENS_FITS>(fittingA, fitj);
+  printf("%6s Coulomb              %15s\n", "", fittingA.c_str());
+  auto fitk = systemSettings.basis.densFitK;
+  std::string fittingB;
+  Options::resolve<Options::DENS_FITS>(fittingB, fitk);
+  printf("%6s Exchange             %15s\n", "", fittingB.c_str());
+  auto fitlrk = systemSettings.basis.densFitLRK;
+  std::string fittingC;
+  Options::resolve<Options::DENS_FITS>(fittingC, fitlrk);
+  printf("%6s Long-Range Exchange  %15s\n", "", fittingC.c_str());
+  auto fitcorr = systemSettings.basis.densFitCorr;
+  std::string fittingD;
+  Options::resolve<Options::DENS_FITS>(fittingD, fitcorr);
+  printf("%6s Correlation          %15s\n", "", fittingD.c_str());
   printSubSectionTitle("SCF");
 }
 
@@ -247,6 +268,17 @@ void ScfTask<SCFMode>::printResults() {
   double S = fabs(0.5 * _systemController->getSpin());
   printf("\n    S*(S+1) = %4.3f ", S * (S + 1));
   printf("\n          C = %4.3f \n\n", s2val - S * (S + 1));
+  if (SCFMode == Options::SCF_MODES::UNRESTRICTED && _systemController->getSettings().scf.rohf != Options::ROHF_TYPES::NONE) {
+    printf("    This is a constrained UHF wavefunction without (CUHF) or reduced (SUHF)\n    spin contamination "
+           "(ROHF). Take care with post HF methods or gradients.\n\n");
+    if (_systemController->getSettings().scf.rohf == Options::ROHF_TYPES::SUHF) {
+      printf("    Type   :     SUHF\n");
+      printf("    Lambda :     %8.2e\n\n", _systemController->getSettings().scf.suhfLambda);
+    }
+    else if (_systemController->getSettings().scf.rohf == Options::ROHF_TYPES::CUHF) {
+      printf("    Type   :     CUHF\n\n");
+    }
+  }
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -322,15 +354,16 @@ template<Options::SCF_MODES SCFMode>
 void ScfTask<SCFMode>::run() {
   if (this->settings.restart)
     loadRestartFiles();
+  // Output of the main options
+  if (iOOptions.printSCFResults)
+    printHeader();
   // Get the Fock matrix routines.
   std::shared_ptr<PotentialBundle<SCFMode>> potentials = getPotentialBundle();
   // Allow fraction occupation of degenerate orbitals.
   if (this->settings.fractionalDegeneracy) {
     _systemController->getElectronicStructure<SCFMode>()->getDensityMatrixController()->setFractionalDegeneracy(true);
   }
-  // Output of the main options
-  if (iOOptions.printSCFResults)
-    printHeader();
+
   // Run SCF or energy evaluation.
   performSCF(potentials);
 

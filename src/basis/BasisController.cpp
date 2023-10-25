@@ -96,14 +96,15 @@ void BasisController::calculateRIPrescreeningFactors() {
   _RIPrescreeningFactors = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 2, std::numeric_limits<double>::epsilon() / 1e4,
+  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 2, std::numeric_limits<double>::epsilon() / 1e4, 10,
                           this->getMaxNumberOfPrimitives());
   Eigen::MatrixXd integrals;
   const unsigned int nShells = (*_basis).size();
+  bool normAux = !(this->isAtomicCholesky());
   for (unsigned int i = 0; i < nShells; ++i) {
     const auto& shellI = *(*_basis)[i];
     // calculate integrals
-    if (libint.compute(LIBINT_OPERATOR::coulomb, 0, shellI, shellI, integrals)) {
+    if (libint.compute(LIBINT_OPERATOR::coulomb, 0, shellI, shellI, integrals, normAux)) {
       (*_RIPrescreeningFactors).push_back(ShellPairData(i, i, sqrt(integrals.maxCoeff())));
     } /* if (prescreen) */
   }   /* i/shellI */
@@ -117,8 +118,9 @@ void BasisController::createShellPairData() {
   _shellPairList = std::make_shared<std::vector<ShellPairData>>();
   // intialize libint
   auto& libint = Libint::getInstance();
-  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 4, std::numeric_limits<double>::epsilon() / 1e4,
+  libint.initialize_plain(LIBINT_OPERATOR::coulomb, 4, std::numeric_limits<double>::epsilon() / 1e4, 10,
                           this->getMaxNumberOfPrimitives());
+
   // loops over shells
   Eigen::MatrixXd integrals;
   for (unsigned int i = 0; i < nShells; ++i) {
@@ -230,6 +232,10 @@ const Eigen::MatrixXd& BasisController::getSchwarzParams(LIBINT_OPERATOR op, dou
   else {
     throw SerenityError("No Schwarz-prescreening parameters available for this operator.");
   }
+}
+
+bool BasisController::isAtomicCholesky() {
+  return (this->_basisString.substr(0, 4) == "ACD-" or this->_basisString.substr(0, 5) == "ACCD-") ? true : false;
 }
 
 BasisController::~BasisController() = default;

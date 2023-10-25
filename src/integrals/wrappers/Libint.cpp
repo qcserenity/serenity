@@ -324,13 +324,14 @@ void Libint::clearAllEngines() {
 }
 
 bool Libint::compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-                     Eigen::MatrixXd& ints) {
-  return this->compute(resolveLibintOperator(op), deriv, a, b, ints);
+                     Eigen::MatrixXd& ints, bool normAux) {
+  return this->compute(resolveLibintOperator(op), deriv, a, b, ints, normAux);
 }
 
 bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-                     Eigen::MatrixXd& ints) {
+                     Eigen::MatrixXd& ints, bool normAux) {
   IntegralType it(resolveLibintOperator(op), deriv, 2);
+  (void)normAux;
   const int threadID = omp_get_thread_num();
 
   // sanity check
@@ -360,7 +361,8 @@ bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Sh
         ints(j, i) = buf_vec[i][j];
       }
       if (!a.contr[0].pure) {
-        Normalization::normalizeShell(ints.col(i), a.contr[0].l, b.contr[0].l);
+        if (normAux)
+          Normalization::normalizeShell(ints.col(i), a.contr[0].l, b.contr[0].l);
       }
     }
     return true;
@@ -368,12 +370,13 @@ bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Sh
 }
 
 bool Libint::compute(LIBINT_OPERATOR op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-                     const libint2::Shell& c, Eigen::MatrixXd& ints) {
-  return this->compute(resolveLibintOperator(op), deriv, a, b, c, ints);
+                     const libint2::Shell& c, Eigen::MatrixXd& ints, bool normAux) {
+  return this->compute(resolveLibintOperator(op), deriv, a, b, c, ints, normAux);
 }
 
 bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Shell& a, const libint2::Shell& b,
-                     const libint2::Shell& c, Eigen::MatrixXd& ints) {
+                     const libint2::Shell& c, Eigen::MatrixXd& ints, bool normAux) {
+  (void)normAux;
   IntegralType it(resolveLibintOperator(op), deriv, 3);
 
   const int threadID = omp_get_thread_num();
@@ -405,7 +408,12 @@ bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Sh
         ints(j, i) = buf_vec[i][j];
       }
       if (!a.contr[0].pure) {
-        Normalization::normalizeShell(ints.col(i), a.contr[0].l, b.contr[0].l, c.contr[0].l);
+        if (normAux) {
+          Normalization::normalizeShell(ints.col(i), a.contr[0].l, b.contr[0].l, c.contr[0].l);
+        }
+        else {
+          Normalization::normalizeShellNoAux(ints.col(i), a.contr[0].l, b.contr[0].l, c.contr[0].l);
+        }
       }
     }
     return true;
@@ -462,6 +470,7 @@ bool Libint::compute(libint2::Operator op, unsigned int deriv, const libint2::Sh
 Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                       const std::vector<std::shared_ptr<Atom>>& atoms, double precision, double maxD,
                                       unsigned int maxNPrim) {
+  bool normAux = !(basis->isAtomicCholesky());
   libint2::Operator libintOp = resolveLibintOperator(op);
   const auto& bas = basis->getBasis();
   const unsigned int nBFs = basis->getNBasisFunctions();
@@ -478,7 +487,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
       for (unsigned int j = 0; j <= i; ++j) {
         unsigned int offJ = basis->extendedIndex(j);
         const unsigned int nJ = bas[j]->getNContracted();
-        if (this->compute(libintOp, 0, *bas[i], *bas[j], ints)) {
+        if (this->compute(libintOp, 0, *bas[i], *bas[j], ints, normAux)) {
           Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
           results.block(offJ, offI, nJ, nI) = tmp;
           if (i != j)
@@ -494,6 +503,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
 Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                       const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
                                       double precision, double maxD, unsigned int maxNPrim) {
+  bool normAux = !(basis->isAtomicCholesky());
   libint2::Operator libintOp = resolveLibintOperator(op);
   const auto& bas = basis->getBasis();
   const unsigned int nBFs = basis->getNBasisFunctions();
@@ -510,7 +520,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
       for (unsigned int j = 0; j <= i; ++j) {
         unsigned int offJ = basis->extendedIndex(j);
         const unsigned int nJ = bas[j]->getNContracted();
-        if (this->compute(libintOp, 0, *bas[i], *bas[j], ints)) {
+        if (this->compute(libintOp, 0, *bas[i], *bas[j], ints, normAux)) {
           Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
           results.block(offJ, offI, nJ, nI) = tmp;
           if (i != j)
@@ -526,6 +536,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
 Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis1,
                                       std::shared_ptr<BasisController> basis2, const std::vector<std::shared_ptr<Atom>>& atoms,
                                       double mu, double precision, double maxD, unsigned int maxNPrim) {
+  bool normAux = !(basis1->isAtomicCholesky());
   libint2::Operator libintOp = resolveLibintOperator(op);
   const auto& bas1 = basis1->getBasis();
   const auto& bas2 = basis2->getBasis();
@@ -546,7 +557,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
       for (unsigned int j = 0; j < bas2.size(); ++j) {
         unsigned int offJ = basis2->extendedIndex(j);
         const unsigned int nJ = bas2[j]->getNContracted();
-        if (this->compute(libintOp, 0, *bas1[i], *bas2[j], ints)) {
+        if (this->compute(libintOp, 0, *bas1[i], *bas2[j], ints, normAux)) {
           Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
           results.block(offJ, offI, nJ, nI) = tmp;
         }
@@ -561,6 +572,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
                                       std::shared_ptr<BasisController> basis2,
                                       const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
                                       double precision, double maxD, unsigned int maxNPrim) {
+  bool normAux = !(basis1->isAtomicCholesky());
   libint2::Operator libintOp = resolveLibintOperator(op);
   const auto& bas1 = basis1->getBasis();
   const auto& bas2 = basis2->getBasis();
@@ -579,7 +591,7 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
       for (unsigned int j = 0; j < bas2.size(); ++j) {
         unsigned int offJ = basis2->extendedIndex(j);
         const unsigned int nJ = bas2[j]->getNContracted();
-        if (this->compute(libintOp, 0, *bas1[i], *bas2[j], ints)) {
+        if (this->compute(libintOp, 0, *bas1[i], *bas2[j], ints, normAux)) {
           Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
           results.block(offJ, offI, nJ, nI) = tmp;
         }
@@ -663,6 +675,10 @@ LIBINT_OPERATOR Libint::resolveLibintOperator(libint2::Operator op) {
 
 std::vector<std::unique_ptr<libint2::Engine>>& Libint::getFourCenterEngines(LIBINT_OPERATOR op) {
   return _engines.at(IntegralType(op, 0, 4));
+}
+
+unsigned int Libint::getNPrimMax() {
+  return N_PRIM_MAX;
 }
 
 } /* namespace Serenity */

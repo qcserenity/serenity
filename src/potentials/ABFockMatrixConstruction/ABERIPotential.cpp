@@ -33,7 +33,7 @@ ABERIPotential<SCFMode>::ABERIPotential(std::shared_ptr<SystemController> system
                                         std::shared_ptr<BasisController> basisA, std::shared_ptr<BasisController> basisB,
                                         std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> dMats,
                                         double exchangeRatio, double LRexchangeRatio, double mu, bool topDown,
-                                        Options::DENS_FITS densityFitting, std::shared_ptr<BasisController> auxBasisAB,
+                                        Options::DENS_FITS densFitJ, std::shared_ptr<BasisController> auxBasisAB,
                                         std::vector<std::shared_ptr<BasisController>> envAuxBasisController)
   : ABPotential<SCFMode>(basisA, basisB), _exchangeRatio(exchangeRatio), _lrExchangeRatio(LRexchangeRatio), _mu(mu) {
   // Basis
@@ -47,8 +47,8 @@ ABERIPotential<SCFMode>::ABERIPotential(std::shared_ptr<SystemController> system
   if (_exchangeRatio != 0.0) {
     _abExchange = std::make_shared<ABExchangePotential<SCFMode>>(system, this->_basisA, this->_basisB, dMats, _exchangeRatio);
   }
-  _abCoulomb = std::make_shared<ABCoulombInteractionPotential<SCFMode>>(
-      system, this->_basisA, this->_basisB, dMats, topDown, densityFitting, auxBasisAB, envAuxBasisController);
+  _abCoulomb = std::make_shared<ABCoulombInteractionPotential<SCFMode>>(system, this->_basisA, this->_basisB, dMats, topDown,
+                                                                        densFitJ, auxBasisAB, envAuxBasisController);
   if (_lrExchangeRatio != 0.0) {
     _abLRExchange = std::make_shared<ABLRExchangePotential<SCFMode>>(system, this->_basisA, this->_basisB, dMats,
                                                                      _lrExchangeRatio, _mu);

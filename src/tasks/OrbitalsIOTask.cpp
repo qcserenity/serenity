@@ -1,5 +1,5 @@
 /**
- * @file ReadOrbitalsTask.cpp
+ * @file OrbitalsIOTask.cpp
  *
  * @date Dec 9, 2020
  * @author Moritz Bensberg
@@ -18,14 +18,16 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Class Header*/
-#include "tasks/ReadOrbitalsTask.h"
+#include "tasks/OrbitalsIOTask.h"
 /* Include Serenity Internal Headers */
-#include "basis/AtomCenteredBasisController.h"       //Basis index map for molcas.
-#include "basis/Basis.h"                             //Shell-wise sorting.
-#include "basis/BasisController.h"                   //Basis.
-#include "basis/CartesianToSphericalTransformer.h"   //Transform form spherical to cartesian basis.
-#include "data/ElectronicStructure.h"                //Constructor.
-#include "data/OrbitalController.h"                  //Constructor.
+#include "basis/AtomCenteredBasisController.h"     //Basis index map for molcas.
+#include "basis/Basis.h"                           //Shell-wise sorting.
+#include "basis/BasisController.h"                 //Basis.
+#include "basis/CartesianToSphericalTransformer.h" //Transform from spherical to cartesian basis.
+#include "data/ElectronicStructure.h"              //Constructor.
+#include "data/OrbitalController.h"                //Constructor.
+#include "geometry/Atom.h"
+#include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h" //Overlap integrals.
 #include "io/HDF5.h"                                 //Load from HDF5.
 #include "math/linearAlgebra/MatrixFunctions.h"      //Cholesky orthogonalization.
@@ -40,11 +42,11 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-ReadOrbitalsTask<SCFMode>::ReadOrbitalsTask(std::shared_ptr<SystemController> system) : _system(system) {
+OrbitalsIOTask<SCFMode>::OrbitalsIOTask(std::shared_ptr<SystemController> system) : _system(system) {
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::run() {
+void OrbitalsIOTask<SCFMode>::run() {
   bool updateElecStructure = false;
   auto basisController = _system->getBasisController();
   auto finalCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
@@ -53,53 +55,76 @@ void ReadOrbitalsTask<SCFMode>::run() {
   if (settings.replaceInFile && settings.fileFormat != Options::ORBITAL_FILE_TYPES::MOLCAS)
     throw SerenityError("Replacing orbitals in external files is only supported for Molcas HDF5 files."
                         "Please change the settings of the task accordingly.");
-
-  if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::TURBOMOLE) {
-    updateElecStructure = true;
-    initTurboSortingMatrices();
-    checkTurboInput();
-    readTurbomoleOrbitals(*finalCoeffPtr, *eigenvaluesPtr);
-  }
-  else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLPRO) {
-    initMolproSortingMatrices();
-    checkMolproInput();
-    updateElecStructure = true;
-    this->readMolproXMLOrbitals(*finalCoeffPtr, *eigenvaluesPtr);
-  }
-  else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLCAS) {
-    if (SCFMode != RESTRICTED)
-      throw SerenityError("Reading Molcas orbitals is currently only supported for spin-restricted calculations.");
-    if (settings.replaceInFile) {
-      this->replaceMolcasHDF5Orbitals(
-          _system->template getElectronicStructure<SCFMode>()->getMolecularOrbitals()->getCoefficients());
+  if (settings.write) {
+    if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::TURBOMOLE) {
+      initTurboSortingMatrices();
+      checkTurboInput();
+      auto coefficients = _system->getActiveOrbitalController<SCFMode>()->getCoefficients();
+      auto eigenvalues = _system->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+      sortMatrixAndVector(coefficients, eigenvalues);
+      writeTurbomoleOrbitals(coefficients, eigenvalues);
+    }
+    else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLDEN) {
+      if (basisController->getMaxAngularMomentum() > 4)
+        throw SerenityError((std::string) "ERROR: The maximum angular momentum which Molden supports was\n" +
+                            "       exceeded. Supported l= 4");
+      writeMoldenOrbitals();
     }
     else {
-      this->readMolcasHDF5Orbitals(*finalCoeffPtr, *eigenvaluesPtr);
-      updateElecStructure = true;
+      throw SerenityError("Writing of files currently only supported in the Turbomole and the Molden format");
     }
   }
-  if (updateElecStructure) {
-    auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
-        std::move(finalCoeffPtr), basisController, *eigenvaluesPtr, _system->getNCoreElectrons());
-    auto targetElectronicStructure =
-        std::make_shared<ElectronicStructure<SCFMode>>(newOrbitalController, _system->getOneElectronIntegralController(),
-                                                       _system->template getNOccupiedOrbitals<SCFMode>());
-    _system->template setElectronicStructure<SCFMode>(targetElectronicStructure);
-    targetElectronicStructure->toHDF5(_system->getHDF5BaseName(), _system->getSystemIdentifier());
-  }
-  if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::SERENITY) {
-    std::string systemId = getSerenityIDFromFile();
-    auto targetElectronicStructure = std::make_shared<ElectronicStructure<SCFMode>>(
-        settings.path + "/" + _system->getSystemName(), _system->getBasisController(), _system->getGeometry(), systemId);
-    _system->template setElectronicStructure<SCFMode>(targetElectronicStructure);
-    if (settings.resetCoreOrbitals)
-      _system->template getActiveOrbitalController<SCFMode>()->setCoreOrbitalsByNumber(_system->getNCoreElectrons() / 2);
-    targetElectronicStructure->toHDF5(_system->getHDF5BaseName(), _system->getSystemIdentifier());
+  else {
+    if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::TURBOMOLE) {
+      updateElecStructure = true;
+      initTurboSortingMatrices();
+      checkTurboInput();
+      readTurbomoleOrbitals(*finalCoeffPtr, *eigenvaluesPtr);
+    }
+    else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLPRO) {
+      initMolproSortingMatrices();
+      checkMolproInput();
+      updateElecStructure = true;
+      this->readMolproXMLOrbitals(*finalCoeffPtr, *eigenvaluesPtr);
+    }
+    else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLCAS) {
+      if (SCFMode != RESTRICTED)
+        throw SerenityError("Reading Molcas orbitals is currently only supported for spin-restricted calculations.");
+      if (settings.replaceInFile) {
+        this->replaceMolcasHDF5Orbitals(
+            _system->template getElectronicStructure<SCFMode>()->getMolecularOrbitals()->getCoefficients());
+      }
+      else {
+        this->readMolcasHDF5Orbitals(*finalCoeffPtr, *eigenvaluesPtr);
+        updateElecStructure = true;
+      }
+    }
+    else if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::MOLDEN) {
+      throw SerenityError("Reading of Molden files currently not supported.");
+    }
+    if (updateElecStructure) {
+      auto newOrbitalController = std::make_shared<OrbitalController<SCFMode>>(
+          std::move(finalCoeffPtr), basisController, *eigenvaluesPtr, _system->getNCoreElectrons());
+      auto targetElectronicStructure =
+          std::make_shared<ElectronicStructure<SCFMode>>(newOrbitalController, _system->getOneElectronIntegralController(),
+                                                         _system->template getNOccupiedOrbitals<SCFMode>());
+      _system->template setElectronicStructure<SCFMode>(targetElectronicStructure);
+      targetElectronicStructure->toHDF5(_system->getHDF5BaseName(), _system->getSystemIdentifier());
+    }
+    if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::SERENITY) {
+      std::string systemId = getSerenityIDFromFile();
+      auto targetElectronicStructure = std::make_shared<ElectronicStructure<SCFMode>>(
+          settings.path + "/" + _system->getSystemName(), _system->getBasisController(), _system->getGeometry(), systemId);
+      _system->template setElectronicStructure<SCFMode>(targetElectronicStructure);
+      if (settings.resetCoreOrbitals)
+        _system->template getActiveOrbitalController<SCFMode>()->setCoreOrbitalsByNumber(_system->getNCoreElectrons() / 2);
+      targetElectronicStructure->toHDF5(_system->getHDF5BaseName(), _system->getSystemIdentifier());
+    }
   }
 }
 
 template<Options::SCF_MODES SCFMode>
-std::string ReadOrbitalsTask<SCFMode>::getSerenityIDFromFile() {
+std::string OrbitalsIOTask<SCFMode>::getSerenityIDFromFile() {
   std::string filePath = settings.path + "/" + _system->getSystemName();
   if (SCFMode == RESTRICTED) {
     filePath += ".orbs.res.h5";
@@ -116,7 +141,7 @@ std::string ReadOrbitalsTask<SCFMode>::getSerenityIDFromFile() {
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::checkTurboInput() {
+void OrbitalsIOTask<SCFMode>::checkTurboInput() {
   auto basisController = _system->getBasisController();
   if (basisController->getMaxAngularMomentum() > _maxL)
     throw SerenityError((std::string) "ERROR: The maximum angular momentum for which Turbomole sorting matrices are\n" +
@@ -127,7 +152,7 @@ void ReadOrbitalsTask<SCFMode>::checkTurboInput() {
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::checkMolproInput() {
+void OrbitalsIOTask<SCFMode>::checkMolproInput() {
   auto basisController = _system->getBasisController();
   if (SCFMode != RESTRICTED)
     throw SerenityError((std::string) "ERROR: Reading Molpro-xml files is only supported for RESTRICTED orbitals.");
@@ -140,8 +165,8 @@ void ReadOrbitalsTask<SCFMode>::checkMolproInput() {
 }
 
 template<>
-void ReadOrbitalsTask<RESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<RESTRICTED>& coeffs,
-                                                         SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& eigenvalues) {
+void OrbitalsIOTask<RESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<RESTRICTED>& coeffs,
+                                                       SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& eigenvalues) {
   unsigned int nBFs = coeffs.getBasisController()->getNBasisFunctions();
   auto coeff_and_eps = readTurbomoleOrbitalFile(settings.path + "/mos", nBFs);
   coeffs.block(0, 0, nBFs, nBFs) = coeff_and_eps.first;
@@ -149,8 +174,8 @@ void ReadOrbitalsTask<RESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<RESTR
 }
 
 template<>
-void ReadOrbitalsTask<UNRESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<UNRESTRICTED>& coeffs,
-                                                           SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& eigenvalues) {
+void OrbitalsIOTask<UNRESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<UNRESTRICTED>& coeffs,
+                                                         SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& eigenvalues) {
   unsigned int nBFs = coeffs.getBasisController()->getNBasisFunctions();
   auto coeff_and_eps_alpha = readTurbomoleOrbitalFile(settings.path + "/alpha", nBFs);
   coeffs.alpha.block(0, 0, nBFs, nBFs) = coeff_and_eps_alpha.first;
@@ -160,15 +185,163 @@ void ReadOrbitalsTask<UNRESTRICTED>::readTurbomoleOrbitals(CoefficientMatrix<UNR
   eigenvalues.beta = coeff_and_eps_beta.second;
 }
 
+template<>
+void OrbitalsIOTask<RESTRICTED>::writeTurbomoleOrbitals(CoefficientMatrix<RESTRICTED>& coefficients,
+                                                        SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& eigenvalues) {
+  unsigned int nBFs = coefficients.getBasisController()->getNBasisFunctions();
+  std::string filePath = settings.path + "/" + _system->getSystemName();
+  std::ofstream file(filePath + "/mos");
+  file << "$scfmo scfconv=7 format(4d20.14)" << std::endl
+       << std::endl
+       << std::endl; // scfconv=7 is the Turbomole standard for restricted
+  file.close();
+  writeTurbomoleOrbitalFile(filePath + "/mos", nBFs, eigenvalues, resortCoefficients(coefficients));
+}
+
+template<>
+void OrbitalsIOTask<UNRESTRICTED>::writeTurbomoleOrbitals(CoefficientMatrix<UNRESTRICTED>& coefficients,
+                                                          SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& eigenvalues) {
+  unsigned int nBFs = coefficients.getBasisController()->getNBasisFunctions();
+  std::string filePath = settings.path + "/" + _system->getSystemName();
+  std::ofstream filea(filePath + "/alpha");
+  filea << "$uhfmo_alpha scfconv=8 format(4d20.14)" << std::endl
+        << std::endl
+        << std::endl; // scfconv=8 is the Turbomole standard for unrestricted
+  filea.close();
+  writeTurbomoleOrbitalFile(filePath + "/alpha", nBFs, eigenvalues.alpha, resortCoefficients(coefficients.alpha));
+  std::ofstream fileb(filePath + "/beta");
+  fileb << "$uhfmo_beta scfconv=8 format(4d20.14)" << std::endl
+        << std::endl
+        << std::endl; // scfconv=8 is the Turbomole standard for unrestricted
+  fileb.close();
+  writeTurbomoleOrbitalFile(filePath + "/beta", nBFs, eigenvalues.beta, resortCoefficients(coefficients.beta));
+}
+
 template<Options::SCF_MODES SCFMode>
-double ReadOrbitalsTask<SCFMode>::getTurboEigenvalue(std::istringstream& iss) {
+void OrbitalsIOTask<SCFMode>::writeMoldenOrbitals() {
+  std::ofstream file(settings.path + "/" + _system->getSystemName() + ".molden.input");
+  file << "[Molden Format]" << std::endl << "[Title]" << std::endl << std::endl;
+  file << "[Atoms] AU" << std::endl;
+  const auto& geometry = *_system->getGeometry();
+  for (unsigned int i = 0; i < geometry.getNAtoms(); i++) {
+    const auto& atom = geometry.getAtoms()[i];
+    const auto coords = atom->coords();
+    file << geometry.getAtomSymbols()[i] << "   " << i + 1 << "   " << atom->getNuclearCharge() << " "
+         << reformatNumber(coords[0], "E") << " " << reformatNumber(coords[1], "E") << " "
+         << reformatNumber(coords[2], "E") << std::endl;
+  }
+  file << "[GTO]" << std::endl;
+  bool spherical = false;
+  for (unsigned int i = 0; i < geometry.getNAtoms(); i++) {
+    const auto& atom = geometry.getAtoms()[i];
+    const auto shells = atom->getBasisFunctions();
+    file << "   " << i + 1 << " 0" << std::endl;
+    for (auto shell : shells) {
+      spherical = shell->isSpherical();
+      unsigned int nPrim = shell->getNPrimitives();
+      unsigned int l = shell->getAngularMomentum();
+      switch (l) {
+        case 0:
+          file << "s   " << nPrim << " 1.0" << std::endl;
+          break;
+        case 1:
+          file << "p   " << nPrim << " 1.0" << std::endl;
+          break;
+        case 2:
+          file << "d   " << nPrim << " 1.0" << std::endl;
+          break;
+        case 3:
+          file << "f   " << nPrim << " 1.0" << std::endl;
+          break;
+        case 4:
+          file << "g   " << nPrim << " 1.0" << std::endl;
+          break;
+      }
+      const auto& exp = shell->getExponents();
+      const auto& contractions = shell->getNormContractions();
+      Eigen::VectorXd contr = Eigen::VectorXd::Zero(nPrim);
+      for (unsigned int p = 0; p < nPrim; p++) {
+        contr(p) = contractions[p];
+        /*
+         * For a cartesian basis the normalization must be reverted. This is also done in other codes such as STDA
+         * (readbasmold.f; ll. 388 - 403). In this case a cartesian Molden file is written. For a spherical
+         * basis a spherical Molden file is written.
+         */
+        if (!spherical)
+          contr(p) /= (pow(exp[p] / (2 * pow(PI, 3)), 0.25) * pow(2 * sqrt(exp[p]), (l + 1)));
+        file << reformatNumber(exp[p], "E") << " ";
+        if (shell->getAngularMomentum() == 2) {
+          file << reformatNumber(contr(p) * sqrt(3), "E") << std::endl;
+        }
+        else if (shell->getAngularMomentum() == 3) {
+          file << reformatNumber(contr(p) * sqrt(15), "E") << std::endl;
+        }
+        else if (shell->getAngularMomentum() == 4) {
+          if (spherical) {
+            file << reformatNumber(contr(p) * sqrt(35), "E") << std::endl;
+          }
+          else {
+            file << reformatNumber(contr(p) * sqrt(105), "E") << std::endl;
+          }
+        }
+        else {
+          file << reformatNumber(contr(p), "E") << std::endl;
+        }
+      }
+    }
+    file << std::endl;
+  }
+  if (spherical) {
+    file << "[5D]" << std::endl << "[7F]" << std::endl << "[9G]" << std::endl;
+    initSphericalMoldenSortingMatrices();
+  }
+  else {
+    initCartesianMoldenSortingMatrices();
+  }
+  file << "[MO]" << std::endl;
+  auto coefficients = _system->getActiveOrbitalController<SCFMode>()->getCoefficients();
+  auto eigenvalues = _system->getActiveOrbitalController<SCFMode>()->getEigenvalues();
+  sortMatrixAndVector(coefficients, eigenvalues);
+  const auto nocc = _system->getElectronicStructure<SCFMode>()->getNOccupiedOrbitals();
+  bool isAlpha = true;
+  for_spin(coefficients, eigenvalues, nocc) {
+    auto C = resortCoefficients(coefficients_spin);
+    for (unsigned int i = 0; i < C.cols(); i++) {
+      file << "Sym=  " << i + 1 << "a" << std::endl;
+      file << "Ene= " << reformatNumber(eigenvalues_spin(i), "E") << std::endl;
+      if (isAlpha) {
+        file << "Spin= Alpha" << std::endl;
+      }
+      else {
+        file << "Spin= Beta" << std::endl;
+      }
+      if (i < nocc_spin && SCFMode == Options::SCF_MODES::RESTRICTED) {
+        file << "Occup= 2.000000" << std::endl;
+      }
+      else if (i < nocc_spin && SCFMode == Options::SCF_MODES::UNRESTRICTED) {
+        file << "Occup= 1.000000" << std::endl;
+      }
+      else {
+        file << "Occup= 0.000000" << std::endl;
+      }
+      for (unsigned int j = 0; j < C.cols(); j++) {
+        file << j + 1 << "  " << reformatNumber(C(j, i), "E") << std::endl;
+      }
+    }
+    isAlpha = false;
+  };
+  file.close();
+}
+
+template<Options::SCF_MODES SCFMode>
+double OrbitalsIOTask<SCFMode>::getTurboEigenvalue(std::istringstream& iss) {
   std::string word;
   iss >> word;
   std::replace(word.begin(), word.end(), 'D', 'e');
   return std::stod(word.substr(11));
 }
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::checkTurboNAOs(std::istringstream& iss, unsigned int nBFs) {
+void OrbitalsIOTask<SCFMode>::checkTurboNAOs(std::istringstream& iss, unsigned int nBFs) {
   std::string word;
   iss >> word;
   unsigned int nAOs = std::stoi(word.substr(6));
@@ -177,8 +350,8 @@ void ReadOrbitalsTask<SCFMode>::checkTurboNAOs(std::istringstream& iss, unsigned
   }
 }
 template<Options::SCF_MODES SCFMode>
-Eigen::VectorXd ReadOrbitalsTask<SCFMode>::getTurboOrbital(std::ifstream& input, unsigned int nBFs,
-                                                           unsigned int nPerLine, unsigned int length) {
+Eigen::VectorXd OrbitalsIOTask<SCFMode>::getTurboOrbital(std::ifstream& input, unsigned int nBFs, unsigned int nPerLine,
+                                                         unsigned int length) {
   unsigned int nLines = nBFs / nPerLine;
   unsigned int nRemain = nBFs % nPerLine;
   Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(nBFs);
@@ -203,8 +376,8 @@ Eigen::VectorXd ReadOrbitalsTask<SCFMode>::getTurboOrbital(std::ifstream& input,
   return coeffs;
 }
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::splitTurboOrbLine(std::string& line, unsigned int nPerLine, unsigned int length,
-                                                  Eigen::VectorXd& coeffs, unsigned int& counter) {
+void OrbitalsIOTask<SCFMode>::splitTurboOrbLine(std::string& line, unsigned int nPerLine, unsigned int length,
+                                                Eigen::VectorXd& coeffs, unsigned int& counter) {
   unsigned int start = 0;
   for (unsigned int iCoeff = 0; iCoeff < nPerLine; ++iCoeff) {
     std::string coeff_str = line.substr(start, length);
@@ -214,8 +387,39 @@ void ReadOrbitalsTask<SCFMode>::splitTurboOrbLine(std::string& line, unsigned in
     start += length;
   } // for iCoeff
 }
+
 template<Options::SCF_MODES SCFMode>
-Eigen::MatrixXd ReadOrbitalsTask<SCFMode>::resortCoefficients(const Eigen::MatrixXd& coefficients) {
+std::string OrbitalsIOTask<SCFMode>::reformatNumber(double number, std::string exponentSymbol) {
+  number = round(number * 1e13) / 1e13;
+  int exponent = floor(log10(std::abs(number)));
+  double base = number / pow(10, exponent);
+  if (abs(number) < 10e-14) {
+    exponent = 0;
+    base = 0.0;
+  }
+  base /= 10.0;
+  exponent += 1;
+  std::stringstream exp;
+  if (exponent < -9)
+    exp << exponentSymbol << exponent;
+  else if (exponent > -10 && exponent < 0)
+    exp << exponentSymbol << "-0" << abs(exponent);
+  else if (exponent > -1 && exponent < 10)
+    exp << exponentSymbol << "+0" << exponent;
+  else if (exponent > 9)
+    exp << exponentSymbol << "+" << exponent;
+  std::stringstream outputss;
+  outputss << std::fixed << std::setprecision(14) << base << exp.str();
+  std::string output = outputss.str();
+  if (base < 0) {
+    output.erase(0, 1);
+    output[0] = '-';
+  }
+  return output;
+}
+
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd OrbitalsIOTask<SCFMode>::resortCoefficients(const Eigen::MatrixXd& coefficients) {
   auto basis = _system->getBasisController()->getBasis();
   unsigned int startRowOrig = 0;
   unsigned int startRowTarget = 0;
@@ -225,8 +429,15 @@ Eigen::MatrixXd ReadOrbitalsTask<SCFMode>::resortCoefficients(const Eigen::Matri
     unsigned int angularMomentum = shell->getAngularMomentum();
     unsigned int nContractedOrig = shell->getNContracted();
     unsigned int nContractedTarget = shell->getNContracted();
-    finalCoefficients.block(startRowTarget, 0, nContractedTarget, nOrbs) =
-        (*_sortMatrices[angularMomentum] * coefficients.block(startRowOrig, 0, nContractedOrig, nOrbs)).eval();
+    if (settings.write) {
+      auto sortMatrix = *_sortMatrices[angularMomentum];
+      finalCoefficients.block(startRowTarget, 0, nContractedTarget, nOrbs) =
+          (sortMatrix.transpose() * coefficients.block(startRowOrig, 0, nContractedOrig, nOrbs)).eval();
+    }
+    else {
+      finalCoefficients.block(startRowTarget, 0, nContractedTarget, nOrbs) =
+          (*_sortMatrices[angularMomentum] * coefficients.block(startRowOrig, 0, nContractedOrig, nOrbs)).eval();
+    }
     startRowOrig += nContractedOrig;
     startRowTarget += nContractedTarget;
   } // for shell
@@ -234,8 +445,8 @@ Eigen::MatrixXd ReadOrbitalsTask<SCFMode>::resortCoefficients(const Eigen::Matri
 }
 
 template<Options::SCF_MODES SCFMode>
-std::pair<Eigen::MatrixXd, Eigen::VectorXd> ReadOrbitalsTask<SCFMode>::readTurbomoleOrbitalFile(std::string filePath,
-                                                                                                unsigned int nBFs) {
+std::pair<Eigen::MatrixXd, Eigen::VectorXd> OrbitalsIOTask<SCFMode>::readTurbomoleOrbitalFile(std::string filePath,
+                                                                                              unsigned int nBFs) {
   std::string line;
   std::ifstream input(filePath);
   Eigen::VectorXd eigenvalues = Eigen::VectorXd::Zero(nBFs);
@@ -289,7 +500,35 @@ std::pair<Eigen::MatrixXd, Eigen::VectorXd> ReadOrbitalsTask<SCFMode>::readTurbo
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::checkNorm(const Eigen::MatrixXd& coefficients) {
+void OrbitalsIOTask<SCFMode>::writeTurbomoleOrbitalFile(std::string filePath, unsigned int nBFs,
+                                                        const Eigen::VectorXd& eigenvalues,
+                                                        const Eigen::MatrixXd& coefficients) {
+  std::ofstream file;
+  file.open(filePath, std::ios_base::app);
+  unsigned int nPerLine = 4;
+  unsigned int nLines = nBFs / nPerLine;
+  unsigned int nRemain = nBFs % nPerLine;
+  for (unsigned int i = 0; i < nBFs; i++) {
+    file << " " << i + 1 << " a eigenvalue=" << reformatNumber(eigenvalues(i)) << " nsaos=" << nBFs;
+    Eigen::VectorXd coeffCol = coefficients.col(i);
+    for (unsigned int j = 0; j < nLines; j++) {
+      file << std::endl << reformatNumber(coeffCol(j * nPerLine + 0)) << reformatNumber(coeffCol(j * nPerLine + 1));
+      file << reformatNumber(coeffCol(j * nPerLine + 2)) << reformatNumber(coeffCol(j * nPerLine + 3));
+    }
+    if (nRemain > 0) {
+      file << std::endl;
+      for (unsigned int k = 0; k < nRemain; k++) {
+        file << reformatNumber(coeffCol(nLines * nPerLine + k));
+      }
+    }
+    file << std::endl;
+  }
+  file << "$end" << std::endl;
+  file.close();
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalsIOTask<SCFMode>::checkNorm(const Eigen::MatrixXd& coefficients) {
   unsigned int nOrbs = coefficients.cols();
   const MatrixInBasis<RESTRICTED> s = _system->getOneElectronIntegralController()->getOverlapIntegrals();
   const Eigen::MatrixXd s_mo = (coefficients.transpose() * s * coefficients).eval();
@@ -312,7 +551,7 @@ void ReadOrbitalsTask<SCFMode>::checkNorm(const Eigen::MatrixXd& coefficients) {
 }
 
 template<Options::SCF_MODES SCFMode>
-std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> ReadOrbitalsTask<SCFMode>::_sortMatrices = {
+std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> OrbitalsIOTask<SCFMode>::_sortMatrices = {
     {0, std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Identity(1, 1))},
     {1, nullptr},
     {2, nullptr},
@@ -325,7 +564,7 @@ std::map<unsigned int, std::shared_ptr<Eigen::MatrixXd>> ReadOrbitalsTask<SCFMod
     {9, nullptr},
 };
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::initTurboSortingMatrices() {
+void OrbitalsIOTask<SCFMode>::initTurboSortingMatrices() {
   /*
    * These matrices were generated by comparing Hartree-Fock orbital
    * coefficients between Serenity and Turbomole.
@@ -336,40 +575,41 @@ void ReadOrbitalsTask<SCFMode>::initTurboSortingMatrices() {
   // clang-format off
   // Turbomole ordering pz px py
   *p << 0, 1, 0,
-      0, 0, 1,
-      1, 0, 0;
+        0, 0, 1,
+        1, 0, 0;
   _sortMatrices[1] = p;
   auto d = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(5, 5));
   *d << 0, 0, 0, 1, 0,
-      0, 0, 1, 0, 0,
-      1, 0, 0, 0, 0,
-      0, 1, 0, 0, 0,
-      0, 0, 0, 0, 1;
+        0, 0, 1, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 0, 0, 1;
   _sortMatrices[2] = d;
   auto f = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(7, 7));
   *f << 0, 0, 0, 0, 0, 0,-1,
-      0, 0, 0, 1, 0, 0, 0,
-      0, 0, 1, 0, 0, 0, 0,
-      1, 0, 0, 0, 0, 0, 0,
-      0, 1, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 1, 0, 0,
-      0, 0, 0, 0, 0, 1, 0;
+        0, 0, 0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 1, 0;
   _sortMatrices[3] = f;
   auto g = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(9, 9));
   *g << 0, 0, 0, 0, 0, 0, 0, 1, 0,
-      0, 0, 0, 0, 0, 0,-1, 0, 0,
-      0, 0, 0, 1, 0, 0, 0, 0, 0,
-      0, 0, 1, 0, 0, 0, 0, 0, 0,
-      1, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 1, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0,-1, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 1, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 1;
+        0, 0, 0, 0, 0, 0,-1, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,-1, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 1;
   _sortMatrices[4] = g;
   // clang-format on
 }
+
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::initMolproSortingMatrices() {
+void OrbitalsIOTask<SCFMode>::initMolproSortingMatrices() {
   /*
    * These matrices were generated by comparing Hartree-Fock orbital
    * coefficients between Serenity and Molpro.
@@ -379,8 +619,8 @@ void ReadOrbitalsTask<SCFMode>::initMolproSortingMatrices() {
   auto p = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(3, 3));
   // clang-format off
   *p << 0, 1, 0,
-      0, 0, 1,
-      1, 0, 0;
+        0, 0, 1,
+        1, 0, 0;
   _sortMatrices[1] = p;
   auto d = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(5, 5));
   *d << 0, 1, 0, 0, 0,
@@ -413,8 +653,106 @@ void ReadOrbitalsTask<SCFMode>::initMolproSortingMatrices() {
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::readMolproXMLOrbitals(CoefficientMatrix<SCFMode>& coeffs,
-                                                      SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
+void OrbitalsIOTask<SCFMode>::initSphericalMoldenSortingMatrices() {
+  /*
+   * These matrices were generated by comparing Hartree-Fock orbital
+   * coefficients between Serenity and Molden.
+   */
+  // Adjust according to the supported value of l.
+  _maxL = 4;
+  auto p = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(3, 3));
+  // clang-format off
+  *p << 0, 1, 0,
+        0, 0, 1,
+        1, 0, 0;
+  _sortMatrices[1] = p;
+  auto d = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(5, 5));
+  *d << 0, 0, 0, 0, 1,
+        0, 0, 1, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 0, 1, 0;
+  _sortMatrices[2] = d;
+  auto f = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(7, 7));
+  *f << 0, 0, 0, 0, 0, 0,-1,
+        0, 0, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0,
+        0, 0, 0, 0, 0,-1, 0;
+  _sortMatrices[3] = f;
+  auto g = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(9, 9));
+  *g << 0, 0, 0, 0, 0, 0, 0, 0,-1,
+        0, 0, 0, 0, 0, 0,-1, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,-1, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,-1, 0;
+  _sortMatrices[4] = g;
+  // clang-format on
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalsIOTask<SCFMode>::initCartesianMoldenSortingMatrices() {
+  /*
+   * These matrices were generated by comparing Hartree-Fock orbital
+   * coefficients between Serenity and Molden.
+   */
+  // Adjust according to the supported value of l.
+  _maxL = 4;
+  auto p = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(3, 3));
+  // clang-format off
+  *p << 1, 0, 0,
+        0, 1, 0,
+        0, 0, 1;
+  _sortMatrices[1] = p;
+  auto d = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(6, 6));
+  *d << 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1,
+        0, 0, 1, 0, 0, 0;
+  _sortMatrices[2] = d;
+  auto f = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(10, 10));
+  *f << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0, 0;
+  _sortMatrices[3] = f;
+  auto g = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(15, 15));
+  *g << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+  _sortMatrices[4] = g;
+  // clang-format on
+}
+
+template<Options::SCF_MODES SCFMode>
+void OrbitalsIOTask<SCFMode>::readMolproXMLOrbitals(CoefficientMatrix<SCFMode>& coeffs,
+                                                    SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
   std::ifstream input(settings.path);
   if (SCFMode == UNRESTRICTED)
     throw SerenityError("ERROR: The reading of Molpro-xml files is only supported for RESTRICTED calculations");
@@ -441,22 +779,22 @@ void ReadOrbitalsTask<SCFMode>::readMolproXMLOrbitals(CoefficientMatrix<SCFMode>
 }
 
 template<>
-void ReadOrbitalsTask<RESTRICTED>::assignCoefficentsAndEigenvalue(const Eigen::VectorXd& orbCoeff,
-                                                                  CoefficientMatrix<RESTRICTED>& coeffMatrix,
-                                                                  SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& eigenvalues,
-                                                                  const double eigenvalue, const bool isAlpha,
-                                                                  const unsigned int iOrb) {
+void OrbitalsIOTask<RESTRICTED>::assignCoefficentsAndEigenvalue(const Eigen::VectorXd& orbCoeff,
+                                                                CoefficientMatrix<RESTRICTED>& coeffMatrix,
+                                                                SpinPolarizedData<RESTRICTED, Eigen::VectorXd>& eigenvalues,
+                                                                const double eigenvalue, const bool isAlpha,
+                                                                const unsigned int iOrb) {
   (void)isAlpha;
   eigenvalues(iOrb) = eigenvalue;
   coeffMatrix.col(iOrb) = orbCoeff;
 }
 
 template<>
-void ReadOrbitalsTask<UNRESTRICTED>::assignCoefficentsAndEigenvalue(const Eigen::VectorXd& orbCoeff,
-                                                                    CoefficientMatrix<UNRESTRICTED>& coeffMatrix,
-                                                                    SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& eigenvalues,
-                                                                    const double eigenvalue, const bool isAlpha,
-                                                                    const unsigned int iOrb) {
+void OrbitalsIOTask<UNRESTRICTED>::assignCoefficentsAndEigenvalue(const Eigen::VectorXd& orbCoeff,
+                                                                  CoefficientMatrix<UNRESTRICTED>& coeffMatrix,
+                                                                  SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>& eigenvalues,
+                                                                  const double eigenvalue, const bool isAlpha,
+                                                                  const unsigned int iOrb) {
   if (isAlpha) {
     eigenvalues.alpha(iOrb) = eigenvalue;
     coeffMatrix.alpha.col(iOrb) = orbCoeff;
@@ -468,7 +806,7 @@ void ReadOrbitalsTask<UNRESTRICTED>::assignCoefficentsAndEigenvalue(const Eigen:
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::skipToOrbitalDefinitionMolproXML(std::ifstream& input, std::string& filePath) {
+void OrbitalsIOTask<SCFMode>::skipToOrbitalDefinitionMolproXML(std::ifstream& input, std::string& filePath) {
   std::string line, word;
   bool moDefinitionFound = false;
   try {
@@ -530,7 +868,7 @@ void ReadOrbitalsTask<SCFMode>::skipToOrbitalDefinitionMolproXML(std::ifstream& 
 }
 
 template<Options::SCF_MODES SCFMode>
-double ReadOrbitalsTask<SCFMode>::getMolproXMLOrbitalEigenvalue(std::ifstream& input, bool& orbitalDefinitionEnd) {
+double OrbitalsIOTask<SCFMode>::getMolproXMLOrbitalEigenvalue(std::ifstream& input, bool& orbitalDefinitionEnd) {
   /*
    * Expected format:
    * <orbital occupation="2.0" energy="-20.546221" symmetryID="1">
@@ -560,7 +898,7 @@ double ReadOrbitalsTask<SCFMode>::getMolproXMLOrbitalEigenvalue(std::ifstream& i
 }
 
 template<Options::SCF_MODES SCFMode>
-Eigen::VectorXd ReadOrbitalsTask<SCFMode>::getMolproXMLOrbitalCoefficients(std::ifstream& input, unsigned int nBFs) {
+Eigen::VectorXd OrbitalsIOTask<SCFMode>::getMolproXMLOrbitalCoefficients(std::ifstream& input, unsigned int nBFs) {
   std::string line, coefficientString, test;
   Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(nBFs);
   unsigned int iBF = 0;
@@ -593,8 +931,8 @@ Eigen::VectorXd ReadOrbitalsTask<SCFMode>::getMolproXMLOrbitalCoefficients(std::
 /*****************************************************/
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::readMolcasHDF5Orbitals(CoefficientMatrix<SCFMode>& coeffs,
-                                                       SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
+void OrbitalsIOTask<SCFMode>::readMolcasHDF5Orbitals(CoefficientMatrix<SCFMode>& coeffs,
+                                                     SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
   const std::string filePath = this->settings.path + "/" + _system->getSystemName() + ".scf.h5";
   this->checkMolcasBasisDefinition(filePath);
   this->readMolcasEigenvalues(filePath, eigenvalues);
@@ -602,7 +940,7 @@ void ReadOrbitalsTask<SCFMode>::readMolcasHDF5Orbitals(CoefficientMatrix<SCFMode
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::checkMolcasBasisDefinition(const std::string& filePath) {
+void OrbitalsIOTask<SCFMode>::checkMolcasBasisDefinition(const std::string& filePath) {
   const std::string molcasBasFuncLabel = "NBAS";
   auto basisController = _system->getBasisController();
   const unsigned int nBasFuncSerenity = basisController->getNBasisFunctions();
@@ -621,8 +959,8 @@ void ReadOrbitalsTask<SCFMode>::checkMolcasBasisDefinition(const std::string& fi
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::readMolcasEigenvalues(const std::string& filePath,
-                                                      SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
+void OrbitalsIOTask<SCFMode>::readMolcasEigenvalues(const std::string& filePath,
+                                                    SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues) {
   const std::string molcasMOEigenvalueLabel = "MO_ENERGIES";
   HDF5::Filepath name(filePath);
   HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
@@ -634,7 +972,7 @@ void ReadOrbitalsTask<SCFMode>::readMolcasEigenvalues(const std::string& filePat
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::readMolcasCoefficients(const std::string& filePath, CoefficientMatrix<SCFMode>& coeffs) {
+void OrbitalsIOTask<SCFMode>::readMolcasCoefficients(const std::string& filePath, CoefficientMatrix<SCFMode>& coeffs) {
   const std::string molcasMOCoefficientLabel = "MO_VECTORS";
   HDF5::Filepath name(filePath);
   HDF5::H5File file(name.c_str(), H5F_ACC_RDONLY);
@@ -650,7 +988,7 @@ void ReadOrbitalsTask<SCFMode>::readMolcasCoefficients(const std::string& filePa
   file.close();
 }
 template<Options::SCF_MODES SCFMode>
-Eigen::MatrixXi ReadOrbitalsTask<SCFMode>::getMolcasSortingMatrix(const std::string& filePath) {
+Eigen::MatrixXi OrbitalsIOTask<SCFMode>::getMolcasSortingMatrix(const std::string& filePath) {
   const std::string basisFunctionSortingLabel = "BASIS_FUNCTION_IDS";
   const unsigned int nBasFunc = _system->getBasisController()->getNBasisFunctions();
   HDF5::Filepath name(filePath);
@@ -677,8 +1015,8 @@ Eigen::MatrixXi ReadOrbitalsTask<SCFMode>::getMolcasSortingMatrix(const std::str
   return sortingMatrix;
 }
 template<Options::SCF_MODES SCFMode>
-unsigned int ReadOrbitalsTask<SCFMode>::getBasisFunctionIndex(const unsigned int atomIndex, const unsigned int angularMomentum,
-                                                              const unsigned int iShellOfMomentum, const int orientation) {
+unsigned int OrbitalsIOTask<SCFMode>::getBasisFunctionIndex(const unsigned int atomIndex, const unsigned int angularMomentum,
+                                                            const unsigned int iShellOfMomentum, const int orientation) {
   const auto atomCenteredBasisController = _system->getAtomCenteredBasisController();
   const auto shellIndices = atomCenteredBasisController->getBasisIndicesRed()[atomIndex];
   const auto shells = atomCenteredBasisController->getBasis();
@@ -705,7 +1043,7 @@ unsigned int ReadOrbitalsTask<SCFMode>::getBasisFunctionIndex(const unsigned int
 }
 
 template<Options::SCF_MODES SCFMode>
-void ReadOrbitalsTask<SCFMode>::replaceMolcasHDF5Orbitals(const CoefficientMatrix<SCFMode>& coeffs) {
+void OrbitalsIOTask<SCFMode>::replaceMolcasHDF5Orbitals(const CoefficientMatrix<SCFMode>& coeffs) {
   const std::string backupFilePath = this->settings.path + "/" + _system->getSystemName() + "_backup.scf.h5";
   const std::string filePath = this->settings.path + "/" + _system->getSystemName() + ".scf.h5";
   // Copy the original file
@@ -731,9 +1069,9 @@ void ReadOrbitalsTask<SCFMode>::replaceMolcasHDF5Orbitals(const CoefficientMatri
 }
 
 template<Options::SCF_MODES SCFMode>
-ReadOrbitalsTask<SCFMode>::~ReadOrbitalsTask() = default;
+OrbitalsIOTask<SCFMode>::~OrbitalsIOTask() = default;
 
-template class ReadOrbitalsTask<Options::SCF_MODES::RESTRICTED>;
-template class ReadOrbitalsTask<Options::SCF_MODES::UNRESTRICTED>;
+template class OrbitalsIOTask<Options::SCF_MODES::RESTRICTED>;
+template class OrbitalsIOTask<Options::SCF_MODES::UNRESTRICTED>;
 
 } /* namespace Serenity */

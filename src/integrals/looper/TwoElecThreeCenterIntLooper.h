@@ -118,6 +118,7 @@ class TwoElecThreeCenterIntLooper {
     auto& libint = Libint::getInstance();
     libint.initialize(_op, _deriv, 3, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
                       maxD, std::max(_basis->getMaxNumberOfPrimitives(), _auxbasis->getMaxNumberOfPrimitives()));
+    bool normAux = !(_auxbasis->isAtomicCholesky());
     auto& basis = _basis->getBasis();
     auto& auxbasis = _auxbasis->getBasis();
     const auto& shellPairs = _basis->getShellPairData();
@@ -168,7 +169,7 @@ class TwoElecThreeCenterIntLooper {
           continue;
         }
         // calculate integrals
-        if (libint.compute(_op, _deriv, auxbasK, basI, basJ, integrals[threadId])) {
+        if (libint.compute(_op, _deriv, auxbasK, basI, basJ, integrals[threadId], normAux)) {
           // angular momentum reordering
           if (swap) {
             if (integrals[threadId].cols() == 9) {
@@ -225,6 +226,7 @@ class TwoElecThreeCenterIntLooper {
    */
   template<class Func, class PrescreenFunc>
   __attribute__((always_inline)) inline void loopNoDerivative(Func distribute, PrescreenFunc prescreen, double maxD = 1) {
+    bool normAux = !(_auxbasis->isAtomicCholesky());
     // intialize libint
     auto& libint = Libint::getInstance();
     libint.initialize(_op, 0, 3, std::vector<std::shared_ptr<Atom>>(0), _mu, std::numeric_limits<double>::epsilon(),
@@ -279,7 +281,7 @@ class TwoElecThreeCenterIntLooper {
           continue;
         }
         // calculate integrals
-        if (libint.compute(_op, 0, auxbasK, basI, basJ, integrals[threadId])) {
+        if (libint.compute(_op, 0, auxbasK, basI, basJ, integrals[threadId], normAux)) {
           const double* intptr = integrals[threadId].data();
           for (unsigned int K = 0; K < nK; ++K) {
             unsigned kk = _auxbasis->extendedIndex(shellK) + K;

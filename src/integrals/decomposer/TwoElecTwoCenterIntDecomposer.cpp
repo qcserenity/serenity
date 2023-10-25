@@ -47,6 +47,8 @@ void TwoElecTwoCenterIntDecomposer::run() {
   auto storageController = _cdIntController->getStorageController(_label);
   double decompositionThreshold = _cdThresh;
 
+  bool normAux = !(_basisController->isAtomicCholesky());
+
   if (storageController->getNVectors())
     return;
 
@@ -65,7 +67,7 @@ void TwoElecTwoCenterIntDecomposer::run() {
     auto shellI = *shells[I];
     if (shellI.getAngularMomentum() > AM_MAX)
       continue;
-    bool significant = libint.compute(_op, 0, shellI, shellI, ints);
+    bool significant = libint.compute(_op, 0, shellI, shellI, ints, normAux);
     if (!significant)
       continue;
     auto nI = shellI.getNContracted();
@@ -147,7 +149,7 @@ void TwoElecTwoCenterIntDecomposer::run() {
           const unsigned int nJ = basis[j]->getNContracted();
           const unsigned int firstJ = _basisController->extendedIndex(j);
           // calculate integrals
-          bool significant = libint.compute(_op, 0, basI, basJ, ints);
+          bool significant = libint.compute(_op, 0, basI, basJ, ints, normAux);
           if (significant == false) {
             continue;
           }
@@ -206,6 +208,10 @@ std::vector<unsigned int> TwoElecTwoCenterIntDecomposer::getCholeskyBasis() {
   if (!_decomposer)
     this->run();
   return _decomposer->getCholeskyBasis();
+}
+
+void TwoElecTwoCenterIntDecomposer::setThreshold(double cdThresh) {
+  _cdThresh = cdThresh;
 }
 
 } /* namespace Serenity */

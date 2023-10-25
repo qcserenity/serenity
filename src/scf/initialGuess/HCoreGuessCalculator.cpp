@@ -69,6 +69,7 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemContr
       eps_spin[i] = es.eigenvalues()[i];
     }
   };
+
   auto orbs =
       std::make_shared<OrbitalController<SCFMode>>(std::move(coefficientMatrix), systemController->getBasisController(),
                                                    *eigenvalues, systemController->getNCoreElectrons());

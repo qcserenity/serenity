@@ -684,12 +684,22 @@ TEST_F(LRSCFTaskXWFTest, ADC2_Chiral) {
  * @brief Tests LRSCFTask: Cholesky (ACCD) ADC2
  */
 TEST_F(LRSCFTaskXWFTest, CD_ADC2) {
+  Settings settings = sys->getSettings();
+  settings.basis.densFitJ = Options::DENS_FITS::ACCD;
+  settings.basis.densFitK = Options::DENS_FITS::ACCD;
+  settings.basis.densFitLRK = Options::DENS_FITS::ACCD;
+  settings.basis.densFitCorr = Options::DENS_FITS::ACCD;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
   LRSCFTask<Options::SCF_MODES::RESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::ADC2;
   task.settings.ccprops = true;
   task.settings.preopt = 1e-6;
   task.settings.conv = 1e-9;
   task.settings.densFitCache = Options::DENS_FITS::ACCD;
+  task.settings.densFitJ = Options::DENS_FITS::ACCD;
+  task.settings.densFitK = Options::DENS_FITS::ACCD;
+  task.settings.densFitLRK = Options::DENS_FITS::ACCD;
   task.run();
   auto& results = task.getTransitions();
 
@@ -698,22 +708,22 @@ TEST_F(LRSCFTaskXWFTest, CD_ADC2) {
   // Serenity Oct 2021
   auto compare = [&]() {
     // excitation energies
-    EXPECT_NEAR(results(0, 0), 0.145392321, accuracy);
-    EXPECT_NEAR(results(1, 0), 0.231143258, accuracy);
-    EXPECT_NEAR(results(2, 0), 0.267306058, accuracy);
-    EXPECT_NEAR(results(3, 0), 0.271238510, accuracy);
+    EXPECT_NEAR(results(0, 0), 0.145398597, accuracy);
+    EXPECT_NEAR(results(1, 0), 0.231151033, accuracy);
+    EXPECT_NEAR(results(2, 0), 0.267305982, accuracy);
+    EXPECT_NEAR(results(3, 0), 0.271246114, accuracy);
 
     // oscillator strengths length
     EXPECT_NEAR(results(0, 1), 0.000000000, accuracy);
-    EXPECT_NEAR(results(1, 1), 0.016384559, accuracy);
-    EXPECT_NEAR(results(2, 1), 0.045495287, accuracy);
-    EXPECT_NEAR(results(3, 1), 0.027897651, accuracy);
+    EXPECT_NEAR(results(1, 1), 0.016382552, accuracy);
+    EXPECT_NEAR(results(2, 1), 0.045487757, accuracy);
+    EXPECT_NEAR(results(3, 1), 0.027905454, accuracy);
 
     // oscillator strengths velocity
     EXPECT_NEAR(results(0, 2), 0.000000000, accuracy);
-    EXPECT_NEAR(results(1, 2), 0.017751778, accuracy);
-    EXPECT_NEAR(results(2, 2), 0.061059073, accuracy);
-    EXPECT_NEAR(results(3, 2), 0.041157758, accuracy);
+    EXPECT_NEAR(results(1, 2), 0.017748262, accuracy);
+    EXPECT_NEAR(results(2, 2), 0.061045723, accuracy);
+    EXPECT_NEAR(results(3, 2), 0.041160018, accuracy);
   };
 
   compare();

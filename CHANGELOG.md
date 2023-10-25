@@ -1,6 +1,23 @@
 Changelog
 ===============================
 
+Release 1.5.3 (25.10.2023)
+-------------------------------
+
+### Functionalities
+
+- Added two flavors of restricted open-shell HF and KS for the ground-state (Niklas Niemeyer)
+- Fermi-shifted Huzinaga EO Kernel for subsystem TDDFT (Niklas Niemeyer)
+- Laplace-Transform GW (Johannes Tölle, Niklas Niemeyer)
+- Renamed ReadOrbitalsTask to OrbitalsIOTask (Niklas Göllmann)
+- Added the functionality to write Turbomole files (Niklas Göllmann)
+- Added the functionality to write Molden files for both spherical and cartesian harmonics (Niklas Göllmann)
+- Added three schemes to generate complete basis function products for the Cholesky 
+  decomposition framework: Simple, First, Complete (Lars Hellmann) 
+- Added the functionality to control density fitting for individual 
+  contributions (Coulomb, exchange, long-range exchange, correlation)
+
+
 Release 1.5.2 (22.03.2023)
 -------------------------------
 

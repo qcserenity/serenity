@@ -68,7 +68,7 @@ inline Eigen::MatrixXd mSqrt_Sym(const Eigen::MatrixXd& matrix) {
  * @param threshold Threshold for setting entries in the inverse to zero.
  * @return matrix^(-1/2).
  */
-inline Eigen::MatrixXd pseudoInversSqrt_Sym(const Eigen::MatrixXd& matrix, double threshold = 1e-6) {
+inline Eigen::MatrixXd pseudoInversSqrt_Sym(const Eigen::MatrixXd& matrix, double threshold = 1e-8) {
   auto const func = [&](const double& e) {
     if (e < -1.0)
       throw SerenityError("Tolerance of negative eigenvalues in the pseudo inverse exceeded! You are trying to "
@@ -84,8 +84,9 @@ inline Eigen::MatrixXd pseudoInversSqrt_Sym(const Eigen::MatrixXd& matrix, doubl
  * @param threshold Threshold for setting entries in the inverse to zero.
  * @return matrix^(-1).
  */
-inline Eigen::MatrixXd pseudoInvers_Sym(const Eigen::MatrixXd& matrix, double threshold = 1e-6) {
-  auto const func = [&](const double& e) { return (std::abs(e) >= threshold) ? 1.0 / e : 0.0; }; // func
+inline Eigen::MatrixXd pseudoInvers_Sym(const Eigen::MatrixXd& matrix, double threshold = 1e-8) {
+  threshold = std::min(std::abs(matrix.diagonal().minCoeff()) * 0.1, threshold);
+  auto const func = [&](const double& e) { return (e >= threshold) ? 1.0 / e : 0.0; }; // func
   return mFunc_Sym(matrix, func);
 }
 /**
@@ -162,6 +163,25 @@ inline Eigen::MatrixXd matrixExp(const Eigen::MatrixXd& A, const double conv = N
                       << std::endl;
 
   return U;
+}
+
+/**
+ * @brief Sorts a matrix and a vector by the values in the vector
+ * @param matrix Matrix to be sorted.
+ * @param vector Vector to be sorted.
+ */
+template<Options::SCF_MODES SCFMode>
+void sortMatrixAndVector(MatrixInBasis<SCFMode>& matrix, SpinPolarizedData<SCFMode, Eigen::VectorXd>& vector) {
+  for_spin(matrix, vector) {
+    unsigned iMin = 0;
+    Eigen::Ref<Eigen::VectorXd> vec = vector_spin;
+    Eigen::Ref<Eigen::MatrixXd> mat = matrix_spin;
+    for (unsigned i = 0; i < vec.size(); ++i) {
+      vec.tail(vec.size() - i).minCoeff(&iMin);
+      vec.row(i).swap(vec.row(iMin + i));
+      mat.col(i).swap(mat.col(iMin + i));
+    }
+  };
 }
 
 } /* namespace Serenity */

@@ -30,7 +30,8 @@ void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field) 
   static const std::map<std::string, ORBITAL_FILE_TYPES> m = {{"SERENITY", ORBITAL_FILE_TYPES::SERENITY},
                                                               {"TURBOMOLE", ORBITAL_FILE_TYPES::TURBOMOLE},
                                                               {"MOLPRO", ORBITAL_FILE_TYPES::MOLPRO},
-                                                              {"MOLCAS", ORBITAL_FILE_TYPES::MOLCAS}};
+                                                              {"MOLCAS", ORBITAL_FILE_TYPES::MOLCAS},
+                                                              {"MOLDEN", ORBITAL_FILE_TYPES::MOLDEN}};
   check(m, value, field);
 }
 
@@ -38,6 +39,13 @@ template<>
 void resolve<SCF_MODES>(std::string& value, SCF_MODES& field) {
   static const std::map<std::string, SCF_MODES> m = {{"RESTRICTED", SCF_MODES::RESTRICTED},
                                                      {"UNRESTRICTED", SCF_MODES::UNRESTRICTED}};
+  check(m, value, field);
+}
+
+template<>
+void resolve<ROHF_TYPES>(std::string& value, ROHF_TYPES& field) {
+  static const std::map<std::string, ROHF_TYPES> m = {
+      {"NONE", ROHF_TYPES::NONE}, {"CUHF", ROHF_TYPES::CUHF}, {"SUHF", ROHF_TYPES::SUHF}};
   check(m, value, field);
 }
 

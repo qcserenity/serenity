@@ -190,7 +190,7 @@ TEST_F(EvaluateEnergyTaskTest, restricted_compareSystemToSCF_doubleHybrid_Local)
 TEST_F(EvaluateEnergyTaskTest, restricted_compareSystemToSCF_doubleHybrid_LocalVsRI) {
   auto super = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP_B2PLYP, true);
   ScfTask<RESTRICTED> scfTask(super);
-  scfTask.settings.mp2Type = Options::MP2_TYPES::RI;
+  scfTask.settings.mp2Type = Options::MP2_TYPES::DF;
   scfTask.settings.lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
   scfTask.run();
   double refEnergy = super->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy();

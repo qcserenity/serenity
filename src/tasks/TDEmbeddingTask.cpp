@@ -209,10 +209,11 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
         "explicitly projected out of the MP2 calculation! This may lead to errors.",
         iOOptions.printSCFCycleInfo);
     // perform MP2 for double hybrids
-    if (actsettings.basis.densityFitting == Options::DENS_FITS::RI) {
-      _activeSystem->setBasisController(std::dynamic_pointer_cast<AtomCenteredBasisController>(
-                                            supersystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL)),
-                                        Options::BASIS_PURPOSES::AUX_CORREL);
+    if (actsettings.basis.densFitCorr != Options::DENS_FITS::NONE) {
+      _activeSystem->setBasisController(
+          std::dynamic_pointer_cast<AtomCenteredBasisController>(
+              supersystem->getAuxBasisController(Options::AUX_BASIS_PURPOSES::CORRELATION, actsettings.basis.densFitCorr)),
+          supersystem->resolveAuxBasisPurpose(Options::AUX_BASIS_PURPOSES::CORRELATION, actsettings.basis.densFitCorr));
       RIMP2<SCFMode> rimp2(_activeSystem, functional.getssScaling(), functional.getosScaling());
       MP2Correlation = rimp2.calculateCorrection();
     }
@@ -267,6 +268,7 @@ inline std::shared_ptr<SystemController> TDEmbeddingTask<SCFMode>::setUpSupersys
       // run supersystem SCF
       printSubSectionTitle("Initial Supersystem-SCF Calculation");
       ScfTask<SCFMode> supersystemSCF(supersystem);
+      supersystemSCF.settings.mp2Type = settings.mp2Type;
       supersystemSCF.run();
     } // if !settings.addOrbitals
   }

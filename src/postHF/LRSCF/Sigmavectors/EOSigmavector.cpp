@@ -47,8 +47,8 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 EOSigmavector<SCFMode>::EOSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf,
                                       std::vector<Eigen::MatrixXd> b, const double levelShiftParameter,
-                                      const Options::KIN_EMBEDDING_MODES eoPot)
-  : Sigmavector<SCFMode>(lrscf, b), _levelShiftParameter(levelShiftParameter), _eoPot(eoPot) {
+                                      const Options::KIN_EMBEDDING_MODES eoPot, const double fermiShift)
+  : Sigmavector<SCFMode>(lrscf, b), _levelShiftParameter(levelShiftParameter), _eoPot(eoPot), _fermiShift(fermiShift) {
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -101,7 +101,8 @@ EOSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
         sameDensity = true;
     }
     // Evaluation or reading of FAB if needed
-    if (sameDensity || _eoPot == Options::KIN_EMBEDDING_MODES::HUZINAGA || _eoPot == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
+    if (sameDensity || _eoPot == Options::KIN_EMBEDDING_MODES::HUZINAGA || _eoPot == Options::KIN_EMBEDDING_MODES::HOFFMANN ||
+        _eoPot == Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA) {
       auto activeSystem = this->_lrscf[I]->getSys();
       auto es_active = activeSystem->template getElectronicStructure<SCFMode>();
       // Try to use Fock matrix in electronic structure
@@ -168,12 +169,20 @@ EOSigmavector<SCFMode>::calcF(unsigned int I, unsigned int J,
               f_spin += SAB * p_spin * F_AB_spin.transpose();
             }
           }
-          if (_eoPot == Options::KIN_EMBEDDING_MODES::HUZINAGA || _eoPot == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
+          else if (_eoPot == Options::KIN_EMBEDDING_MODES::HUZINAGA || _eoPot == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
             if (sameDensity) {
               f_spin += SAB * p_spin * F_AB_spin.transpose();
             }
             else {
               f_spin -= F_AB_spin * p_spin * SAB.transpose();
+            }
+          }
+          else if (_eoPot == Options::KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA) {
+            if (sameDensity) {
+              f_spin += SAB * p_spin * (F_AB_spin.transpose() - 2.0 * _fermiShift * SAB.transpose());
+            }
+            else {
+              f_spin -= (F_AB_spin - 2.0 * _fermiShift * SAB) * p_spin * SAB.transpose();
             }
           }
         };

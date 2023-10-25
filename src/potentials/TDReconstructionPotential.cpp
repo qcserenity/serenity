@@ -333,7 +333,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
     for (auto e : _envSystems)
       envSystems.push_back(e.lock());
     std::shared_ptr<PotentialBundle<SCFMode>> esiPot;
-    if (superSystem->getSettings().basis.densityFitting != Options::DENS_FITS::RI) {
+    if (superSystem->getSettings().basis.densFitJ == Options::DENS_FITS::NONE) {
       esiPot = std::shared_ptr<PotentialBundle<SCFMode>>(new ESIPotentials<SCFMode>(
           activeSystem, {envSystems}, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
           activeSystem->getGeometry(),
@@ -347,8 +347,9 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
           activeSystem, {envSystems}, activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
           activeSystem->getGeometry(),
           {envSystemZero->template getElectronicStructure<SCFMode>()->getDensityMatrixController()},
-          {envSystemZero->getGeometry()}, activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB),
-          {envSystemZero->getBasisController(Options::BASIS_PURPOSES::AUX_COULOMB)}));
+          {envSystemZero->getGeometry()},
+          activeSystem->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, superSystem->getSettings().basis.densFitJ),
+          {envSystemZero->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, superSystem->getSettings().basis.densFitJ)}));
     }
     // ECP TODO: Check consistency!
     std::shared_ptr<Potential<SCFMode>> ecpInt(new ECPInteractionPotential<SCFMode>(

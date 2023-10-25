@@ -21,6 +21,7 @@
 #define NORMALIZATION_H
 /* Include Serenity Internal Headers */
 #include "math/IntegerMaths.h"
+#include "parameters/Constants.h"
 /* Include Std and External Headers */
 #include <cmath>
 #include <vector>
@@ -78,9 +79,11 @@ class Normalization {
    * @returns a normalization factor which needs to be combined with the result of
    *          normalizeTotalAngMom
    */
-  inline static double finalNormalization(unsigned int amX, unsigned int amY, unsigned int amZ) {
-    ;
-    return 1.0 / sqrt(double_factorial(2 * amX - 1) * double_factorial(2 * amY - 1) * double_factorial(2 * amZ - 1));
+  inline static long double finalNormalization(unsigned int amX, unsigned int amY, unsigned int amZ) {
+    long double tmp = std::pow((long double)(double_factorial(2 * amX - 1)) * (long double)(double_factorial(2 * amY - 1)) *
+                                   (long double)(double_factorial(2 * amZ - 1)),
+                               -0.5);
+    return tmp;
   }
 
  public:
@@ -93,14 +96,14 @@ class Normalization {
    * @param amA, amB  the angular momenta of the basis functions (e.g 0 for s and 2 for d).
    */
   static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB) {
-    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1));
+    const long double undo = std::pow(double_factorial(2 * amA - 1) * double_factorial(2 * amB - 1), 0.5);
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
         for (int bX = amB; bX >= 0; --bX) {
           for (int bY = amB - bX; bY >= 0; --bY) {
             int bZ = amB - bY - bX;
-            integrals[index] *= finalNormalization(aX, aY, aZ) * finalNormalization(bX, bY, bZ) * undo;
+            integrals[index] *= (long double)(finalNormalization(aX, aY, aZ) * finalNormalization(bX, bY, bZ) * undo);
             ++index;
           }
         }
@@ -119,19 +122,51 @@ class Normalization {
    * @param amA, amB, amC
    */
   static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB, unsigned int amC) {
-    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1) * double_factorial(2 * amC - 1));
+    const long double undo =
+        std::pow(double_factorial(2 * amA - 1) * double_factorial(2 * amB - 1) * double_factorial(2 * amC - 1), 0.5);
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
-        const double normA = finalNormalization(aX, aY, aZ);
+        const long double normA = finalNormalization(aX, aY, aZ);
         for (int bX = amB; bX >= 0; --bX) {
           for (int bY = amB - bX; bY >= 0; --bY) {
             int bZ = amB - bY - bX;
-            const double normB = normA * finalNormalization(bX, bY, bZ);
+            const long double normB = normA * finalNormalization(bX, bY, bZ);
             for (int cX = amC; cX >= 0; --cX) {
               for (int cY = amC - cX; cY >= 0; --cY) {
                 int cZ = amC - cY - cX;
-                integrals[index] *= normB * finalNormalization(cX, cY, cZ) * undo;
+                integrals[index] *= (long double)(normB * finalNormalization(cX, cY, cZ) * undo);
+                ++index;
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+  /**
+   * This does the finalNormalization() (see above) for a whole
+   * shell set of 3-center-2-el-integrals. Here the normalization
+   * of the auxiliary shell is omitted.
+   *
+   * See normalizeShell(vector<double>*, unsigned int, unsigned int).
+   *
+   * @param integrals
+   * @param amA, amB, amC
+   */
+  static void normalizeShellNoAux(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB, unsigned int amC) {
+    const long double undo = std::pow(1.0 * double_factorial(2 * amB - 1) * double_factorial(2 * amC - 1), 0.5);
+    for (int aX = amA, index = 0; aX >= 0; --aX) {
+      for (int aY = amA - aX; aY >= 0; --aY) {
+        const long double normA = 1.0;
+        for (int bX = amB; bX >= 0; --bX) {
+          for (int bY = amB - bX; bY >= 0; --bY) {
+            int bZ = amB - bY - bX;
+            const long double normB = normA * finalNormalization(bX, bY, bZ);
+            for (int cX = amC; cX >= 0; --cX) {
+              for (int cY = amC - cX; cY >= 0; --cY) {
+                int cZ = amC - cY - cX;
+                integrals[index] *= (long double)(normB * finalNormalization(cX, cY, cZ) * undo);
                 ++index;
               }
             }
@@ -152,24 +187,25 @@ class Normalization {
    */
   static void normalizeShell(Eigen::Ref<Eigen::VectorXd> integrals, unsigned int amA, unsigned int amB,
                              unsigned int amC, unsigned int amD) {
-    const double undo = sqrt(double_factorial(amA * 2 - 1) * double_factorial(2 * amB - 1) *
-                             double_factorial(2 * amC - 1) * double_factorial(2 * amD - 1));
+    const long double undo = std::pow(double_factorial(2 * amA - 1) * double_factorial(2 * amB - 1) *
+                                          double_factorial(2 * amC - 1) * double_factorial(2 * amD - 1),
+                                      0.5);
     for (int aX = amA, index = 0; aX >= 0; --aX) {
       for (int aY = amA - aX; aY >= 0; --aY) {
         int aZ = amA - aY - aX;
-        const double normA = finalNormalization(aX, aY, aZ);
+        const long double normA = finalNormalization(aX, aY, aZ);
         for (int bX = amB; bX >= 0; --bX) {
           for (int bY = amB - bX; bY >= 0; --bY) {
             int bZ = amB - bY - bX;
-            const double normB = normA * finalNormalization(bX, bY, bZ);
+            const long double normB = normA * finalNormalization(bX, bY, bZ);
             for (int cX = amC; cX >= 0; --cX) {
               for (int cY = amC - cX; cY >= 0; --cY) {
                 int cZ = amC - cY - cX;
-                const double normC = normB * finalNormalization(cX, cY, cZ);
+                const long double normC = normB * finalNormalization(cX, cY, cZ);
                 for (int dX = amD; dX >= 0; --dX) {
                   for (int dY = amD - dX; dY >= 0; --dY) {
                     int dZ = amD - dY - dX;
-                    integrals[index] *= normC * finalNormalization(dX, dY, dZ) * undo;
+                    integrals[index] *= (long double)(normC * finalNormalization(dX, dY, dZ) * undo);
                     ++index;
                   }
                 }

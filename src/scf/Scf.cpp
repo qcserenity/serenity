@@ -29,6 +29,7 @@
 #include "misc/WarningTracker.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "scf/ConvergenceController.h"
+#include "scf/ROHF.h"
 #include "settings/Settings.h"
 
 namespace Serenity {
@@ -75,6 +76,11 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
     counter++;
     takeTime("the fock matrix formation");
     F = potentials->getFockMatrix(es->getDensityMatrix(), energyComponentController);
+
+    if (settings.scf.rohf != Options::ROHF_TYPES::NONE) {
+      ROHF<SCFMode>::addConstraint(F, es, settings.scf.rohf, settings.scf.suhfLambda);
+    }
+
     timeTaken(2, "the fock matrix formation");
 
     takeTime("the generation of new MOs (possibly with conv. acc.)");

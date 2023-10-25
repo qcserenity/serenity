@@ -26,38 +26,41 @@
 namespace Serenity {
 
 CombinedShellPair::CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB, bool spherical)
-  : Shell(generateExponents(shellA, shellB),
-          generateContractions(shellA, shellB, shellA->getAngularMomentum() + shellB->getAngularMomentum()),
-          shellA->getAngularMomentum() + shellB->getAngularMomentum(), spherical, checkCoords(shellA->O, shellB->O),
-          checkElement(shellA->getElement(), shellB->getElement())),
-    _shellA(shellA),
-    _shellB(shellB){};
+  : CombinedShellPair(shellA, shellB, generateExponents(shellA, shellB), generateContractionsNoNorm(shellA, shellB),
+                      (shellA->getAngularMomentum() + shellB->getAngularMomentum()), spherical){};
 
 CombinedShellPair::CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB,
                                      unsigned int angularMomentum, bool spherical)
-  : Shell(generateExponents(shellA, shellB), generateContractions(shellA, shellB, angularMomentum), angularMomentum,
-          spherical, checkCoords(shellA->O, shellB->O), checkElement(shellA->getElement(), shellB->getElement())),
-    _shellA(shellA),
-    _shellB(shellB){};
+  : CombinedShellPair(shellA, shellB, generateExponents(shellA, shellB), generateContractionsNoNorm(shellA, shellB),
+                      angularMomentum, spherical){};
 
 CombinedShellPair::CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB,
-                                     libint2::svector<double> expo, libint2::svector<double> contr,
-                                     unsigned int angularMomentum, bool spherical)
-  : Shell(expo, reverseNormalization(expo, contr, angularMomentum), angularMomentum, spherical,
-          checkCoords(shellA->O, shellB->O), checkElement(shellA->getElement(), shellB->getElement())),
+                                     std::vector<double> expo, std::vector<double> contr, unsigned int angularMomentum,
+                                     bool spherical)
+  : CombinedShellPair(shellA, shellB, expo, reverseNormalization(expo, contr, angularMomentum), angularMomentum, spherical,
+                      checkCoords(shellA->O, shellB->O), checkElement(shellA->getElement(), shellB->getElement())){};
+
+CombinedShellPair::CombinedShellPair(std::shared_ptr<const Shell> shellA, std::shared_ptr<const Shell> shellB,
+                                     std::vector<double> expo, std::vector<double> contr, unsigned int angularMomentum,
+                                     bool spherical, std::array<double, 3> coords, std::string element)
+  : Shell(libint2::svector<double>(expo.begin(), expo.end()), libint2::svector<double>(expo.begin(), expo.end()),
+          libint2::svector<double>(contr.begin(), contr.end()), angularMomentum, spherical, coords, element),
     _shellA(shellA),
     _shellB(shellB){};
 
-libint2::svector<double> CombinedShellPair::generateExponents(std::shared_ptr<const Shell> shellA,
-                                                              std::shared_ptr<const Shell> shellB) {
-  libint2::svector<double> exponentsA = shellA->getExponents();
-  libint2::svector<double> exponentsB = shellB->getExponents();
+std::vector<double> CombinedShellPair::generateExponents(std::shared_ptr<const Shell> shellA,
+                                                         std::shared_ptr<const Shell> shellB) {
+  auto libExpoA = shellA->getExponents();
+  auto libExpoB = shellB->getExponents();
+  std::vector<double> exponentsA(libExpoA.begin(), libExpoA.end());
+  std::vector<double> exponentsB(libExpoB.begin(), libExpoB.end());
 
-  libint2::svector<double> combinedExponents;
+  std::vector<double> tmpVec;
+
   if ((*shellA) != (*shellB)) {
     for (double i : exponentsA) {
       for (double j : exponentsB) {
-        combinedExponents.push_back(i + j);
+        tmpVec.push_back(i + j);
       }
     }
   }
@@ -65,21 +68,24 @@ libint2::svector<double> CombinedShellPair::generateExponents(std::shared_ptr<co
     unsigned int nI = exponentsA.size();
     for (unsigned int i = 0; i < nI; i++) {
       for (unsigned int j = 0; j <= i; j++) {
-        combinedExponents.push_back(exponentsA[i] + exponentsA[j]);
+        tmpVec.push_back(exponentsA[i] + exponentsB[j]);
       }
     }
   }
 
-  return combinedExponents;
+  return tmpVec;
 }
 
-libint2::svector<double> CombinedShellPair::generateContractions(std::shared_ptr<const Shell> shellA,
-                                                                 std::shared_ptr<const Shell> shellB,
-                                                                 unsigned int angularMomentum) {
-  libint2::svector<double> contractionsA = shellA->getNormContractions();
-  libint2::svector<double> contractionsB = shellB->getNormContractions();
-  libint2::svector<double> exponentsA = shellA->getExponents();
-  libint2::svector<double> exponentsB = shellB->getExponents();
+std::vector<double> CombinedShellPair::generateContractions(std::shared_ptr<const Shell> shellA,
+                                                            std::shared_ptr<const Shell> shellB, unsigned int angularMomentum) {
+  auto libContrA = shellA->getNormContractions();
+  auto libContrB = shellB->getNormContractions();
+  std::vector<double> contractionsA(libContrA.begin(), libContrA.end());
+  std::vector<double> contractionsB(libContrB.begin(), libContrB.end());
+  auto libExpoA = shellA->getExponents();
+  auto libExpoB = shellB->getExponents();
+  std::vector<double> exponentsA(libExpoA.begin(), libExpoA.end());
+  std::vector<double> exponentsB(libExpoB.begin(), libExpoB.end());
 
   // The following reverses the normalization always performed by libint::shell() if it is constructed from scratch
   // and not by the copy constructor. [see libint::Shell::renorm()]
@@ -89,9 +95,9 @@ libint2::svector<double> CombinedShellPair::generateContractions(std::shared_ptr
   unsigned int nI = contractionsA.size();
   unsigned int nJ = contractionsB.size();
 
-  libint2::svector<double> newExponents = generateExponents(shellA, shellB);
+  std::vector<double> newExponents = generateExponents(shellA, shellB);
 
-  libint2::svector<double> newContractions;
+  std::vector<double> newContractions;
 
   if ((*shellA) != (*shellB)) {
     for (unsigned int i = 0, ij = 0; i < nI; i++) {
@@ -120,8 +126,43 @@ libint2::svector<double> CombinedShellPair::generateContractions(std::shared_ptr
   return newContractions;
 }
 
-libint2::svector<double> CombinedShellPair::reverseNormalization(libint2::svector<double> expo, libint2::svector<double> contr,
-                                                                 unsigned int angularMomentum) {
+std::vector<double> CombinedShellPair::generateContractionsNoNorm(std::shared_ptr<const Shell> shellA,
+                                                                  std::shared_ptr<const Shell> shellB) {
+  auto libContrA = shellA->getNormContractions();
+  auto libContrB = shellB->getNormContractions();
+  std::vector<double> contractionsA(libContrA.begin(), libContrA.end());
+  std::vector<double> contractionsB(libContrB.begin(), libContrB.end());
+
+  unsigned int nI = contractionsA.size();
+  unsigned int nJ = contractionsB.size();
+
+  unsigned int size = ((*shellA) != (*shellB)) ? nI * nJ : nI * (nI + 1) / 2;
+  std::vector<double> newContractions(size);
+
+  if ((*shellA) != (*shellB)) {
+    for (unsigned int i = 0, ij = 0; i < nI; i++) {
+      for (unsigned int j = 0; j < nJ; j++, ij++) {
+        newContractions[ij] = contractionsA[i] * contractionsB[j];
+      }
+    }
+  }
+  else {
+    for (unsigned int i = 0, ij = 0; i < nI; i++) {
+      for (unsigned int j = 0; j <= i; j++, ij++) {
+        if (i == j) {
+          newContractions[ij] = contractionsA[i] * contractionsB[j];
+        }
+        else {
+          newContractions[ij] = 2 * contractionsA[i] * contractionsB[j];
+        }
+      }
+    }
+  }
+  return newContractions;
+}
+
+std::vector<double> CombinedShellPair::reverseNormalization(std::vector<double> expo, std::vector<double> contr,
+                                                            unsigned int angularMomentum) {
   // The following reverses the normalization always performed by libint::shell() if it is constructed from scratch
   // and not by the copy constructor. [see libint::Shell::renorm()]
   double two_to_am = pow(2, angularMomentum);
@@ -129,7 +170,7 @@ libint2::svector<double> CombinedShellPair::reverseNormalization(libint2::svecto
   unsigned int doubleFactorial = double_factorial(2 * angularMomentum - 1);
   unsigned int nIJ = contr.size();
 
-  libint2::svector<double> newContractions;
+  std::vector<double> newContractions;
 
   for (unsigned int ij = 0; ij < nIJ; ij++) {
     double two_alpha_to_am32 = pow((2 * expo[ij]), (angularMomentum + 1)) * sqrt(2 * expo[ij]);

@@ -70,7 +70,10 @@ class GeometryOptimizationTest : public ::testing::Test {
 TEST_F(GeometryOptimizationTest, h2Hf) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.basis.label = "DEF2-TZVP";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, settings);
   std::vector<std::shared_ptr<SystemController>> activesystems;
@@ -100,7 +103,10 @@ TEST_F(GeometryOptimizationTest, H2DimerDftNori) {
   SystemController__TEST_SUPPLY::cleanUp();
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PW91;
   settings.basis.label = "STO-6G";
   settings.basis.makeSphericalBasis = true;
@@ -143,7 +149,10 @@ TEST_F(GeometryOptimizationTest, H2DimerDftNori) {
 TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::NONE;
+  settings.basis.densFitJ = Options::DENS_FITS::NONE;
+  settings.basis.densFitK = Options::DENS_FITS::NONE;
+  settings.basis.densFitLRK = Options::DENS_FITS::NONE;
+  settings.basis.densFitCorr = Options::DENS_FITS::NONE;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::CO_MINBAS, settings);
@@ -174,7 +183,10 @@ TEST_F(GeometryOptimizationTest, CO_DFT_no_RI) {
 TEST_F(GeometryOptimizationTest, h2DftRi) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
-  settings.basis.densityFitting = Options::DENS_FITS::RI;
+  settings.basis.densFitJ = Options::DENS_FITS::RI;
+  settings.basis.densFitK = Options::DENS_FITS::RI;
+  settings.basis.densFitLRK = Options::DENS_FITS::RI;
+  settings.basis.densFitCorr = Options::DENS_FITS::RI;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
   settings.basis.label = "STO-6G";
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP, settings);
