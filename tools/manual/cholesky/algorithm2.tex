@@ -1,0 +1,114 @@
+\documentclass[11pt,a4paper]{article} \usepackage{float}
+\usepackage{amsmath,amsfonts,stmaryrd,pslatex,graphicx,subfigure,enumerate}
+\usepackage{mathtools}
+\usepackage{german}
+\usepackage{helvet}
+\usepackage{fancyheadings}
+\usepackage{cite}
+\usepackage[utf8]{inputenc}
+\usepackage[version=3]{mhchem}
+\usepackage{color,xcolor}
+\usepackage{braket}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+
+\setlength{\parindent}{0mm} % Einruecken am Paragraphenanfang verhindern
+\setlength{\itemsep}{0mm}
+
+%======== SF Schriftart, Helvetica, wenn usepackage{helvet} ====================
+\renewcommand{\familydefault}{\sfdefault}
+\textheight=23 truecm
+\textwidth=16 truecm
+\voffset= -0.5 truein
+\hoffset= -0.5 truein
+
+\makeatletter
+\newenvironment{breakablealgorithm}
+{% \begin{breakablealgorithm}
+	\begin{center}
+		\refstepcounter{algorithm}% New algorithm
+		\hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+		\renewcommand{\caption}[2][\relax]{% Make a new \caption
+			{\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+			\ifx\relax##1\relax % #1 is \relax
+			\addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+			\else % #1 is not \relax
+			\addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+			\fi
+			\kern2pt\hrule\kern2pt
+		}
+	}{% \end{breakablealgorithm}
+		\kern2pt\hrule\relax% \@fs@post for \@fs@ruled
+	\end{center}
+}
+\makeatother
+
+\begin{document}
+
+\pagenumbering{gobble}
+
+\begin{algorithm}
+	\caption{Cholesky Decomposition}
+	\begin{algorithmic}[1]
+		\Procedure{Direct,Pivoted Decomposition}{}
+
+		\EndProcedure	
+	\end{algorithmic}
+\end{algorithm}
+
+\newpage
+
+\begin{breakablealgorithm}
+	\caption{Cholesky Decomposition}
+	\begin{algorithmic}[1]
+		\Procedure{Memory efficient Decomposition}{}
+		\State Calculate all diagonal elements of the matrix: $$D_p = M_{pp}$$
+		\State Find the largest diagonal element in the complete set of indices $\mathcal{S}$: $$D^{(1)}_{\text{max}} = \underset{p}{\text{max}} \ D_p \qquad p \in  \mathcal{S}$$
+		\State Initialize vector counter: $$\mathcal{N} = 0$$
+		\State Initialize iteration counter: $$i = 0$$
+		\While {$D^{(i)}_{\text{max}} > \delta$}
+			\State Update iteration counter: $$i \leftarrow i+1$$
+			\State Find smallest value for $D_p$ to be treated: (using the span factor $s$) $$D^{(i)}_{\text{min}} = \max \left(sD^{(i)}_{\text{max}},\delta\right), \ \ s \leq 1$$
+			\State Compute a reduced set of significant elements in $D_p$: (using the damping factor $d$)
+			$$\mathcal{R}^{(i)} = \left\{p|d \sqrt{D_{\text{max}}^{(i)} D_p} > \delta, \quad d \geq 1\right\}$$
+			\State Compute a set of qualified elements in $\mathcal{R}^{(i)}$: $$\mathcal{Q}^{(i)} = \left\{q|q  \in  \mathcal{R}^{(i)}, \quad D_q > D^{(i)}_{\text{min}}\right\}$$
+			\State Calculate matrix elements corresponding to $\mathcal{Q}^{(i)}$: $$M_{pq} \quad p \in  \mathcal{Q}^{(i)}, q  \in  \mathcal{Q}^{(i)}$$
+			\State Subtract contributions from previous Cholesky vectors: 
+			$$\Delta_{pq} = M_{pq} - \sum_{J=1}^{\mathcal{N}} L^J_pL^J_q  \quad p \in  \mathcal{Q}^{(i)}, q  \in  \mathcal{Q}^{(i)}$$
+			\State Decompose $\Delta_{pq}$ according to \textbf{algorithm 1} and store the values of $q_{\text{max}}$ in a vector $$\mathcal{Q}_{\text{ partial}} \gets \left\{q_{\text{max}}\right\}$$
+			\State Adjust the qualified set as the partial Cholesky basis $$\mathcal{Q}^{(i)} = \mathcal{Q}_{\text{ partial}}$$
+			\State Calculate matrix elements corresponding to $\mathcal{R}^{(i)}$ and $\mathcal{Q}^{(i)}$: $$M_{pq} \quad p \in  \mathcal{R}^{(i)}, q  \in  \mathcal{Q}^{(i)}$$
+			\State Subtract contributions from previous Cholesky vectors: 
+			$$\Delta_{pq} = M_{pq} - \sum_{J=1}^{\mathcal{N}} L^J_pL^J_q  \quad p \in  \mathcal{R}^{(i)}, q  \in  \mathcal{Q}^{(i)}$$
+			\State Find the largest element in $\mathcal{Q}^{(i)}$ and the corresponding index $q_{\text{max}}$: $$Q_{\text{max}} = \max \left(D^{(i)}_q\right) \quad q \in \mathcal{Q}^{(i)}$$
+			\State Initialize loop internal vector counter: $$j = 0$$
+			\State Initialize overall vector counter: $$J = \mathcal{N} + j$$
+			\While{$j < \text{dim}(\mathcal{Q}^{(i)})$ \textbf{and} $Q_{\text{max}} > D_{\text{min}}^{(i)}$}
+				\State Update vector counters: $$j \leftarrow j+1 \text{,} J = \mathcal{N} +j$$
+				\State Calculate Cholesky vectors: $$L^J_p = Q_{\text{max}}^{-1/2} \Delta_{pq_{\text{max}}}$$
+				\State Subtract contributions of new vector:
+				\begin{equation*}
+				\begin{aligned}
+				&\Delta_{pq} \leftarrow \Delta_{pq} - L^J_pL^J_q, \ \ q  \in  \mathcal{Q}^{(i)} \\
+				&D_p \leftarrow D_p - (L^J_p)^2 \\
+				\end{aligned}
+				\end{equation*}
+				\State Map $p$ to the corresponding index in $\mathcal{S}$ and store the resulting vectors: $$p_{\mathcal{S}} \leftrightarrow p_{\mathcal{R}} \qquad L^J_{p_{\mathcal{S}}} \leftrightarrow L^J_{p_{\mathcal{R}}}$$
+				\If{$-10^{-8} < D_p < 0$} 
+				\State $D_p = 0$
+				\EndIf
+				\If{$D_p < -10^{-8}$}
+				\State Fail the decomposition
+				\EndIf
+				\State Find new $Q_{\text{max}}$ and the corresponding index $q_{\text{max}}$: $$Q_{\text{max}} = \max \left(D^{(i)}_q\right) \quad q \in \mathcal{Q}^{(i)}$$
+				
+			\EndWhile\label{decompEndWhile}
+			\State Update vector counter: $$\mathcal{N} \leftarrow \mathcal{N} +j$$
+			\State Update largest diagonal element: $$D_{\text{max}}^{(i+1)} = \max \left(D_p\right) \quad p \in \mathcal{R}^{(i)}$$
+		\EndWhile
+		\EndProcedure	
+	\end{algorithmic}
+\end{breakablealgorithm}
+
+\end{document}

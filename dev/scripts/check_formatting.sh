@@ -50,7 +50,17 @@ apply_formatting () {
   local files=$(find_files "${source_directory}" "${excludes}")
 
   select_clang_format format_binary
-  echo "${files}" | xargs ${format_binary} -style=file -i
+
+  for file in ${files}; do
+    unformatted_code=$(echo "${file}" | xargs cat)
+    formatted_code=$(echo "${file}" | xargs ${format_binary} -style=file)
+    local replacement_diff=$(diff <(echo "${unformatted_code}") <(echo "${formatted_code}"))
+
+    if [[ ! -z "${replacement_diff}" ]]; then
+      echo "Applying formatting to file: " ${file}
+      echo "${file}" | xargs ${format_binary} -style=file -i
+    fi
+  done
 }
 
 check_formatting () {
@@ -111,3 +121,4 @@ else
   echo "ERROR: This code should never be reached"
   exit 1
 fi
+

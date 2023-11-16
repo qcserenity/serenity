@@ -1,0 +1,64 @@
+include(CMakeFindDependencyMacro)
+
+set(_HDF5_USE_STATIC_LIBRARIES ${HDF5_USE_STATIC_LIBRARIES})
+set(HDF5_USE_STATIC_LIBRARIES @HDF5_USE_STATIC_LIBRARIES@)
+find_dependency(HDF5 REQUIRED COMPONENTS HL CXX)
+# The following if is a small helper for systems
+#  that have HDF5 installed but do not have the
+#  cmake files installed (this seems common for
+#  many distributions)
+if (HDF5_USE_STATIC_LIBRARIES)
+  set(HDF5_TARGET hdf5_cpp-static)
+else()
+  set(HDF5_TARGET hdf5_cpp-shared)
+endif()
+if(NOT TARGET ${HDF5_TARGET})
+  add_library(${HDF5_TARGET} INTERFACE IMPORTED)
+  set_target_properties(${HDF5_TARGET} PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${HDF5_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${HDF5_INCLUDE_DIRS}"
+  )
+endif()
+
+# Ensure that the include directory set by HDF5 contains hdf5.h
+get_target_property(_hdf5_include_dirs ${HDF5_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+set(_has_hdf5_h FALSE)
+foreach(_hdf5_include_dir ${_hdf5_include_dirs})
+  if(EXISTS ${_hdf5_include_dir}/hdf5.h)
+    set(_has_hdf5_h TRUE)
+    break()
+  endif()
+
+  # Try looking for a hdf5 directory within the include directory
+  if(EXISTS ${_hdf5_include_dir}/hdf5/hdf5.h)
+    set_target_properties(${HDF5_TARGET} PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES ${_hdf5_include_dir}/hdf5
+    )
+    set(_has_hdf5_h TRUE)
+    break()
+  endif()
+endforeach()
+if(NOT _has_hdf5_h)
+  message(FATAL_ERROR "Could not find hdf5.h in HDF's include directorie: ${_hdf5_include_dirs}")
+endif()
+unset(_has_hdf5_h)
+unset(_hdf5_include_dirs)
+
+find_dependency(Eigen3 REQUIRED)
+find_dependency(OpenMP REQUIRED)
+find_dependency(Boost REQUIRED)
+find_dependency(Libint2 REQUIRED)
+if(NOT @BUILD_SHARED_LIBS@)
+  find_dependency(ecpint REQUIRED)
+  if(@SERENITY_USE_XCFUN@)
+    find_dependency(XCFun REQUIRED)
+  endif()
+  if (@SERENITY_USE_LIBXC@)
+    find_dependency(Libxc REQUIRED)
+  endif()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/serenity-targets.cmake")
+
+@PACKAGE_INIT@
+

@@ -1,0 +1,263 @@
+/**
+ * @file   CompositeFunctionals.h
+ *
+ * @date   Sep 3, 2020
+ * @author Jan P. Unsleber
+ *
+ * IMPORTANT:\n
+ * This file was automatically generated please do not alter it.
+ * Any required changes should be made to the generating Python script
+ * which should be located close by.
+ *
+ * @copyright \n
+ *  This file is part of the program Serenity.\n\n
+ *  Serenity is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as
+ *  published by the Free Software Foundation, either version 3 of
+ *  the License, or (at your option) any later version.\n\n
+ *  Serenity is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.\n\n
+ *  You should have received a copy of the GNU Lesser General
+ *  Public License along with Serenity.
+ *  If not, see <http://www.gnu.org/licenses/>.\n
+ */
+#ifndef COMPOSITEFUNCTIONALS_H_
+#define COMPOSITEFUNCTIONALS_H_
+#include <array>
+
+namespace Serenity {
+
+class Functional;
+
+namespace CompositeFunctionals {
+
+enum class PURPOSES { KINETIC, EXCHANGE_CORRELATION, NONE };
+enum class CLASSES { NONE, LDA, GGA, META_GGA, MODELL };
+enum class IMPLEMENTATIONS { XCFUN, LIBXC, EITHER_OR, BOTH };
+
+enum class FUNCTIONALS {
+  NONE = 0,
+  SLATER = 1,
+  VWN3 = 2,
+  VWN5 = 3,
+  LDAERF = 4,
+  LDAERF_JT = 5,
+  LDA = 6,
+  HARTREE = 7,
+  B97 = 8,
+  B97_1 = 9,
+  B97_2 = 10,
+  OLYP = 11,
+  BLYP = 12,
+  PBE = 13,
+  BP86 = 14,
+  KT1 = 15,
+  KT2 = 16,
+  KT3 = 17,
+  PW91 = 18,
+  BHLYP = 19,
+  PBE0 = 20,
+  B3LYP = 21,
+  B3LYP_G = 22,
+  B3P86 = 23,
+  B3P86_G = 24,
+  BPW91 = 25,
+  CAMB3LYP = 26,
+  LCBLYP = 27,
+  LCBLYP_047 = 28,
+  LCBLYP_100 = 29,
+  B2PLYP = 30,
+  B2KPLYP = 31,
+  B2TPLYP = 32,
+  B2GPPLYP = 33,
+  ROB2PLYP = 34,
+  B2PIPLYP = 35,
+  B2PPW91 = 36,
+  DSDBLYP = 37,
+  DUT = 38,
+  PUT = 39,
+  DSDPBEP86 = 40,
+  SAOP = 41,
+  HF = 42,
+  TF = 43,
+  PW91K = 44,
+  LLP91K = 45,
+  LLP91KS = 46,
+  PBE2K = 47,
+  PBE2KS = 48,
+  PBE3K = 49,
+  PBE4K = 50,
+  E2000K = 51,
+  B97_D = 52,
+  WB97 = 53,
+  WB97X = 54,
+  WB97X_D = 55,
+  WB97X_V = 56,
+};
+
+enum class XCFUNCTIONALS {
+  NONE = 0,
+  SLATER = 1,
+  VWN3 = 2,
+  VWN5 = 3,
+  LDAERF = 4,
+  LDAERF_JT = 5,
+  LDA = 6,
+  HARTREE = 7,
+  B97 = 8,
+  B97_1 = 9,
+  B97_2 = 10,
+  OLYP = 11,
+  BLYP = 12,
+  PBE = 13,
+  BP86 = 14,
+  KT1 = 15,
+  KT2 = 16,
+  KT3 = 17,
+  PW91 = 18,
+  BHLYP = 19,
+  PBE0 = 20,
+  B3LYP = 21,
+  B3LYP_G = 22,
+  B3P86 = 23,
+  B3P86_G = 24,
+  BPW91 = 25,
+  CAMB3LYP = 26,
+  LCBLYP = 27,
+  LCBLYP_047 = 28,
+  LCBLYP_100 = 29,
+  B2PLYP = 30,
+  B2KPLYP = 31,
+  B2TPLYP = 32,
+  B2GPPLYP = 33,
+  ROB2PLYP = 34,
+  B2PIPLYP = 35,
+  B2PPW91 = 36,
+  DSDBLYP = 37,
+  DUT = 38,
+  PUT = 39,
+  DSDPBEP86 = 40,
+  SAOP = 41,
+  HF = 42,
+  B97_D = 52,
+  WB97 = 53,
+  WB97X = 54,
+  WB97X_D = 55,
+  WB97X_V = 56,
+};
+
+enum class KINFUNCTIONALS {
+  NONE = 0,
+  TF = 43,
+  PW91K = 44,
+  LLP91K = 45,
+  LLP91KS = 46,
+  PBE2K = 47,
+  PBE2KS = 48,
+  PBE3K = 49,
+  PBE4K = 50,
+  E2000K = 51,
+};
+
+Functional resolveFunctional(FUNCTIONALS functional);
+
+Functional resolveFunctional(XCFUNCTIONALS functional);
+
+Functional resolveFunctional(KINFUNCTIONALS functional);
+
+#ifdef SERENITY_USE_LIBXC
+Functional resolveLibXC(FUNCTIONALS functional);
+#endif /* SERENITY_USE_LIBXC */
+
+#ifdef SERENITY_USE_XCFUN
+Functional resolveXCFun(FUNCTIONALS functional);
+#endif /* SERENITY_USE_XCFUN */
+
+constexpr std::array<PURPOSES, 57> getPurpose{
+    PURPOSES::NONE /* 0 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 1 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 2 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 3 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 4 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 5 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 6 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 7 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 8 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 9 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 10 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 11 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 12 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 13 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 14 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 15 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 16 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 17 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 18 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 19 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 20 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 21 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 22 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 23 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 24 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 25 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 26 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 27 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 28 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 29 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 30 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 31 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 32 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 33 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 34 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 35 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 36 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 37 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 38 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 39 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 40 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 41 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 42 */,
+    PURPOSES::KINETIC /* 43 */,
+    PURPOSES::KINETIC /* 44 */,
+    PURPOSES::KINETIC /* 45 */,
+    PURPOSES::KINETIC /* 46 */,
+    PURPOSES::KINETIC /* 47 */,
+    PURPOSES::KINETIC /* 48 */,
+    PURPOSES::KINETIC /* 49 */,
+    PURPOSES::KINETIC /* 50 */,
+    PURPOSES::KINETIC /* 51 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 52 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 53 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 54 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 55 */,
+    PURPOSES::EXCHANGE_CORRELATION /* 56 */,
+};
+
+constexpr std::array<IMPLEMENTATIONS, 57> getImplementation{
+    IMPLEMENTATIONS::EITHER_OR /* 0 */,  IMPLEMENTATIONS::EITHER_OR /* 1 */,  IMPLEMENTATIONS::EITHER_OR /* 2 */,
+    IMPLEMENTATIONS::EITHER_OR /* 3 */,  IMPLEMENTATIONS::XCFUN /* 4 */,      IMPLEMENTATIONS::XCFUN /* 5 */,
+    IMPLEMENTATIONS::EITHER_OR /* 6 */,  IMPLEMENTATIONS::EITHER_OR /* 7 */,  IMPLEMENTATIONS::EITHER_OR /* 8 */,
+    IMPLEMENTATIONS::EITHER_OR /* 9 */,  IMPLEMENTATIONS::EITHER_OR /* 10 */, IMPLEMENTATIONS::EITHER_OR /* 11 */,
+    IMPLEMENTATIONS::EITHER_OR /* 12 */, IMPLEMENTATIONS::EITHER_OR /* 13 */, IMPLEMENTATIONS::EITHER_OR /* 14 */,
+    IMPLEMENTATIONS::EITHER_OR /* 15 */, IMPLEMENTATIONS::EITHER_OR /* 16 */, IMPLEMENTATIONS::EITHER_OR /* 17 */,
+    IMPLEMENTATIONS::EITHER_OR /* 18 */, IMPLEMENTATIONS::EITHER_OR /* 19 */, IMPLEMENTATIONS::EITHER_OR /* 20 */,
+    IMPLEMENTATIONS::EITHER_OR /* 21 */, IMPLEMENTATIONS::EITHER_OR /* 22 */, IMPLEMENTATIONS::XCFUN /* 23 */,
+    IMPLEMENTATIONS::XCFUN /* 24 */,     IMPLEMENTATIONS::EITHER_OR /* 25 */, IMPLEMENTATIONS::EITHER_OR /* 26 */,
+    IMPLEMENTATIONS::EITHER_OR /* 27 */, IMPLEMENTATIONS::EITHER_OR /* 28 */, IMPLEMENTATIONS::EITHER_OR /* 29 */,
+    IMPLEMENTATIONS::EITHER_OR /* 30 */, IMPLEMENTATIONS::EITHER_OR /* 31 */, IMPLEMENTATIONS::EITHER_OR /* 32 */,
+    IMPLEMENTATIONS::EITHER_OR /* 33 */, IMPLEMENTATIONS::EITHER_OR /* 34 */, IMPLEMENTATIONS::EITHER_OR /* 35 */,
+    IMPLEMENTATIONS::EITHER_OR /* 36 */, IMPLEMENTATIONS::EITHER_OR /* 37 */, IMPLEMENTATIONS::EITHER_OR /* 38 */,
+    IMPLEMENTATIONS::EITHER_OR /* 39 */, IMPLEMENTATIONS::EITHER_OR /* 40 */, IMPLEMENTATIONS::EITHER_OR /* 41 */,
+    IMPLEMENTATIONS::EITHER_OR /* 42 */, IMPLEMENTATIONS::EITHER_OR /* 43 */, IMPLEMENTATIONS::EITHER_OR /* 44 */,
+    IMPLEMENTATIONS::EITHER_OR /* 45 */, IMPLEMENTATIONS::XCFUN /* 46 */,     IMPLEMENTATIONS::XCFUN /* 47 */,
+    IMPLEMENTATIONS::XCFUN /* 48 */,     IMPLEMENTATIONS::EITHER_OR /* 49 */, IMPLEMENTATIONS::EITHER_OR /* 50 */,
+    IMPLEMENTATIONS::EITHER_OR /* 51 */, IMPLEMENTATIONS::LIBXC /* 52 */,     IMPLEMENTATIONS::LIBXC /* 53 */,
+    IMPLEMENTATIONS::LIBXC /* 54 */,     IMPLEMENTATIONS::LIBXC /* 55 */,     IMPLEMENTATIONS::LIBXC /* 56 */,
+};
+
+} /* namespace CompositeFunctionals */
+} /* namespace Serenity */
+
+#endif /* COMPOSITEFUNCTIONALS_H_ */

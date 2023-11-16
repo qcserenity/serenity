@@ -1,0 +1,87 @@
+# @file   composite_functionals.dat
+# @date   Sep 3, 2020
+# @author Jan Unsleber
+# @copyright
+#  This file is part of the program Serenity.
+#  Serenity is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation, either version 3 of
+#  the License, or (at your option) any later version.
+#  Serenity is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU Lesser General
+#  Public License along with Serenity.
+#  If not, see <http://www.gnu.org/licenses/>.
+#
+# ===============================================================
+#
+#  This file contains the names of all composite functionals
+#  known to Serenity. Each of these functionals has to appear
+#  in the functional_definitions.dat as well.
+#
+#  The functionals are listed with
+#  1. Their name (unique, translated into an enum member)
+#  2. Their class (XC, K or NONE)
+#  3. Their string representations/aliases
+#     (the first one always being the literal enum name).
+#
+# ===============================================================
+NONE         NONE NONE
+SLATER       XC   SLATER
+VWN3         XC   VWN3
+VWN5         XC   VWN5
+LDAERF       XC   LDAERF LDA_ERF LDA-ERF
+LDAERF_JT    XC   LDAERF_JT LDAERFJT LDA_ERF_JT LDA-ERF-JT
+LDA          XC   LDA
+HARTREE      XC   HARTREE
+B97          XC   B97
+B97_1        XC   B97_1 B97-1
+B97_2        XC   B97_2 B97-2
+OLYP         XC   OLYP
+BLYP         XC   BLYP
+PBE          XC   PBE
+BP86         XC   BP86
+KT1          XC   KT1
+KT2          XC   KT2
+KT3          XC   KT3
+PW91         XC   PW91
+BHLYP        XC   BHLYP
+PBE0         XC   PBE0
+B3LYP        XC   B3LYP
+B3LYP_G      XC   B3LYP_G B3LYP-G
+B3P86        XC   B3P86
+B3P86_G      XC   B3P86_G B3P86-G
+BPW91        XC   BPW91
+CAMB3LYP     XC   CAMB3LYP CAM-B3LYP CAM_B3LYP
+LCBLYP       XC   LCBLYP
+LCBLYP_047   XC   LCBLYP_047 LCBLYP-047
+LCBLYP_100   XC   LCBLYP_100 LCBLYP-100
+B2PLYP       XC   B2PLYP
+B2KPLYP      XC   B2KPLYP
+B2TPLYP      XC   B2TPLYP
+B2GPPLYP     XC   B2GPPLYP
+ROB2PLYP     XC   ROB2PLYP
+B2PIPLYP     XC   B2PIPLYP
+B2PPW91      XC   B2PPW91
+DSDBLYP      XC   DSDBLYP
+DUT          XC   DUT
+PUT          XC   PUT
+DSDPBEP86    XC   DSDPBEP86
+SAOP         XC   SAOP
+HF           XC   HF HARTREE-FOCK HARTREE_FOCK
+TF           K    TF
+PW91K        K    PW91K
+LLP91K       K    LLP91K
+LLP91KS      K    LLP91KS
+PBE2K        K    PBE2K PBE2
+PBE2KS       K    PBE2KS PBE2S
+PBE3K        K    PBE3K PBE3
+PBE4K        K    PBE4K PBE4
+E2000K       K    E2000K E2000 E00
+B97_D        XC   B97_D B97-D
+WB97         XC   WB97
+WB97X        XC   WB97X
+WB97X_D      XC   WB97X_D WB97X-D
+WB97X_V      XC   WB97X_V WB97X-V

@@ -1,0 +1,16 @@
+#!/bin/bash
+modulecheck="try:
+    import doxypypy 
+    exit(0)
+except ImportError:
+    exit(1)"
+
+if `python2 -c "$modulecheck"`
+then
+  python2 -m doxypypy.doxypypy -a -c $1
+elif `python3 -c "$modulecheck"`
+then
+  python3 -m doxypypy.doxypypy -a -c $1
+else
+  echo $1
+fi
