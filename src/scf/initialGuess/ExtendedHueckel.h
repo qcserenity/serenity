@@ -20,7 +20,6 @@
 #ifndef EXTENDEDHUECKEL_H_
 #define EXTENDEDHUECKEL_H_
 /* Include Serenity Internal Headers */
-#include "parameters/Constants.h"
 #include "scf/initialGuess/InitialGuessCalculator.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
@@ -31,8 +30,6 @@
 namespace Serenity {
 /* Forward declarations */
 class AtomCenteredBasisController;
-class EigenvalueSolver;
-class Geometry;
 template<Options::SCF_MODES>
 class MatrixInBasis;
 /**
@@ -55,10 +52,9 @@ class ExtendedHueckel : public InitialGuessCalculator<Options::SCF_MODES::RESTRI
 
  private:
   /**
-   * @param geometry
-   * @param minimalBasisController the (shared) ownership will be transferred to the resulting orbitals
+   * @param minimalBasisController the (shared) ownership will be transferred to the resulting orbitals.
    * @param minimalBasisOverlaps
-   * @returns Hueckel orbitals corresponding to the geometry. They can only be defined in a basis
+   * @returns Hueckel orbitals corresponding to the geometry. They can only be defined in a basis.
    *          for which parameters are actually available, typically a minimal basis.
    */
   static std::unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>
@@ -66,19 +62,13 @@ class ExtendedHueckel : public InitialGuessCalculator<Options::SCF_MODES::RESTRI
                            std::shared_ptr<AtomCenteredBasisController> minimalBasisController,
                            const MatrixInBasis<RESTRICTED>& minimalBasisOverlaps);
 
-  static constexpr double K = 1.75;
-  /*
-   * Typically EHT calculations are performed in a minimal basis.
-   * But since there are parameter sets for different bases (e.g.
-   * valence only) it is not exactly clear what the basis looks like.
-   */
-  static const std::string USED_BASIS;
+  static constexpr double _k = 1.75;
 
   /*
    * The parameters for the diagonal elements of the Hückel matrix.
    * Each parameter shall be used for one shell of basis functions.
    */
-  static const std::map<std::string, std::vector<double>> PARAMETERS;
+  static const std::map<std::string, std::vector<double>> _parameters;
 
   /*
    * Function to set the parameters for the elements.

@@ -28,10 +28,6 @@
 #include <gtest/gtest.h>
 
 namespace Serenity {
-/*
- * TODO the resulting numbers are simply compared to old output. Some more proper reference should
- * be used
- */
 //===================================
 //          RHF
 //===================================

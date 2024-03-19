@@ -24,6 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
 #include "settings/Reflection.h"
+#include "system/SystemController.h"
 #include "tasks/ActiveSpaceSelectionTask.h"
 #include "tasks/BasisSetTruncationTask.h"
 #include "tasks/BrokenSymmetryTask.h"
@@ -64,6 +65,7 @@
 #include "tasks/TSTask.h"
 #include "tasks/VirtualOrbitalSpaceSelectionTask.h"
 #include "tasks/WavefunctionEmbeddingTask.h"
+#include "tasks/WriteIntegralsTask.h"
 /* Include Std and External Headers */
 #include <sstream>
 
@@ -552,6 +554,12 @@ class Input {
         }
         else if (!copy.compare("WFEMB") or !copy.compare("WAVEFUNCTIONEMBEDDING")) {
           auto taskptr = new WavefunctionEmbeddingTask(activeSystem[0], environmentSystem);
+          if (!defaultSettings)
+            Input::parseTaskSettings(taskptr, settingsStream);
+          task.reset(taskptr);
+        }
+        else if (!copy.compare("INT") or !copy.compare("WRITEINTS") or !copy.compare("INTEGRALS")) {
+          auto taskptr = new WriteIntegralsTask(activeSystem[0]);
           if (!defaultSettings)
             Input::parseTaskSettings(taskptr, settingsStream);
           task.reset(taskptr);

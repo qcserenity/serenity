@@ -91,6 +91,11 @@ Eigen::MatrixXd FDEPotentials<SCFMode>::getGradients() {
   return gradients;
 }
 
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd FDEPotentials<SCFMode>::getPointChargeGradients() {
+  return _activeSystemPot->getPointChargeGradients();
+}
+
 template class FDEPotentials<Options::SCF_MODES::RESTRICTED>;
 template class FDEPotentials<Options::SCF_MODES::UNRESTRICTED>;
 

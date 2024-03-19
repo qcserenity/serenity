@@ -24,16 +24,18 @@
 /* Include Serenity Internal Headers */
 #include "energies/EnergyComponentController.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
+class GridController;
 
 /**
  * @class SCFAnalysis SCFAnalysis.h
  * @param systemController
  * @param supersystemGrid
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class SCFAnalysis {
  public:
   SCFAnalysis(std::vector<std::shared_ptr<SystemController>> systemController,
@@ -47,13 +49,13 @@ class SCFAnalysis {
    * @param useUHForbitals
    * @return The S2 expectation value
    */
-  double S2(bool useUHForbitals = false);
+  double getS2(bool useUHForbitals = false);
 
   /**
    * @brief Calculates -<V>/<T>
    * @return returns -<V>/<T>
    */
-  double VirialRatio();
+  double getVirialRatio();
 
  private:
   std::vector<std::shared_ptr<SystemController>> _systemController;

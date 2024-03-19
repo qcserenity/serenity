@@ -24,9 +24,12 @@
 /* Include Serenity Internal Headers */
 #include "potentials/Potential.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
+template<Options::SCF_MODES>
+class OrbitalController;
 /**
  * @class HCorePotential HCorePotential.h
  */
@@ -40,7 +43,7 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
   HCorePotential(std::shared_ptr<SystemController> system);
 
   /// @brief Default destructor.
-  virtual ~HCorePotential() = default;
+  virtual ~HCorePotential();
 
   /**
    * @brief Getter for the actual potential.
@@ -69,6 +72,12 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
   Eigen::MatrixXd getGeomGradients() override final;
 
   /**
+   * @brief Getter for the gradient contribution with respect to the point charge positions.
+   * @return The point charge gradients.
+   */
+  const Eigen::MatrixXd& getPointChargeGradients();
+
+  /**
    * @brief Calculates the energy weighted density matrix.
    * @param systemController The system.
    * @param orbitalSet The chosen orbitals.
@@ -84,6 +93,7 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
    */
   void notify() override final {
     _potential = nullptr;
+    _pointChargeGradients = nullptr;
   };
 
  private:
@@ -92,7 +102,14 @@ class HCorePotential : public Potential<SCFMode>, public ObjectSensitiveClass<Ba
   ///@brief The potential.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
   ///@brief A collection of external point charges associated with this potential.
-  std::vector<std::pair<double, std::array<double, 3>>> _extCharges;
+  std::vector<std::pair<double, Point>> _extCharges;
+  ///@brief Read external charges from file.
+  static std::vector<std::pair<double, Point>> readExternalChargeFile(const std::string& filePath);
+  ///@brief Getter for all charges (external and nuclei). Charge ordering: First all atoms followed by all external
+  /// charges.
+  std::vector<std::pair<double, Point>> getAllCharges();
+  ///@brief Gradient contribution with respect to the point charge positions.
+  std::unique_ptr<Eigen::MatrixXd> _pointChargeGradients;
 };
 
 } /* namespace Serenity */

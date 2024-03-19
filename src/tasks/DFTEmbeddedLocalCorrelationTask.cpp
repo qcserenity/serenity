@@ -20,10 +20,11 @@
 /* Include Class Header*/
 #include "DFTEmbeddedLocalCorrelationTask.h"
 /* Include Serenity Internal Headers */
-#include "geometry/Geometry.h"          //Set up supersystem.
-#include "io/FormattedOutputStream.h"   //Filtered output streams.
-#include "misc/SerenityError.h"         //Errors
-#include "settings/Settings.h"          //Set up supersystem, name assignment.
+#include "geometry/Geometry.h"        //Set up supersystem.
+#include "io/FormattedOutputStream.h" //Filtered output streams.
+#include "misc/SerenityError.h"       //Errors
+#include "settings/Settings.h"        //Set up supersystem, name assignment.
+#include "system/SystemController.h"
 #include "tasks/FDETask.h"              //Run FDE.
 #include "tasks/FreezeAndThawTask.h"    //Run FaT.
 #include "tasks/LocalCorrelationTask.h" //Run local correlation calculation.

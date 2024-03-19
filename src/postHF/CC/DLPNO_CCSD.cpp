@@ -37,6 +37,7 @@
 #include "postHF/LocalCorrelation/LocalAOSigmaVectorWrapper.h"      //Sigma vector construction
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"     //Various resources.
 #include "postHF/LocalCorrelation/OrbitalPairDIISWrapper.h"         //DIIS
+#include "system/SystemController.h"
 /* Includes for direct testing of canonical vs. local amplitudes. */
 #include "data/ElectronicStructure.h"                    //Test purpose only.
 #include "data/OrbitalController.h"                      //Test purpose only.

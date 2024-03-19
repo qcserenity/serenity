@@ -25,7 +25,7 @@
 #include "settings/Reflection.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward declarations */
@@ -53,7 +53,8 @@ struct ScfTaskSettings {
     lcSettings.method = Options::PNO_METHOD::DLPNO_MP2;
   }
   REFLECTABLE((bool)restart, (Options::MP2_TYPES)mp2Type, (double)maxResidual, (int)maxCycles, (bool)skipSCF,
-              (bool)allowNotConverged, (bool)calculateMP2Energy, (std::vector<int>)exca, (std::vector<int>)excb, (int)momCycles)
+              (bool)allowNotConverged, (bool)calculateMP2Energy, (std::vector<int>)exca, (std::vector<int>)excb,
+              (unsigned int)momCycles)
  public:
   LocalCorrelationSettings lcSettings;
 };

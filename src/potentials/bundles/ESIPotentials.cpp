@@ -24,6 +24,7 @@
 #include "integrals/wrappers/Libint.h"
 #include "potentials/CoulombInteractionPotential.h"
 #include "potentials/NEInteractionPotential.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 

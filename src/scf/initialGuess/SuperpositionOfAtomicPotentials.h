@@ -24,7 +24,7 @@
 #include "scf/initialGuess/InitialGuessCalculator.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 

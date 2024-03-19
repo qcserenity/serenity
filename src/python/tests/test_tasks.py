@@ -24,10 +24,10 @@ import os
 class TestTasks(unittest.TestCase):
 
     def test_SCFTask_HF_restricted(self):
-        sett =spy.Settings()
+        sett = spy.Settings()
         sett.geometry = os.path.join(os.environ['SERENITY_RESOURCES'],'xyzfiles','water.xyz')
         sett.name = "tmp"
-        sett.method = spy.HF
+        sett.method = spy.ELECTRONIC_STRUCTURE_THEORIES.HF
         sett.basis.label = "STO-3G"
         sys = spy.System(sett)
         task = spy.ScfTask_R(sys)
@@ -36,10 +36,10 @@ class TestTasks(unittest.TestCase):
         shutil.rmtree('tmp')
 
     def test_SCFTask_HF_unrestricted(self):
-        sett =spy.Settings()
+        sett = spy.Settings()
         sett.geometry = os.path.join(os.environ['SERENITY_RESOURCES'],'xyzfiles','water.xyz')
         sett.name = "tmp"
-        sett.method = spy.HF
+        sett.method = spy.ELECTRONIC_STRUCTURE_THEORIES.HF
         sett.basis.label = "STO-3G"
         sys = spy.System(sett)
         task = spy.ScfTask_U(sys)
@@ -48,10 +48,10 @@ class TestTasks(unittest.TestCase):
         shutil.rmtree('tmp')
 
     def test_SCFTask_DFT_restricted(self):
-        sett =spy.Settings()
+        sett = spy.Settings()
         sett.geometry = os.path.join(os.environ['SERENITY_RESOURCES'],'xyzfiles','water.xyz')
         sett.name = "tmp"
-        sett.method = spy.DFT
+        sett.method = spy.ELECTRONIC_STRUCTURE_THEORIES.DFT
         sett.basis.label = "STO-3G"
         sett.dft.functional = spy.PBE
         sys = spy.System(sett)
@@ -61,10 +61,10 @@ class TestTasks(unittest.TestCase):
         shutil.rmtree('tmp')
 
     def test_SCFTask_DFT_unrestricted(self):
-        sett =spy.Settings()
+        sett = spy.Settings()
         sett.geometry = os.path.join(os.environ['SERENITY_RESOURCES'],'xyzfiles','water.xyz')
         sett.name = "tmp"
-        sett.method = spy.DFT
+        sett.method = spy.ELECTRONIC_STRUCTURE_THEORIES.DFT
         sett.basis.label = "STO-3G"
         sett.dft.functional = spy.PBE
         sys = spy.System(sett)

@@ -44,6 +44,7 @@
 #include "misc/FaTConvergenceAccelerator.h"
 #include "misc/Timing.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/FDETask.h"
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */

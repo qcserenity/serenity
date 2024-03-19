@@ -20,7 +20,6 @@
  */
 /* Include Class Header*/
 #include "scf/ROHF.h"
-
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"

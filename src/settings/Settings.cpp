@@ -62,6 +62,9 @@ void Settings::printSettings() {
   ofs << "+pcm" << std::endl;
   visit_each((*this).pcm, visitor);
   ofs << "-pcm" << std::endl;
+  ofs << "+extcharges" << std::endl;
+  visit_each((*this).extCharges, visitor);
+  ofs << "-extcharges" << std::endl;
   ofs << "-system" << std::endl;
   ofs.close();
 }
@@ -191,6 +194,10 @@ void Settings::set(std::string blockname, std::string name, std::string value) {
   else if (!blockname.compare("EFIELD")) {
     set_visitor visitor(name, value, check);
     visit_each((*this).efield, visitor);
+  }
+  else if (!blockname.compare("EXTCHARGES")) {
+    set_visitor visitor(name, value, check);
+    visit_each((*this).extCharges, visitor);
   }
   else if (!this->pcm.visitSettings(set_visitor(name, value, check), blockname)) {
     throw SerenityError("ERROR: No block '" + blockname + "' known.");

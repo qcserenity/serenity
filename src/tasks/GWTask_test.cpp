@@ -24,6 +24,7 @@
 #include "data/ElectronicStructure.h"
 #include "io/HDF5.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/LRSCFTask.h"
 #include "tasks/ScfTask.h"

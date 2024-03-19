@@ -133,7 +133,7 @@ void QuasiRestrictedOrbitalsTask<UNRESTRICTED>::run() {
   OutputControl::nOut << "  Number of virtual MOs: " << this->getNVirtuals() << std::endl;
   {
     SCFAnalysis<UNRESTRICTED> scfAnalysis({_activeSystem});
-    double oldS2 = scfAnalysis.S2();
+    double oldS2 = scfAnalysis.getS2();
     double S = fabs(0.5 * _activeSystem->getSpin());
     double targetS2 = S * (S + 1);
     OutputControl::nOut << "  Initial <S*S>:  " << oldS2 << "  (should be " << targetS2 << ")" << std::endl;
@@ -148,7 +148,7 @@ void QuasiRestrictedOrbitalsTask<UNRESTRICTED>::run() {
   }
   {
     SCFAnalysis<UNRESTRICTED> scfAnalysis({_activeSystem});
-    double newS2 = scfAnalysis.S2();
+    double newS2 = scfAnalysis.getS2();
     OutputControl::nOut << "  Final   <S*S>:  " << newS2 << std::endl;
   }
   OutputControl::nOut << std::string(100, '-') << std::endl;

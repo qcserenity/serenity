@@ -26,11 +26,8 @@
 #include "settings/Options.h"
 
 namespace Serenity {
-
-template<Options::SCF_MODES>
-class CDCoulombPotential;
+/* Forward Declarations */
 class CDIntegralController;
-class CDStorageController;
 
 /**
  * @class CDHFPotential CDHFPotential.h

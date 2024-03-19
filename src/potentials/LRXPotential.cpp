@@ -26,6 +26,7 @@
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 #include "misc/SerenityError.h"
 #include "misc/WarningTracker.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <algorithm>
 

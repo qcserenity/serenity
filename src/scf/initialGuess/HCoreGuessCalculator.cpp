@@ -24,20 +24,15 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/matrices/CoefficientMatrix.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "potentials/EffectiveCorePotential.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-/* Include Std and External Headers */
-#include <cassert>
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 std::unique_ptr<ElectronicStructure<SCFMode>>
 HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemController> systemController) {
-  assert(systemController);
   /*
    * Get variables local
    */
@@ -45,9 +40,7 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemContr
   const unsigned int nOrbitals = basisController->getNBasisFunctions();
   auto settings = systemController->getSettings();
   /*
-   * Create new set of orbitals TODO this is basically a copy of the OrbitalUpdater. Unfortunately
-   * the OrbitalUpdater is designed to work only with a FockMatrix, and not with a spinless quantity
-   * as we have here (oneElectronIntegrals).
+   * Create new set of orbitals
    */
   auto eigenvalues = std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(
       new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nOrbitals));

@@ -25,9 +25,10 @@
 #include "data/matrices/DensityMatrixController.h"
 #include "potentials/IncrementalFockMatrix.h"
 #include "potentials/Potential.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 
 class RI_J_IntegralController;
 

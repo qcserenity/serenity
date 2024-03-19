@@ -23,13 +23,14 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
-#include "io/FormattedOutputStream.h" //Filtered output.
+#include "io/FormattedOutputStream.h"
 #include "misc/SerenityError.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<SPMatrix<SCFMode>> DeltaScf<SCFMode>::prepareMOMMatrix(std::vector<int> exca, std::vector<int> excb,
+std::shared_ptr<SPMatrix<SCFMode>> DeltaScf<SCFMode>::prepareMOMMatrix(const std::vector<int>& exca,
+                                                                       const std::vector<int>& excb,
                                                                        std::shared_ptr<ElectronicStructure<SCFMode>> es) {
   std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr;
   if (!exca.empty() || !excb.empty()) {
@@ -39,16 +40,13 @@ std::shared_ptr<SPMatrix<SCFMode>> DeltaScf<SCFMode>::prepareMOMMatrix(std::vect
     const auto& C = orbitalController->getCoefficients();
     const auto nocc = es->getNOccupiedOrbitals();
     DensityMatrix<SCFMode> D(C.getBasisController());
-    if ((exca.size() == 1 && exca[0] == 0) || (excb.size() == 1 && excb[0] == 0)) {
-      for_spin(C, mom, nocc) {
-        mom_spin = C_spin.leftCols(nocc_spin);
-      };
-    }
-    else {
-      bool isAlpha = true;
-      for_spin(D, C, mom, nocc) {
-        auto& exc = isAlpha ? exca : excb;
-        mom_spin = C_spin;
+
+    bool isAlpha = true;
+    for_spin(D, C, mom, nocc) {
+      const auto& exc = isAlpha ? exca : excb;
+      mom_spin = C_spin;
+      // do not swap occupations if exca or excb is just {0}
+      if (!(exc.size() == 1 && exc[0] == 0)) {
         if (exc.size() % 2 != 0) {
           throw SerenityError("You have given a wrong number of orbital replacements in the exca/b vectors (SCFTask).");
         }
@@ -65,15 +63,14 @@ std::shared_ptr<SPMatrix<SCFMode>> DeltaScf<SCFMode>::prepareMOMMatrix(std::vect
         }
         for (unsigned i = 0; i < exc.size(); i += 2) {
           mom_spin.col(nocc_spin - 1 - abs(exc[i])).swap(mom_spin.col(nocc_spin + abs(exc[i + 1])));
-          OutputControl::nOut << " HOMO - " << abs(exc[i]) << " <--> LUMO + " << abs(exc[i + 1]) << std::endl
-                              << std::endl;
+          OutputControl::n.printf(" HOMO - %-2i <--> LUMO + %-2i\n", abs(exc[i]), abs(exc[i + 1]));
         }
-        mom_spin = mom_spin.leftCols(nocc_spin).eval();
-        D_spin = (SCFMode == Options::SCF_MODES::RESTRICTED ? 2.0 : 1.0) * mom_spin * mom_spin.transpose();
-        isAlpha = false;
-      };
-      es->getDensityMatrixController()->setDensityMatrix(D);
-    }
+      }
+      mom_spin = mom_spin.leftCols(nocc_spin).eval();
+      D_spin = (SCFMode == Options::SCF_MODES::RESTRICTED ? 2.0 : 1.0) * mom_spin * mom_spin.transpose();
+      isAlpha = false;
+    };
+    es->getDensityMatrixController()->setDensityMatrix(D);
   }
   return momMatrix;
 }

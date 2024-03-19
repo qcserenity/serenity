@@ -22,22 +22,20 @@
 #define CONFIGURATION_TASKS_FREEZEANDTHAWTASK_H_
 
 /* Include Serenity Internal Headers */
-#include "data/OrbitalController.h"
-#include "data/matrices/CoefficientMatrix.h"
-#include "data/matrices/DensityMatrix.h"
 #include "dft/Functional.h"
 #include "misc/SerenityError.h"
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/Options.h"
 #include "settings/Reflection.h"
-#include "system/SystemController.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 #include <vector>
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 
 using namespace Serenity::Reflection;
 

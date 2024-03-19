@@ -26,7 +26,7 @@
 #include "energies/EnergyComponentController.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward declarations */
@@ -63,18 +63,35 @@ class ElectronicStructure {
    *   Constructors and Destructor
    * =============================== */
 
+  /**
+   * @brief Constructor. Initialization without any orbital/density information.
+   * @param oneEIntController The one electron integrals.
+   * @param nOccupiedOrbitals The number of occupied orbitals.
+   * @param nCoreElectrons    The number of core orbitals.
+   */
   ElectronicStructure(std::shared_ptr<OneElectronIntegralController> oneEIntController,
                       const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
                       const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
-
+  /**
+   * @brief Constructor. Initialization without any orbital/density information. The one electron integral controller
+   *        is constructed on the fly.
+   * @param basisController   The basis controller.
+   * @param geometry          The geometry.
+   * @param nOccupiedOrbitals The number of occupied orbitals.
+   * @param nCoreElectrons    The number of core orbitals.
+   */
   ElectronicStructure(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry,
                       const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
                       const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
-
+  /**
+   * @brief Constructor. Initialization using existing orbitals. Orbitals and density will be directly available.
+   * @param molecularOrbitals  The molecular orbitals.
+   * @param oneEIntController  The one electron integrals.
+   * @param nOccupiedOrbitals  The number of occupied orbitals.
+   */
   ElectronicStructure(std::shared_ptr<OrbitalController<SCFMode>> molecularOrbitals,
                       std::shared_ptr<OneElectronIntegralController> oneEIntController,
                       const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
-
   /**
    * @brief Constructor from HDF5 file.
    * @param fBaseName The basename of the HDF5 files.

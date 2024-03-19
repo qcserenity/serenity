@@ -30,6 +30,7 @@
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
 #include "parameters/Constants.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 

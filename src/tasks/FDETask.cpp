@@ -23,12 +23,12 @@
 #include "data/ElectronicStructure.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/MolecularSurfaceController.h"
 #include "grid/GridControllerFactory.h"
 #include "io/FormattedOutput.h"
+#include "io/FormattedOutputStream.h"
 #include "misc/WarningTracker.h"
 #include "postHF/MPn/LTMP2.h"
 #include "postHF/MPn/LocalMP2.h"
@@ -41,10 +41,9 @@
 #include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
-#include <cassert>
 #include <limits>
-#include <memory>
 
 namespace Serenity {
 
@@ -180,7 +179,7 @@ void FDETask<SCFMode>::run() {
         envEnergies->toFile(fBaseName, sys->getSystemIdentifier());
       }
       else {
-        assert(false && "Non-existing electronic structure theory requested");
+        throw SerenityError("ERROR: Non-existing electronic structure theory requested");
       }
     } // if settings.calculateEnvironmentEnergy
 
@@ -242,7 +241,7 @@ void FDETask<SCFMode>::run() {
         eConts.push_back(sys->template getElectronicStructure<UNRESTRICTED>()->getEnergyComponentController());
       }
       else {
-        assert(false);
+        throw SerenityError("ERROR: Unknown value for SCFMode detected.");
       }
     }
   }
@@ -269,7 +268,7 @@ void FDETask<SCFMode>::run() {
                                     ENERGY_CONTRIBUTIONS::FDE_ELECTROSTATIC_INTERACTIONS);
         }
         else {
-          assert(false);
+          throw SerenityError("ERROR: Unknown value for SCFMode detected.");
         }
       }
     }
@@ -310,7 +309,7 @@ void FDETask<SCFMode>::run() {
         envDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(rDensMat));
       }
       else {
-        assert(false);
+        throw SerenityError("ERROR: Unknown value for SCFMode detected.");
       }
     }
   }
@@ -652,13 +651,13 @@ template<Options::SCF_MODES SCFMode>
 void FDETask<SCFMode>::printFaTAnalysis(std::vector<std::shared_ptr<SystemController>> systems,
                                         std::shared_ptr<GridController> supersystemGrid, bool actOnly) {
   SCFAnalysis<SCFMode> FaTanalysisSuperSys(systems, supersystemGrid);
-  auto S2 = FaTanalysisSuperSys.S2();
+  auto S2 = FaTanalysisSuperSys.getS2();
   if (actOnly) {
     printSmallCaption("Analysis:");
-    printf("ActiveSystem <S*S> = %4.3f \n", S2);
+    OutputControl::n.printf("ActiveSystem <S*S> = %4.3f \n", S2);
   }
   else {
-    printf("Supersystem <S*S> = %4.3f \n\n", S2);
+    OutputControl::n.printf("Supersystem <S*S> = %4.3f \n\n", S2);
   }
 }
 

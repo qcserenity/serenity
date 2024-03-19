@@ -35,6 +35,8 @@ template<Options::SCF_MODES SCFMode>
 class FuncPotential;
 template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
+template<Options::SCF_MODES SCFMode>
+class HCorePotential;
 
 /**
  * @class DFTPotentials DFTPotentials.h
@@ -53,7 +55,7 @@ class DFTPotentials : public PotentialBundle<SCFMode> {
    * @param dMatController        The density matrix controller.
    * @param prescreeningThreshold The integral prescreening threshold.
    */
-  DFTPotentials(std::shared_ptr<Potential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> J,
+  DFTPotentials(std::shared_ptr<HCorePotential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> J,
                 std::shared_ptr<FuncPotential<SCFMode>> Vxc, std::shared_ptr<Potential<SCFMode>> pcm,
                 std::shared_ptr<const Geometry> geom, std::shared_ptr<DensityMatrixController<SCFMode>> dMatController,
                 const double prescreeningThreshold);
@@ -81,10 +83,15 @@ class DFTPotentials : public PotentialBundle<SCFMode> {
    * @param newVxc The new funcational potential.
    */
   void replaceFunctionalPotential(std::shared_ptr<FuncPotential<SCFMode>> newVxc);
+  /**
+   * @brief Getter for the gradients of external point charges.
+   * @return The point charge gradients.
+   */
+  Eigen::MatrixXd getPointChargeGradients() override;
 
  private:
   ///@brief The one electron potential.
-  std::shared_ptr<Potential<SCFMode>> _h;
+  std::shared_ptr<HCorePotential<SCFMode>> _h;
   ///@brief The Coulomb potential.
   std::shared_ptr<Potential<SCFMode>> _J;
   ///@brief The exchange-correlation potential.

@@ -23,9 +23,8 @@
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrix.h"
 #include "scf/initialGuess/DensityInitialGuessCalculator.h"
-#include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward declarations */
@@ -65,7 +64,7 @@ class AtomicDensityGuessCalculator : public DensityInitialGuessCalculator {
  private:
   GUESSMODES _scf;
   std::map<std::string, Eigen::MatrixXd> _atomDensities;
-  /// @brief Calculates the atomic denisty matrix for a given atom
+  /// @brief Calculates the atomic density matrix for a given atom.
   Eigen::MatrixXd performAtomInitialGuess(Settings settings, std::shared_ptr<Atom> atom);
 };
 

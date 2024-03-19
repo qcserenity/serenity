@@ -52,7 +52,7 @@ using namespace Serenity::Reflection;
  *   --alpha              Sharpness parameter for molecular surface model function (DELLEY only).
  *   --projectionCutOff   Cut off for the projection to the molecular surface (DELLEY only).
  *   --oneCavity          All surface points have to be connected.
- *   --connectivityFactor Connectivitiy between surface points is determined by a distance cut off. The distance is
+ *   --connectivityFactor Connectivity between surface points is determined by a distance cut off. The distance is
  *                        given by connectivityFactor * probeRadius
  *   --numberDensity      The number density of the solvent (number of particles per volume)
  *   --temperature        The temperature of the ensemble.

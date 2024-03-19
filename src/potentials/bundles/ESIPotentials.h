@@ -29,9 +29,10 @@
 #include "potentials/Potential.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class ESIPotentials ESIPotentials.h
  * @brief The electrostatic interaction potentials/energies bundled into one class.

@@ -22,10 +22,8 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
-#include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "integrals/RI_J_IntegralControllerFactory.h"
-#include "potentials/CoulombPotential.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/EffectiveCorePotential.h"
 #include "potentials/FuncPotential.h"
@@ -35,17 +33,14 @@
 #include "potentials/bundles/HFPotentials.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-/* Include Std and External Headers */
-#include <cassert>
 
 namespace Serenity {
 
 std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
 DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemController> systemController) {
-  assert(systemController);
   /*
    * Perform the density guess
-   * The guessed density is not needed any more once the orbitals are created
+   * The guessed density is not needed anymore once the orbitals are created
    */
   auto guessDensity = calculateInitialDensity(systemController);
 
@@ -71,7 +66,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
       new ZeroPotential<Options::SCF_MODES::RESTRICTED>(systemController->getBasisController()));
 
   if (systemController->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>> hcore(
+    std::shared_ptr<HCorePotential<Options::SCF_MODES::RESTRICTED>> hcore(
         new HCorePotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr()));
     std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>> hf(new ERIPotential<Options::SCF_MODES::RESTRICTED>(
         systemController->getSharedPtr(), dMatController, 1.0, systemController->getSettings().basis.integralThreshold,
@@ -82,7 +77,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
   }
   else {
     // Hcore
-    std::shared_ptr<Potential<Options::SCF_MODES::RESTRICTED>> hcore(
+    std::shared_ptr<HCorePotential<Options::SCF_MODES::RESTRICTED>> hcore(
         new HCorePotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr()));
     // XC Func
     auto functional = resolveFunctional(systemController->getSettings().dft.functional);
@@ -103,7 +98,7 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
         systemController->getSettings().basis.integralThreshold);
   }
   /*
-   * Create orbitals from Fockmatrix
+   * Create orbitals from Fock matrix
    */
   guessOrbitals->updateOrbitals(pot->getFockMatrix(*guessDensity, elecStruct->getEnergyComponentController()),
                                 systemController->getOneElectronIntegralController());

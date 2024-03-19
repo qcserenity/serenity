@@ -26,6 +26,7 @@
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 template<Options::SCF_MODES SCFMode>

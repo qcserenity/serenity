@@ -53,7 +53,7 @@ InitialGuessFactory::produce<Options::SCF_MODES::RESTRICTED>(Options::INITIAL_GU
       break;
       // NO default is given (intentional!). g++ will issue a warning/an error for missing cases.
   }
-  assert(false);
+  throw SerenityError("Unknown flavor of initial guess.");
   return nullptr;
 }
 

@@ -25,6 +25,9 @@
 #include "settings/ElectronicStructureOptions.h"
 
 namespace Serenity {
+/* Forward declarations */
+class SystemController;
+
 /**
  * @class DensityInitialGuessCalculator DensityInitialGuessCalculator.h
  * @brief Initial guess orbitals are here created with a guessed density instead of a Fock matrix.
@@ -50,8 +53,8 @@ class DensityInitialGuessCalculator : public InitialGuessCalculator<Options::SCF
    *
    * Must be overridden in an actual implementation.
    *
-   * @param   system for which a density is guessed
-   * @returns the guessed density matrix
+   * @param   system for which a density is guessed.
+   * @returns The guessed density matrix.
    */
   virtual std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>
   calculateInitialDensity(std::shared_ptr<SystemController> systemController) = 0;

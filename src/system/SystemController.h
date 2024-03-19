@@ -26,8 +26,10 @@
 #include "settings/ElectronicStructureOptions.h"  //RESTRICTED/UNRESTRICTED
 #include "settings/GridOptions.h"                 //Default arguments.
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 #include <vector>
+/* Include Std and External Headers */
+#include <Eigen/Dense>
 
 namespace Serenity {
 /* Forward Declarations */
@@ -431,6 +433,22 @@ class SystemController : public std::enable_shared_from_this<SystemController> {
    * @brief Clear the integral caching controller.
    */
   void clear4CenterCache();
+  /**
+   * @return Returns true if there are external point charges to be considered for the system.
+   */
+  bool hasExternalCharges();
+
+  /**
+   * @brief Set the gradients of the point charges.
+   * @param pointChargeGradients The point charge gradients.
+   */
+  void setPointChargeGradients(const Eigen::MatrixXd& pointChargeGradients);
+
+  /**
+   * @brief Getter for the point charge gradients. May throw an error if none are available.
+   * @return The derivative of the energy with respect to the point charge positions.
+   */
+  const Eigen::MatrixXd& getPointChargeGradients();
 
  private:
   void produceBasisController(Options::BASIS_PURPOSES basisPurpose) const;

@@ -573,4 +573,46 @@ TEST_F(GradientTaskTest, ElectricField) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+TEST_F(GradientTaskTest, PointChargeGradients) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF);
+  std::string pathToTestsResources;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/" + sys->getSystemName() + "/point-charges.pc";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  Settings settings = sys->getSettings();
+  settings.extCharges.externalChargesFile = pathToTestsResources;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF, settings);
+
+  GradientTask<Options::SCF_MODES::RESTRICTED> task({sys});
+  task.run();
+
+  const auto& gradients = sys->getGeometry()->getGradients();
+  const auto& pointChargeGradients = sys->getPointChargeGradients();
+
+  // Reference generated with Orca 4.2.0
+  Eigen::MatrixXd referenceGradients(9, 3);
+  referenceGradients << 0.00918164, -0.00930644, 0.00432299, -0.0104084, 0.0270658, -0.00271828, -0.00519274,
+      -0.00452777, 0.00452071, -0.00225914, -0.00382822, -0.000416061, -0.00231768, 0.00308402, -0.00529075, 0.00163825,
+      -0.00353335, 0.0278773, 0.00215748, -0.000452374, -0.00555908, -0.00920128, -0.00455667, 0.00422912, 0.0164212,
+      -0.00409334, -0.027123;
+  Eigen::MatrixXd referencePointChargeGradients(10, 3);
+  referencePointChargeGradients << 1.54667e-06, 2.28381e-06, 3.23415e-06, -7.55103e-07, -9.68785e-07, -1.51259e-06,
+      -8.73348e-07, -1.13626e-06, -1.76019e-06, -6.80872e-06, 1.2159e-08, -6.83198e-07, 3.37468e-06, 1.05529e-07,
+      2.11097e-07, 3.10415e-06, -3.4387e-08, 3.34131e-07, -2.39119e-06, 3.21388e-06, -2.39693e-07, 1.292e-06,
+      -1.59313e-06, 1.38987e-07, 1.09579e-06, -1.47915e-06, 1.03665e-07, -9.37566e-06, 2.414e-05, -1.02289e-05;
+
+  const double diffGrad = (gradients - referenceGradients).array().abs().maxCoeff();
+  // The reference gradients are only provided up to the 6th digit.
+  EXPECT_NEAR(diffGrad, 0.0, 1e-5);
+  const double pointChargeDiff = (pointChargeGradients.topRows(10) - referencePointChargeGradients).array().abs().maxCoeff();
+  // The point charge gradients are smaller and available up to a higher accuracy.
+  EXPECT_NEAR(pointChargeDiff, 0.0, 1e-8);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } // namespace Serenity

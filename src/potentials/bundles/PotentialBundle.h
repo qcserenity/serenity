@@ -27,6 +27,7 @@
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "energies/EnergyComponentController.h"
+#include "misc/SerenityError.h"
 /* Include Std and External Headers */
 #include <memory>
 
@@ -71,7 +72,15 @@ class PotentialBundle {
    */
   virtual Eigen::MatrixXd getGradients() = 0;
 
- private:
+  /**
+   * @brief Getter for the gradients of external point charges.
+   * @return The point charge gradients.
+   */
+  virtual Eigen::MatrixXd getPointChargeGradients() {
+    throw SerenityError("No geometry gradients available.");
+    Eigen::MatrixXd gradientContr(1, 3);
+    return gradientContr;
+  }
 };
 
 } /* namespace Serenity */

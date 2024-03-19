@@ -77,6 +77,11 @@ Eigen::MatrixXd PBEPotentials<SCFMode>::getGradients() {
   return gradients;
 }
 
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd PBEPotentials<SCFMode>::getPointChargeGradients() {
+  return _activeSystemPot->getPointChargeGradients();
+}
+
 template class PBEPotentials<Options::SCF_MODES::RESTRICTED>;
 template class PBEPotentials<Options::SCF_MODES::UNRESTRICTED>;
 

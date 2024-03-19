@@ -473,7 +473,9 @@ void MO3CenterIntegralController::printInfo(const SparseMap& kToRhoMap, const Sp
   double nTotalCoeffSecond = ktoSecond.rows() * ktoSecond.cols();
   double densMOFirst = ((double)ktoFirst.nonZeros()) / nTotalCoeffFirst;
   double densMOSecond = ((double)ktoSecond.nonZeros()) / nTotalCoeffSecond;
-  std::string integralType = (type == MO3CENTER_INTS::kl_K) ? "(kl|K)" : (type == MO3CENTER_INTS::ab_K) ? "(ab|K)" : "(ia|K)";
+  std::string integralType = (type == MO3CENTER_INTS::kl_K)   ? "(kl|K)"
+                             : (type == MO3CENTER_INTS::ab_K) ? "(ab|K)"
+                                                              : "(ia|K)";
   double memory = this->getMemoryRequirement(type, _sparseMaps, _auxilliaryBasisController, kDomain, _triplesMode) * 1e-9;
   OutputControl::vOut << std::string(40, '-') << std::setprecision(4) << std::endl;
   OutputControl::vOut << "         Sparse map densities " << integralType << std::endl;

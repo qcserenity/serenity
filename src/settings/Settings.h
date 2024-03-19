@@ -171,6 +171,14 @@ struct EFIELD {
               (unsigned)nRings, (double)radius, (double)fieldStrength, (std::string)nameOutput)
 };
 
+struct EXTERNALCHARGES {
+  EXTERNALCHARGES() : externalChargesFile("") {
+  }
+
+ public:
+  REFLECTABLE((std::string)externalChargesFile)
+};
+
 struct Settings {
  public:
   /**
@@ -203,7 +211,7 @@ struct Settings {
   REFLECTABLE((std::string)name, (std::string)identifier, (std::string)path, (int)charge, (bool)ignoreCharge, (int)spin,
               (std::string)geometry, (std::string)load, (Options::SCF_MODES)scfMode,
               (Options::ELECTRONIC_STRUCTURE_THEORIES)method, (DFT)dft, (SCF)scf, (BASIS)basis, (GRID)grid,
-              (EFIELD)efield, (PCMSettings)pcm)
+              (EFIELD)efield, (PCMSettings)pcm, (EXTERNALCHARGES)extCharges)
 
   /**
    * @brief Constructor using text input.

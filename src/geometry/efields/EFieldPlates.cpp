@@ -24,6 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "geometry/Atom.h"
 #include "parameters/Constants.h"
+#include "system/SystemController.h"
 
 /* Include Std and External Headers */
 #include <fstream>

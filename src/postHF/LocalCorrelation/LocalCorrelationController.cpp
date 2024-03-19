@@ -30,25 +30,25 @@
 #include "data/OrbitalController.h"                                   //Internal coefficients.
 #include "data/OrbitalPairSet.h"                                      //Orbital Pair set definition.
 #include "data/OrbitalTriple.h"                                       //Orbital-triplet definition.
-#include "data/OrbitalTripleSet.h"
-#include "data/PAOController.h"                                    //PAO controller.
-#include "data/SparseMapsController.h"                             //Map based prescreening.
-#include "data/grid/BasisFunctionOnGridControllerFactory.h"        //Pair selection/DOIs
-#include "data/matrices/DensityMatrixController.h"                 //Access to the density matrix.
-#include "geometry/Geometry.h"                                     //Geometry definition.
-#include "integrals/MO3CenterIntegralController.h"                 //Linear scaling integral calculation.
-#include "integrals/OneElectronIntegralController.h"               //Overlap integrals.
-#include "io/FormattedOutputStream.h"                              //Filtered output.
-#include "memory/MemoryManager.h"                                  //Memory handling
-#include "misc/Timing.h"                                           //Timings.
-#include "misc/WarningTracker.h"                                   //Warnings.
-#include "postHF/LocalCorrelation/CouplingOrbitalSet.h"            //Definition of a k-set.
-#include "postHF/LocalCorrelation/DomainOverlapMatrixController.h" //Overlap matrices between domains.
-#include "postHF/LocalCorrelation/KLOrbitalSet.h"                  //KL-Set definition.
-#include "postHF/MPn/OrbitalPairSelector.h"                        //Pair prescreening.
-#include "potentials/bundles/FDEPotentialBundleFactory.h"          //Fock matrix construction.
-#include "settings/Settings.h"                                     //Settings definition.
-#include "system/SystemController.h"                               //System controller definition.
+#include "data/OrbitalTripleSet.h"                                    // Orbital-triplet handling.
+#include "data/PAOController.h"                                       //PAO controller.
+#include "data/SparseMapsController.h"                                //Map based prescreening.
+#include "data/grid/BasisFunctionOnGridControllerFactory.h"           //Pair selection/DOIs
+#include "data/matrices/DensityMatrixController.h"                    //Access to the density matrix.
+#include "geometry/Geometry.h"                                        //Geometry definition.
+#include "integrals/MO3CenterIntegralController.h"                    //Linear scaling integral calculation.
+#include "integrals/OneElectronIntegralController.h"                  //Overlap integrals.
+#include "io/FormattedOutputStream.h"                                 //Filtered output.
+#include "memory/MemoryManager.h"                                     //Memory handling
+#include "misc/Timing.h"                                              //Timings.
+#include "misc/WarningTracker.h"                                      //Warnings.
+#include "postHF/LocalCorrelation/CouplingOrbitalSet.h"               //Definition of a k-set.
+#include "postHF/LocalCorrelation/DomainOverlapMatrixController.h"    //Overlap matrices between domains.
+#include "postHF/LocalCorrelation/KLOrbitalSet.h"                     //KL-Set definition.
+#include "postHF/MPn/OrbitalPairSelector.h"                           //Pair prescreening.
+#include "potentials/bundles/FDEPotentialBundleFactory.h"             //Fock matrix construction.
+#include "settings/Settings.h"                                        //Settings definition.
+#include "system/SystemController.h"                                  //System controller definition.
 #include "tasks/SystemAdditionTask.h" //Supersystem construction for potential reconstruction.
 /* Include Std and External Headers */
 #include <iomanip> //setw(...) for ostream

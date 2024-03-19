@@ -22,10 +22,11 @@
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h"
 /* Include Serenity Internal Headers */
 #include "analysis/PAOSelection/QuasiCanonicalPAODomainConstructor.h" //Memory efficient, inplace PNO/PAO construction
-#include "basis/AtomCenteredBasisController.h"                        //AtomCenteredBasisController
-#include "data/OrbitalPair.h"                                         //OrbitalPair definition
-#include "data/OrbitalPairSet.h"                                      //OrbitalPairSet definition.
-#include "data/PAOController.h"                                       //PAO controller.
+#include "basis/AtomCenteredBasisController.h"
+#include "data/OrbitalPair.h"
+#include "data/OrbitalPairSet.h"
+#include "data/PAOController.h"
+#include "data/SingleSubstitution.h"
 #include "integrals/RI_J_IntegralController.h" //RI_J_IntegralController for schwartz based prescreening transformation.
 #include "integrals/transformer/Ao2MoHalfTransformer.h" //Transformation via full four center integrals
 #include "integrals/wrappers/Libint.h"                  //Integrals

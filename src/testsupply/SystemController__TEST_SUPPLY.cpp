@@ -1515,6 +1515,17 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
         _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
       }
     } break;
+    case TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::HF;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "def2-SVP";
+      settings.name = "TestSystem_Ethanol_Def2-SVP_HF";
+      settings.grid.smallGridAccuracy = 3;
+      settings.grid.accuracy = 5;
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    }
   } // switch
 }
 
@@ -2766,6 +2777,28 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
                                         0.2925840 * ANGSTROM_TO_BOHR, 0.0 * ANGSTROM_TO_BOHR);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::He_Def2_TZVP_DFT] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{He1});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF: {
+      auto C1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("C"), 27.3900000000 * ANGSTROM_TO_BOHR,
+                                       0.5560000000 * ANGSTROM_TO_BOHR, 29.6700000000 * ANGSTROM_TO_BOHR);
+      auto C2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("C"), 27.8400000000 * ANGSTROM_TO_BOHR,
+                                       1.9910000000 * ANGSTROM_TO_BOHR, 30.0160000000 * ANGSTROM_TO_BOHR);
+      auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 27.5720000000 * ANGSTROM_TO_BOHR,
+                                       -0.1400000000 * ANGSTROM_TO_BOHR, 30.4990000000 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 26.3150000000 * ANGSTROM_TO_BOHR,
+                                       0.5060000000 * ANGSTROM_TO_BOHR, 29.4570000000 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 27.8870000000 * ANGSTROM_TO_BOHR,
+                                       0.2130000000 * ANGSTROM_TO_BOHR, 28.7540000000 * ANGSTROM_TO_BOHR);
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 29.2210000000 * ANGSTROM_TO_BOHR,
+                                       1.9690000000 * ANGSTROM_TO_BOHR, 30.3810000000 * ANGSTROM_TO_BOHR);
+      auto H4 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 27.6760000000 * ANGSTROM_TO_BOHR,
+                                       2.6600000000 * ANGSTROM_TO_BOHR, 29.1620000000 * ANGSTROM_TO_BOHR);
+      auto H5 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 27.2470000000 * ANGSTROM_TO_BOHR,
+                                       2.3330000000 * ANGSTROM_TO_BOHR, 30.8730000000 * ANGSTROM_TO_BOHR);
+      auto H6 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 29.7410000000 * ANGSTROM_TO_BOHR,
+                                       1.8070000000 * ANGSTROM_TO_BOHR, 29.5750000000 * ANGSTROM_TO_BOHR);
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{C1, C2, H1, H2, H3, O1, H4, H5, H6});
     }
   }
 }

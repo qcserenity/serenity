@@ -20,7 +20,9 @@
 /* Include Class Header*/
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h"
 /* Include Serenity Internal Headers */
+#include "data/SingleSubstitution.h"
 #include "io/HDF5.h"
+#include "postHF/LocalCorrelation/DomainOverlapMatrixController.h"
 /* Include Std and External Headers */
 #include <cassert>
 

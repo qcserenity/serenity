@@ -25,12 +25,13 @@
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/EmbeddingSettings.h"
-#include "system/SystemController.h"
 
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class  VirtualOrbitalSelectionAlgorithms VirtualOrbitalSelectionAlgorithms.h
  * @brief  Performs different virtual orbital selection algorithms

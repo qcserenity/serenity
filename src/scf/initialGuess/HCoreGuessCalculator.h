@@ -23,23 +23,15 @@
 #include "scf/initialGuess/InitialGuessCalculator.h"
 
 namespace Serenity {
-/* Forward declarations */
-class EigenvalueSolver;
 /**
  * @class HCoreGuessCalculator HCoreGuessCalculator.h
- *
- * @brief The most simple way to calculate an initial guess
- *
- * for an electronic structure calculation, i.e. an initial guess is created which assumes that
- * there is no electron-electron interaction, thus the Fock matrix used in the eigenvalue equation
- * reduces to the one-electron integral matrix h.
+ * @brief The most simple way to calculate an initial guess for an electronic structure calculation, i.e. an initial
+ * guess is created which assumes that there is no electron-electron interaction, thus the Fock matrix used in the
+ * eigenvalue equation reduces to the one-electron integral matrix h.
  */
 template<Options::SCF_MODES SCFMode>
-class HCoreGuessCalculator : public InitialGuessCalculator<SCFMode> {
+class HCoreGuessCalculator final : public InitialGuessCalculator<SCFMode> {
  public:
-  /**
-   * @param eigenvalueSolver
-   */
   HCoreGuessCalculator() = default;
   virtual ~HCoreGuessCalculator() = default;
 

@@ -64,9 +64,12 @@ bool Atom::operator==(Atom rhs) {
   auto lhsName = this->getAtomType()->getName();
   auto rhsName = rhs.getAtomType()->getName();
   same = same && this->_atomType->getElementSymbol() == rhs.getAtomType()->getElementSymbol();
-  same = same && isEqual(this->_x, rhs.getX(), 5e-5);
-  same = same && isEqual(this->_y, rhs.getY(), 5e-5);
-  same = same && isEqual(this->_z, rhs.getZ(), 5e-5);
+  // Some structure editors save the coordinates only in single precision. Therefore, it makes
+  // little sense to check for differences smaller than 5e-5. To be honest, even this threshold
+  // may be too strict.
+  same = same && isEqual(this->getX(), rhs.getX(), 5e-5);
+  same = same && isEqual(this->getY(), rhs.getY(), 5e-5);
+  same = same && isEqual(this->getZ(), rhs.getZ(), 5e-5);
   return same;
 }
 
@@ -116,51 +119,51 @@ AtomGrid* Atom::getGrid(const std::string label) {
 }
 
 void Atom::setX(const double x) {
-  _x = x;
+  this->at(0) = x;
   for (auto& basis : _associatedBasis)
     for (auto& basisFunction : basis.second)
       basisFunction->setX(x);
   _gradientsUpToDate = false;
   if (_corePotential) {
-    _corePotential->setPos(_x, _y, _z);
+    _corePotential->setPos(this->getX(), this->getY(), this->getZ());
   }
   notifyObjects();
 }
 
 void Atom::setY(const double y) {
-  _y = y;
+  this->at(1) = y;
   for (auto& basis : _associatedBasis)
     for (auto& basisFunction : basis.second)
       basisFunction->setY(y);
   _gradientsUpToDate = false;
   if (_corePotential) {
-    _corePotential->setPos(_x, _y, _z);
+    _corePotential->setPos(this->getX(), this->getY(), this->getZ());
   }
   notifyObjects();
 }
 
 void Atom::setZ(const double z) {
-  _z = z;
+  this->at(2) = z;
   for (auto& basis : _associatedBasis)
     for (auto& basisFunction : basis.second)
       basisFunction->setZ(z);
   _gradientsUpToDate = false;
   if (_corePotential) {
-    _corePotential->setPos(_x, _y, _z);
+    _corePotential->setPos(this->getX(), this->getY(), this->getZ());
   }
   notifyObjects();
 }
 
 void Atom::addToX(double add_to_x) {
-  setX(_x + add_to_x);
+  setX(this->at(0) + add_to_x);
 }
 
 void Atom::addToY(double add_to_y) {
-  setY(_y + add_to_y);
+  setY(this->at(1) + add_to_y);
 }
 
 void Atom::addToZ(double add_to_z) {
-  setZ(_z + add_to_z);
+  setZ(this->at(2) + add_to_z);
 }
 
 std::shared_ptr<libecpint::ECP> Atom::getCorePotential() const {

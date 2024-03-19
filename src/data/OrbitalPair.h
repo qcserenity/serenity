@@ -25,10 +25,10 @@
 /* Include Std and External Headers */
 #include <Eigen/Dense>      // Dense matrices.
 #include <Eigen/SparseCore> // Sparse matrices.
-#include <limits>           //limits
-#include <memory>           // smrt_ptr
-#include <string>           // Integral file names.
-#include <vector>           // std::vector
+#include <limits>
+#include <memory> // smrt_ptr
+#include <string> // Integral file names.
+#include <vector> // std::vector
 
 namespace H5 {
 class H5File;
@@ -48,7 +48,7 @@ class DomainOverlapMatrixController;
 /**
  * @brief Enum class for different orbital pair types.
  *   CLOSE:           Strong pairs which are iterated in the CCSD equations.
- *   DISTANT_TRIPLES: Pairs for which the semi-canonical MP2 pari energy is below
+ *   DISTANT_TRIPLES: Pairs for which the semi-canonical MP2 pair energy is below
  *                    the scaled CCSD-pair truncation threshold. These pairs may
  *                    be used for the determination of orbital pairs for the triples
  *                    correction.

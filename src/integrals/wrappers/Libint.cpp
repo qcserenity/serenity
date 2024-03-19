@@ -137,7 +137,7 @@ long double Libint::getFinalPrecision(double precision, double maxD, double nPri
 }
 
 void Libint::initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
-                        const std::vector<std::pair<double, std::array<double, 3>>> pointCharges, double mu,
+                        const std::vector<std::pair<double, std::array<double, 3>>>& pointCharges, double mu,
                         double precision, double maxD, unsigned int maxNPrim) {
   const long double finalPrecision = getFinalPrecision(precision, maxD, maxNPrim, nCenter);
   libint2::Operator libintOp = resolveLibintOperator(op);
@@ -679,6 +679,26 @@ std::vector<std::unique_ptr<libint2::Engine>>& Libint::getFourCenterEngines(LIBI
 
 unsigned int Libint::getNPrimMax() {
   return N_PRIM_MAX;
+}
+void Libint::initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
+                        const std::vector<std::pair<double, Point>>& pointCharges, double mu, double precision,
+                        double maxD, unsigned int maxNPrim) {
+  std::vector<std::pair<double, std::array<double, 3>>> convertedCharges;
+  for (const auto& charge : pointCharges) {
+    convertedCharges.emplace_back(charge.first,
+                                  std::array<double, 3>{charge.second.getX(), charge.second.getY(), charge.second.getZ()});
+  }
+  this->initialize(op, deriv, nCenter, convertedCharges, mu, precision, maxD, maxNPrim);
+}
+Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
+                                      const std::vector<std::pair<double, Point>>& pointCharges, double precision,
+                                      double maxD, unsigned int maxNPrim) {
+  std::vector<std::pair<double, std::array<double, 3>>> convertedCharges;
+  for (const auto& charge : pointCharges) {
+    convertedCharges.emplace_back(charge.first,
+                                  std::array<double, 3>{charge.second.getX(), charge.second.getY(), charge.second.getZ()});
+  }
+  return compute1eInts(op, basis, convertedCharges, precision, maxD, maxNPrim);
 }
 
 } /* namespace Serenity */

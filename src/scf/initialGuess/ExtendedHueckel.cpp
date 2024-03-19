@@ -36,19 +36,12 @@
 
 namespace Serenity {
 
-const std::string ExtendedHueckel::USED_BASIS = "STO-6G";
-// const string ExtendedHueckel::USED_BASIS="STO-6G_NoCore";
-
-const std::map<std::string, std::vector<double>> ExtendedHueckel::PARAMETERS = ExtendedHueckel::assignParameters();
+const std::map<std::string, std::vector<double>> ExtendedHueckel::_parameters = ExtendedHueckel::assignParameters();
 
 std::unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>
 ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController> systemController,
                                           std::shared_ptr<AtomCenteredBasisController> minimalBasisController,
                                           const MatrixInBasis<RESTRICTED>& minimalBasisOverlaps) {
-  assert(minimalBasisController);
-  // Sanity checks
-  assert(minimalBasisController->getBasisLabel() == USED_BASIS);
-  assert(minimalBasisOverlaps.getBasisController() == minimalBasisController);
   // Abbreviations
   const auto& geometry = systemController->getGeometry();
   const auto& atoms = geometry->getAtoms();
@@ -63,9 +56,10 @@ ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController
    * Fill diagonal elements with tabulated values.
    */
   for (unsigned int i = 0; i < atoms.size(); ++i) {
-    assert((PARAMETERS.at(atoms[i]->getAtomType()->getElementSymbol())).size() == atoms[i]->getNBasisFunctions(USED_BASIS));
-    // This will throw an error if no parameters are available for that atom
-    const auto& paramsForAtom = PARAMETERS.at(atoms[i]->getAtomType()->getElementSymbol());
+    if (!((_parameters.at(atoms[i]->getAtomType()->getElementSymbol())).size() ==
+          atoms[i]->getNBasisFunctions(minimalBasisController->getBasisLabel())))
+      throw SerenityError("No hueckel parameters known for atom '" + atoms[i]->getAtomType()->getElementSymbol() + "'.");
+    const auto& paramsForAtom = _parameters.at(atoms[i]->getAtomType()->getElementSymbol());
     // Loop over basis function shells of this atom; j is an index for the basis function vector
     for (unsigned int j = atomBasisIndices[i].first; j != atomBasisIndices[i].second; ++j) {
       /*
@@ -89,7 +83,7 @@ ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController
    */
   for (unsigned int i = 1; i < nBasisFunctions; ++i) {
     for (unsigned int j = 0; j < i; ++j) {
-      hueckelMatrix(i, j) = 0.5 * K * (hueckelMatrix(i, i) + hueckelMatrix(j, j)) * minimalBasisOverlaps(i, j);
+      hueckelMatrix(i, j) = 0.5 * _k * (hueckelMatrix(i, i) + hueckelMatrix(j, j)) * minimalBasisOverlaps(i, j);
     }
   }
   /*
@@ -117,7 +111,6 @@ ExtendedHueckel::calculateHueckelOrbitals(const std::shared_ptr<SystemController
 
 std::unique_ptr<ElectronicStructure<Options::SCF_MODES::RESTRICTED>>
 ExtendedHueckel::calculateInitialGuess(const std::shared_ptr<SystemController> systemController) {
-  assert(systemController);
   /*
    * Collect necessary data from the systemController and create the Hueckel orbitals
    */

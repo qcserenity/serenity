@@ -18,12 +18,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
-#include "tasks/ScfTask.h"                            //To be tested.
-#include "data/ElectronicStructure.h"                 //GetEnergy.
-#include "geometry/MolecularSurfaceController.h"      //Cavity energy.
-#include "settings/Settings.h"                        //Settings.
-#include "system/SystemController.h"                  //GetElectronicStructure.
-#include "testsupply/SystemController__TEST_SUPPLY.h" //Test systems.
+#include "tasks/ScfTask.h"                       //To be tested.
+#include "data/ElectronicStructure.h"            //GetEnergy.
+#include "geometry/MolecularSurfaceController.h" //Cavity energy.
+#include "settings/Settings.h"
+#include "system/SystemController.h" //GetElectronicStructure.
+#include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
 

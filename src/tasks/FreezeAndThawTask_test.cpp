@@ -23,6 +23,7 @@
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
 #include "io/IOOptions.h"
+#include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
 #include "tasks/ScfTask.h"
 #include "tasks/SystemSplittingTask.h"

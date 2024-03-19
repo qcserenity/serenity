@@ -32,6 +32,7 @@
 #include "potentials/ExchangePotential.h"
 #include "potentials/FuncPotential.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include <math.h>
 #include <Eigen/Dense>

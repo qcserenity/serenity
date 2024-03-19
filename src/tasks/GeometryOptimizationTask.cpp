@@ -36,6 +36,7 @@
 #include "misc/WarningTracker.h"
 #include "scf/initialGuess/InitialGuessCalculator.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/ScfTask.h"

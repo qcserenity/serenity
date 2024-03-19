@@ -33,7 +33,8 @@ void export_MultipoleMomentTask(py::module& spy) {
       .def_readwrite("highestOrder", &MultipoleMomentTaskSettings::highestOrder)
       .def_readwrite("numerical", &MultipoleMomentTaskSettings::numerical)
       .def_readwrite("origin", &MultipoleMomentTaskSettings::origin)
-      .def_readwrite("printTotal", &MultipoleMomentTaskSettings::printTotal);
+      .def_readwrite("printTotal", &MultipoleMomentTaskSettings::printTotal)
+      .def_readwrite("printFragments", &MultipoleMomentTaskSettings::printFragments);
 
   py::class_<MultipoleMomentTask>(spy, "MultipoleMomentTask")
       .def(py::init<std::vector<std::shared_ptr<SystemController>>>())

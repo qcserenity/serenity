@@ -30,6 +30,7 @@
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/Tools/Besley.h"
 #include "settings/LRSCFOptions.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include "tasks/VirtualOrbitalSpaceSelectionTask.h"
 
@@ -105,8 +106,9 @@ void LRSCFSetup<SCFMode>::printInfo(const std::vector<std::shared_ptr<LRSCFContr
     printf("%8i \n", nDimI);
   }
 
-  printf("\n Type        : %22s \n",
-         (type == Options::LRSCF_TYPE::ISOLATED) ? "Isolated" : (type == Options::LRSCF_TYPE::UNCOUPLED) ? "FDEu" : "FDEc");
+  printf("\n Type        : %22s \n", (type == Options::LRSCF_TYPE::ISOLATED)    ? "Isolated"
+                                     : (type == Options::LRSCF_TYPE::UNCOUPLED) ? "FDEu"
+                                                                                : "FDEc");
   std::string naddXCFunc_string;
   std::string naddKinFunc_string;
   std::string func;

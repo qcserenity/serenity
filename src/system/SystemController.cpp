@@ -961,5 +961,17 @@ void SystemController::clear4CenterCache() {
     _integralCachingController->clearCache();
   _integralCachingController = nullptr;
 }
+bool SystemController::hasExternalCharges() {
+  return !this->getSettings().extCharges.externalChargesFile.empty();
+}
+void SystemController::setPointChargeGradients(const Eigen::MatrixXd& pointChargeGradients) {
+  _system->_pointChargeGradients = std::make_unique<Eigen::MatrixXd>(pointChargeGradients);
+}
+const Eigen::MatrixXd& SystemController::getPointChargeGradients() {
+  if (_system->_pointChargeGradients == nullptr) {
+    throw SerenityError("Point charge gradients were requested but are not available!");
+  }
+  return *_system->_pointChargeGradients;
+}
 
 } /* namespace Serenity */

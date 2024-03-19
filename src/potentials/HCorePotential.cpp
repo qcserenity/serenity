@@ -32,16 +32,20 @@
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libecpint.h"
 #include "integrals/wrappers/Libint.h"
+#include "io/FormattedOutputStream.h" //Filtered output.
 #include "misc/Timing.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 HCorePotential<SCFMode>::HCorePotential(std::shared_ptr<SystemController> system)
-  : Potential<SCFMode>(system->getBasisController()), _system(system), _potential(nullptr), _extCharges(0) {
+  : Potential<SCFMode>(system->getBasisController()), _system(system), _potential(nullptr) {
   this->_basis->addSensitiveObject(_self);
   auto ef = _system.lock()->getSettings().efield;
+  const auto& extCharges = _system.lock()->getSettings().extCharges;
   if (ef.pos1.size() != 3 || ef.pos2.size() != 3)
     throw SerenityError("Error: The electric field direction/position vector must have three coordinates.");
   if (ef.use && !ef.analytical) {
@@ -49,11 +53,19 @@ HCorePotential<SCFMode>::HCorePotential(std::shared_ptr<SystemController> system
                         ef.nRings, ef.radius, ef.fieldStrength, ef.nameOutput);
     _extCharges.insert(_extCharges.end(), plates.getPairList().begin(), plates.getPairList().end());
   }
+  if (!extCharges.externalChargesFile.empty()) {
+    const auto externalCharges = HCorePotential<SCFMode>::readExternalChargeFile(extCharges.externalChargesFile);
+    _extCharges.insert(_extCharges.end(), externalCharges.begin(), externalCharges.end());
+  }
 }
+
+template<Options::SCF_MODES SCFMode>
+HCorePotential<SCFMode>::~HCorePotential() = default;
 
 template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& HCorePotential<SCFMode>::getMatrix() {
   Timings::takeTime("Active System -     1e-Int Pot.");
+
   if (!_potential) {
     auto intC = _system.lock()->getOneElectronIntegralController();
     _potential = std::make_unique<FockMatrix<SCFMode>>(intC->getOneElectronIntegrals());
@@ -112,8 +124,7 @@ double HCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
   // add energy which is due to interaction with external charges
   for (auto& charge : _extCharges) {
     for (auto& atom : _system.lock()->getAtoms()) {
-      energy += atom->getEffectiveCharge() * charge.first /
-                (atom->coords() - Eigen::Map<Eigen::Vector3d>(&charge.second[0])).norm();
+      energy += atom->getEffectiveCharge() * charge.first / distance(*atom, charge.second);
     }
   }
   Timings::timeTaken("Active System -     1e-Int Pot.");
@@ -123,11 +134,23 @@ double HCorePotential<SCFMode>::getEnergy(const DensityMatrix<SCFMode>& P) {
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
   auto system = _system.lock();
-  // ToDo: Ask electronicstructure for new fock matrix?! orbital set could be localized and not canonical
+  auto ef = system->getSettings().efield;
+  if (ef.use && !ef.analytical) {
+    throw SerenityError("Gradients for numerical electric field are not implemented, yet!");
+  }
+  /**
+   * Total derivative:
+   * dV/dR = \sum_{\alpha \beta} D_{\alpha \beta} dh_{\alpha\beta}/dR + dV_{nn}/dR - \sum_{\alpha\beta} W_{\alpha\beta}
+   * dS_{\alpha\beta}/dR
+   *       + electric-field
+   *
+   * W: Energy weighted density matrix W_{\alpha\beta} = \sum_i^{occ} \epsilon_i c_{\alpha i} c_{\beta i}
+   */
+  // ToDo: Ask electronic structure for new fock matrix?! orbital set could be localized and non-canonical
   const auto& orbitalSet = system->template getActiveOrbitalController<SCFMode>();
-  auto atoms = system->getAtoms();
-  const unsigned int nAtoms = atoms.size();
-  Eigen::MatrixXd gradientContr = Eigen::MatrixXd::Zero(nAtoms, 3);
+  const unsigned int nAtoms = system->getNAtoms();
+  const auto allCharges = this->getAllCharges();
+  Eigen::MatrixXd gradientContr = Eigen::MatrixXd::Zero(allCharges.size(), 3);
 
   DensityMatrix<SCFMode> matrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix());
   matrix = calcEnergyWeightedDensityMatrix(system, orbitalSet);
@@ -141,9 +164,13 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
   libint.initialize(LIBINT_OPERATOR::overlap, 1, 2);
 #pragma omp parallel
   {
+    /**
+     * Term
+     * g += - \sum_{\alpha\beta} W_{\alpha\beta} dS_{\alpha\beta}/dR
+     */
     Eigen::MatrixXd intDerivs;
     bool significant;
-    Eigen::MatrixXd gradientContrPriv = Eigen::MatrixXd::Zero(nAtoms, 3);
+    Eigen::MatrixXd gradientContrPriv = Eigen::MatrixXd::Zero(allCharges.size(), 3);
 #pragma omp for schedule(static, 1)
     for (unsigned int i = 0; i < basis.size(); ++i) {
       unsigned int offI = system->getBasisController()->extendedIndex(i);
@@ -173,12 +200,18 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
 
   DensityMatrix<RESTRICTED> densMatrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix().total());
 
-  libint.initialize(LIBINT_OPERATOR::nuclear, 1, 2, atoms);
+  libint.initialize(LIBINT_OPERATOR::nuclear, 1, 2, allCharges);
 #pragma omp parallel
   {
     Eigen::MatrixXd intDerivs;
     bool significant;
-    Eigen::MatrixXd gradientContrPriv = Eigen::MatrixXd::Zero(nAtoms, 3);
+    Eigen::MatrixXd gradientContrPriv = Eigen::MatrixXd::Zero(allCharges.size(), 3);
+    /**
+     * Part of g += \sum_{\alpha \beta} D_{\alpha \beta} dh_{\alpha\beta}/dR for nuclei-electron interaction.
+     * If external charges are present, their operator contribution will contribute here.
+     *
+     * d/dR_I sum_mu,nu (<mu|sum_I Z_I / |R_I - r| | nu> D_mu,nu)
+     */
 #pragma omp for schedule(static, 1)
     for (unsigned int i = 0; i < basis.size(); ++i) {
       unsigned int offI = system->getBasisController()->extendedIndex(i);
@@ -189,6 +222,7 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
         significant = libint.compute(LIBINT_OPERATOR::nuclear, 1, *basis[i], *basis[j], intDerivs);
         if (significant) {
           double perm = (i == j ? 1.0 : 2.0);
+          // Basis function derivative
           // loop over integral centers for atom pairs, where iCol < 2
           for (unsigned int iCol = 0; iCol < 2; ++iCol) {
             unsigned iAtom = iCol ? mapping[j] : mapping[i];
@@ -197,8 +231,9 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
               gradientContrPriv(iAtom, iDirection) += perm * tmp.cwiseProduct(densMatrix.block(offJ, offI, nJ, nI)).sum();
             }
           }
+          // Operator derivative.
           // loop over integral centers for atom pairs, where iCol > 2
-          for (unsigned int iCol = 2; iCol < nAtoms + 2; ++iCol) {
+          for (unsigned int iCol = 2; iCol < allCharges.size() + 2; ++iCol) {
             unsigned iAtom = iCol - 2;
             for (unsigned int iDirection = 0; iDirection < 3; ++iDirection) {
               Eigen::Map<Eigen::MatrixXd> tmp(intDerivs.col(iCol * 3 + iDirection).data(), nJ, nI);
@@ -240,12 +275,12 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
       }
     }
 
+    // No contribution for external point charges.
 #pragma omp critical
-    { gradientContr += gradientContrPriv; }
+    { gradientContr.block(0, 0, nAtoms, 3) += gradientContrPriv; }
   } /* END OpenMP parallel */
 
   /* if analytical external electric field is present */
-  auto ef = system->getSettings().efield;
   if (ef.use && ef.analytical) {
     Eigen::VectorXd fieldVec = Eigen::VectorXd::Zero(3);
     for (unsigned i = 0; i < 3; ++i)
@@ -287,28 +322,34 @@ Eigen::MatrixXd HCorePotential<SCFMode>::getGeomGradients() {
 #pragma omp for schedule(dynamic)
       for (unsigned iAtom = 0; iAtom < nAtoms; ++iAtom) {
         for (unsigned iDirection = 0; iDirection < 3; ++iDirection) {
-          gradientContrPriv(iAtom, iDirection) -= atoms[iAtom]->getEffectiveCharge() * fieldVec(iDirection);
+          gradientContrPriv(iAtom, iDirection) -= allCharges[iAtom].first * fieldVec(iDirection);
         }
       }
 #pragma omp critical
-      { gradientContr += gradientContrPriv; }
+      { gradientContr.block(0, 0, nAtoms, 3) += gradientContrPriv; }
     } /* END OpenMP parallel */
     libint.finalize(LIBINT_OPERATOR::emultipole1, 1, 2);
-  }
-  else if (ef.use && !ef.analytical) {
-    throw SerenityError("Gradients for numerical electric field are not implmented, yet!");
   }
   libint.finalize(LIBINT_OPERATOR::kinetic, 1, 2);
   libint.finalize(LIBINT_OPERATOR::nuclear, 1, 2);
   libint.finalize(LIBINT_OPERATOR::overlap, 1, 2);
 
   // Add ECP contribution
-  gradientContr += Libecpint::computeECPGradientContribution(system->getAtomCenteredBasisController(), atoms, densMatrix);
+  gradientContr.block(0, 0, nAtoms, 3) +=
+      Libecpint::computeECPGradientContribution(system->getAtomCenteredBasisController(), system->getAtoms(), densMatrix);
 
-  // Adding CC potential
-  gradientContr += CoreCoreRepulsionDerivative::calculateDerivative(atoms);
+  // Adding core-repulsion potential
+  gradientContr.block(0, 0, nAtoms, 3) += CoreCoreRepulsionDerivative::calculateDerivative(system->getAtoms());
+  if (!this->_extCharges.empty()) {
+    // We need the term g += Z_I \sum_K Q_K R_I/|R_I - R_K|^3 for the system gradients.
+    gradientContr.block(0, 0, nAtoms, 3) += CoreCoreRepulsionDerivative::calculateDerivative(system->getAtoms(), _extCharges);
+    // and the term g += Q_K \sum_I Z_I R_K / |R_I - R_K|^3 for the point charge gradients.
+    gradientContr.block(nAtoms, 0, _extCharges.size(), 3) +=
+        CoreCoreRepulsionDerivative::calculateDerivative(_extCharges, system->getAtoms());
+    _pointChargeGradients = std::make_unique<Eigen::MatrixXd>(gradientContr.block(nAtoms, 0, _extCharges.size(), 3));
+  }
 
-  return gradientContr;
+  return gradientContr.block(0, 0, nAtoms, 3).eval();
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -334,6 +375,68 @@ HCorePotential<SCFMode>::calcEnergyWeightedDensityMatrix(std::shared_ptr<SystemC
     }
   };
   return energyWeightedDensityMatrix;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<std::pair<double, Point>> HCorePotential<SCFMode>::readExternalChargeFile(const std::string& filePath) {
+  OutputControl::nOut << "Reading external charges from file " << filePath << std::endl;
+  std::ifstream input(filePath);
+  if (!input.is_open()) {
+    throw SerenityError("Unable to read point charge file " + filePath);
+  }
+  std::string line;
+  std::string xCoordString;
+  std::string yCoordString;
+  std::string zCoordString;
+  std::string chargeString;
+  std::vector<std::pair<double, Point>> charges;
+  std::getline(input, line); // Skip first line.
+  while (std::getline(input, line)) {
+    std::istringstream iss(line);
+    try {
+      iss >> chargeString;
+      iss >> xCoordString;
+      iss >> yCoordString;
+      iss >> zCoordString;
+      const double charge = std::stod(chargeString);
+      const double xCoord = std::stod(xCoordString) * ANGSTROM_TO_BOHR;
+      const double yCoord = std::stod(yCoordString) * ANGSTROM_TO_BOHR;
+      const double zCoord = std::stod(zCoordString) * ANGSTROM_TO_BOHR;
+      charges.emplace_back(charge, Point(xCoord, yCoord, zCoord));
+    }
+    catch (...) {
+      SerenityError("Error: External charge file not formatted as expected. The format must be:\n"
+                    "x-coord y-coord z-coord charge-value\n"
+                    "All coordinates must be provided in Angstrom and all charges in atomic units.");
+    };
+  }
+  return charges;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<std::pair<double, Point>> HCorePotential<SCFMode>::getAllCharges() {
+  std::vector<std::pair<double, Point>> allCharges;
+  for (const auto& atom : this->_system.lock()->getAtoms()) {
+    allCharges.emplace_back(atom->getEffectiveCharge(), *atom);
+  }
+  allCharges.insert(allCharges.end(), this->_extCharges.begin(), this->_extCharges.end());
+  return allCharges;
+}
+
+template<Options::SCF_MODES SCFMode>
+const Eigen::MatrixXd& HCorePotential<SCFMode>::getPointChargeGradients() {
+  /*
+   * TODO: Change the getGeomGradients function to store the gradients and use lazy evaluation.
+   */
+  if (this->_pointChargeGradients == nullptr) {
+    this->getGeomGradients();
+    if (this->_pointChargeGradients == nullptr) {
+      throw SerenityError(
+          "Point charge gradients were not calculated or are not available. Please ensure that the geometrical"
+          " gradients were calculated before!");
+    }
+  }
+  return *_pointChargeGradients;
 }
 
 template class HCorePotential<Options::SCF_MODES::RESTRICTED>;

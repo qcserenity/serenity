@@ -30,6 +30,7 @@
 #include "misc/Timing.h"
 #include "potentials/BUReconstructionPotential.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 

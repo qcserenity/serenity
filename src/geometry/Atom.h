@@ -228,12 +228,6 @@ class Atom : public Point, public NotifyingClass<Atom> {
   inline bool gradientsUpToDate() {
     return _gradientsUpToDate;
   }
-
-  Eigen::Vector3d coords() {
-    Eigen::Vector3d coord;
-    coord << _x, _y, _z;
-    return coord;
-  }
   /**
    * @returns true if the atom is defined with an effective core potential
    * and thus getEffectiveCharge() != getNuclearCharge(), false otherwise

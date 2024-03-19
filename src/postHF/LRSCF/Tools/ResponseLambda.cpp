@@ -205,6 +205,9 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
       // In case of double-hybrids, we fake the method to be CIS(D) to get the
       // reduced sigma vector build which does not contain the CIS contributions.
       if (_usesDoubleHybrid) {
+        if (!settings.frequencies.empty()) {
+          throw SerenityError("LRSCFTask: Response functions are not properly defined for double-hybrid functionals!");
+        }
         auto oldmethod = _settings.method;
         _settings.method = Options::LR_METHOD::CISD;
         lrscf->initializeCC2Controller();

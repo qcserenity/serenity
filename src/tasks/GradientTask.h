@@ -26,7 +26,6 @@
 #include "settings/EmbeddingSettings.h"
 #include "settings/GeometryOptions.h"
 #include "settings/Reflection.h"
-#include "system/SystemController.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>
@@ -102,6 +101,7 @@ class GradientTask : public Task {
   const std::vector<std::shared_ptr<SystemController>> _activeSystems;
   const std::vector<std::shared_ptr<SystemController>> _passiveSystems;
   void printTotalGradient();
+  void printPointChargeGradients();
 };
 
 } /* namespace Serenity */

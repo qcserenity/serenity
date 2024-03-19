@@ -20,11 +20,12 @@
 /* Include Class Header*/
 #include "data/OrbitalPair.h"
 /* Include Serenity Internal Headers */
+#include "data/SingleSubstitution.h"
 #include "io/HDF5.h"                                               //Writing to file.
-#include "misc/WarningTracker.h"                                   //Warnings.
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h"            //Definition of a k-set.
 #include "postHF/LocalCorrelation/DomainOverlapMatrixController.h" //Overlap matrices.
 #include "postHF/LocalCorrelation/KLOrbitalSet.h"                  //Definition of a kl-set.
+
 namespace Serenity {
 
 OrbitalPair::OrbitalPair(unsigned int orbital_i, unsigned int orbital_j, double pnoThreshold,

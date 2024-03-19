@@ -24,12 +24,16 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 
 /* Include External Header */
 #include <Eigen/Dense>
 
+/* Include Std and External Headers */
+#include <memory>
+
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 
 /**
  * @class Besley

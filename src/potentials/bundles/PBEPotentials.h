@@ -67,6 +67,12 @@ class PBEPotentials : public PotentialBundle<SCFMode> {
    */
   Eigen::MatrixXd getGradients() override final;
 
+  /**
+   * @brief Getter for the gradients of external point charges.
+   * @return The point charge gradients.
+   */
+  Eigen::MatrixXd getPointChargeGradients() override;
+
  private:
   ///@brief The active system potentials
   std::shared_ptr<PotentialBundle<SCFMode>> _activeSystemPot;

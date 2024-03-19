@@ -80,7 +80,7 @@ TEST_F(NROCalculatorTest, NROs) {
   auto lrscfcontroller = std::make_shared<LRSCFController<RESTRICTED>>(systemController, lrscfSettings);
   std::vector<Eigen::MatrixXd> XY(2);
   std::string filename = systemController->getSystemPath() + systemController->getSystemName() + "_lrscf_resp.iso.res.h5";
-  HDF5::H5File afile(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  HDF5::H5File afile(filename, H5F_ACC_RDONLY);
   HDF5::dataset_exists(afile, "X+Y");
   HDF5::dataset_exists(afile, "X-Y");
   HDF5::dataset_exists(afile, "frequencies");

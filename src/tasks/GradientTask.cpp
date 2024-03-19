@@ -49,8 +49,7 @@ GradientTask<SCFMode>::GradientTask(const std::vector<std::shared_ptr<SystemCont
 }
 
 template<Options::SCF_MODES SCFMode>
-GradientTask<SCFMode>::~GradientTask() {
-}
+GradientTask<SCFMode>::~GradientTask() = default;
 
 template<Options::SCF_MODES SCFMode>
 void GradientTask<SCFMode>::run() {
@@ -64,11 +63,6 @@ void GradientTask<SCFMode>::run() {
     iOOptions.printSCFCycleInfo = false;
     iOOptions.printSCFResults = false;
   }
-
-  unsigned int nAtomsTotal = 0;
-  for (auto sys : _activeSystems)
-    nAtomsTotal += sys->getGeometry()->getNAtoms();
-  Eigen::MatrixXd totalGradient = Eigen::MatrixXd::Zero(nAtomsTotal, 3);
 
   if (_passiveSystems.size() == 0 && _activeSystems.size() == 1) {
     if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
@@ -93,7 +87,7 @@ void GradientTask<SCFMode>::run() {
       auto potentialGradients = potBundle->getGradients();
       Matrix<double> dispCorr(_activeSystems[0]->getGeometry()->getAtoms().size(), 3);
       dispCorr.setZero();
-      if (!(_activeSystems[0]->getSettings().dft.dispersion == Options::DFT_DISPERSION_CORRECTIONS::NONE)) {
+      if (_activeSystems[0]->getSettings().dft.dispersion != Options::DFT_DISPERSION_CORRECTIONS::NONE) {
         // Dispersion Correction components
         dispCorr += DispersionCorrectionCalculator::calcDispersionGradientCorrection(
             _activeSystems[0]->getSettings().dft.dispersion, _activeSystems[0]->getGeometry(),
@@ -101,6 +95,9 @@ void GradientTask<SCFMode>::run() {
       }
       Matrix<double> gradient = potentialGradients + dispCorr;
       _activeSystems[0]->getGeometry()->setGradients(gradient);
+      if (_activeSystems[0]->hasExternalCharges()) {
+        _activeSystems[0]->setPointChargeGradients(potBundle->getPointChargeGradients());
+      }
       if (settings.transInvar) {
         _activeSystems[0]->getGeometry()->makeGradientsTranslationallyInvariant();
       }
@@ -201,6 +198,9 @@ void GradientTask<SCFMode>::run() {
         Matrix<double> gradientSum = potentialGradients + ccRepDerivative + dispCorr;
 
         activeSystem->getGeometry()->setGradients(gradientSum);
+        if (activeSystem->hasExternalCharges()) {
+          activeSystem->setPointChargeGradients(potBundle->getPointChargeGradients());
+        }
 
         if (settings.transInvar) {
           activeSystem->getGeometry()->makeGradientsTranslationallyInvariant();
@@ -226,11 +226,48 @@ void GradientTask<SCFMode>::run() {
   if (settings.printTotal)
     this->printTotalGradient();
 
+  printPointChargeGradients();
+
   iOOptions.printSCFCycleInfo = info;
   iOOptions.printSCFResults = results;
   iOOptions.timingsPrintLevel = timings;
   iOOptions.gridAccuracyCheck = check;
   timeTaken(3, "Gradient Calculation");
+}
+
+template<Options::SCF_MODES SCFMode>
+void GradientTask<SCFMode>::printPointChargeGradients() {
+  std::vector<std::shared_ptr<SystemController>> allSystems = _activeSystems;
+  allSystems.insert(allSystems.end(), _passiveSystems.begin(), _passiveSystems.end());
+  unsigned int nSystemsWithGradients = 0;
+  Eigen::MatrixXd totalPointChargeGradients;
+  for (const auto& sys : allSystems) {
+    if (sys->hasExternalCharges()) {
+      const auto& pointChargeGradients = sys->getPointChargeGradients();
+      if (nSystemsWithGradients == 0) {
+        totalPointChargeGradients = pointChargeGradients;
+      }
+      else {
+        if (pointChargeGradients.rows() != totalPointChargeGradients.rows()) {
+          throw SerenityError(
+              "The number of point charges must be identical for every system! Otherwise, forces and energies"
+              " are calculated inconstent.");
+        }
+        totalPointChargeGradients += pointChargeGradients;
+      }
+      nSystemsWithGradients++;
+    }
+  }
+  if (nSystemsWithGradients > 0 && nSystemsWithGradients != allSystems.size()) {
+    throw SerenityError("Only some systems are calculated with external charges! This is inconsistent.");
+  }
+  if (nSystemsWithGradients > 0) {
+    printSmallCaption("Point Charge Gradients (a.u.)");
+    for (unsigned int iRow = 0; iRow < totalPointChargeGradients.rows(); ++iRow) {
+      printf("%4s %4d %2s %+15.10f %+15.10f %+15.10f\n", "", iRow, "Q", totalPointChargeGradients(iRow, 0),
+             totalPointChargeGradients(iRow, 1), totalPointChargeGradients(iRow, 2));
+    }
+  }
 }
 
 template<Options::SCF_MODES SCFMode>

@@ -23,14 +23,14 @@
 #include "data/SpinPolarizedData.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
 
 /**
@@ -44,7 +44,7 @@ class ElectronicStructure;
  * starting point is needed. Classes that implement this interface provide orbitals in
  * some way which are a hopefully good starting point for the SCF procedure.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class InitialGuessCalculator;
 
 template<>

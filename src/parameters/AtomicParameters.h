@@ -125,9 +125,7 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
   { ANGULAR_QUANTUM_NUMBER::s, 2 }                                      \
   }                                                                     \
   , {{ANGULAR_QUANTUM_NUMBER::s, 2}, {ANGULAR_QUANTUM_NUMBER::p, 6}}, { \
-    {ANGULAR_QUANTUM_NUMBER::s, 2}, {                                   \
-      ANGULAR_QUANTUM_NUMBER::p, 6                                      \
-    }
+    {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{ARGON_OCCUPATION}},
     // K
     {{ARGON_OCCUPATION}, {{ANGULAR_QUANTUM_NUMBER::s, 1}}},
@@ -164,15 +162,11 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
     // Br
     {{ARGON_OCCUPATION, {ANGULAR_QUANTUM_NUMBER::d, 10}}, {{ANGULAR_QUANTUM_NUMBER::s, 2}, {ANGULAR_QUANTUM_NUMBER::p, 5}}},
 // Kr
-#define KRYPTON_OCCUPATION            \
-  ARGON_OCCUPATION, {                 \
-    ANGULAR_QUANTUM_NUMBER::d, 10     \
-  }                                   \
-  }                                   \
-  , {                                 \
-    {ANGULAR_QUANTUM_NUMBER::s, 2}, { \
-      ANGULAR_QUANTUM_NUMBER::p, 6    \
-    }
+#define KRYPTON_OCCUPATION                            \
+  ARGON_OCCUPATION, { ANGULAR_QUANTUM_NUMBER::d, 10 } \
+  }                                                   \
+  , {                                                 \
+    {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{KRYPTON_OCCUPATION}},
     // Rb
     {{KRYPTON_OCCUPATION}, {{ANGULAR_QUANTUM_NUMBER::s, 1}}},
@@ -209,15 +203,11 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
     // I
     {{KRYPTON_OCCUPATION, {ANGULAR_QUANTUM_NUMBER::d, 10}}, {{ANGULAR_QUANTUM_NUMBER::s, 2}, {ANGULAR_QUANTUM_NUMBER::p, 5}}},
 // Xe
-#define XENON_OCCUPATION              \
-  KRYPTON_OCCUPATION, {               \
-    ANGULAR_QUANTUM_NUMBER::d, 10     \
-  }                                   \
-  }                                   \
-  , {                                 \
-    {ANGULAR_QUANTUM_NUMBER::s, 2}, { \
-      ANGULAR_QUANTUM_NUMBER::p, 6    \
-    }
+#define XENON_OCCUPATION                                \
+  KRYPTON_OCCUPATION, { ANGULAR_QUANTUM_NUMBER::d, 10 } \
+  }                                                     \
+  , {                                                   \
+    {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{XENON_OCCUPATION}},
     // Cs
     {{XENON_OCCUPATION}, {{ANGULAR_QUANTUM_NUMBER::s, 1}}},
@@ -230,14 +220,10 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
  * In the lanthanoids the 4f shell is filled. To shorten the writing for that case we split up
  * the above macro into two parts
  */
-#define XENON_OCC_PERIOD_1_TO_4   \
-  KRYPTON_OCCUPATION, {           \
-    ANGULAR_QUANTUM_NUMBER::d, 10 \
-  }
-#define XENON_OCC_PERIOD_5          \
-  {ANGULAR_QUANTUM_NUMBER::s, 2}, { \
-    ANGULAR_QUANTUM_NUMBER::p, 6    \
-  }
+#define XENON_OCC_PERIOD_1_TO_4 \
+  KRYPTON_OCCUPATION, { ANGULAR_QUANTUM_NUMBER::d, 10 }
+#define XENON_OCC_PERIOD_5 \
+  {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{XENON_OCC_PERIOD_1_TO_4, {ANGULAR_QUANTUM_NUMBER::f, 1}},
      {XENON_OCC_PERIOD_5, {ANGULAR_QUANTUM_NUMBER::d, 1}},
      {{ANGULAR_QUANTUM_NUMBER::s, 2}}},
@@ -329,14 +315,10 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
      {{ANGULAR_QUANTUM_NUMBER::s, 2}, {ANGULAR_QUANTUM_NUMBER::p, 5}}},
 // Rn
 #define RADON_OCCUPATION                                     \
-  XENON_OCC_PERIOD_1_TO_4, {                                 \
-    ANGULAR_QUANTUM_NUMBER::f, 14                            \
-  }                                                          \
+  XENON_OCC_PERIOD_1_TO_4, { ANGULAR_QUANTUM_NUMBER::f, 14 } \
   }                                                          \
   , {XENON_OCC_PERIOD_5, {ANGULAR_QUANTUM_NUMBER::d, 10}}, { \
-    {ANGULAR_QUANTUM_NUMBER::s, 2}, {                        \
-      ANGULAR_QUANTUM_NUMBER::p, 6                           \
-    }
+    {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{RADON_OCCUPATION}},
     // Fr
     {{RADON_OCCUPATION}, {{ANGULAR_QUANTUM_NUMBER::s, 1}}},
@@ -347,14 +329,10 @@ const std::vector<std::map<ANGULAR_QUANTUM_NUMBER, unsigned int>> ELEMENT_OCCUPA
     // Th
     {{RADON_OCCUPATION, {ANGULAR_QUANTUM_NUMBER::d, 2}}, {{ANGULAR_QUANTUM_NUMBER::s, 2}}},
 // Pa
-#define RADON_OCC_PERIOD_1_TO_5   \
-  XENON_OCCUPATION, {             \
-    ANGULAR_QUANTUM_NUMBER::d, 10 \
-  }
-#define RADON_OCC_PERIOD_6          \
-  {ANGULAR_QUANTUM_NUMBER::s, 2}, { \
-    ANGULAR_QUANTUM_NUMBER::p, 6    \
-  }
+#define RADON_OCC_PERIOD_1_TO_5 \
+  XENON_OCCUPATION, { ANGULAR_QUANTUM_NUMBER::d, 10 }
+#define RADON_OCC_PERIOD_6 \
+  {ANGULAR_QUANTUM_NUMBER::s, 2}, { ANGULAR_QUANTUM_NUMBER::p, 6 }
     {{RADON_OCC_PERIOD_1_TO_5, {ANGULAR_QUANTUM_NUMBER::f, 2}},
      {RADON_OCC_PERIOD_6, {ANGULAR_QUANTUM_NUMBER::d, 1}},
      {{ANGULAR_QUANTUM_NUMBER::s, 2}}},

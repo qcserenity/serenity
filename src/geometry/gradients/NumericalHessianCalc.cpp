@@ -32,6 +32,7 @@
 #include "parameters/Constants.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/ScfTask.h"

@@ -19,15 +19,16 @@
  */
 
 /* Include Serenity Internal Headers */
-#include "data/OrbitalPair.h"                           //To be tested.
-#include "io/HDF5.h"                                    //Read and write.
+#include "data/OrbitalPair.h"
+#include "data/SingleSubstitution.h"
+#include "io/HDF5.h"
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //k-sets.
 #include "postHF/LocalCorrelation/KLOrbitalSet.h"       //kl-sets.
 #include "system/SystemController.h"                    //Test systems.
 #include "testsupply/SystemController__TEST_SUPPLY.h"   //Test systems.
 /* Include Std and External Headers */
-#include <gtest/gtest.h> //gtest
-#include <memory>        //smrt_ptr
+#include <gtest/gtest.h>
+#include <memory> //smrt_ptr
 
 namespace Serenity {
 class OrbitalPairTest : public ::testing::Test {

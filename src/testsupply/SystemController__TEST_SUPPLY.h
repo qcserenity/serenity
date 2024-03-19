@@ -127,7 +127,8 @@ enum class TEST_SYSTEM_CONTROLLERS {
   WCCR1010_def2_SVP_HF,
   Water_Dimer_def2_SVP_HF,
   Water_Def2_TZVP_DFT,
-  He_Def2_TZVP_DFT
+  He_Def2_TZVP_DFT,
+  ETHANOL_def2_SVP_HF
 };
 
 /**

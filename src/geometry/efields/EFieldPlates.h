@@ -21,7 +21,6 @@
 #define EFIELDPLATES
 
 /* Include Serenity Internal Headers */
-#include "system/SystemController.h"
 
 /* Include Std and External Headers */
 #include <Eigen/Eigen>
@@ -29,6 +28,8 @@
 #include <string>
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class EFieldPlates EFieldPlates.h
  *

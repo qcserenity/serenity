@@ -26,7 +26,6 @@
 #include "settings/EmbeddingSettings.h"
 #include "settings/GeometryOptions.h"
 #include "settings/Reflection.h"
-#include "system/SystemController.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>

@@ -25,7 +25,9 @@
 #include "geometry/Geometry.h"
 #include "geometry/gradients/CoreCoreRepulsionDerivative.h"
 #include "potentials/Potential.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
+#include "tasks/OrbitalsIOTask.h" // Read MOs from disc.
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -238,7 +240,7 @@ TEST_F(HCorePotentialTest, I2_ECPs) {
 
 /**
  * @test HCorePotentialTest
- * @brief Tests the HCore gradient part of I2 including ECPs.
+ * @brief Tests the HCore energy for a molecule from the WCCR10 set, including ECPs.
  */
 TEST_F(HCorePotentialTest, WCCR1010_ECPs) {
   // Please always load. This system is rather large!
@@ -249,6 +251,40 @@ TEST_F(HCorePotentialTest, WCCR1010_ECPs) {
 
   EXPECT_NEAR(energy, -10893.5666665412, 2e-5); // Compared to turbomole result.
                                                 // The accuracy is limited by accuracy of the
+  // orbital coefficients on disk.
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test HCorePotentialTest
+ * @brief Tests the HCore energy for a molecule from the WCCR10 set, including ECPs, and external charges.
+ */
+TEST_F(HCorePotentialTest, ExternalChargesAndECPs) {
+  // Please always load. This system is rather large!
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  std::string pathToTestsResources;
+  std::string moPath;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/TestSystem_WCCR1010_P1_Def2_SVP_HF/external_charges.dat";
+    moPath = (std::string)env_p + "testresources/TestSystem_WCCR1010_P1_Def2_SVP_HF";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  auto settings = sys->getSettings();
+  settings.extCharges.externalChargesFile = pathToTestsResources;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF, settings, 1);
+  OrbitalsIOTask<RESTRICTED> read(sys);
+  read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::SERENITY;
+  read.settings.path = moPath;
+  read.run();
+
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(sys);
+
+  double energy = hCorePot.getEnergy(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix());
+
+  EXPECT_NEAR(energy, -10893.046900933725, 2e-5); // Taken from "working" implementation (08.11.2023)
   // orbital coefficients on disk.
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
   SystemController__TEST_SUPPLY::cleanUp();

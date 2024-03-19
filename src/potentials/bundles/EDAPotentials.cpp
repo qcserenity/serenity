@@ -213,7 +213,7 @@ void EDAPotentials<SCFMode>::setBlocksZero(MatrixInBasis<SCFMode>& matrix, EDAEn
 
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd EDAPotentials<SCFMode>::getGradients() {
-  assert(false && "No geometry gradients availabe for the EDA potentials.");
+  throw SerenityError("No geometry gradients available for the EDA potentials.");
   Eigen::MatrixXd gradientContr(1, 3);
   return gradientContr;
 }

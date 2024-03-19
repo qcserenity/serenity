@@ -36,6 +36,13 @@ void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field) 
 }
 
 template<>
+void resolve<INTEGRAL_FILE_TYPES>(std::string& value, INTEGRAL_FILE_TYPES& field) {
+  static const std::map<std::string, INTEGRAL_FILE_TYPES> m = {{"ASCII", INTEGRAL_FILE_TYPES::ASCII},
+                                                               {"HDF5", INTEGRAL_FILE_TYPES::HDF5}};
+  check(m, value, field);
+}
+
+template<>
 void resolve<SCF_MODES>(std::string& value, SCF_MODES& field) {
   static const std::map<std::string, SCF_MODES> m = {{"RESTRICTED", SCF_MODES::RESTRICTED},
                                                      {"UNRESTRICTED", SCF_MODES::UNRESTRICTED}};

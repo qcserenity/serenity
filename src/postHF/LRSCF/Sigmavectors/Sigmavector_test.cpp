@@ -30,6 +30,7 @@
 #include "postHF/LRSCF/Sigmavectors/CoulombSigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/ExchangeSigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/FockSigmavector.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */

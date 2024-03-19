@@ -24,7 +24,7 @@
 #include "scf/initialGuess/InitialGuessCalculator.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward Declarations */
@@ -49,8 +49,8 @@ class InitialGuessFactory {
    * @param flavor Determines the kind of requested initial guess
    * @returns an initial guess of the kind determined by flavor
    */
-  template<Options::SCF_MODES T>
-  static std::unique_ptr<InitialGuessCalculator<T>> produce(Options::INITIAL_GUESSES flavor);
+  template<Options::SCF_MODES SCFMode>
+  static std::unique_ptr<InitialGuessCalculator<SCFMode>> produce(Options::INITIAL_GUESSES flavor);
 };
 
 } /* namespace Serenity */

@@ -78,23 +78,16 @@ struct make_const<const M, T> {
   struct field_data {};                                            \
   BOOST_PP_SEQ_FOR_EACH_I(REFLECT_EACH, data, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define REFLECT_EACH(r, data, i, x)                           \
-  PAIR(x);                                                    \
-  template<class Self>                                        \
-  struct field_data<i, Self> {                                \
-    Self& self;                                               \
-    field_data(Self& self) : self(self) {                     \
-    }                                                         \
-                                                              \
-    typename make_const<Self, TYPEOF(x)>::type& get() {       \
-      return self.STRIP(x);                                   \
-    }                                                         \
-    typename boost::add_const<TYPEOF(x)>::type& get() const { \
-      return self.STRIP(x);                                   \
-    }                                                         \
-    const char* name() const {                                \
-      return BOOST_PP_STRINGIZE(STRIP(x));                    \
-    }                                                         \
+#define REFLECT_EACH(r, data, i, x)                                                   \
+  PAIR(x);                                                                            \
+  template<class Self>                                                                \
+  struct field_data<i, Self> {                                                        \
+    Self& self;                                                                       \
+    field_data(Self& self) : self(self) {}                                            \
+                                                                                      \
+    typename make_const<Self, TYPEOF(x)>::type& get() { return self.STRIP(x); }       \
+    typename boost::add_const<TYPEOF(x)>::type& get() const { return self.STRIP(x); } \
+    const char* name() const { return BOOST_PP_STRINGIZE(STRIP(x)); }                 \
   };
 
 /*

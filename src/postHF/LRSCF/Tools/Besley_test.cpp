@@ -21,6 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Tools/Besley.h"
 #include "postHF/LRSCF/LRSCFController.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */

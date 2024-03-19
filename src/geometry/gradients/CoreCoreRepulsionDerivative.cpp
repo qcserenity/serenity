@@ -24,58 +24,80 @@
 
 namespace Serenity {
 
-Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atoms) {
-  const unsigned int nAtoms = atoms.size();
-  Matrix<double> gradient = Eigen::MatrixXd::Zero(nAtoms, 3);
-
-  for (unsigned int i = 0; i < nAtoms; ++i) {
-    for (unsigned int j = 0; j < nAtoms; ++j) {
-      if (i == j) {
-        // Do nothing for repulsion with self
-        continue;
-      }
-      else {
-        const double dist = distance(*atoms[i], *atoms[j]);
-        // Multiplication of Charge(i) at the end!
-        const double jChargeOverDistCube = atoms[j]->getEffectiveCharge() / (dist * dist * dist);
-        // X
-        gradient(i, 0) += jChargeOverDistCube * (atoms[j]->getX() - atoms[i]->getX());
-        // Y
-        gradient(i, 1) += jChargeOverDistCube * (atoms[j]->getY() - atoms[i]->getY());
-        // Z
-        gradient(i, 2) += jChargeOverDistCube * (atoms[j]->getZ() - atoms[i]->getZ());
-      }
-    }
-    gradient(i, 0) *= atoms[i]->getEffectiveCharge();
-    gradient(i, 1) *= atoms[i]->getEffectiveCharge();
-    gradient(i, 2) *= atoms[i]->getEffectiveCharge();
+std::vector<std::pair<double, Point>>
+CoreCoreRepulsionDerivative::convertAtomsToCharges(const std::vector<std::shared_ptr<Atom>>& atoms) {
+  std::vector<std::pair<double, Point>> convertedPointCharges;
+  for (const auto& atom : atoms) {
+    convertedPointCharges.emplace_back(atom->getEffectiveCharge(), *atom);
   }
-  return gradient;
+  return convertedPointCharges;
+}
+
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atoms) {
+  return calculateDerivative(convertAtomsToCharges(atoms));
 }
 
 Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atomsAct,
                                                                 const std::vector<std::shared_ptr<Atom>>& atomsEnv) {
-  const unsigned int nAtomsAct = atomsAct.size();
-  const unsigned int nAtomsEnv = atomsEnv.size();
-  Matrix<double> gradient(nAtomsAct, 3);
-  gradient.setZero();
+  return calculateDerivative(convertAtomsToCharges(atomsAct), convertAtomsToCharges(atomsEnv));
+}
 
-  for (unsigned int i = 0; i < nAtomsAct; ++i) {
-    for (unsigned int j = 0; j < nAtomsEnv; ++j) {
-      const double dist = distance(*atomsAct[i], *atomsEnv[j]);
-      const double jChargeOverDistCube = atomsEnv[j]->getEffectiveCharge() / (dist * dist * dist);
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::pair<double, Point>>& charges) {
+  const unsigned int nCharges = charges.size();
+  Matrix<double> gradient = Eigen::MatrixXd::Zero(nCharges, 3);
+  for (unsigned int i = 0; i < nCharges; ++i) {
+    for (unsigned int j = 0; j < nCharges; ++j) {
+      if (i == j) {
+        // Do nothing for repulsion with self
+        continue;
+      }
+      const double dist = distance(charges[i].second, charges[j].second);
+      // Multiplication of Charge(i) at the end!
+      const double jChargeOverDistCube = charges[j].first / (dist * dist * dist);
       // X
-      gradient(i, 0) += jChargeOverDistCube * (atomsEnv[j]->getX() - atomsAct[i]->getX());
+      gradient(i, 0) += jChargeOverDistCube * (charges[j].second.getX() - charges[i].second.getX());
       // Y
-      gradient(i, 1) += jChargeOverDistCube * (atomsEnv[j]->getY() - atomsAct[i]->getY());
+      gradient(i, 1) += jChargeOverDistCube * (charges[j].second.getY() - charges[i].second.getY());
       // Z
-      gradient(i, 2) += jChargeOverDistCube * (atomsEnv[j]->getZ() - atomsAct[i]->getZ());
+      gradient(i, 2) += jChargeOverDistCube * (charges[j].second.getZ() - charges[i].second.getZ());
     }
-    gradient(i, 0) *= atomsAct[i]->getEffectiveCharge();
-    gradient(i, 1) *= atomsAct[i]->getEffectiveCharge();
-    gradient(i, 2) *= atomsAct[i]->getEffectiveCharge();
+    gradient(i, 0) *= charges[i].first;
+    gradient(i, 1) *= charges[i].first;
+    gradient(i, 2) *= charges[i].first;
   }
   return gradient;
+}
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::pair<double, Point>>& chargesAct,
+                                                                const std::vector<std::pair<double, Point>>& chargesEnv) {
+  const unsigned int nChargesAct = chargesAct.size();
+  const unsigned int nChargesEnv = chargesEnv.size();
+  Matrix<double> gradient(nChargesAct, 3);
+  gradient.setZero();
+
+  for (unsigned int i = 0; i < nChargesAct; ++i) {
+    for (unsigned int j = 0; j < nChargesEnv; ++j) {
+      const double dist = distance(chargesAct[i].second, chargesEnv[j].second);
+      const double jChargeOverDistCube = chargesEnv[j].first / (dist * dist * dist);
+      // X
+      gradient(i, 0) += jChargeOverDistCube * (chargesEnv[j].second.getX() - chargesAct[i].second.getX());
+      // Y
+      gradient(i, 1) += jChargeOverDistCube * (chargesEnv[j].second.getY() - chargesAct[i].second.getY());
+      // Z
+      gradient(i, 2) += jChargeOverDistCube * (chargesEnv[j].second.getZ() - chargesAct[i].second.getZ());
+    }
+    gradient(i, 0) *= chargesAct[i].first;
+    gradient(i, 1) *= chargesAct[i].first;
+    gradient(i, 2) *= chargesAct[i].first;
+  }
+  return gradient;
+}
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::pair<double, Point>>& chargesAct,
+                                                                const std::vector<std::shared_ptr<Atom>>& atomsEnv) {
+  return calculateDerivative(chargesAct, convertAtomsToCharges(atomsEnv));
+}
+Matrix<double> CoreCoreRepulsionDerivative::calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atomsAct,
+                                                                const std::vector<std::pair<double, Point>>& chargesEnv) {
+  return calculateDerivative(convertAtomsToCharges(atomsAct), chargesEnv);
 }
 
 } /* namespace Serenity */

@@ -27,9 +27,10 @@
 #include "data/ElectronicStructure.h"
 #include "geometry/Geometry.h"
 #include "potentials/Potential.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class NEInteractionPotential NEInteractionPotential.h
  * @brief The attraction potential between electrons in a given

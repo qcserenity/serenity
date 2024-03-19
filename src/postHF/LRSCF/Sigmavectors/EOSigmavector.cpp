@@ -41,6 +41,7 @@
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
 #include "potentials/bundles/FDEPotentials.h"
 #include "potentials/bundles/PBEPotentials.h"
+#include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 
 namespace Serenity {

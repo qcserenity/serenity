@@ -30,6 +30,7 @@
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <iomanip>

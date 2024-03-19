@@ -23,34 +23,29 @@
 /* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h"
 
-/* Include Std and External Headers */
-#include <memory>
-
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
-
 template<Options::SCF_MODES SCFMode>
 class SPMatrix;
 
 template<Options::SCF_MODES SCFMode>
 /**
  * @class DeltaScf DeltaScf.h
- * @brief Helps in setting up DeltaScf calculation.
+ * @brief Helps in setting up a DeltaScf calculation.
  */
 class DeltaScf {
  public:
   /**
-   * @brief Prepares the Delta-Scf calculation.
+   * @brief Prepares the DeltaScf calculation.
    * @param exca Excitation of alpha electrons. {0 0} means an excitation from HOMO to LUMO,
    *             {1 1} from HOMO - 1 to Lumo + 1. {0} gives a momMatrix without excitations.
    * @param excb Excitation of beta electrons. {0 0} means an excitation from HOMO to LUMO,
    *             {1 1} from HOMO - 1 to Lumo + 1. {0} gives a momMatrix without excitations.
-   * @param momMatrix Needed for MOM algorithm.
    * @param es Electronic structure.
    */
-  static std::shared_ptr<SPMatrix<SCFMode>> prepareMOMMatrix(std::vector<int> exca, std::vector<int> excb,
+  static std::shared_ptr<SPMatrix<SCFMode>> prepareMOMMatrix(const std::vector<int>& exca, const std::vector<int>& excb,
                                                              std::shared_ptr<ElectronicStructure<SCFMode>> es);
 };
 

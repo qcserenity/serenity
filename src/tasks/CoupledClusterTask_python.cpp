@@ -27,6 +27,13 @@
 namespace py = pybind11;
 using namespace Serenity;
 void export_CoupledClusterTask(py::module& spy) {
+  py::class_<CoupledClusterTaskSettings>(spy, "CoupledClusterTaskSettings",
+                                         "@brief Default constructor for Settings all set to their default values.")
+      .def_readwrite("level", &CoupledClusterTaskSettings::level)
+      .def_readwrite("maxCycles", &CoupledClusterTaskSettings::maxCycles)
+      .def_readwrite("normThreshold", &CoupledClusterTaskSettings::normThreshold)
+      .def_readwrite("writePairEnergies", &CoupledClusterTaskSettings::writePairEnergies);
+
   py::class_<CoupledClusterTask>(spy, "CoupledClusterTask_R")
       .def(py::init<std::shared_ptr<SystemController>>())
       .def("run", &CoupledClusterTask::run);

@@ -27,6 +27,7 @@
 #include "io/HDF5.h"
 #include "misc/VirtualOrbitalSelectionAlgorithms.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 #include "tasks/ElectronicStructureCopyTask.h"
 
 /* Include Std and External Headers */

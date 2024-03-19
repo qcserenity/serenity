@@ -66,7 +66,7 @@ User Manual
 }}\\
 \vspace{1cm}
 {\large\textbf{
-Program Version: 1.6.0\\
+Program Version: 1.6.1\\
 Manual Generated: \today
 }}\\
 \vspace{2cm}
@@ -893,6 +893,44 @@ Analytical efield:
  \item [\texttt{outputName}]\hfill \\
  If specified, the electric field plates will be written to disk as an xyz-file. Negative
  charges will be printed as boron atoms (B), positive charges as xenon atoms (Xe).
+\end{description}
+
+\subsection{EXTCHARGES Block}\label{sec:system:extchrg}
+The \ttt{EXTCHARGES} block contains options for using external charges. At the moment, only a path
+to a file containing the charge positions and values can be defined. These charges will be included in
+the system's core Hamiltonian. Furthermore, the energy from the interaction with these charges will be added to
+the system. The interaction between the external charges is not included.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name water
+    geometry water.xyz
+   +extcharges
+     externalChargesFile point-charges.pc
+   -extcharges
+ -system
+\end{lstlisting}
+Charges and coordinates must be provided row-wise in the file. All coordinates must be given in Angstrom and charges
+in atomic units.
+\begin{lstlisting}
+<total number of charges>
+<charge-value> <x-coordinate> <y-coordinate> <z-coordinate>
+<charge-value> <x-coordinate> <y-coordinate> <z-coordinate>
+...
+\end{lstlisting}
+Example file:
+\begin{lstlisting}
+4800
+-0.573704   1.513000  -5.452000   496.216000
+ 0.290609   2.398000  -5.884000   496.044000
+ 0.290609   1.863000  -4.590000   495.850000
+-0.573704   4.253000   2.507000   503.760000
+...
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{externalChargesFile}]\hfill \\
+  The file path to the external charge file. If empty, no external charges are used. By default \ttt{``''}
 \end{description}
 
 \clearpage

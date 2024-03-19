@@ -30,18 +30,20 @@ using namespace Serenity;
 
 void export_FDETask(py::module& spy) {
   py::class_<FDETaskSettings>(spy, "FDETaskSettings", "@brief Default constructor for Settings all set to their default values.")
-      .def_readwrite("embedding", &FDETaskSettings::embedding)
-      .def_readwrite("loc", &FDETaskSettings::loc)
+      .def_readwrite("gridCutOff", &FDETaskSettings::gridCutOff)
       .def_readwrite("smallSupersystemGrid", &FDETaskSettings::smallSupersystemGrid)
       .def_readwrite("finalGrid", &FDETaskSettings::finalGrid)
+      .def_readwrite("calculateUnrelaxedMP2Density", &FDETaskSettings::calculateUnrelaxedMP2Density)
       .def_readwrite("calculateMP2Energy", &FDETaskSettings::calculateMP2Energy)
       .def_readwrite("maxResidual", &FDETaskSettings::maxResidual)
       .def_readwrite("maxCycles", &FDETaskSettings::maxCycles)
       .def_readwrite("calculateEnvironmentEnergy", &FDETaskSettings::calculateEnvironmentEnergy)
       .def_readwrite("mp2Type", &FDETaskSettings::mp2Type)
       .def_readwrite("calculateSolvationEnergy", &FDETaskSettings::calculateSolvationEnergy)
+      .def_readwrite("skipSCF", &FDETaskSettings::skipSCF)
+      .def_readwrite("embedding", &FDETaskSettings::embedding)
       .def_readwrite("lcSettings", &FDETaskSettings::lcSettings)
-      .def_readwrite("gridCutOff", &FDETaskSettings::gridCutOff);
+      .def_readwrite("loc", &FDETaskSettings::loc);
 
   py::class_<FDETask<Options::SCF_MODES::RESTRICTED>>(spy, "FDETask_R")
       .def(py::init<std::shared_ptr<SystemController>, std::vector<std::shared_ptr<SystemController>>&>())

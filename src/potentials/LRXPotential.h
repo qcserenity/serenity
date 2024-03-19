@@ -26,9 +26,10 @@
 #include "potentials/IncrementalFockMatrix.h"
 #include "potentials/Potential.h"
 #include "settings/Options.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class LRXPotential LRXPotential.h
  * @brief Calculates the matrix representation of the long range contribution to the

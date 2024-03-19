@@ -28,25 +28,22 @@
 #include <cmath>
 
 namespace Serenity {
-/*
- * TODO I guess there are some configurable parameters here? The user should be able to modify these
- * via the input, because it is quite likely that the user still ends up with a restricted result
- * in an unrestricted calculation when just scrambling starting orbitals.
- */
+
 void InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED>::scrambleOrbitals(
     OrbitalController<Options::SCF_MODES::UNRESTRICTED>& orbitals,
     SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, unsigned int> nElectrons) {
-  // Don't do anything for one-electron systems and other special cases
+  // Do not do anything for one-electron systems and other special cases
   if (nElectrons.alpha + nElectrons.beta <= 1 || nElectrons.alpha == 0 || nElectrons.beta == 0 ||
       nElectrons.alpha != nElectrons.beta)
     return;
   CoefficientMatrix<Options::SCF_MODES::UNRESTRICTED> coefficients = orbitals.getCoefficients();
   auto& alphaCoefficients = coefficients.alpha;
-  assert(alphaCoefficients.cols() == coefficients.beta.cols());
+  if (!(alphaCoefficients.cols() == coefficients.beta.cols()))
+    throw SerenityError("Scramble orbitals: Different number of orbitals for alpha and beta.");
   const unsigned int nCol = alphaCoefficients.cols();
   const unsigned int nRow = alphaCoefficients.rows();
   const unsigned int nAlphaElec = nElectrons.alpha;
-  // Can't scramble with virtual orbitals if there are none
+  // Cannot scramble with virtual orbitals if there are none
   if (nAlphaElec == nRow)
     return;
   const unsigned int scramble =

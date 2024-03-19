@@ -25,6 +25,7 @@
 #include "geometry/Atom.h"
 #include "integrals/wrappers/Libint.h"
 #include "misc/Timing.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 

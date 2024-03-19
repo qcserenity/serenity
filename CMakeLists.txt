@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 project(serenity
-        VERSION 1.6.0
+        VERSION 1.6.1
         DESCRIPTION "Serenity: A subsystem quantum chemistry program.")
 
 set(CMAKE_MODULE_PATH  ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})

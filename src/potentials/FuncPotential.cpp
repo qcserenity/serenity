@@ -32,6 +32,7 @@
 #include "misc/Timing.h"
 #include "potentials/SAOPPotential.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 

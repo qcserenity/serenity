@@ -22,11 +22,12 @@
 #include "potentials/bundles/HFPotentials.h"
 /* Include Serenity Internal Headers */
 #include "energies/EnergyContributions.h"
+#include "potentials/HCorePotential.h"
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-HFPotentials<SCFMode>::HFPotentials(std::shared_ptr<Potential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> g,
+HFPotentials<SCFMode>::HFPotentials(std::shared_ptr<HCorePotential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> g,
                                     std::shared_ptr<Potential<SCFMode>> pcm, std::shared_ptr<const Geometry> geom)
   : _h(hcore), _g(g), _pcm(pcm), _geom(geom) {
   assert(_h);
@@ -64,6 +65,11 @@ Eigen::MatrixXd HFPotentials<SCFMode>::getGradients() {
   gradients += _g->getGeomGradients();
   gradients += _pcm->getGeomGradients();
   return gradients;
+}
+
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd HFPotentials<SCFMode>::getPointChargeGradients() {
+  return _h->getPointChargeGradients();
 }
 
 template class HFPotentials<Options::SCF_MODES::RESTRICTED>;

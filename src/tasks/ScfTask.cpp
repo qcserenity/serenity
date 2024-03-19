@@ -24,7 +24,7 @@
 #include "data/OrbitalController.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
-#include "io/FormattedOutputStream.h" //Filtered output.
+#include "io/FormattedOutputStream.h"
 #include "misc/SerenityError.h"
 #include "misc/Timing.h"
 #include "postHF/MPn/LTMP2.h"
@@ -42,15 +42,12 @@
 #include "solvation/Solvents.h"
 #include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
-/* Include Std and External Headers */
-#include <cassert>
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 ScfTask<SCFMode>::ScfTask(const std::shared_ptr<SystemController> systemController)
   : _systemController(systemController) {
-  assert(_systemController);
 }
 template<Options::SCF_MODES SCFMode>
 void ScfTask<SCFMode>::calculateMP2Contribution() {
@@ -170,7 +167,7 @@ void ScfTask<SCFMode>::loadRestartFiles() {
                                                             _systemController->getSystemIdentifier());
   }
   catch (...) {
-    std::cout << "No temporary orbital files found. Looking for converged orbital files" << std::endl;
+    OutputControl::nOut << "No temporary orbital files found. Looking for converged orbital files" << std::endl;
     orbitals = std::make_shared<OrbitalController<SCFMode>>(
         _systemController->getSettings().load + _systemController->getSystemName(),
         _systemController->getBasisController(), _systemController->getSystemIdentifier());
@@ -187,34 +184,35 @@ void ScfTask<SCFMode>::printHeader() {
   std::string method, scfmode;
   Options::resolve<Options::ELECTRONIC_STRUCTURE_THEORIES>(method, m);
   Options::resolve<Options::SCF_MODES>(scfmode, s);
-  printf("%4s SCF Mode:              %15s\n", "", scfmode.c_str());
-  printf("%4s Method:                %15s\n", "", method.c_str());
+  OutputControl::n.printf("%4s SCF Mode:              %15s\n", "", scfmode.c_str());
+  OutputControl::n.printf("%4s Method:                %15s\n", "", method.c_str());
   if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
     std::string functional;
     auto func = systemSettings.dft.functional;
     Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
-    printf("%4s Functional:            %15s\n", "", functional.c_str());
-    printf("%4s Grid Accuracy:         %13d/%1d\n", "", systemSettings.grid.smallGridAccuracy, systemSettings.grid.accuracy);
+    OutputControl::n.printf("%4s Functional:            %15s\n", "", functional.c_str());
+    OutputControl::n.printf("%4s Grid Accuracy:         %13d/%1d\n", "", systemSettings.grid.smallGridAccuracy,
+                            systemSettings.grid.accuracy);
     std::string dispersion;
     auto disp = systemSettings.dft.dispersion;
     Options::resolve<Options::DFT_DISPERSION_CORRECTIONS>(dispersion, disp);
-    printf("%4s Dispersion Correction: %15s\n", "", dispersion.c_str());
+    OutputControl::n.printf("%4s Dispersion Correction: %15s\n", "", dispersion.c_str());
   }
   unsigned nb = _systemController->getBasisController()->getNBasisFunctions();
-  printf("%4s Basis Set:             %15s\n", "", systemSettings.basis.label.c_str());
-  printf("%4s Basis Functions:       %15i\n", "", nb);
-  printf("%4s Caching Threshold:     %15i\n", "", systemSettings.basis.intCondition);
+  OutputControl::n.printf("%4s Basis Set:             %15s\n", "", systemSettings.basis.label.c_str());
+  OutputControl::n.printf("%4s Basis Functions:       %15i\n", "", nb);
+  OutputControl::n.printf("%4s Caching Threshold:     %15i\n", "", systemSettings.basis.intCondition);
   std::shared_ptr<BasisController> basis = _systemController->getBasisController();
   double integralThreshold = systemSettings.basis.integralThreshold;
   if (integralThreshold == 0) {
     integralThreshold = basis->getPrescreeningThreshold();
   }
-  printf("%4s Integral Threshold:    %15.1e\n", "", integralThreshold);
-  printf("\n%4s Energy Threshold:      %15.1e\n", "", systemSettings.scf.energyThreshold);
-  printf("%4s RMSD[D] Threshold:     %15.1e\n", "", systemSettings.scf.rmsdThreshold);
-  printf("%4s DIIS Threshold:        %15.1e\n", "", systemSettings.scf.diisThreshold);
+  OutputControl::n.printf("%4s Integral Threshold:    %15.1e\n", "", integralThreshold);
+  OutputControl::n.printf("\n%4s Energy Threshold:      %15.1e\n", "", systemSettings.scf.energyThreshold);
+  OutputControl::n.printf("%4s RMSD[D] Threshold:     %15.1e\n", "", systemSettings.scf.rmsdThreshold);
+  OutputControl::n.printf("%4s DIIS Threshold:        %15.1e\n", "", systemSettings.scf.diisThreshold);
   if (_systemController->getGeometry()->hasAtomsWithECPs()) {
-    printf("%4s ECP Start:             %15d\n", "", systemSettings.basis.firstECP);
+    OutputControl::n.printf("%4s ECP Start:             %15d\n", "", systemSettings.basis.firstECP);
   }
   if (systemSettings.pcm.use) {
     Solvents::printSolventInfo(systemSettings.pcm);
@@ -224,10 +222,10 @@ void ScfTask<SCFMode>::printHeader() {
     auto ig = systemSettings.scf.initialguess;
     std::string init_guess;
     Options::resolve<Options::INITIAL_GUESSES>(init_guess, ig);
-    printf("%4s Initial Guess:         %15s\n", "", init_guess.c_str());
+    OutputControl::n.printf("%4s Initial Guess:         %15s\n", "", init_guess.c_str());
   }
   std::string fittingA;
-  printf("\n%4s Density Fitting:\n", "");
+  OutputControl::n.printf("\n%4s Density Fitting:\n", "");
   auto fitj = systemSettings.basis.densFitJ;
   Options::resolve<Options::DENS_FITS>(fittingA, fitj);
   auto fitk = systemSettings.basis.densFitK;
@@ -243,11 +241,11 @@ void ScfTask<SCFMode>::printHeader() {
     fittingA = "NONE";
     fittingB = "NONE";
   }
-  printf("%6s Coulomb              %15s\n", "", fittingA.c_str());
-  printf("%6s Exchange             %15s\n", "", fittingB.c_str());
+  OutputControl::n.printf("%6s Coulomb              %15s\n", "", fittingA.c_str());
+  OutputControl::n.printf("%6s Exchange             %15s\n", "", fittingB.c_str());
   if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    printf("%6s Long-Range Exchange  %15s\n", "", fittingC.c_str());
-    printf("%6s Correlation          %15s\n", "", fittingD.c_str());
+    OutputControl::n.printf("%6s Long-Range Exchange  %15s\n", "", fittingC.c_str());
+    OutputControl::n.printf("%6s Correlation          %15s\n", "", fittingD.c_str());
   }
   printSubSectionTitle("SCF");
 }
@@ -267,22 +265,23 @@ void ScfTask<SCFMode>::printResults() {
   // SCF Analysis
   printSmallCaption("Additional Analysis");
   SCFAnalysis<SCFMode> scfAn({_systemController});
-  auto s2val = scfAn.S2();
-  auto virialRatio = scfAn.VirialRatio();
-  printf("\n   -<V>/<T> = %4.3f ", virialRatio);
-  printf("\n      <S*S> = %4.3f ", s2val);
+  auto s2val = scfAn.getS2();
+  auto virialRatio = scfAn.getVirialRatio();
+  OutputControl::n.printf("\n   -<V>/<T> = %4.3f ", virialRatio);
+  OutputControl::n.printf("\n      <S*S> = %4.3f ", s2val);
   double S = fabs(0.5 * _systemController->getSpin());
-  printf("\n    S*(S+1) = %4.3f ", S * (S + 1));
-  printf("\n          C = %4.3f \n\n", s2val - S * (S + 1));
+  OutputControl::n.printf("\n    S*(S+1) = %4.3f ", S * (S + 1));
+  OutputControl::n.printf("\n          C = %4.3f \n\n", s2val - S * (S + 1));
   if (SCFMode == Options::SCF_MODES::UNRESTRICTED && _systemController->getSettings().scf.rohf != Options::ROHF_TYPES::NONE) {
-    printf("    This is a constrained UHF wavefunction without (CUHF) or reduced (SUHF)\n    spin contamination "
-           "(ROHF). Take care with post HF methods or gradients.\n\n");
+    OutputControl::n.printf(
+        "    This is a constrained UHF wavefunction without (CUHF) or reduced (SUHF)\n    spin contamination "
+        "(ROHF). Take care with post HF methods or gradients.\n\n");
     if (_systemController->getSettings().scf.rohf == Options::ROHF_TYPES::SUHF) {
-      printf("    Type   :     SUHF\n");
-      printf("    Lambda :     %8.2e\n\n", _systemController->getSettings().scf.suhfLambda);
+      OutputControl::n.printf("    Type   :     SUHF\n");
+      OutputControl::n.printf("    Lambda :     %8.2e\n\n", _systemController->getSettings().scf.suhfLambda);
     }
     else if (_systemController->getSettings().scf.rohf == Options::ROHF_TYPES::CUHF) {
-      printf("    Type   :     CUHF\n\n");
+      OutputControl::n.printf("    Type   :     CUHF\n\n");
     }
   }
 }
@@ -350,8 +349,7 @@ std::shared_ptr<PotentialBundle<SCFMode>> ScfTask<SCFMode>::getPotentialBundle()
     potentials = _systemController->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(gridPurpose);
   }
   else {
-    std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
-    assert(false);
+    throw SerenityError("ScfTask: Nonexisting electronicStructureTheory requested.");
   }
   return potentials;
 }

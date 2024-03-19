@@ -20,7 +20,7 @@
 #ifndef SCF_H_
 #define SCF_H_
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward Declarations */
@@ -29,11 +29,11 @@ namespace Options {
 enum class SCF_MODES;
 }
 
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class PotentialBundle;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class SPMatrix;
 
 /**
@@ -66,7 +66,7 @@ class Scf {
    */
   static void perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
                       std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged = false,
-                      std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr, int momCycles = 0);
+                      std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr, unsigned int momCycles = 0);
 };
 
 } /* namespace Serenity */

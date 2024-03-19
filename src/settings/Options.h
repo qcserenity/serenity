@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
+#include "misc/WarningTracker.h"
 /* Include Std and External Headers */
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/lexical_cast.hpp>
@@ -77,7 +78,10 @@ inline void resolve<unsigned int>(std::string& value, unsigned int& field) {
   }
   else {
     try {
-      field = std::stoi(value);
+      if (std::stoi(value) < 0) { // negative number in input could lead to very high numbers
+        WarningTracker::printWarning((std::string) "Converted '" + value + "' to its absolute value in the input.", true);
+      }
+      field = abs(std::stoi(value));
     }
     catch (...) {
       throw SerenityError("ERROR: Could not convert '" + value + "' into an unsigned integer.");
@@ -93,10 +97,13 @@ inline void resolve<unsigned long int>(std::string& value, unsigned long int& fi
   }
   else {
     try {
-      field = std::stoul(value);
+      if (std::stol(value) < 0) { // negative number in input could lead to very high numbers
+        WarningTracker::printWarning((std::string) "Converted '" + value + "' to its absolute value in the input.", true);
+      }
+      field = abs(std::stol(value));
     }
     catch (...) {
-      throw SerenityError("ERROR: Could not convert '" + value + "' into an unsigned integer.");
+      throw SerenityError("ERROR: Could not convert '" + value + "' into an unsigned long integer.");
     }
   }
 }

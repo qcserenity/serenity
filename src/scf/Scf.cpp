@@ -37,7 +37,7 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
                            std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged,
-                           std::shared_ptr<SPMatrix<SCFMode>> momMatrix, int momCycles) {
+                           std::shared_ptr<SPMatrix<SCFMode>> momMatrix, unsigned int momCycles) {
   allowNotConverged = (allowNotConverged || settings.scf.allowNotConverged);
   es->setDiskMode(false, "", "");
   auto energyComponentController = es->getEnergyComponentController();
@@ -92,7 +92,7 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
     orbitalController->updateOrbitals(convergenceController.getLevelshift(), F, es->getOneElectronIntegralController(),
                                       momMatrix);
     // Update MOM matrix (MOM and not IMOM procedure).
-    if ((counter - 1 < (unsigned)momCycles || momCycles < 0) && momMatrix) {
+    if ((counter - 1 < momCycles) && momMatrix) {
       auto& mom = (*momMatrix);
       auto C = orbitalController->getCoefficients();
       auto nocc = es->getNOccupiedOrbitals();

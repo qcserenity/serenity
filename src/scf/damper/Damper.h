@@ -1,8 +1,8 @@
 /**
  * @file   Damper.h
  *
- * @date   Oct 10, 2016
- * @author Jan Unsleber
+ * @date   Oct 10, 2016, reworked on Feb 07, 2024
+ * @author Jan Unsleber, rework by Lukas Paetow
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -20,15 +20,9 @@
 #ifndef MATHS_DAMPER_DAMPER_H_
 #define MATHS_DAMPER_DAMPER_H_
 /* Include Serenity Internal Headers */
-#include "data/SpinPolarizedData.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/Options.h"
-/* Include Std and External Headers */
-#include <Eigen/Dense>
-#include <cassert>
-#include <memory>
-#include <vector>
 
 namespace Serenity {
 
@@ -41,25 +35,25 @@ template<Options::SCF_MODES SCFMode>
  *          M^{(n+1)\prime} = (1-\lambda) M^{(n+1)} + \lambda M^{(n)}
  *        \f]
  *        where \f$ 0 \leq \lambda < 1 \f$. In the SCF, damping can be applied to the the density matrix,
- *        the Fock matrix ore the MO coefficients. If applied to the MO coefficients, one must take care of
+ *        the Fock matrix or the MO coefficients. If applied to the MO coefficients, one must take care of
  *        the signs (phases) and the mixing of degenerate orbitals.
  *        During the first iterations of the SCF, damping has the effect to reduce the oscillations
  *        in the matrices. In the first iterations, \f$ \lambda \f$ can be constant or determined
- *        dynamically unit the convergence falls below some predefined threshold after which
+ *        dynamically until the convergence falls below some predefined threshold after which
  *        \f$ \lambda \f$ is set to zero.
  *        \n
  *        Note that damping does not preserve the orthonormality of the MOs or the indempotency of the
- *        density matrix. However, this is not a severe problem since the damping switched off in later
+ *        density matrix. However, this is not a severe problem since the damping is switched off in later
  *        SCF iterations. Furthermore, damping may decrease the speed of convergence, but slow convergence
  *        is better than no convergence if no better technique is available.
  *        \n
- *        Other quantum chemestry programs may use the slightly different damping relation
+ *        Other quantum chemistry programs may use the slightly different damping relation
  *        \f[
  *          M^{(n+1)\prime} = M^{(n+1)} + \lambda M^{(n)}
  *        \f]
  *        with \f$ \lambda \in \mathrm{R} \f$ .
  *        \n
- *        For further information about damping see actual implementations.
+ *        For further information about damping, see actual implementations.
  *        \n
  *        Ref.: See e.g. H. B. Schlegel and J. J. W. McDouall, Do you have SCF Stability and Convergence
  *              Problems? in Computational Advances in Organic Chemistry: Molecular Structure and Reactivity,
@@ -69,30 +63,67 @@ template<Options::SCF_MODES SCFMode>
 class Damper {
  public:
   /**
-   * @param Default constructor
+   * @brief Default constructor. Sufficient for dynamic damping.
    */
-  Damper() = default;
+  Damper();
+
+  /**
+   * @brief Constructor for static damping.
+   *
+   * @param dampingFactor Damping factor that determines the ratio of previous and current Fock matrix that is being
+   * mixed in.
+   */
+  Damper(const double dampingFactor);
+
+  /**
+   * @brief           Constructor for arithmetic series damping with varying damping factor in a given range.
+   *
+   *                  Damping with varying damping factor in range dStart to dEnd. Note that
+   *                  the end value must not be reached. The damping will stop when the damping
+   *                  factor falls below dEnd. Negative damping factors are not possible.
+   *                  If iStartUp > 0, it will perform iStartUp static damping steps at the
+   *                  beginning of the SCF calculation.  It can make sense to use a higher
+   *                  damping factor multiple times at the beginning because the Fock matrix
+   *                  varies strongly in the first few iterations.
+   *
+   * @param dStart    Start damping factor (dStart > 0.0)
+   * @param dStep     Step width (dStep > 0.0)
+   * @param dEnd      End damping factor (dEnd > 0.0)
+   * @param iStartUp  Number of static damping steps with dStart at the beginning of the SCF
+   *
+   */
+  Damper(const double dStart, const double dStep, const double dEnd, int iStartUp);
+
   /**
    * @brief Default destructor.
    */
   virtual ~Damper() = default;
 
   /**
-   *
-   * @param newMatrix The new Matrix to be damped.
+   * @param newFock The new Fock matrix to be damped.
    */
-  virtual void damp(SpinPolarizedData<SCFMode, Eigen::MatrixXd>& newMatrix) = 0;
+  void staticDamp(FockMatrix<SCFMode>& newFock);
+
   /**
-   *
-   * @param newMatrix The new Matrix to be damped.
+   * @param newFock The new Fock matrix to be damped.
    */
-  virtual void damp(FockMatrix<SCFMode>& newMatrix) = 0;
+  void arithmeticSeriesDamp(FockMatrix<SCFMode>& newFock);
+
   /**
-   *
-   * @param newFock The new FockMatrix to be damped.
-   * @param newDensity The new DensityMatrix to be damped.
+   * @param newFock The new Fock matrix to be damped.
+   * @param newDensity The new Density matrix to be damped.
    */
-  virtual void dynamicDamp(FockMatrix<SCFMode>& newFock, DensityMatrix<SCFMode> newDensity) = 0;
+  void dynamicDamp(FockMatrix<SCFMode>& newFock, DensityMatrix<SCFMode> newDensity);
+
+ private:
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _oldFock;
+  SpinPolarizedData<SCFMode, Eigen::MatrixXd> _oldDensity;
+  double _dampingFactor = 0.0;
+  bool _initialized;
+  double _dStart = 0.7;
+  double _dStep = 0.05;
+  double _dEnd = 0.2;
+  int _iStartUp = 2;
 };
 
 } /* namespace Serenity */

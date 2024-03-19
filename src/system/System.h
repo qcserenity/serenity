@@ -74,6 +74,7 @@ class System {
 
  private:
   std::shared_ptr<Geometry> _geometry;
+  std::unique_ptr<Eigen::MatrixXd> _pointChargeGradients;
   Settings _settings;
   std::map<Options::BASIS_PURPOSES, std::shared_ptr<AtomCenteredBasisController>> _basisControllers;
   std::map<Options::GRID_PURPOSES, std::shared_ptr<GridController>> _gridControllers;

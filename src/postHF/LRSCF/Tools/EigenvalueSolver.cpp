@@ -220,8 +220,10 @@ void EigenvalueSolver::iterate() {
   // residual vectors and norms
   _residualNorms.setZero();
   for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
-    _residualVectors[iSet] = _sigmaVectors[iSet] * _expansionVectors[iSet] -
-                             _eigenvectors[_nSets == 1 ? 0 : iSet == 0 ? 1 : 0] * _eigenvalues.asDiagonal();
+    _residualVectors[iSet] = _sigmaVectors[iSet] * _expansionVectors[iSet] - _eigenvectors[_nSets == 1 ? 0
+                                                                                           : iSet == 0 ? 1
+                                                                                                       : 0] *
+                                                                                 _eigenvalues.asDiagonal();
     _residualNorms += _residualVectors[iSet].colwise().norm() / std::sqrt(_nSets);
   }
 

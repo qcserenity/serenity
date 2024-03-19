@@ -21,8 +21,6 @@
 #include "scf/ConvergenceController.h"
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
-#include "data/matrices/FockMatrix.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "energies/EnergyComponentController.h"
 #include "energies/EnergyContributions.h"
 #include "integrals/OneElectronIntegralController.h"
@@ -33,15 +31,10 @@
 #include "math/linearAlgebra/MatrixFunctions.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/Timing.h"
-#include "scf/damper/ArithmeticSeriesDamping.h"
 #include "scf/damper/Damper.h"
-#include "scf/damper/DynamicDamping.h"
-#include "scf/damper/StaticDamping.h"
 #include "settings/Settings.h"
 /* Include Std and External Headers */
-#include <cassert>
 #include <cmath>
-#include <ctime>
 #include <iomanip>
 #include <limits>
 
@@ -69,28 +62,25 @@ ConvergenceController<SCFMode>::ConvergenceController(const Settings& settings,
     _adiis(nullptr),
     _diisZoneStart(0),
     _mode("---") {
-  assert(_oneIntController);
-  assert(_energyComponentController);
   _diis = std::make_shared<DIIS>(_settings.scf.diisMaxStore);
   if (settings.scf.useADIIS)
     _adiis = std::make_shared<ADIIS>();
   switch (_settings.scf.damping) {
     case (Options::DAMPING_ALGORITHMS::NONE): {
-      _damping = std::make_shared<StaticDamping<SCFMode>>(0);
+      _damping = nullptr;
       break;
     }
     case (Options::DAMPING_ALGORITHMS::STATIC): {
-      _damping = std::make_shared<StaticDamping<SCFMode>>(_settings.scf.staticDampingFactor);
+      _damping = std::make_shared<Damper<SCFMode>>(_settings.scf.staticDampingFactor);
       break;
     }
     case (Options::DAMPING_ALGORITHMS::SERIES): {
-      _damping = std::make_shared<ArithmeticSeriesDamping<SCFMode>>(
-          _settings.scf.seriesDampingStart, _settings.scf.seriesDampingStep, _settings.scf.seriesDampingEnd,
-          _settings.scf.seriesDampingInitialSteps);
+      _damping = std::make_shared<Damper<SCFMode>>(_settings.scf.seriesDampingStart, _settings.scf.seriesDampingStep,
+                                                   _settings.scf.seriesDampingEnd, _settings.scf.seriesDampingInitialSteps);
       break;
     }
     case (Options::DAMPING_ALGORITHMS::DYNAMIC): {
-      _damping = std::make_shared<DynamicDamping<SCFMode>>();
+      _damping = std::make_shared<Damper<SCFMode>>();
       break;
     }
   }
@@ -109,7 +99,6 @@ bool ConvergenceController<SCFMode>::checkConvergence() {
   clock_gettime(CLOCK_REALTIME, &_time);
 
   // check for convergence. Do not allow convergence if a level-shift is stll used.
-  // ToDo: Implement option to converge below a selected combination of convergence criteria.
   if (this->getNConverged() >= _nNeccessaryToConverge && not _levelShiftInLastIteration) {
     converged = true;
   }
@@ -126,9 +115,10 @@ void ConvergenceController<SCFMode>::printCycleInfo() {
   double deltaE_abs = std::abs(energy - _oldEnergy);
   if (_cycle == 1) {
     const double inf = std::numeric_limits<double>::infinity();
-    std::printf("    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "",
-                "", "", "");
-    std::printf("    %4d %16.10f %16.2e %16.2e %16.2e %6i:%02u \n", _cycle, energy, inf, inf, _diisConvMeasure, 0, 0);
+    OutputControl::m.printf(
+        "    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "", "", "", "");
+    OutputControl::m.printf("    %4d %16.10f %16.2e %16.2e %16.2e %6i:%02u \n", _cycle, energy, inf, inf,
+                            _diisConvMeasure, 0, 0);
   }
   else {
     timespec now;
@@ -292,14 +282,18 @@ void ConvergenceController<Options::SCF_MODES::RESTRICTED>::accelerateConvergenc
     F = _adiis->optimize(F, _dmatContr->getDensityMatrix());
     _mode[1] = 'A';
   }
+  // rework: only one instance of _damping, but several functions
   if (_diisConvMeasure >= _settings.scf.endDampErr or _cycle < 2) {
     if (_diisConvMeasure <= 10.0 * _settings.scf.diisStartError && not _diisZoneStart)
       _diis->storeMatrix(F, errorVector);
-    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
+    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::SERIES) {
+      _damping->arithmeticSeriesDamp(F);
+    }
+    else if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
       _damping->dynamicDamp(F, D);
     }
-    else {
-      _damping->damp(F);
+    else if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::STATIC) {
+      _damping->staticDamp(F);
     }
     _mode[0] = 'D';
   }
@@ -354,10 +348,12 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
      * Make an Optimizer step: the Fock matrix is updated.
      */
     _mode[1] = 'D';
-    assert(errorVectors.alpha.rows() == errorVectors.beta.rows());
-    assert(errorVectors.alpha.cols() == errorVectors.beta.cols());
-    assert(F.alpha.rows() == F.beta.rows());
-    assert(F.alpha.cols() == F.beta.cols());
+    if ((errorVectors.alpha.rows() != errorVectors.beta.rows()) || (errorVectors.alpha.cols() != errorVectors.beta.cols())) {
+      throw SerenityError("ConvergenceController: The errorVectors alpha/beta dimensions are not identical!");
+    }
+    else if ((F.alpha.rows() != F.beta.rows()) || (F.alpha.cols() != F.beta.cols())) {
+      throw SerenityError("ConvergenceController: The Fock matrix alpha/beta dimensions are not identical!");
+    }
 
     Matrix<double> eTot(errorVectors.alpha.rows(), 2 * errorVectors.alpha.cols());
     Matrix<double> fTot(F.alpha.rows(), 2 * F.alpha.cols());
@@ -372,6 +368,7 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
 
     timeTaken(3, "Optimizer update");
   }
+  // rework: only one instance of _damping, but several functions
   if (_diisConvMeasure >= _settings.scf.endDampErr or _cycle < 2) {
     if (_diisConvMeasure <= 10.0 * _settings.scf.diisStartError && not _diisZoneStart) {
       Matrix<double> eTot(errorVectors.alpha.rows(), 2 * errorVectors.alpha.cols());
@@ -381,11 +378,14 @@ void ConvergenceController<Options::SCF_MODES::UNRESTRICTED>::accelerateConverge
       fTot << F.alpha, F.beta;
       _diis->storeMatrix(fTot, eTot);
     }
-    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
+    if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::SERIES) {
+      _damping->arithmeticSeriesDamp(F);
+    }
+    else if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::DYNAMIC) {
       _damping->dynamicDamp(F, D);
     }
-    else {
-      _damping->damp(F);
+    else if (_settings.scf.damping == Options::DAMPING_ALGORITHMS::STATIC) {
+      _damping->staticDamp(F);
     }
     _mode[0] = 'D';
   }

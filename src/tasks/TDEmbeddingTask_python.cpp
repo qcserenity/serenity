@@ -30,10 +30,8 @@ using namespace Serenity;
 void export_ProjectionBasedEmbTask(py::module& spy) {
   py::class_<TDEmbeddingTaskSettings>(spy, "TDEmbeddingTaskSettings",
                                       "@brief Default constructor for Settings all set to their default values.")
-      .def_readwrite("embedding", &TDEmbeddingTaskSettings::embedding)
       .def_readwrite("locType", &TDEmbeddingTaskSettings::locType)
       .def_readwrite("orbitalThreshold", &TDEmbeddingTaskSettings::orbitalThreshold)
-      .def_readwrite("systemPartitioning", &TDEmbeddingTaskSettings::systemPartitioning)
       .def_readwrite("noSupRec", &TDEmbeddingTaskSettings::noSupRec)
       .def_readwrite("truncationFactor", &TDEmbeddingTaskSettings::truncationFactor)
       .def_readwrite("truncAlgorithm", &TDEmbeddingTaskSettings::truncAlgorithm)
@@ -43,9 +41,12 @@ void export_ProjectionBasedEmbTask(py::module& spy) {
       .def_readwrite("maxResidual", &TDEmbeddingTaskSettings::maxResidual)
       .def_readwrite("maxCycles", &TDEmbeddingTaskSettings::maxCycles)
       .def_readwrite("useFermiLevel", &TDEmbeddingTaskSettings::useFermiLevel)
+      .def_readwrite("systemPartitioning", &TDEmbeddingTaskSettings::systemPartitioning)
       .def_readwrite("mp2Type", &TDEmbeddingTaskSettings::mp2Type)
       .def_readwrite("splitValenceAndCore", &TDEmbeddingTaskSettings::splitValenceAndCore)
-      .def_readwrite("addOrbitals", &TDEmbeddingTaskSettings::addOrbitals);
+      .def_readwrite("addOrbitals", &TDEmbeddingTaskSettings::addOrbitals)
+      .def_readwrite("lcSettings", &TDEmbeddingTaskSettings::lcSettings)
+      .def_readwrite("embedding", &TDEmbeddingTaskSettings::embedding);
 
   py::class_<TDEmbeddingTask<RESTRICTED>>(spy, "TDEmbeddingTask_R")
       .def(py::init<std::shared_ptr<SystemController>, std::shared_ptr<SystemController>>())

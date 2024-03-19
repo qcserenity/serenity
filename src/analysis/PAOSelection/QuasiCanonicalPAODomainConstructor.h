@@ -22,9 +22,8 @@
 #define ANALYSIS_PAOSELECTION_QUASICANONICALPAODOMAINCONSTRUCTOR_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/CoefficientMatrix.h" //Coefficient matrix definition
-#include "data/matrices/FockMatrix.h"        //Fock matrix definition
-#include "data/matrices/MatrixInBasis.h"     //MatrixInBasis definition.
+#include "data/matrices/CoefficientMatrix.h"
+#include "data/matrices/FockMatrix.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense> //Dense matrices.
 #include <memory>      //smart ptr.
@@ -33,12 +32,11 @@
 namespace Serenity {
 /* Forward Declarations */
 class OrbitalPair;
-class SingleSubstitution;
 class PAOController;
 class SystemController;
 
 /**
- * @brief A class that constructs a set of quasi-canonical, non-reduncant PAO for a given pair and the
+ * @brief A class that constructs a set of quasi-canonical, non-redundant PAO for a given pair and the
  *        corresponding SC-MP2 amplitudes.
  *        The PAO domain within the pair needs to be initialized.\n
  *        Furthermore, this class calculates the overlap between the PAO domains defined in the pair
@@ -58,8 +56,8 @@ class QuasiCanonicalPAODomainConstructor {
    * @param paoOrthogonalizationThreshold The norm threshold for the canonical orthogonalization of the PAOs.
    * @param environmentSystems Possible environment systems which are shifted in the fock matrix.
    * @param levelShiftParameter The shift of the occupied environment orbitals in the fock matrix.
-   * @param ssScaling Same spin scaling factor.
-   * @param osScaling Opposite spin scaling factor.
+   * @param ssScaling Same-spin scaling factor.
+   * @param osScaling Opposite-spin scaling factor.
    * @param clear Clear integrals after pair energy calculation.
    */
   QuasiCanonicalPAODomainConstructor(const CoefficientMatrix<Options::SCF_MODES::RESTRICTED>& coefficients,
@@ -70,7 +68,7 @@ class QuasiCanonicalPAODomainConstructor {
                                      bool clear = false);
 
   /**
-   * @brief Transform the PAO basis of the given pair.
+   * @brief Transforms the PAO basis of the given pair.
    * @param pair The orbital pair.
    */
   virtual void transformExternalBasis(std::shared_ptr<OrbitalPair> pair) {
@@ -78,7 +76,7 @@ class QuasiCanonicalPAODomainConstructor {
   }
   /**
    * @brief Calculates the semi-canonical MP2 pair energy and initializes amplitudes.
-   * @param pair The pair.
+   * @param pair The orbital pair.
    */
   virtual void postProcessing(std::shared_ptr<OrbitalPair> pair) {
     initializeAmplitudes(pair);
@@ -97,22 +95,22 @@ class QuasiCanonicalPAODomainConstructor {
    */
   void transformToQuasiCanonicalPAOBasis(std::shared_ptr<OrbitalPair> pair);
   /**
-   * @brief Initialize amplitudes and calculate SC-MP2 pair energy.
-   * @param pair
+   * @brief Initializes amplitudes and calculate SC-MP2 pair energy.
+   * @param pair The orbital pair.
    */
   void initializeAmplitudes(std::shared_ptr<OrbitalPair> pair);
   /**
-   * @brief Clear the K_ij integrals of the given pair.
-   * @param pair
+   * @brief Clears the K_ij integrals of the given pair.
+   * @param pair The orbital pair.
    */
   void clearIntegrals(std::shared_ptr<OrbitalPair> pair);
   ///@brief The internal block of the Fock matrix.
   Eigen::MatrixXd _f_MO;
   ///@brief Fock matrix with the right function transformed to the internal basis.
   Eigen::MatrixXd _f_PAO_MO;
-  ///@brief The Fock matrix in AO basis.
+  ///@brief The Fock matrix in PAO basis.
   Eigen::MatrixXd _f_pao;
-  ///@brief The PAO-Controller.
+  ///@brief The PAO controller.
   std::shared_ptr<PAOController> _paoController;
 
  private:
@@ -126,9 +124,9 @@ class QuasiCanonicalPAODomainConstructor {
   Eigen::MatrixXd _coeff;
   // Same-spin scaling parameter.
   double _ssScaling;
-  // opposite-spin scaling parameter.
+  // Opposite-spin scaling parameter.
   double _osScaling;
-  // Clear QC-PAO Kij integrals.
+  // Clear QC-PAO K_ij integrals.
   bool _clear;
 };
 

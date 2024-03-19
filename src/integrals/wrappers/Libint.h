@@ -185,13 +185,32 @@ class Libint {
    * @param nCenter The number of centers (2-4).
    * @param pointCharges The charges to be added to the engines
    *                     (needed for Operator::nuclear integrals).
+   * @param mu           Range separation parameter if operator is erf_coulomb.
    * @param precision    The precision requested for the fully contracted integrals
    *                     (as linear combination of primitives).
    * @param maxD         Maximum coefficient to be contracted with the integrals.
    * @param maxNPrim     Maximum number of primitives in any basis function shell.
    */
   void initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
-                  const std::vector<std::pair<double, std::array<double, 3>>> pointCharges, double mu,
+                  const std::vector<std::pair<double, std::array<double, 3>>>& pointCharges, double mu,
+                  double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                  unsigned int maxNPrim = N_PRIM_MAX);
+
+  /**
+   * @brief Initializes the engines for a specific type of integral.
+   * @param op The kernel/operator as libint enum.
+   * @param deriv The derivative level.
+   * @param nCenter The number of centers (2-4).
+   * @param pointCharges The charges to be added to the engines
+   *                     (needed for Operator::nuclear integrals).
+   * @param mu           Range separation parameter if operator is erf_coulomb.
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
+   */
+  void initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsigned int nCenter,
+                  const std::vector<std::pair<double, Point>>& pointCharges, double mu = 0.0,
                   double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
                   unsigned int maxNPrim = N_PRIM_MAX);
 
@@ -203,6 +222,7 @@ class Libint {
    * @param atoms The atoms to be added to the engines
    *                     (needed for Operator::nuclear integrals).
    *                     [default=None]
+   * @param mu           Range separation parameter if operator is erf_coulomb.
    * @param precision    The precision requested for the fully contracted integrals
    *                     (as linear combination of primitives).
    * @param maxD         Maximum coefficient to be contracted with the integrals.
@@ -367,6 +387,24 @@ class Libint {
    */
   Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                 const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
+                                double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
+                                unsigned int maxNPrim = N_PRIM_MAX);
+
+  /**
+   * @brief Shorthand for an entire set of 1e integrals.
+   * @param op     The kernel/operator as libint enum.
+   * @param basis  The basis.
+   * @param pointCharges  The atoms to be added to the engine
+   *                     (needed for Operator::nuclear integrals).
+   *                     [default=None]
+   * @param precision    The precision requested for the fully contracted integrals
+   *                     (as linear combination of primitives).
+   * @param maxD         Maximum coefficient to be contracted with the integrals.
+   * @param maxNPrim     Maximum number of primitives in any basis function shell.
+   * @return The entire set if integrals.
+   */
+  Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
+                                const std::vector<std::pair<double, Point>>& pointCharges,
                                 double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
                                 unsigned int maxNPrim = N_PRIM_MAX);
 

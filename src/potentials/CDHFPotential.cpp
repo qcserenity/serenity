@@ -24,13 +24,9 @@
 #include "data/OrbitalController.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "data/matrices/FockMatrix.h"
-#include "dft/Functional.h"
 #include "integrals/CDIntegralController.h"
 #include "integrals/CDStorageController.h"
 #include "integrals/decomposer/TwoElecFourCenterIntDecomposer.h"
-#include "integrals/wrappers/Libint.h"
-#include "memory/MemoryManager.h"
-#include "misc/Timing.h"
 #include "system/SystemController.h"
 
 namespace Serenity {
@@ -88,7 +84,6 @@ void CDHFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Optio
 
   // Check if orbitals are available. If not generate pseudo coefficients from the density matrix
   if (systemController->hasElectronicStructure<RESTRICTED>()) {
-    //  if(false){
     const auto orbController = systemController->getActiveOrbitalController<Options::SCF_MODES::RESTRICTED>();
     auto coefficientMatrix = orbController->getCoefficients();
     // Get number of occupied orbitals
@@ -127,7 +122,9 @@ void CDHFPotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(FockMatrix<Optio
 #pragma omp master
       {
         batchSize = cdStorageController->loadBatch(J);
-        assert(batchSize > 0);
+        if (batchSize <= 0) {
+          throw SerenityError("Cholesky Vector batch size is less than 1.");
+        }
       }
 #pragma omp barrier
 
@@ -246,7 +243,9 @@ void CDHFPotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(FockMatrix<Opt
 #pragma omp master
       {
         batchSize = cdStorageController->loadBatch(J);
-        assert(batchSize > 0);
+        if (batchSize <= 0) {
+          throw SerenityError("Cholesky Vector batch size is less than 1.");
+        }
       }
 #pragma omp barrier
 

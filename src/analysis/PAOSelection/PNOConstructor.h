@@ -23,11 +23,12 @@
 
 /* Include Serenity Internal Headers */
 #include "analysis/PAOSelection/QuasiCanonicalPAODomainConstructor.h" //QCPAO constructor, inherits from this class.
-#include "data/matrices/CoefficientMatrix.h"                          //Coefficient matrix definition
-#include "data/matrices/FockMatrix.h"                                 //Fock matrix definition
+#include "data/matrices/CoefficientMatrix.h"
+#include "data/matrices/FockMatrix.h"
 /* Include Std and External Headers */
-#include <memory> //smart ptr.
-#include <vector> //std::vector
+#include <Eigen/Dense> //Dense matrices.
+#include <memory>      //smart ptr.
+#include <vector>      //std::vector
 
 namespace Serenity {
 
@@ -47,23 +48,6 @@ class SystemController;
  *
  */
 class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
- private:
-  ///@brief Force the F_ai block of the fock matrix to be zero.
-  bool _setFaiZero;
-  ///@brief Same-spin scaling parameter.
-  double _ssScaling;
-  ///@brief opposite-spin scaling parameter.
-  double _osScaling;
-
-  /**
-   * @brief Calculate quasi canonical PNOs for the given pair.
-   * @param d_ij_red The MP2 one particle density matrix.
-   * @param pair The pair.
-   * @return The eigenvalues and set of eigenvectors.
-   */
-  std::pair<Eigen::VectorXd, Eigen::MatrixXd> orthogonalizeFockMatrix(const Eigen::MatrixXd& d_ij_red,
-                                                                      std::shared_ptr<OrbitalPair> pair);
-
  public:
   /**
    * @brief Default destructor.
@@ -75,9 +59,6 @@ class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
    * @param f The Fock matrix.
    * @param paoController The PAO-Controller.
    * @param paoOrthogonalizationThreshold Threshold for the canonical PAO orthogonalisation.
-   * @param pnoThreshold The truncation threshold for the PNOs of the pairs.
-   * @param singlesPNOScaling The scaling for the PNOs of the singles.
-   * @param pnoCoreScaling The scaling for singles/pairs containing core orbitals.
    * @param environmentSystems Optional environment systems.
    * @param levelShiftParameter Optional level-shift value for the occupied environment orbitals.
    * @param setFaiZero Force any F_ai block to be zero.
@@ -111,6 +92,23 @@ class PNOConstructor : public QuasiCanonicalPAODomainConstructor {
    * @param orbitalPairs  The orbital pair.
    */
   void transformToPNOBasis(std::shared_ptr<OrbitalPair> pair);
+
+ private:
+  ///@brief Force the F_ai block of the fock matrix to be zero.
+  bool _setFaiZero;
+  ///@brief Same-spin scaling parameter.
+  double _ssScaling;
+  ///@brief opposite-spin scaling parameter.
+  double _osScaling;
+
+  /**
+   * @brief Calculate quasi canonical PNOs for the given pair.
+   * @param d_ij_red The MP2 one particle density matrix.
+   * @param pair The pair.
+   * @return The eigenvalues and set of eigenvectors.
+   */
+  std::pair<Eigen::VectorXd, Eigen::MatrixXd> orthogonalizeFockMatrix(const Eigen::MatrixXd& d_ij_red,
+                                                                      std::shared_ptr<OrbitalPair> pair);
 };
 
 } /* namespace Serenity */

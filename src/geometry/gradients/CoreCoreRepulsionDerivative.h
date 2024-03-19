@@ -29,6 +29,7 @@
 namespace Serenity {
 /* Forward declarations */
 class Atom;
+class Point;
 /**
  * @class CoreCoreRepulsionDerivative CoreCoreRepulsionDerivative.h
  *
@@ -36,7 +37,7 @@ class Atom;
  *        changes in the nuclear coordinates.
  */
 class CoreCoreRepulsionDerivative {
-  /* Purely static class. Must not be instanciated. */
+  /* Purely static class. Must not be instantiated. */
   CoreCoreRepulsionDerivative() = delete;
 
  public:
@@ -46,6 +47,13 @@ class CoreCoreRepulsionDerivative {
    *           changes in nuclear coordinates.
    */
   static Matrix<double> calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atoms);
+  /**
+   * @brief Calculate the derivative for the Coulomb interaction between these charges.
+   * @param charges The charges.
+   * @return First derivative of the total coulomb repulsion energy between the charges w.r.t.
+   *           changes in charge coordinates.
+   */
+  static Matrix<double> calculateDerivative(const std::vector<std::pair<double, Point>>& charges);
 
   /**
    * @param   atoms active
@@ -55,6 +63,36 @@ class CoreCoreRepulsionDerivative {
    */
   static Matrix<double> calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atomsAct,
                                             const std::vector<std::shared_ptr<Atom>>& atomsEnv);
+
+  /**
+   * @param   chargesAct active
+   * @param   chargesEnv environment
+   * @returns First derivative of the total coulomb repulsion energy between the atoms in the environment and
+   *           active region w.r.t. changes in nuclear coordinates.
+   */
+  static Matrix<double> calculateDerivative(const std::vector<std::pair<double, Point>>& chargesAct,
+                                            const std::vector<std::pair<double, Point>>& chargesEnv);
+
+  /**
+   * @param   atomsAct active
+   * @param   chargesEnv environment
+   * @returns First derivative of the total coulomb repulsion energy between the atoms in the environment and
+   *           active region w.r.t. changes in nuclear coordinates.
+   */
+  static Matrix<double> calculateDerivative(const std::vector<std::shared_ptr<Atom>>& atomsAct,
+                                            const std::vector<std::pair<double, Point>>& chargesEnv);
+
+  /**
+   * @param   chargesAct active
+   * @param   atomsEnv environment
+   * @returns First derivative of the total coulomb repulsion energy between the atoms in the environment and
+   *           active region w.r.t. changes in nuclear coordinates.
+   */
+  static Matrix<double> calculateDerivative(const std::vector<std::pair<double, Point>>& chargesAct,
+                                            const std::vector<std::shared_ptr<Atom>>& atomsEnv);
+
+ private:
+  static std::vector<std::pair<double, Point>> convertAtomsToCharges(const std::vector<std::shared_ptr<Atom>>& atoms);
 };
 
 } /* namespace Serenity */

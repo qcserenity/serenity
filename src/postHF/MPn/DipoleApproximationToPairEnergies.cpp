@@ -18,16 +18,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Class Header*/
-#include "postHF/MPn/DipoleApproximationToPairEnergies.h" //DipoleApproximationToPairEnergies
+#include "postHF/MPn/DipoleApproximationToPairEnergies.h"
 /* Include Serenity Internal Headers */
-#include "basis/Basis.h"               //Loop shells.
-#include "basis/BasisController.h"     //BasisController
-#include "data/OrbitalPair.h"          //OrbitalPair definition.
-#include "data/PAOController.h"        //PAOController
+#include "basis/Basis.h" //Loop shells.
+#include "basis/BasisController.h"
+#include "data/OrbitalPair.h"
+#include "data/PAOController.h"
 #include "integrals/wrappers/Libint.h" //Dipole integrals
 #include "io/FormattedOutputStream.h"  //Filtered output streams.
 #include "misc/SystemSplittingTools.h" //diagonalizationInNonRedundantPAOBasis
-#include "misc/Timing.h"               //Timings
 /* Include Std and External Headers */
 #include <algorithm> //std::find
 
@@ -137,13 +136,13 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
    *        (j|r|mu_pao)
    *      and the two integrals (i|r|i) and (j|r|j)
    *   4. Calculate R_ij = (i|r|i) - (j|r|j)
-   *   5. Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
+   * 5. Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
    */
   // Calculate all (mu|r|nu) integrals in AO basis if not already done.
   if (_dipoleInts.size() < 1)
     _dipoleInts = calculateDipoleIntegrals();
   preCalculateTransformations(orbitalPairs);
-  // Transform the fock matrix.
+  // Transform the Fock matrix.
   Eigen::MatrixXd f_MO = _occCoefficients->transpose() * *_fockMatrix * *_occCoefficients;
   // Loop over pairs:
   unsigned int pairIndex = 0;
@@ -166,7 +165,7 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
      * Step 2 to 4.
      */
     /*
-     * Sum all up according to equation 17 J.Chem.Phys. 143, 034108 (2015)
+     * According to equation 17 J.Chem.Phys. 143, 034108 (2015)
      */
     // First term: (i|r|mu_PAO)(j|r|nu_PAO)
     // n_ix3 * 3xn_j = n_ixn_j
@@ -177,7 +176,7 @@ void DipoleApproximationToPairEnergies::calculateDipoleApproximation(std::vector
     epsilon_mu_nu_i_j -= 3 * ((muPAO_r_i * unit_r_ij) * (muPAO_r_j * unit_r_ij).transpose());
     // Square it and divide by eps_mu+eps_nu-F_ii-F_jj
     epsilon_mu_nu_i_j.array() *= epsilon_mu_nu_i_j.array() / denominator.array();
-    // Pair energy is given as the sum of all matrix elements multiplied with -4/r_ij^6
+    // The pair energy is given as the sum of all matrix elements multiplied with -4/r_ij^6
     double pairEnergy = epsilon_mu_nu_i_j.sum();
     const double r_ijSquared = r_ij.squaredNorm();
     pairEnergy *= -4.0 / (r_ijSquared * r_ijSquared * r_ijSquared);

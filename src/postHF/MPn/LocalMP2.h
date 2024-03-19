@@ -22,8 +22,7 @@
 #define POSTHF_MPN_LOCALMP2_H_
 
 /* Include Serenity Internal Headers */
-#include "data/matrices/DensityMatrix.h"                        //Density matrix.
-#include "postHF/LocalCorrelation/LocalCorrelationController.h" //Local-correlation framework.
+#include "data/matrices/DensityMatrix.h"
 
 namespace Serenity {
 
@@ -42,7 +41,7 @@ class LocalCorrelationController;
  *    osScaling                  --- Spin component scaling parameters.
  *    useFourCenterIntegrals     --- Use full four center integrals (only sensible for testing).
  */
-struct localMP2Settings {
+struct LocalMP2Settings {
   double maxResidual = 1e-5;           // Absolute maximum residual in the iterative optimization
   unsigned int maxCycles = 100;        // Maximum number of amplitude optimization cycles.
                                        // Usually 5-10 cycles are enough without the DIIS procedure.
@@ -95,10 +94,12 @@ class LocalMP2 {
   LocalMP2(std::shared_ptr<LocalCorrelationController> localCorrelationController)
     : _localCorrelationController(localCorrelationController) {
   }
+
   /**
    * @brief Destructor.
    */
   virtual ~LocalMP2() = default;
+
   /**
    * @brief Calculates the energy corrections. Pairs are constructed on the fly.
    * @return The energy corrections order as:\n
@@ -117,6 +118,7 @@ class LocalMP2 {
    *         PNO truncation
    */
   Eigen::VectorXd calculateEnergyCorrection(std::vector<std::shared_ptr<OrbitalPair>> pairs);
+
   /**
    * @brief Calculates the unrelaxed density correction.
    * @return Returns the local MP2 correction of the AO density matrix.
@@ -125,10 +127,10 @@ class LocalMP2 {
   /**
    * @brief The settings. More details are above.
    */
-  localMP2Settings settings;
+  LocalMP2Settings settings;
 
  private:
-  // The local correlation controler.
+  // The local correlation controller.
   std::shared_ptr<LocalCorrelationController> _localCorrelationController;
   // Calculate (ia|jb) integrals for all significant pairs.
   void generateExchangeIntegrals(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
@@ -138,7 +140,7 @@ class LocalMP2 {
   // Optimize the amplitudes.
   void optimizeAmplitudes(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
                           std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
-  // Calculate the energy
+  // Calculate the energy.
   Eigen::VectorXd calculateEnergy(std::vector<std::shared_ptr<OrbitalPair>> closePairs,
                                   std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs);
 };

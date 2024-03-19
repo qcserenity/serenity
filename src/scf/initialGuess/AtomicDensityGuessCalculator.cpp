@@ -24,23 +24,19 @@
 #include "basis/AtomCenteredBasisControllerFactory.h"
 #include "basis/Basis.h"
 #include "data/ElectronicStructure.h"
-#include "data/matrices/DensityMatrix.h"
-#include "data/matrices/MatrixInBasis.h"
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libint.h"
 #include "io/Filesystem.h"
 #include "io/HDF5.h"
-#include "math/linearAlgebra/Orthogonalization.h"
-#include "misc/Timing.h"
+#include "misc/SerenityError.h"
 #include "misc/WarningTracker.h"
 #include "settings/Settings.h"
 #include "system/System.h"
 #include "system/SystemController.h"
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */
-#include <fstream>
 #include <vector>
 
 namespace Serenity {
@@ -86,15 +82,15 @@ Eigen::MatrixXd AtomicDensityGuessCalculator::performAtomInitialGuess(Settings s
 
 std::unique_ptr<DensityMatrix<Options::SCF_MODES::RESTRICTED>>
 AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemController> systemController) {
-  assert(systemController);
+  if (!systemController)
+    throw SerenityError("AtomicDensityGuessCalculator does not have a proper systemController!");
 
   std::string pathToGuessDensities;
   if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
     pathToGuessDensities = env_p;
   }
   else {
-    std::cout << "ERROR Environment variable SERENITY_RESOURCES not set." << std::endl;
-    assert(false);
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
   }
   if (systemController->getSettings().basis.makeSphericalBasis) {
     pathToGuessDensities += "initialGuess/spherical/";
@@ -138,7 +134,11 @@ AtomicDensityGuessCalculator::calculateInitialDensity(std::shared_ptr<SystemCont
           file.close();
         }
         catch (...) {
-          // ToDo: Print Warning!!!
+          WarningTracker::printWarning((std::string) "  Warning: Was not able to read " + pathToGuessDensities +
+                                           atom->getAtomType()->getElementSymbol() +
+                                           ".dmat.res.h5\n"
+                                           "  Performing an atom SCF now.",
+                                       true);
           atomDensMat = performAtomInitialGuess(systemController->getSettings(), atom);
         }
 

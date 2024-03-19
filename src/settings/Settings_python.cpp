@@ -53,31 +53,34 @@ void export_Settings(py::module& spy) {
       .def_readwrite("diisStartError", &SCF::diisStartError)
       .def_readwrite("diisMaxStore", &SCF::diisMaxStore)
       .def_readwrite("diisThreshold", &SCF::diisThreshold)
+      .def_readwrite("canOrthThreshold", &SCF::canOrthThreshold)
       .def_readwrite("useADIIS", &SCF::useADIIS)
       .def_readwrite("allowNotConverged", &SCF::allowNotConverged)
       .def_readwrite("rohf", &SCF::rohf)
-      .def_readwrite("suhfLambda", &SCF::suhfLambda);
+      .def_readwrite("suhfLambda", &SCF::suhfLambda)
+      .def_readwrite("degeneracyThreshold", &SCF::degeneracyThreshold);
 
   py::class_<BASIS>(spy, "BasisSettings", "Basis settings all set to their default values.")
       .def_readwrite("label", &BASIS::label)
-      .def_readwrite("auxCLabel", &BASIS::auxCLabel)
       .def_readwrite("auxJLabel", &BASIS::auxJLabel)
+      .def_readwrite("auxJKLabel", &BASIS::auxJKLabel)
+      .def_readwrite("auxCLabel", &BASIS::auxCLabel)
       .def_readwrite("makeSphericalBasis", &BASIS::makeSphericalBasis)
       .def_readwrite("integralThreshold", &BASIS::integralThreshold)
-      .def_readwrite("densFitJ", &BASIS::densFitJ)
-      .def_readwrite("densFitJ", &BASIS::densFitK)
-      .def_readwrite("densFitJ", &BASIS::densFitLRK)
-      .def_readwrite("densFitJ", &BASIS::densFitCorr)
-      .def_readwrite("basisLibPath", &BASIS::basisLibPath)
       .def_readwrite("integralIncrementThresholdStart", &BASIS::integralIncrementThresholdStart)
       .def_readwrite("integralIncrementThresholdEnd", &BASIS::integralIncrementThresholdEnd)
       .def_readwrite("incrementalSteps", &BASIS::incrementalSteps)
+      .def_readwrite("basisLibPath", &BASIS::basisLibPath)
       .def_readwrite("firstECP", &BASIS::firstECP)
+      .def_readwrite("densFitJ", &BASIS::densFitJ)
+      .def_readwrite("densFitK", &BASIS::densFitK)
+      .def_readwrite("densFitLRK", &BASIS::densFitLRK)
+      .def_readwrite("densFitCorr", &BASIS::densFitCorr)
       .def_readwrite("cdThreshold", &BASIS::cdThreshold)
       .def_readwrite("extendSphericalACDShells", &BASIS::extendSphericalACDShells)
+      .def_readwrite("intCondition", &BASIS::intCondition)
       .def_readwrite("secondCD", &BASIS::secondCD)
-      .def_readwrite("cdOffset", &BASIS::cdOffset)
-      .def_readwrite("intCondition", &BASIS::intCondition);
+      .def_readwrite("cdOffset", &BASIS::cdOffset);
 
   py::class_<GRID>(spy, "GridSettings", "Grid settings all set to their default values.")
       .def_readwrite("gridType", &GRID::gridType)
@@ -92,12 +95,24 @@ void export_Settings(py::module& spy) {
       .def_readwrite("smoothing", &GRID::smoothing)
       .def_readwrite("gridPointSorting", &GRID::gridPointSorting);
 
+  py::class_<EFIELD>(spy, "EFIELD", "EField settings all set to their default values.")
+      .def_readwrite("use", &EFIELD::use)
+      .def_readwrite("analytical", &EFIELD::analytical)
+      .def_readwrite("pos1", &EFIELD::pos1)
+      .def_readwrite("pos2", &EFIELD::pos2)
+      .def_readwrite("distance", &EFIELD::distance)
+      .def_readwrite("nRings", &EFIELD::nRings)
+      .def_readwrite("radius", &EFIELD::radius)
+      .def_readwrite("fieldStrength", &EFIELD::fieldStrength)
+      .def_readwrite("nameOutput", &EFIELD::nameOutput);
+
   py::class_<Settings>(spy, "Settings")
       .def(py::init<>())
       .def_readwrite("name", &Settings::name)
       .def_readwrite("identifier", &Settings::identifier)
       .def_readwrite("path", &Settings::path)
       .def_readwrite("charge", &Settings::charge)
+      .def_readwrite("ignoreCharge", &Settings::ignoreCharge)
       .def_readwrite("spin", &Settings::spin)
       .def_readwrite("geometry", &Settings::geometry)
       .def_readwrite("load", &Settings::load)
@@ -106,5 +121,8 @@ void export_Settings(py::module& spy) {
       .def_readwrite("dft", &Settings::dft)
       .def_readwrite("scf", &Settings::scf)
       .def_readwrite("basis", &Settings::basis)
-      .def_readwrite("grid", &Settings::grid);
+      .def_readwrite("grid", &Settings::grid)
+      .def_readwrite("efield", &Settings::efield)
+      .def_readwrite("pcm", &Settings::pcm)
+      .def_readwrite("extCharges", &Settings::extCharges);
 }

@@ -31,14 +31,15 @@ using namespace Serenity;
 void export_GradientTask(py::module& spy) {
   py::class_<GradientTaskSettings>(spy, "GradientTaskSettings",
                                    "@brief Default constructor for Settings all set to their default values.")
-      .def_readwrite("embedding", &GradientTaskSettings::embedding)
       .def_readwrite("gradType", &GradientTaskSettings::gradType)
       .def_readwrite("numGradStepSize", &GradientTaskSettings::numGradStepSize)
       .def_readwrite("transInvar", &GradientTaskSettings::transInvar)
       .def_readwrite("fatMaxCycles", &GradientTaskSettings::FaTmaxCycles)
       .def_readwrite("fatEnergyConvThresh", &GradientTaskSettings::FaTenergyConvThresh)
       .def_readwrite("fdeGridCutOff", &GradientTaskSettings::FDEgridCutOff)
-      .def_readwrite("print", &GradientTaskSettings::print);
+      .def_readwrite("print", &GradientTaskSettings::print)
+      .def_readwrite("printTotal", &GradientTaskSettings::printTotal)
+      .def_readwrite("embedding", &GradientTaskSettings::embedding);
 
   py::class_<GradientTask<Options::SCF_MODES::RESTRICTED>>(spy, "GradientTask_R")
       .def(py::init<const std::vector<std::shared_ptr<SystemController>>&, const std::vector<std::shared_ptr<SystemController>>&>())

@@ -27,7 +27,7 @@
 namespace Serenity {
 namespace Options {
 /**
- * The file formats supported for the ReadOrbitals task.
+ * The file formats supported for the OrbitalsIO task.
  *   TURBOMOLE: Turbomole ASCII-MOS.
  *   SERENITY:  Serenity HDF5 files.
  *   MOLPRO:    Molpro-xml orbital file.
@@ -36,7 +36,14 @@ namespace Options {
 enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1, MOLPRO = 2, MOLCAS = 3, MOLDEN = 4 };
 template<>
 void resolve<ORBITAL_FILE_TYPES>(std::string& value, ORBITAL_FILE_TYPES& field);
-
+/**
+ * The file formats supported for the WriteIntegrals task.
+ *   ASCII: ASCII files.
+ *   HDF5:  HDF5 files.
+ */
+enum class INTEGRAL_FILE_TYPES { ASCII = 0, HDF5 = 1 };
+template<>
+void resolve<INTEGRAL_FILE_TYPES>(std::string& value, INTEGRAL_FILE_TYPES& field);
 /**
  * The type of SCF calculation that is made\n
  * RESTRICTED: all electrons are paired, works only for even numbers of electrons\n

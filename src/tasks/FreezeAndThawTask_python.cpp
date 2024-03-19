@@ -19,6 +19,7 @@
  */
 
 /* Include Serenity Internal Headers */
+#include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
@@ -30,17 +31,22 @@ using namespace Serenity;
 void export_FreezeAndThawTask(py::module& spy) {
   py::class_<FreezeAndThawTaskSettings>(spy, "FreezeAndThawTaskSettings",
                                         "@brief Default constructor for Settings all set to their default values.")
-      .def_readwrite("embedding", &FreezeAndThawTaskSettings::embedding)
       .def_readwrite("maxCycles", &FreezeAndThawTaskSettings::maxCycles)
       .def_readwrite("convThresh", &FreezeAndThawTaskSettings::convThresh)
       .def_readwrite("gridCutOff", &FreezeAndThawTaskSettings::gridCutOff)
+      .def_readwrite("smallSupersystemGrid", &FreezeAndThawTaskSettings::smallSupersystemGrid)
       .def_readwrite("basisExtThresh", &FreezeAndThawTaskSettings::basisExtThresh)
       .def_readwrite("extendBasis", &FreezeAndThawTaskSettings::extendBasis)
       .def_readwrite("useConvAcceleration", &FreezeAndThawTaskSettings::useConvAcceleration)
       .def_readwrite("diisStart", &FreezeAndThawTaskSettings::diisStart)
       .def_readwrite("diisEnd", &FreezeAndThawTaskSettings::diisEnd)
       .def_readwrite("calculateSolvationEnergy", &FreezeAndThawTaskSettings::calculateSolvationEnergy)
-      .def_readwrite("keepCoulombCache", &FreezeAndThawTaskSettings::keepCoulombCache);
+      .def_readwrite("calculateUnrelaxedMP2Density", &FreezeAndThawTaskSettings::calculateUnrelaxedMP2Density)
+      .def_readwrite("mp2Type", &FreezeAndThawTaskSettings::mp2Type)
+      .def_readwrite("keepCoulombCache", &FreezeAndThawTaskSettings::keepCoulombCache)
+      .def_readwrite("finalEnergyEvaluation", &FreezeAndThawTaskSettings::finalEnergyEvaluation)
+      .def_readwrite("embedding", &FreezeAndThawTaskSettings::embedding)
+      .def_readwrite("lcSettings", &FreezeAndThawTaskSettings::lcSettings);
 
   py::class_<FreezeAndThawTask<RESTRICTED>, std::shared_ptr<FreezeAndThawTask<RESTRICTED>>>(spy, "FreezeAndThawTask_R")
       .def(py::init<std::vector<std::shared_ptr<SystemController>>&, std::vector<std::shared_ptr<SystemController>>&>())

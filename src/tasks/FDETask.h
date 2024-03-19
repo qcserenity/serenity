@@ -30,7 +30,7 @@
 #include "tasks/LocalizationTask.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
-#include <memory>
+#include <memory> //smart ptr.
 #include <vector>
 
 namespace Serenity {
@@ -132,7 +132,8 @@ class FDETask : public Task {
    * @return After a run, returns the supersystem grid (incl. cut off) if one is present.
    */
   std::shared_ptr<GridController> getSuperSystemGrid() {
-    assert(_supersystemgrid && "getSuperSystemGrid() was called before running the FDETask!");
+    if (!_supersystemgrid)
+      throw SerenityError("getSuperSystemGrid() was called before running the FDETask!");
     return _supersystemgrid;
   };
   /**

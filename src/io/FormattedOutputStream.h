@@ -23,6 +23,8 @@
 /* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
+#include <cstdarg>
+#include <cstdio>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -122,6 +124,41 @@ class FOut : public std::ostream {
 };
 
 /**
+ * @class FPrintf FormattedOutputStream.h
+ * @brief Custom printf function that filters the given output according to a given printlevel.
+ */
+template<Options::GLOBAL_PRINT_LEVELS PrintLevel>
+class FPrintf {
+ public:
+  /**
+   * @brief Constructor
+   * @param indent Indentation of each line in the stream.
+   */
+  FPrintf(std::string indent) : _indent(indent) {
+  }
+
+  /**
+   * @brief printf overwrites the standard printf function. Filters according to
+   *        the print level given
+   * @param format
+   * @param ... variadic arguments, contains the arbitrary number of arguments that can be passed to the printf function
+   */
+  FPrintf<PrintLevel>& printf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    if (GLOBAL_PRINT_LEVEL >= PrintLevel) {
+      std::cout << _indent;
+      vprintf(format, args);
+    }
+    va_end(args);
+    return *this;
+  }
+
+ private:
+  std::string _indent;
+};
+
+/**
  *  Static output stream for each print level. These can be used for filtered
  *  and indented output.
  */
@@ -131,6 +168,16 @@ static FOut<Options::GLOBAL_PRINT_LEVELS::NORMAL> nOut(std::cout, "");
 static FOut<Options::GLOBAL_PRINT_LEVELS::VERBOSE> vOut(std::cout, "==V==  ");
 static FOut<Options::GLOBAL_PRINT_LEVELS::VERBOSE> vnOut(std::cout, "");
 static FOut<Options::GLOBAL_PRINT_LEVELS::DEBUGGING> dOut(std::cout, "==D==  ");
+/**
+ * Static objects holding the printf() function for each print level.
+ * These can be used for filtered and formatted output.
+ * Usage: e.g. OutputControl::n.printf("Your output here!", yourArguments)
+ */
+static FPrintf<Options::GLOBAL_PRINT_LEVELS::MINIMUM> m("");
+static FPrintf<Options::GLOBAL_PRINT_LEVELS::NORMAL> n("");
+static FPrintf<Options::GLOBAL_PRINT_LEVELS::VERBOSE> v("==V==  ");
+static FPrintf<Options::GLOBAL_PRINT_LEVELS::VERBOSE> vn("");
+static FPrintf<Options::GLOBAL_PRINT_LEVELS::DEBUGGING> d("==D==  ");
 } /* namespace OutputControl */
 
 } /* namespace Serenity */

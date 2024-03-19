@@ -21,7 +21,7 @@
 #ifndef POSTHF_MPN_DIPOLEAPPROXIMATIONTOPAIRENERGIES_H_
 #define POSTHF_MPN_DIPOLEAPPROXIMATIONTOPAIRENERGIES_H_
 /* Include Serenity Internal Headers */
-#include "data/matrices/FockMatrix.h" //Fock matrix/MatrixInBasis definition
+#include "data/matrices/FockMatrix.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>      //Dense matrices
 #include <Eigen/SparseCore> //Sparse maps

@@ -23,22 +23,23 @@
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace Serenity;
 void export_ScfTask(py::module& spy) {
   py::class_<ScfTaskSettings>(spy, "ScfTaskSettings", "@brief Default constructor for Settings all set to their default values.")
       .def_readwrite("restart", &ScfTaskSettings::restart)
+      .def_readwrite("mp2Type", &ScfTaskSettings::mp2Type)
       .def_readwrite("maxResidual", &ScfTaskSettings::maxResidual)
       .def_readwrite("maxCycles", &ScfTaskSettings::maxCycles)
-      .def_readwrite("mp2Type", &ScfTaskSettings::mp2Type)
-      .def_readwrite("lcSettings", &ScfTaskSettings::lcSettings)
       .def_readwrite("skipSCF", &ScfTaskSettings::skipSCF)
       .def_readwrite("allowNotConverged", &ScfTaskSettings::allowNotConverged)
       .def_readwrite("calculateMP2Energy", &ScfTaskSettings::calculateMP2Energy)
       .def_readwrite("exca", &ScfTaskSettings::exca)
       .def_readwrite("excb", &ScfTaskSettings::excb)
-      .def_readwrite("momCycles", &ScfTaskSettings::momCycles);
+      .def_readwrite("momCycles", &ScfTaskSettings::momCycles)
+      .def_readwrite("lcSettings", &ScfTaskSettings::lcSettings);
 
   py::class_<ScfTask<Options::SCF_MODES::RESTRICTED>>(spy, "ScfTask_R")
       .def(py::init<std::shared_ptr<SystemController>>())

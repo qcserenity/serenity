@@ -379,12 +379,12 @@ void BrokenSymmetry::evalJ() {
   auto hsAnalysis = std::make_shared<SCFAnalysis<UNRESTRICTED>>(_hsSystemController);
   auto bsAnalysis = std::make_shared<SCFAnalysis<UNRESTRICTED>>(_bsSystemController);
 
-  _s2HS = hsAnalysis->S2();
-  _s2BS = bsAnalysis->S2();
+  _s2HS = hsAnalysis->getS2();
+  _s2BS = bsAnalysis->getS2();
 
   if (_hsSystemController.size() == 1 and _bsSystemController.size() == 1) {
-    _s2UHFhs = hsAnalysis->S2(true);
-    _s2UHFbs = bsAnalysis->S2(true);
+    _s2UHFhs = hsAnalysis->getS2(true);
+    _s2UHFbs = bsAnalysis->getS2(true);
   }
 
   /*

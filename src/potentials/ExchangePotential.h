@@ -24,9 +24,10 @@
 #include "data/matrices/DensityMatrixController.h"
 #include "potentials/IncrementalFockMatrix.h"
 #include "potentials/Potential.h"
-#include "system/SystemController.h"
 
 namespace Serenity {
+/* Forward declaration */
+class SystemController;
 /**
  * @class ExchangePotential ExchangePotential.h
  * @brief A class that calculates the exchange contribution to the Fock matrix using

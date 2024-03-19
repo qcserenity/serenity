@@ -20,6 +20,8 @@
 #ifndef POINT_H
 #define POINT_H
 /* Include Std and External Headers */
+#include <Eigen/Dense>
+#include <array>
 #include <cmath>
 
 namespace Serenity {
@@ -28,73 +30,76 @@ namespace Serenity {
  *
  * @brief x,y,z
  */
-class Point {
+class Point : public std::array<double, 3> {
  public:
   /**
    * @param x
    * @param y
    * @param z
    */
-  constexpr Point(double x, double y, double z) : _x(x), _y(y), _z(z) {
+  constexpr Point(double x, double y, double z) : std::array<double, 3>{x, y, z} {
+  }
+
+  constexpr Point(std::array<double, 3> point) : std::array<double, 3>(point) {
   }
 
   virtual ~Point() = default;
 
   virtual void addToX(double add_to_x) {
-    _x += add_to_x;
+    this->at(0) += add_to_x;
   }
 
   virtual void addToY(double add_to_y) {
-    _y += add_to_y;
+    this->at(1) += add_to_y;
   }
 
   virtual void addToZ(double add_to_z) {
-    _z += add_to_z;
+    this->at(2) += add_to_z;
   }
 
   /// @returns the x-coordinate
   inline const double& getX() const {
-    return _x;
+    return this->at(0);
   }
 
   /// @param x new x coordinate
   virtual void setX(double x) {
-    _x = x;
+    this->at(0) = x;
   }
 
   /// @returns the y-coordinate
   inline const double& getY() const {
-    return _y;
+    return this->at(1);
   }
 
   /// @param y new y coordinate
   virtual void setY(double y) {
-    _y = y;
+    this->at(1) = y;
   }
 
   /// @returns the z-coordinate
   inline const double& getZ() const {
-    return _z;
+    return this->at(2);
   }
 
   /// @param z new z coordinate
   virtual void setZ(double z) {
-    _z = z;
+    this->at(2) = z;
   }
   /**
    * @returns the absolute value of the vector (x,y,z)
    */
   double distanceToOrigin() const {
-    return sqrt(_x * _x + _y * _y + _z * _z);
+    return sqrt(this->at(0) * this->at(0) + this->at(1) * this->at(1) + this->at(2) * this->at(2));
   }
   /**
    * @param   rhs
    * @returns the shifted point
    */
   Point& operator+=(const Point& rhs) {
-    _x += rhs._x;
-    _y += rhs._y;
-    _z += rhs._z;
+    this->at(0) += rhs[0];
+    this->at(1) += rhs[1];
+    this->at(2) += rhs[2];
     return *this;
   }
   /**
@@ -102,9 +107,9 @@ class Point {
    * @returns the shifted point
    */
   Point& operator-=(const Point& rhs) {
-    _x -= rhs._x;
-    _y -= rhs._y;
-    _z -= rhs._z;
+    this->at(0) -= rhs[0];
+    this->at(1) -= rhs[1];
+    this->at(2) -= rhs[2];
     return *this;
   }
   /**
@@ -112,9 +117,9 @@ class Point {
    * @returns the shifted point
    */
   Point& operator*=(const double factor) {
-    _x *= factor;
-    _y *= factor;
-    _z *= factor;
+    this->at(0) *= factor;
+    this->at(1) *= factor;
+    this->at(2) *= factor;
     return *this;
   }
   /**
@@ -122,9 +127,9 @@ class Point {
    * @returns the shifted point
    */
   Point& operator/=(const double factor) {
-    _x /= factor;
-    _y /= factor;
-    _z /= factor;
+    this->at(0) /= factor;
+    this->at(1) /= factor;
+    this->at(2) /= factor;
     return *this;
   }
 
@@ -136,10 +141,13 @@ class Point {
    */
   bool isSamePoint(const Point& point, double precision);
 
- protected:
-  double _x;
-  double _y;
-  double _z;
+  /**
+   * @brief Getter for the point as an Eigen::Vector3d.
+   * @return
+   */
+  Eigen::Vector3d coords() const {
+    return {this->getX(), this->getY(), this->getZ()};
+  }
 };
 
 /**

@@ -31,7 +31,6 @@ using namespace Serenity;
 void export_GeometryOptimizationTask(py::module& spy) {
   py::class_<GeometryOptimizationTaskSettings>(
       spy, "GeometryOptimizationTaskSettings", "@brief Default constructor for Settings all set to their default values.")
-      .def_readwrite("embedding", &GeometryOptimizationTaskSettings::embedding)
       .def_readwrite("gradType", &GeometryOptimizationTaskSettings::gradType)
       .def_readwrite("maxCycles", &GeometryOptimizationTaskSettings::maxCycles)
       .def_readwrite("rmsgradThresh", &GeometryOptimizationTaskSettings::rmsgradThresh)
@@ -40,9 +39,11 @@ void export_GeometryOptimizationTask(py::module& spy) {
       .def_readwrite("stepThresh", &GeometryOptimizationTaskSettings::stepThresh)
       .def_readwrite("maxStepThresh", &GeometryOptimizationTaskSettings::maxStepThresh)
       .def_readwrite("numGradStepSize", &GeometryOptimizationTaskSettings::numGradStepSize)
+      .def_readwrite("transInvar", &GeometryOptimizationTaskSettings::transInvar)
       .def_readwrite("FaTmaxCycles", &GeometryOptimizationTaskSettings::FaTmaxCycles)
       .def_readwrite("FaTenergyConvThresh", &GeometryOptimizationTaskSettings::FaTConvThresh)
-      .def_readwrite("FaTgridCutOff", &GeometryOptimizationTaskSettings::FaTgridCutOff);
+      .def_readwrite("FaTgridCutOff", &GeometryOptimizationTaskSettings::FaTgridCutOff)
+      .def_readwrite("embedding", &GeometryOptimizationTaskSettings::embedding);
 
   py::class_<GeometryOptimizationTask<RESTRICTED>>(spy, "GeometryOptimizationTask_R")
       .def(py::init<const std::vector<std::shared_ptr<SystemController>>&, const std::vector<std::shared_ptr<SystemController>>&>())

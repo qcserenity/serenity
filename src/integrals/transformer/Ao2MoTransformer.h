@@ -20,15 +20,15 @@
 #define AO2MOTRANSFORMER_H_
 
 /* Include Serenity Internal Headers */
-#include "basis/BasisController.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "math/Matrix.h"
 #include "math/RegularRankFourTensor.h"
-#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
+/* Forward declarations */
+class BasisController;
 /**
  * @class Ao2MoTransformer Ao2MoTransformer.h
  * @brief In quantum chemistry, in order to perform calculations, we usually expand the

@@ -24,10 +24,11 @@
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
+#include "data/matrices/MatrixInBasis.h"
 #include "settings/Options.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>
-#include <memory>
+#include <memory> //smart ptr.
 
 namespace Serenity {
 /* Forward declarations */
@@ -47,21 +48,16 @@ struct Settings;
  *
  * On the one hand convergence is accelerated/ensured by this class and on the other hand it checks
  * whether convergence has been reached. F\*P\*S - S\*P\*F is used as the DIIS error vector.
- *
  */
 template<Options::SCF_MODES SCFMode>
 class ConvergenceController {
  public:
   /**
-   * @param fockMatrix          The Fock matrix (potential matrix) used in convergence acceleration
-   *                            and error measurement
-   * @param densityMatrix       Also used for error measurement.
-   * @param overlapIntegrals    Also used for error measurement.
-   * @param forceExactFockBuild a magical switch that gives the possibility that SOMEWHERE, at SOME
-   *                            POINT in the code an exact fock build can be enforced (instead of
-   *                            incremental)
-   * @param electronicEnergy    Needed for convergence check.
-   * @param deltaEConvThreshold Convergence threshold for the (absolute) energy difference.
+   * @param settings                    The system settings.
+   * @param densityMatrix               The density matrix, used in convergence acceleration and error measurement.
+   * @param orbitalController           Access to the underlying orbitals making up the density matrix.
+   * @param oneIntController            OneElectronIntegralController, allows to access the overlap matrix.
+   * @param energyComponentController   Used to get the total energy.
    */
   ConvergenceController(const Settings& settings, std::shared_ptr<DensityMatrixController<SCFMode>> densityMatrix,
                         std::shared_ptr<OrbitalController<SCFMode>> orbitalController,
@@ -75,7 +71,7 @@ class ConvergenceController {
    */
   std::pair<Eigen::VectorXd, SpinPolarizedData<SCFMode, Eigen::VectorXd>> getLevelshift();
   /**
-   * Optimizes the fock matrix to produce way better orbitals in the next SCF cycle.
+   * Optimizes the Fock matrix to produce way better orbitals in the next SCF cycle.
    * @param F The Fock matrix to be updated.
    */
   void accelerateConvergence(FockMatrix<SCFMode>& F, DensityMatrix<SCFMode> D);

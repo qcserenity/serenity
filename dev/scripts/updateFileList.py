@@ -48,6 +48,11 @@ for root, dirnames, filenames in os.walk('.'):
     elif '.h' == fname[-2:]:
         header_files.append(fname)
 
+test_files.sort()
+header_files.sort()
+cpp_files.sort()
+python_files.sort()
+
 with open('Files.cmake', 'w') as f:
     f.write('set(SERENITY_CPPS\n')
     for i in cpp_files:

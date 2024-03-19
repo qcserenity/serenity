@@ -25,13 +25,14 @@
 #include "geometry/Geometry.h"
 #include "potentials/ERIPotential.h"
 #include "potentials/FuncPotential.h"
+#include "potentials/HCorePotential.h"
 #include "potentials/LRXPotential.h"
 #include "potentials/Potential.h"
 
 namespace Serenity {
 template<Options::SCF_MODES SCFMode>
-DFTPotentials<SCFMode>::DFTPotentials(std::shared_ptr<Potential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> J,
-                                      std::shared_ptr<FuncPotential<SCFMode>> Vxc,
+DFTPotentials<SCFMode>::DFTPotentials(std::shared_ptr<HCorePotential<SCFMode>> hcore,
+                                      std::shared_ptr<Potential<SCFMode>> J, std::shared_ptr<FuncPotential<SCFMode>> Vxc,
                                       std::shared_ptr<Potential<SCFMode>> pcm, std::shared_ptr<const Geometry> geom,
                                       std::shared_ptr<DensityMatrixController<SCFMode>> dMatController,
                                       const double prescreeningThreshold)
@@ -91,6 +92,11 @@ Eigen::MatrixXd DFTPotentials<SCFMode>::getGradients() {
   gradients += _Vxc->getGeomGradients();
   gradients += _pcm->getGeomGradients();
   return gradients;
+}
+
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd DFTPotentials<SCFMode>::getPointChargeGradients() {
+  return _h->getPointChargeGradients();
 }
 
 template class DFTPotentials<Options::SCF_MODES::RESTRICTED>;

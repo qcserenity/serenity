@@ -35,23 +35,24 @@
 #include "integrals/wrappers/Libint.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-SCFAnalysis<T>::SCFAnalysis(std::vector<std::shared_ptr<SystemController>> systemController,
-                            std::shared_ptr<GridController> supersystemGrid)
+template<Options::SCF_MODES SCFMode>
+SCFAnalysis<SCFMode>::SCFAnalysis(std::vector<std::shared_ptr<SystemController>> systemController,
+                                  std::shared_ptr<GridController> supersystemGrid)
   : _systemController(systemController), _supersystemGrid(supersystemGrid) {
 }
 
 template<>
-double SCFAnalysis<Options::SCF_MODES::RESTRICTED>::S2(bool useUHForbitals) {
+double SCFAnalysis<Options::SCF_MODES::RESTRICTED>::getS2(bool useUHForbitals) {
   (void)useUHForbitals; // no warnings
   return 0.0;
 }
 
 template<>
-double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::S2(bool useUHForbitals) {
+double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::getS2(bool useUHForbitals) {
   /*
    * Calculate physical <S*S>
    */
@@ -153,22 +154,20 @@ double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::S2(bool useUHForbitals) {
     else {
       throw SerenityError(
           "No method implemented for the calculation of <S*S> from UHF orbitals for a subsystem approach");
-      assert(false);
     }
   }
   else {
     throw SerenityError("SCFAnalysis: No analysis available for the requested method.");
-    assert(false);
   }
 }
 
-template<Options::SCF_MODES T>
-double SCFAnalysis<T>::VirialRatio() {
+template<Options::SCF_MODES SCFMode>
+double SCFAnalysis<SCFMode>::getVirialRatio() {
   if (_systemController.size() == 1) {
     // Calculate kinetic energy
     auto& libint = Libint::getInstance();
     Eigen::MatrixXd TInts = libint.compute1eInts(LIBINT_OPERATOR::kinetic, _systemController[0]->getBasisController());
-    auto P = _systemController[0]->template getElectronicStructure<T>()->getDensityMatrix();
+    auto P = _systemController[0]->template getElectronicStructure<SCFMode>()->getDensityMatrix();
     double TEnergy = 0.0;
     for_spin(P) {
       TEnergy += TInts.cwiseProduct(P_spin).sum();
@@ -176,23 +175,22 @@ double SCFAnalysis<T>::VirialRatio() {
     // Calculate potential energy
     double VEnergy = 0.0;
     if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-      VEnergy = _systemController[0]->template getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+      VEnergy = _systemController[0]->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->getEnergyComponent(
                     ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY) -
                 TEnergy;
     }
     else if (_systemController[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-      VEnergy = _systemController[0]->template getElectronicStructure<T>()->getEnergyComponentController()->getEnergyComponent(
+      VEnergy = _systemController[0]->template getElectronicStructure<SCFMode>()->getEnergyComponentController()->getEnergyComponent(
                     ENERGY_CONTRIBUTIONS::HF_ENERGY) -
                 TEnergy;
     }
     else {
-      assert(false);
+      throw SerenityError("Unknown electronic structure method.");
     }
-
     return -1.0 * VEnergy / TEnergy;
   }
   else {
-    assert(false);
+    throw SerenityError("Virial ratio not implemented for more than one system.");
     return 0.0;
   }
 }

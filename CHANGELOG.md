@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Release 1.6.1 (19.03.2024)
+--------------------------
+
+### Functionalities
+
+- Added a task that provides direct access to integral files such as the core Hamiltonian (Moritz Bensberg)
+- External charges may now be used as an additional potential and read from file (Moritz Bensberg)
+
+### Technical Features
+
+- Negative numbers as input for unsigned variables are now taken as their absolute value and a warning is issued (Niklas Göllmann)
+- SCF-Damping reworked internally (Lukas Paetow)
 
 Release 1.6.0 (16.11.2023)
 --------------------------

@@ -34,6 +34,7 @@
 #include "potentials/LRXPotential.h"
 #include "potentials/RIExchangePotential.h"
 #include "settings/Settings.h"
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <algorithm>
 

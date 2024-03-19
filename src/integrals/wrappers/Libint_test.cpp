@@ -558,10 +558,10 @@ TEST_F(LibintTest, 1eInts_CrossBasis_Nuclear1) {
  */
 TEST_F(LibintTest, 1eInts_CrossBasis_Nuclear2) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
-  std::pair<double, std::array<double, 3>> test = {1.0, {{0.0, 0.0, 0.0}}};
+  std::vector<std::pair<double, std::array<double, 3>>> test = {{1.0, std::array<double, 3>{0.0, 0.0, 0.0}}};
   /* Overlaps */
   auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, basisController, {test});
-  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test});
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, test);
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));
@@ -576,10 +576,10 @@ TEST_F(LibintTest, 1eInts_CrossBasis_Nuclear2) {
 TEST_F(LibintTest, 1eInts_NuclearVersions1) {
   auto basisController = BasisController__TEST_SUPPLY::getBasisController(TEST_BASIS_CONTROLLERS::SMALL_MIXED);
   auto test1 = std::make_shared<Atom>("H", 0.0, 0.0, 0.0);
-  std::pair<double, std::array<double, 3>> test2 = {1.0, {{0.0, 0.0, 0.0}}};
+  std::vector<std::pair<double, std::array<double, 3>>> test2 = {{1.0, std::array<double, 3>{0.0, 0.0, 0.0}}};
   /* Overlaps */
   auto res1 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test1});
-  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, {test2});
+  auto res2 = libint.compute1eInts(LIBINT_OPERATOR::overlap, basisController, test2);
   for (unsigned int i = 0; i < res1.cols(); i++) {
     for (unsigned int j = 0; j < res1.cols(); j++) {
       EXPECT_DOUBLE_EQ(res1(i, j), res2(i, j));

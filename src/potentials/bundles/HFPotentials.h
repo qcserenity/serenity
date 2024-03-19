@@ -30,6 +30,9 @@
 
 namespace Serenity {
 
+template<Options::SCF_MODES SCFMode>
+class HCorePotential;
+
 /**
  * @class HFPotentials HFPotentials.h
  * @brief A class containing all the potentials relevant for a HF-SCF.
@@ -44,7 +47,7 @@ class HFPotentials : public PotentialBundle<SCFMode> {
    * @param pcm    The implicit solvent model.
    * @param geom   The geometry.
    */
-  HFPotentials(std::shared_ptr<Potential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> g,
+  HFPotentials(std::shared_ptr<HCorePotential<SCFMode>> hcore, std::shared_ptr<Potential<SCFMode>> g,
                std::shared_ptr<Potential<SCFMode>> pcm, std::shared_ptr<const Geometry> geom);
   /// @brief Default destructor.
   virtual ~HFPotentials() = default;
@@ -66,9 +69,15 @@ class HFPotentials : public PotentialBundle<SCFMode> {
    */
   Eigen::MatrixXd getGradients() override final;
 
+  /**
+   * @brief Getter for the gradients of external point charges.
+   * @return The point charge gradients.
+   */
+  Eigen::MatrixXd getPointChargeGradients() override;
+
  private:
   ///@brief The one electron potential.
-  std::shared_ptr<Potential<SCFMode>> _h;
+  std::shared_ptr<HCorePotential<SCFMode>> _h;
   ///@brief The two electron potential.
   std::shared_ptr<Potential<SCFMode>> _g;
   ///@brief The implcit solvation model.

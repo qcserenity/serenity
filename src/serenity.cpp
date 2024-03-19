@@ -1,6 +1,6 @@
 /**
  * @file serenity.cpp
- * @version 1.6.0
+ * @version 1.6.1
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -16,16 +16,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Includes */
+/* Include Serenity Internal Headers */
 #include "input/Input.h"
-#include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
 #include "io/IOOptions.h"
+#include "misc/SerenityError.h"
 #include "misc/Timing.h"
 #include "misc/WarningTracker.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/Task.h"
+/* Include Std and External Headers */
 #include <fstream>
 #include <memory>
 #include <string>

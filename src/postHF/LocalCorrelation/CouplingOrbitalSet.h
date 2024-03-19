@@ -22,10 +22,7 @@
 #define POSTHF_LOCALCORRELATION_COUPLINGORBITALSET_H_
 
 /* Include Serenity Internal Headers */
-#include "data/OrbitalPair.h"                                      //Definition of OrbitalPair.
-#include "data/SingleSubstitution.h"                               //Definition of SingleSubstitution.
-#include "postHF/LocalCorrelation/DomainOverlapMatrixController.h" //Overlap matrices.
-
+#include "data/OrbitalPair.h" //Definition of OrbitalPair.
 /* Include Std and External Headers */
 #include <Eigen/Dense> //Dense matrices
 #include <memory>      //smrt_ptr
@@ -38,6 +35,8 @@ namespace Serenity {
 namespace HDF5 {
 using H5File = H5::H5File;
 } // namespace HDF5
+class DomainOverlapMatrixController;
+class SingleSubstitution;
 
 /**
  * @class CouplingOrbitalSet CouplingOrbitalSet.h

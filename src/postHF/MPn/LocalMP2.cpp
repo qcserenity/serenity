@@ -20,20 +20,20 @@
 /* Include Class Header*/
 #include "postHF/MPn/LocalMP2.h"
 /* Include Serenity Internal Headers */
-#include "data/ElectronicStructure.h"                               //ElectronicStructure
-#include "data/OrbitalController.h"                                 //Coefficients
-#include "data/PAOController.h"                                     //PAOController
+#include "analysis/PAOSelection/PNOConstructor.h"
+#include "data/ElectronicStructure.h"
+#include "data/OrbitalController.h" //Coefficients.
+#include "data/OrbitalPair.h"
+#include "data/PAOController.h"
 #include "integrals/transformer/Ao2MoExchangeIntegralTransformer.h" //Integral transformation
 #include "io/FormattedOutput.h"                                     //Captions etc.
 #include "io/FormattedOutputStream.h"                               //Filtered output streams.
-#include "postHF/LocalCorrelation/LocalCorrelationController.h"     //The local correlation controller.
-#include "postHF/LocalCorrelation/OrbitalPairDIISWrapper.h"         //DIIS
-#include "settings/Settings.h"                                      //System settings
-#include "system/SystemController.h"                                //SystemController
-/* Prescreening, PAOs and PAO selection */
-#include "analysis/PAOSelection/PNOConstructor.h"       //PNO construction
-#include "data/OrbitalPair.h"                           //OrbitalPair definition.
-#include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //K-Set definition.
+#include "postHF/LocalCorrelation/CouplingOrbitalSet.h"             //K-Set definition.
+#include "postHF/LocalCorrelation/DomainOverlapMatrixController.h"
+#include "postHF/LocalCorrelation/LocalCorrelationController.h"
+#include "postHF/LocalCorrelation/OrbitalPairDIISWrapper.h" //DIIS
+#include "settings/Settings.h"                              //System settings
+#include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <iomanip> //setw(...) for ostream/std::fixed
 
@@ -107,9 +107,9 @@ void LocalMP2::setDomainOverlapMatrixController(std::vector<std::shared_ptr<Orbi
 void LocalMP2::optimizeAmplitudes(std::vector<std::shared_ptr<OrbitalPair>> orbitalPairs,
                                   std::vector<std::shared_ptr<OrbitalPair>> veryDistantPairs) {
   const auto scfMode = Options::SCF_MODES::RESTRICTED;
-  // Get the fock matrix.
+  // Get the Fock matrix.
   const auto& f = _localCorrelationController->getFockMatrix();
-  // Get the fock matrix block of the occupied orbitals in MO representation.
+  // Get the Fock matrix block of the occupied orbitals in MO representation.
   const auto activeSystem = _localCorrelationController->getActiveSystemController();
   unsigned int nOcc = activeSystem->getNOccupiedOrbitals<scfMode>();
   const Eigen::MatrixXd actCoef = activeSystem->getActiveOrbitalController<scfMode>()->getCoefficients().leftCols(nOcc);
