@@ -88,12 +88,11 @@ find_package(OpenMP REQUIRED)
 # Laplace Minimax
 if (SERENITY_USE_LAPLACE_MINIMAX)
   message("-----Checking Laplace_Minimax-----")
-  if (SERENITY_DOWNLOAD_DEPENDENCIES)
-    include(ImportLaplaceMinimax)
-    import_laplace_minimax()
-  else()
-    message(FATAL_ERROR "Laplace-Minimax cannot be detected via CMake please enable download or disable this dependency")
+  if (NOT SERENITY_DOWNLOAD_DEPENDENCIES)
+    message("Laplace-Minimax cannot be detected via CMake, it will be downloaded anyway")
   endif()
+  include(ImportLaplaceMinimax)
+  import_laplace_minimax()
 endif(SERENITY_USE_LAPLACE_MINIMAX)
 
 # Libint2
@@ -196,6 +195,7 @@ if (SERENITY_DOWNLOAD_DEPENDENCIES)
 else()
   find_package(ecpint CONFIG REQUIRED)
   add_library(ecpint INTERFACE IMPORTED)
+  target_link_libraries(ecpint INTERFACE ECPINT::ecpint)
 endif()
 
 #################
@@ -491,15 +491,24 @@ install(FILES
 )
 
 # Add all targets to the build-tree export set
-export(
-  TARGETS
-    xc
-    xcfun
-    libint2-static
-    serenity
-    serenity_exe
-  FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
-)
+if(SERENITY_DOWNLOAD_DEPENDENCIES)
+  export(
+    TARGETS
+      xc
+      xcfun
+      libint2-static
+      serenity
+      serenity_exe
+    FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+  )
+else()
+  export(
+    TARGETS
+      serenity
+      serenity_exe
+    FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+  )
+endif()
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
