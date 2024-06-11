@@ -20,6 +20,7 @@
 /* Include Class Header*/
 #include "io/FormattedOutput.h"
 /* Include Serenity Internal Headers */
+#include "dft/functionals/wrappers/LibXC.h"
 #include "memory/MemoryManager.h"
 #include "misc/Timing.h"
 /* Include Std and External Headers */
@@ -105,6 +106,31 @@ void printRunStartInfo() {
   std::cout << "    Git Branch        :   " << GIT_BRANCH << std::endl;
   std::cout << "    Serenity Home     :   "
             << std::string(std::getenv("SERENITY_HOME") ? std::getenv("SERENITY_HOME") : "$SERENITY_HOME UNKNOWN") << std::endl
+            << std::endl;
+
+  printSmallCaption("Citations");
+  std::cout << "    First publication :\n  J. P. Unsleber, T. Dresselhaus, K. Klahr, D. Schnieders, M. Böckers, D. "
+               "Barton\n  and J. Neugebauer, Serenity: A Subsystem Quantum Chemistry Program,\n  J. Comput. Chem., 39, "
+               "788-798, (2018).\n"
+            << std::endl;
+  std::cout << "    Update paper      :\n  N. Niemeyer, P. Eschenbach, M. Bensberg, J. Toelle, L. Hellmann, L. "
+               "Lampe,\n  A. Massolle, A. Rikus, D. Schnieders, J. P. Unsleber, and J. Neugebauer,\n  The subsystem "
+               "quantum chemistry program Serenity,\n  Wiley Interdiscip. Rev. Comput. Mol. Sci., 13, e1647, (2023).\n"
+            << std::endl;
+  std::cout << "    Libint (2.7.0-b6) :\n  Libint: A library for the evaluation of molecular integrals of many-body "
+               "operators\n  over Gaussian functions, v2.7.0-beta6  Edward F. Valeev, http://libint.valeyev.net/ .\n"
+            << std::endl;
+#ifdef SERENITY_USE_LIBXC
+  std::cout << "    Libxc (" << LibXC<RESTRICTED>::version() << ")     :\n  " << LibXC<RESTRICTED>::reference()
+            << "\n  " << LibXC<RESTRICTED>::referenceDOI() << std::endl
+            << std::endl;
+#endif /* SERENITY_USE_LIBXC */
+#ifdef SERENITY_USE_XCFUN
+  std::cout << "    XCFun (v2.0.2)    :\n  Ekström, U. (2020). XCFun: A library of exchange-correlation functionals "
+               "with\n  arbitrary-order derivatives. Zenodo. https://doi.org/10.5281/zenodo.3946698\n\n";
+#endif /* SERENITY_USE_XCFUN */
+  std::cout << "    Libecpint (1.0.7) :\n  R. A. Shaw, J. G. Hill, J. Chem. Phys. 147, 074108 (2017); doi: "
+               "10.1063/1.4986887\n"
             << std::endl;
 
   printSmallCaption("Program started");

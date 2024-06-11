@@ -64,6 +64,21 @@ class LibXC {
                              const std::shared_ptr<DensityOnGridController<T>> densityOnGridController,
                              unsigned int order = 1);
 
+  /**
+   * @brief Returns the version number of Libxc.
+   */
+  static std::string version();
+
+  /**
+   * @brief Returns the publication describing Libxc.
+   */
+  static std::string reference();
+
+  /**
+   * @brief Returns the DOI of the Libxc publication.
+   */
+  static std::string referenceDOI();
+
  private:
   unsigned int _maxBlockSize;
 
