@@ -179,6 +179,23 @@ The BibTeX code would thus be:
 > pages = {788--798},  
 > year = {2018}  
 >}  
+
+Please also cite the second publication:
+N. Niemeyer, P. Eschenbach, M. Bensberg, J. Tölle, L. Hellmann, L. Lampe, A. Massolle, A. Rikus, D. Schnieders, J. P. Unsleber, and J. Neugebauer,
+The subsystem quantum chemistry program Serenity,
+*Wiley Interdiscip. Rev. Comput. Mol. Sci.*, **13**, e1647, (2023).
+
+The BibTeX code would thus be:  
+>@article{serenity_update,
+>  title={The Subsystem Quantum Chemistry Program Serenity},
+>  author={Niemeyer, Niklas and Eschenbach, Patrick and Bensberg, Moritz and T{\"o}lle, Johannes and Hellmann, Lars and Lampe, Lukas and Massolle, Anja and Rikus, Anton and Schnieders, David and Unsleber, Jan P and Neugebauer, Johannes},
+>  journal={Wiley Interdiscip. Rev. Comput. Mol. Sci.},
+>  volume={13},
+>  number={3},
+>  pages={e1647},
+>  year={2023},
+>  publisher={Wiley Online Library}
+>}
   
 In order to allow others to reproduce your data and to give credit to all recent developers,
 please also reference the version of Serenity used by citing the correct code reference
@@ -186,7 +203,19 @@ generated on Zenodo. The following DOI will always link to the newest version of
 
 [10.5281/zenodo.4017420](https://doi.org/10.5281/zenodo.4017420)
 
-For specific versions, please use the appropriate DOI.  
+For specific versions, please use the appropriate DOI.
+
+Serenity relies on a few external libraries. Please cite Libint:  
+Libint: A library for the evaluation of molecular integrals of many-body operators  over Gaussian functions, v2.7.0-beta6  Edward F. Valeev, http://libint.valeyev.net/ .
+
+In case density functionals (for exchange-correlation or kinetic energy) are used, depending on the settings when compiling, please cite either Libxc or XCFun.  
+Libxc (6.1.0): S. Lehtola, C. Steigemann, M. J.T. Oliveira, and M. A.L. Marques. SoftwareX 7, 1–5 (2018). DOI: 10.1016/j.softx.2017.11.002  
+XCFun (v2.0.2):  Ekström, U. (2020). XCFun: A library of exchange-correlation functionals with  arbitrary-order derivatives. Zenodo. https://doi.org/10.5281/zenodo.3946698 
+
+Integrals over effective core potentials are provided by Libecpint.  
+Libecpint (1.0.7) :  R. A. Shaw, J. G. Hill, J. Chem. Phys. 147, 074108 (2017); doi: 10.1063/1.4986887
+
+Also, please include the scientific citations for the basis sets and density functionals you use.
 
 ## Contact
 

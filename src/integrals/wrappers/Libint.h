@@ -95,7 +95,7 @@ struct IntegralType {
  * (Yes, this singleton is not correctly destroyed however
  *  we will live with this for now)
  *
- * Currently interfaced: libint-2.2.0-beta1
+ * Currently interfaced: libint-2.7.0-beta6
  * (https://github.com/evaleev/libint)
  *
  * Usage:

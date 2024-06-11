@@ -120,6 +120,21 @@ FunctionalData<T> LibXC<T>::calcData(FUNCTIONAL_DATA_TYPE type, const Functional
   return funcData;
 }
 
+template<Options::SCF_MODES SCFMode>
+std::string LibXC<SCFMode>::version() {
+  return xc_version_string();
+}
+
+template<Options::SCF_MODES SCFMode>
+std::string LibXC<SCFMode>::reference() {
+  return xc_reference();
+}
+
+template<Options::SCF_MODES SCFMode>
+std::string LibXC<SCFMode>::referenceDOI() {
+  return xc_reference_doi();
+}
+
 template<>
 Eigen::MatrixXd LibXC<RESTRICTED>::calculateSigma(const Gradient<DensityOnGrid<RESTRICTED>>& gradient,
                                                   const unsigned int& iGridStart, const unsigned int& blocksize) {
