@@ -68,7 +68,7 @@ manylinux-x86_64-image = "manylinux_2_28"
 [tool.cibuildwheel.linux]
 # install eigen3, blas, lapack, boost and hdf5 
 before-all = """
-  yum install -y eigen3-devel wget tar bzip2 openblas-devel lapack-devel
+  yum install -y eigen3-devel wget tar bzip2 lapack-devel
   wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2
   tar --bzip2 -xf boost_1_66_0.tar.bz2
   cd boost_1_66_0
