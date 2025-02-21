@@ -34,7 +34,7 @@ namespace Serenity {
 class Atom;
 class BasisFunctionOnGridController;
 class GridController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityOnGridController;
 
 /**

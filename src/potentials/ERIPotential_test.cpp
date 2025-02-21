@@ -99,7 +99,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_CD) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_ACD) {
@@ -126,7 +125,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_ACD) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_ACCD) {
@@ -153,7 +151,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_ACCD) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_RI) {
@@ -182,7 +179,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_RI) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI1) {
@@ -211,7 +207,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI1) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI2) {
@@ -240,7 +235,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI2) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD1) {
@@ -269,7 +263,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD1) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD2) {
@@ -298,7 +291,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD2) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD1) {
@@ -327,7 +319,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD1) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD2) {
@@ -356,7 +347,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD2) {
   EXPECT_NEAR(F(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 /**
@@ -395,7 +385,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_CD_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_ACD_U) {
@@ -430,7 +419,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_ACD_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_ACCD_U) {
@@ -465,7 +453,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_ACCD_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_RI_U) {
@@ -502,7 +489,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_RI_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI1_U) {
@@ -539,7 +525,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI1_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI2_U) {
@@ -576,7 +561,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_RI2_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD1_U) {
@@ -613,7 +597,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD1_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD2_U) {
@@ -650,7 +633,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACD2_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD1_U) {
@@ -687,7 +669,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD1_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD2_U) {
@@ -724,7 +705,6 @@ TEST_F(ERIPotentialTest, H2_FockMatrix_LRX_ACCD2_U) {
   EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-5);
 
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 /**
@@ -782,6 +762,7 @@ TEST_F(ERIPotentialTest, H2_grad_rBP86) {
   settings.basis.densFitK = Options::DENS_FITS::NONE;
   settings.basis.densFitLRK = Options::DENS_FITS::NONE;
   settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+  settings.basis.label = "6-31+G";
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, settings);
 
   ERIPotential<Options::SCF_MODES::RESTRICTED> coulPot(sys, dMat, 0.0, 0.0, 0.0, 0.0, 0);

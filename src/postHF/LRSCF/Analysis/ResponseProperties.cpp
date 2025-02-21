@@ -20,10 +20,10 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/ResponseProperties.h"
-
 /* Include Serenity Internal Headers */
 #include "parameters/Constants.h"
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
+/* Include Std and External Headers */
 #include <iomanip>
 
 namespace Serenity {

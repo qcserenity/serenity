@@ -58,7 +58,7 @@ Point operator/(Point lhs, const double rhs) {
   return lhs;
 }
 
-bool Point::isSamePoint(const Point& point, double precision) {
+bool Point::isSamePoint(const Point& point, double precision) const {
   double dX = std::abs(this->getX() - point.getX());
   double dY = std::abs(this->getY() - point.getY());
   double dZ = std::abs(this->getZ() - point.getZ());

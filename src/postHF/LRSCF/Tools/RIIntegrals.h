@@ -120,19 +120,19 @@ class RIIntegrals {
   unsigned getNAuxBasisFunctions();
 
   /**
-   * @brief Returns (ij|Q) integral pointer.
+   * @brief Returns (ij|Q) integral pointer. Already contracted with the auxiliary transformation matrix.
    * @return The (ij|Q) integral pointer.
    */
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> getJijPtr();
 
   /**
-   * @brief Returns (ia|Q) integral pointer.
+   * @brief Returns (ia|Q) integral pointer. Already contracted with the auxiliary transformation matrix.
    * @return The (ia|Q) integral pointer.
    */
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> getJiaPtr();
 
   /**
-   * @brief Returns (pq|Q) integral pointer.
+   * @brief Returns (pq|Q) integral pointer. Already contracted with the auxiliary transformation matrix.
    * @return The (pq|Q) integral pointer.
    */
   std::shared_ptr<SpinPolarizedData<SCFMode, Eigen::MatrixXd>> getJpqPtr();
@@ -144,7 +144,7 @@ class RIIntegrals {
   std::shared_ptr<Eigen::MatrixXd> getAuxTrafoPtr();
 
   /**
-   * @brief Returns the auxiliary metrix matrix [V].
+   * @brief Returns the auxiliary metric matrix [V].
    * @return The auxiliary transformation matrix [V].
    */
   std::shared_ptr<Eigen::MatrixXd> getAuxMetricPtr();

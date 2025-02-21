@@ -35,7 +35,7 @@ using namespace Serenity::Reflection;
 class SystemController;
 class Atom;
 class Geometry;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
 
 struct BasisSetTruncationTaskSettings {

@@ -28,7 +28,7 @@
 #include "data/matrices/FockMatrix.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridController.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "io/FormattedOutputStream.h"
 #include "misc/WarningTracker.h"
@@ -57,6 +57,7 @@ TDEmbeddingTask<SCFMode>::TDEmbeddingTask(std::shared_ptr<SystemController> acti
 
 template<Options::SCF_MODES SCFMode>
 void TDEmbeddingTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, {_activeSystem, _environmentSystem});
   // Check input for obvious misunderstanding of the keywords.
   checkInput();
   // set up the supersystem.
@@ -126,8 +127,8 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
    */
   auto test = _activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController();
   /*
-   * Funny enough the "supersystemGrid" is build with the settings of the active system while the
-   * grid of the supersystem is build with the settings of the environment.
+   * Funny enough the "supersystemGrid" is built with the settings of the active system while the
+   * grid of the supersystem is built with the settings of the environment.
    */
   std::shared_ptr<AtomCenteredGridController> supersystemGrid = _activeSystem->getAtomCenteredGridController();
   auto pbePot = FDEPotentialBundleFactory<SCFMode>::produce(
@@ -175,8 +176,7 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
     frozenEnvEnergy = envEnergies->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY);
   }
   else {
-    OutputControl::mOut << "ERROR: None existing electronicStructureTheory requested." << std::endl;
-    assert(false);
+    throw SerenityError("Nonexistent electronicStructureTheory requested. Options are HF and DFT.");
   }
   // Everything is set in environment ElectronicStructure -> save to file
   _environmentSystem->template getElectronicStructure<SCFMode>()->toHDF5(_environmentSystem->getHDF5BaseName(),
@@ -201,7 +201,8 @@ void TDEmbeddingTask<SCFMode>::runTDPotentialReconstruction(std::shared_ptr<Syst
   iOOptions.gridAccuracyCheck = tmp2;
 
   // check for double hybrid functional
-  auto functional = resolveFunctional(actsettings.dft.functional);
+  auto functional = actsettings.customFunc.basicFunctionals.size() ? Functional(actsettings.customFunc)
+                                                                   : resolveFunctional(actsettings.dft.functional);
   double MP2Correlation = 0.0;
   if (functional.isDoubleHybrid()) {
     WarningTracker::printWarning(
@@ -292,7 +293,7 @@ inline double TDEmbeddingTask<SCFMode>::getFermiLevel(std::shared_ptr<SystemCont
     potBundle = supersystem->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
   }
   else {
-    throw SerenityError("None existing electronicStructureTheory requested. Options are HF and DFT.");
+    throw SerenityError("Nonexistent electronicStructureTheory requested. Options are HF and DFT.");
   }
   const FockMatrix<SCFMode> fockMatrix =
       potBundle->getFockMatrix(supersystem->getElectronicStructure<SCFMode>()->getDensityMatrix(),

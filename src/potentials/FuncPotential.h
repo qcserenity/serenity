@@ -81,7 +81,7 @@ class FuncPotential : public Potential<SCFMode>,
    * @brief Geometry gradient contribution from this Potential.
    *
    * Reference:\n
-   * People, J.A, Gill, P.M.W. and Johnson, B.G., Chem. Phys. Let. 199 (1992) 557.
+   * Pople, J.A, Gill, P.M.W. and Johnson, B.G., Chem. Phys. Lett. 199 (1992) 557.
    *
    * LDA part:\n
    *

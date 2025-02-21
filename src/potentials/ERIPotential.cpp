@@ -28,10 +28,10 @@
 #include "integrals/RI_J_IntegralControllerFactory.h"
 #include "misc/Timing.h"
 #include "potentials/CDHFPotential.h"
-#include "potentials/CoulombPotential.h"
 #include "potentials/ExchangePotential.h"
 #include "potentials/HFPotential.h"
 #include "potentials/LRXPotential.h"
+#include "potentials/RICoulombPotential.h"
 #include "potentials/RIExchangePotential.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -109,7 +109,7 @@ ERIPotential<SCFMode>::ERIPotential(std::shared_ptr<SystemController> systemCont
         case Options::DENS_FITS::RI:
         case Options::DENS_FITS::ACD:
         case Options::DENS_FITS::ACCD:
-          _coulomb = std::make_shared<CoulombPotential<SCFMode>>(
+          _coulomb = std::make_shared<RICoulombPotential<SCFMode>>(
               systemController, dMat,
               RI_J_IntegralControllerFactory::getInstance().produce(
                   systemController->getBasisController(Options::BASIS_PURPOSES::DEFAULT),

@@ -1,0 +1,64 @@
+\subsection{Task: Freeze-and-Thaw}
+\label{sec:FAT}
+This task performs freeze-and-thaw (FaT) calculations, for a list of given systems. Basically, this task
+performs subsequent frozen-density embedding calculations for the given \ttt{activeSystems}, where in each
+cycle the role of the active system changes. \ttt{environmentSystems} will never be set as active.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task FAT
+  act acetone1
+  act acetone2
+  env water1
+  env water2
+  +emb
+    embeddingMode NADDFUNC
+    naddXCFunc PW91
+    naddKinFunc PW91k
+  -emb
+  maxcycles 6
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{FAT} and \ttt{FaTTask}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts multiple active systems.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts multiple environment systems.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}) and PCM (\ttt{pcm}) settings are added via sub-block in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+	\item [\texttt{maxCycles}]\hfill \\
+	The maximum number of FaT iterations. By default \ttt{50}.
+	\item [\texttt{gridCutOff}]\hfill \\
+	A distance cutoff for the integration grid used to calculate the non-additive  energy functional potentials. Negative values equal no cut off. By default \ttt{-1.0}.
+	\item [\texttt{convThresh}]\hfill \\
+	Convergence criterion for the absolute change of the density matrices w.r.t. FaT cycles. By default \ttt{1.0e-6}
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By default \ttt{DF} is chosen, which uses the density fitting approach specified with \ttt{densfitCorr} in the system block. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{local} to use local MP2.
+	\item [\texttt{calculateSolvationEnergy}]\hfill \\
+	Calculate the interaction of the first active system with the joined environment and the energy of the first active system. The environment is referenced as a continuum. By default \ttt{false}.
+	\item [\texttt{finalEnergyEvaluation}]\hfill \\
+	Perform a final energy evaluation on the supersystem grid after converging the freeze-and-thaw. By default \ttt{true}.
+  \item[\texttt{calculateUnrelaxedMP2Density}]\hfill \\
+  This vector input specifies if unrelaxed MP2 densities are calculated for the active systems. Therefore, \ttt{calculateUnrelaxedMP2Density\{true false\}} will only calculate the unrelaxed MP2 density for the first active system. By default \ttt{\{\}}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item [\texttt{smallSupersystemGrid}]\hfill \\
+	If true will use the smallGridAccuracy of the given active system instead of the normal grid accuracy for the supersystem grid. By default \ttt{false}.
+	\item [\texttt{extendBasis}]\hfill \\
+	Extend the subsystem basis with basis functions centered in the other subsystems. By default \ttt{false}.
+	\item [\texttt{basisExtThresh}]\hfill \\
+	Overlap threshold for the extension of the subsystem basis. Needs \ttt{extendBasi = true}. By default \ttt{5.0e-2}.
+	\item [\texttt{useConvAcceleration}]\hfill \\
+	Turn the convergence acceleration (DIIS/Damping) on. By default \ttt{false}.
+	\item [\texttt{diisStart}]\hfill \\
+	Density RMSD threshold for the start of the DIIS. Needs \ttt{useConvAcceleration = true}. By default \ttt{5.0e-5}.
+	\item [\texttt{diisEnd}]\hfill \\
+	Density RMSD threshold for the end of the DIIS. Needs \ttt{useConvAcceleration = true}. By default \ttt{1.0e-4}.
+	\item [\texttt{keepCoulombCache}]\hfill \\
+	The Fock matrix contributions of the passive systems via their Coulomb interaction is not deleted and kept on disk. By default \ttt{false}.
+\end{description}

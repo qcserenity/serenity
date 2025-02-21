@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/DeltaSpinSquared.h"
-
 /* Include Serenity Internal Headers */
 #include "integrals/OneElectronIntegralController.h"
 #include "postHF/LRSCF/LRSCFController.h"

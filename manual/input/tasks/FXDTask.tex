@@ -1,0 +1,34 @@
+\subsection{Task: FXD}
+\label{sec:FXD}
+This task performs fragment charge difference (FCD), fragment excitation difference (FED) and multistate FED-FCD diabatization calculations.
+So far, this task assumes that the previous calculation was a TDA/CIS-type calculation. 
+\subsubsection{Example Input}
+\begin{lstlisting}
++task FXD
+  act system
+  donoratoms {start end}
+  acceptoratoms {start end}
+  fed true
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{activeSystem}]\hfill \\
+	The system for which the diabatization procedure is performed.
+	\item [\texttt{donorAtoms}]\hfill \\
+	Specifying the atoms belonging to the donor fragment \ttt{\{start end\}}. Starts with zero. 
+	\item [\texttt{acceptorAtoms}]\hfill \\
+	Specifying the atoms belonging to the donor fragment \ttt{\{start end\}}. 
+	\item [\texttt{FED}]\hfill \\
+	If \texttt{true} performs a fragment excitation difference calculation. The default is \ttt{false}.
+	\item [\texttt{FCD}]\hfill \\
+	If \texttt{true} performs a fragment charge difference calculation. The default is \ttt{false}.
+	\item [\texttt{multistateFXD}]\hfill \\
+	If \texttt{true} performs a multistate FED-FCD. The default is \ttt{false}.
+	\item [\texttt{states}]\hfill \\
+  Specifies the number for excited states used for the diabatization procedure. The default is \ttt{100}.
+	\item [\texttt{loewdinPopulation}]\hfill \\
+	Whether a Löwdin populations are used for the diabatization. The default is \ttt{true}. If it is set to \ttt{false}, Mulliken populations are used.
+	\item [\texttt{writeTransformedExcitationVectors}]\hfill \\
+	Writes the diabatic excitation vector to disk. The default is \ttt{false}. This is needed to plot the corresponding NTOs.
+\end{description}

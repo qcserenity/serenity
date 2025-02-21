@@ -34,10 +34,9 @@
 /* Include Class Header*/
 #include "grid/construction/sphere_lebedev_rule.h"
 /* Include Std and External Headers */
-#include <cmath>
-#include <ctime>
-#include <fstream>
-#include <iostream>
+#include <stdlib.h> // for exit
+#include <cmath>    // for sqrt
+#include <iostream> // for basic_ostream
 
 namespace Serenity {
 

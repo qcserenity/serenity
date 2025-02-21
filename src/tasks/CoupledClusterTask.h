@@ -71,10 +71,12 @@ class CoupledClusterTask : public Task {
   void visit(CoupledClusterTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
-    }
+    // If reached, the blockname is unknown.
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
+      return;
+    throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
   }
 
   /**

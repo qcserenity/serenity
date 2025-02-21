@@ -20,7 +20,7 @@
 #ifndef MATHS_DERIVATIVES_CORECOREREPULSIONDERIVATIVE_H_
 #define MATHS_DERIVATIVES_CORECOREREPULSIONDERIVATIVE_H_
 /* Include Serenity Internal Headers */
-#include "math/Matrix.h" //This is a harmless include.
+#include "math/Matrix.h"
 /* Include Std and External Headers */
 #include <array>
 #include <memory>

@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/ExchangeSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "dft/Functional.h"
 #include "dft/functionals/CompositeFunctionals.h"
@@ -44,8 +43,9 @@ ExchangeSigmavector<SCFMode>::ExchangeSigmavector(std::vector<std::shared_ptr<LR
 }
 
 template<Options::SCF_MODES SCFMode>
-ExchangeSigmavector<SCFMode>::ExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf)
-  : Sigmavector<SCFMode>(lrscf), _pm({0}) {
+ExchangeSigmavector<SCFMode>::ExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf,
+                                                  const std::vector<int> pm, bool densFitK, bool densFitLRK)
+  : Sigmavector<SCFMode>(lrscf), _pm(pm), _densFitK(densFitK), _densFitLRK(densFitLRK) {
 }
 
 template<>
@@ -448,9 +448,13 @@ template<Options::SCF_MODES SCFMode>
 void ExchangeSigmavector<SCFMode>::setParameters(unsigned I, unsigned J, bool rpaScreen) {
   if (I == J) {
     if (this->_lrscf[I]->getSysSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-      Functional funcI = resolveFunctional(this->_lrscf[I]->getLRSCFSettings().func);
+      Functional funcI = this->_lrscf[I]->getLRSCFSettings().customFunc.basicFunctionals.size()
+                             ? Functional(this->_lrscf[I]->getLRSCFSettings().customFunc)
+                             : resolveFunctional(this->_lrscf[I]->getLRSCFSettings().func);
       if (this->_lrscf[I]->getLRSCFSettings().func == CompositeFunctionals::XCFUNCTIONALS::NONE) {
-        funcI = resolveFunctional(this->_lrscf[I]->getSysSettings().dft.functional);
+        funcI = this->_lrscf[I]->getSysSettings().customFunc.basicFunctionals.size()
+                    ? Functional(this->_lrscf[I]->getSysSettings().customFunc)
+                    : resolveFunctional(this->_lrscf[I]->getSysSettings().dft.functional);
       }
       if (!rpaScreen) {
         _hfExchangeRatio = funcI.getHfExchangeRatio();
@@ -465,7 +469,9 @@ void ExchangeSigmavector<SCFMode>::setParameters(unsigned I, unsigned J, bool rp
     }
   }
   else {
-    auto funcNadd = resolveFunctional(this->_lrscf[I]->getLRSCFSettings().embedding.naddXCFunc);
+    auto funcNadd = this->_lrscf[I]->getLRSCFSettings().embedding.customNaddXCFunc.basicFunctionals.size()
+                        ? Functional(this->_lrscf[I]->getLRSCFSettings().embedding.customNaddXCFunc)
+                        : resolveFunctional(this->_lrscf[I]->getLRSCFSettings().embedding.naddXCFunc);
     _hfExchangeRatio = funcNadd.getHfExchangeRatio();
     _lrExchangeRatio = funcNadd.getLRExchangeRatio();
     _mu = funcNadd.getRangeSeparationParameter();

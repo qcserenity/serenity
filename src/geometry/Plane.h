@@ -84,7 +84,7 @@ class Plane {
   std::shared_ptr<Eigen::Vector3d> calculateIntersection(const Line& line) const;
 
   /**
-   * @brief Checks wheter a given point is in the plane.
+   * @brief Checks whether a given point is in the plane.
    * @param r The point.
    * @return True if in the plane. False otherwise.
    */

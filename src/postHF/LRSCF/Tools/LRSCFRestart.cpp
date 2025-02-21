@@ -90,8 +90,8 @@ std::shared_ptr<std::vector<Eigen::MatrixXd>> LRSCFRestart<SCFMode>::fetchEigenp
         HDF5::dataset_exists(file, (iSet == 0) ? "RIGHT" : "LEFT");
         HDF5::load(file, (iSet == 0) ? "RIGHT" : "LEFT", tmp);
         if (tmp.rows() != nDimI) {
-          printf("  the dimension of your loaded eigenpairs does not match with this response problem.\n");
-          throw SerenityError("the dimension of your loaded eigenpairs does not match with this response problem.");
+          throw SerenityError("The dimension of your loaded eigenpairs (" + std::to_string(tmp.rows()) +
+                              ") does not match with this response problem (" + std::to_string(nDimI) + ").");
         }
         eigenvectors[iSet].conservativeResize(iStart + nDimI, tmp.cols());
         eigenvectors[iSet].middleRows(iStart, nDimI) = tmp;
@@ -155,9 +155,9 @@ void LRSCFRestart<SCFMode>::storeConvergedResponse(std::shared_ptr<std::vector<E
                                                    Eigen::VectorXd frequencies) {
   unsigned iStart = 0;
   for (auto& lrscf : _lrscf) {
-    // store converged solution
+    // not coupled means there is only one LRSCFController in _lrscf
     if (_type != Options::LRSCF_TYPE::COUPLED) {
-      std::string fileName = _lrscf[0]->getSys()->getSystemPath() + _lrscf[0]->getSys()->getSystemName() + "_lrscf_resp.";
+      std::string fileName = lrscf->getSys()->getSystemPath() + lrscf->getSys()->getSystemName() + "_lrscf_resp.";
       if (_type == Options::LRSCF_TYPE::ISOLATED) {
         fileName += "iso.";
       }
@@ -168,12 +168,13 @@ void LRSCFRestart<SCFMode>::storeConvergedResponse(std::shared_ptr<std::vector<E
       fileName += "h5";
 
       HDF5::H5File file(fileName, H5F_ACC_TRUNC);
-      HDF5::save_scalar_attribute(file, "ID", _lrscf[0]->getSys()->getSystemIdentifier());
+      HDF5::save_scalar_attribute(file, "ID", lrscf->getSys()->getSystemIdentifier());
       HDF5::save(file, "X+Y", (*solutionvectors)[0]);
       HDF5::save(file, "X-Y", (*solutionvectors)[1]);
       HDF5::save(file, "frequencies", frequencies);
       file.close();
     }
+    // this is the coupled case
     else {
       auto no = lrscf->getNOccupied();
       auto nv = lrscf->getNVirtual();
@@ -187,21 +188,12 @@ void LRSCFRestart<SCFMode>::storeConvergedResponse(std::shared_ptr<std::vector<E
         (*vec)[1] = (*solutionvectors)[1].middleRows(iStart, nDimI);
       }
       iStart += nDimI;
-      std::string fileName = _lrscf[0]->getSys()->getSystemPath() + _lrscf[0]->getSys()->getSystemName() + "_lrscf_resp.";
-      if (_type == Options::LRSCF_TYPE::ISOLATED) {
-        fileName += "iso.";
-      }
-      else if (_type == Options::LRSCF_TYPE::UNCOUPLED) {
-        fileName += "fdeu.";
-      }
-      else {
-        fileName += "fdec.";
-      }
+      std::string fileName = lrscf->getSys()->getSystemPath() + lrscf->getSys()->getSystemName() + "_lrscf_resp.fdec.";
       fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
       fileName += "h5";
 
       HDF5::H5File file(fileName, H5F_ACC_TRUNC);
-      HDF5::save_scalar_attribute(file, "ID", _lrscf[0]->getSys()->getSystemIdentifier());
+      HDF5::save_scalar_attribute(file, "ID", lrscf->getSys()->getSystemIdentifier());
       HDF5::save(file, "X+Y", (*vec)[0]);
       HDF5::save(file, "X-Y", (*vec)[1]);
       HDF5::save(file, "frequencies", frequencies);

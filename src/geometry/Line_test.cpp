@@ -18,14 +18,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "geometry/Line.h" //To be tested.
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
 #include <cmath>         //sqrt.
 
 namespace Serenity {
-
-class LineTest : public ::testing::Test {};
 
 /**
  * @test

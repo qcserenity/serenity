@@ -40,7 +40,7 @@ namespace Serenity {
  * functions) do not add conceptionally different complications. Thus with this basis already most
  * problems should be found.\n
  *
- * ASYMETRIC_CH3:\n
+ * ASYMMETRIC_CH3:\n
  * \n
  * 6-31G* basis for an asymmetric CH3 radical\n
  *\n
@@ -53,7 +53,7 @@ namespace Serenity {
  * \n
  *
  */
-enum class TEST_BASIS_CONTROLLERS { MINIMAL, SMALL_MIXED, ASYMETRIC_CH3 };
+enum class TEST_BASIS_CONTROLLERS { MINIMAL, SMALL_MIXED, ASYMMETRIC_CH3 };
 /**
  * @class BasisController__TEST_SUPPLY BasisController__TEST_SUPPLY.h
  * @brief Provides objects of type AtomCenteredBasisController without further dependencies.

@@ -20,15 +20,15 @@
 /* Include Serenity Internal Headers */
 #include "tasks/EvaluateEnergyTask.h" //To be tested.
 #include "data/ElectronicStructure.h" //GetEnergy.
-#include "settings/Settings.h"        //Get system with altered settings.
-#include "system/SystemController.h"  //GetElectronicStructure.
+#include "energies/EnergyContributions.h"
+#include "settings/Settings.h"       //Get system with altered settings.
+#include "system/SystemController.h" //GetElectronicStructure.
 #include "tasks/FDETask.h"
 #include "tasks/ScfTask.h"                            //Supersystem SCF.
 #include "tasks/SystemAdditionTask.h"                 //Add fragments up.
 #include "tasks/TDEmbeddingTask.h"                    //Run embedding calculation.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Test systems.
 /* Include Std and External Headers */
-#include <energies/EnergyContributions.h>
 #include <gtest/gtest.h> //Testing framework.
 
 namespace Serenity {

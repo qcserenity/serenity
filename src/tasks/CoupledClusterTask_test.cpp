@@ -84,7 +84,7 @@ TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_TIGHT) {
 }
 
 TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_NORMAL) {
-  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   iOOptions.timingsPrintLevel = 1;
   auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_Def2_SVP);
   ScfTask<RESTRICTED> scf(act);
@@ -97,6 +97,7 @@ TEST_F(CoupledClusterTaskTest, WaterDLPNOCCSDT0_NORMAL) {
   task.settings.level = Options::CC_LEVEL::DLPNO_CCSD_T0;
   task.settings.normThreshold = 1e-6;
   task.settings.lcSettings.pnoSettings = Options::PNO_SETTINGS::NORMAL;
+  task.settings.lcSettings.ignoreMemoryConstraints = true;
   task.run();
   double ccsdCorrection =
       act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);

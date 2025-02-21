@@ -63,15 +63,22 @@ class KernelSigmavector : public Sigmavector<SCFMode> {
                     std::shared_ptr<Kernel<SCFMode>> kernel, std::shared_ptr<Kernel<UNRESTRICTED>> ukernel = nullptr);
 
   /**
+   * @brief Constructor if only the AO representation is required.
+   * @param lrscf A set of LRSCF Controllers.
+   * @param kernel The XC-Kernel holding the second functional derivatives of the XC energy at each gridpoint.
+   */
+  KernelSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, std::shared_ptr<Kernel<SCFMode>> kernel);
+
+  /**
    * @brief Destructor.
    */
   virtual ~KernelSigmavector() = default;
 
- private:
   ///@brief Function to calculate and return Fock-like matrix F_IJ.
   std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
   calcF(unsigned I, unsigned J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) final;
 
+ private:
   /**
    * @brief Calculates (weighted)
    *          pbb = \sum_{kl} P_{k l} \phi_k \phi_l

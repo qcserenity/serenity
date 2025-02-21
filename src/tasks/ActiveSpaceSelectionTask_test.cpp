@@ -229,6 +229,8 @@ TEST_F(ActiveSpaceSelectionTest, unrestricted_Ethane) {
   const auto SPIN = Options::SCF_MODES::UNRESTRICTED;
   auto A = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   auto B = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneB_Def2_SVP_BP86);
+  A->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
+  B->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   ActiveSpaceSelectionTask<SPIN> asTask({A, B}, {}, {});
   asTask.keepSystemPairs = true;
   asTask.settings.similarityKinEnergyThreshold = 5e-2;

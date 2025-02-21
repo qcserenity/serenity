@@ -32,7 +32,7 @@ enum class SCF_MODES;
  * @class  MP2EnergyCorrector MP2.h
  * @brief  Calculates the MP2 correction of the electronic energy.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class MP2EnergyCorrector {
  public:
   /**

@@ -36,7 +36,7 @@
 #include "io/FormattedOutputStream.h"                     //Filtered output streams.
 #include "io/HDF5.h"                                      //HDF5 IO
 #include "misc/Timing.h"                                  //Timings.
-#include "potentials/CoulombPotential.h"                  //Gradient construction. Substract intra-subsystem part.
+#include "potentials/RICoulombPotential.h"                //Gradient construction. Substract intra-subsystem part.
 #include "settings/Settings.h"                            //Settings definition (gradients only).
 #include "system/SystemController.h"                      //Settings and getElectronicStructure
 /* Include Std and External Headers */
@@ -456,7 +456,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
      * The following set of loops calculates the complete 3rd part of eq ([1].[6])
      * (easily recognizable by the sign).
      *
-     * Check CoulombPotential::getGeomGradients()!
+     * Check RICoulombPotential::getGeomGradients()!
      *
      * Has to be done twice in order to get the combinations
      * auxBasisEnv/Basis and auxBasis/BasisEnv.
@@ -587,7 +587,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
      * The following set of loops calculates the complete 1st and 2nd part of eq ([1].[6])
      * (easily recognizable by the sign).
      *
-     * Check CoulombPotential::getGeomGradients()!
+     * Check RICoulombPotential::getGeomGradients()!
      *
      * Has to be done twice in order to get the combinations
      * auxBasisEnv/Basis and auxBasis/BasisEnv.
@@ -689,7 +689,7 @@ Eigen::MatrixXd CoulombInteractionPotential<SCFMode>::getGeomGradients() {
   // TODO: The above scheme also includes inner system Coulomb gradient contributions once per environment system,
   // hence this has to be explicitly calculated and subtracted in the end. This is not incredibly expensive,
   // but unnecessary and, alas, very hard to extract from the above algorithm.
-  CoulombPotential<SCFMode> coulPot(
+  RICoulombPotential<SCFMode> coulPot(
       actSystem, actSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
       RI_J_IntegralControllerFactory::getInstance().produce(
           actSystem->getAtomCenteredBasisController(),

@@ -114,12 +114,14 @@ class TDEmbeddingTask : public Task {
   void visit(TDEmbeddingTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      if (!c.lcSettings.visitSettings(v, blockname)) {
-        throw SerenityError((std::string) "Unknown block in TDEmbeddingTaskSettings: " + blockname);
-      }
-    }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in TDEmbeddingTaskSettings: " + blockname);
   }
 
   /**

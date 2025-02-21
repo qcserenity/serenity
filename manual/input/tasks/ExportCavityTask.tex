@@ -1,0 +1,39 @@
+\subsection{Task: Export Cavity}\label{sec:tasks:ExportCavityTask}
+This task creates and exports a molecular surface of a given system with all necessary quantities in .h5 files.
+This will create a CavityData.h5  file and in case \ttt{cavityFormation} in the PCM block is set to \ttt{true}, a VDWCavityData.h5 file will also be created.
+In order to save the necessary charges of the solvent models, the keyword \ttt{saveCharges} in the PCM block must be switched to true. This will generate the file PCMChargesData.h5.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +system
+  name water
+  geometry h2o.xyz
+  method dft
+
+  +pcm
+   use true
+   solvent WATER
+   solverType CPCM
+   saveCharges true
+  -pcm
+
+ -system
+
+ +task SCF
+  act water
+ -task
+
+ +task EXPORTCAVITYTASK
+  act water
+  fdecavity false
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{EXPORTCAVITYTASK} and \ttt{EXPORTCAVITY}.
+\item [\texttt{activeSystems}]\hfill \\
+  The system whose molecular surface is to be exported.
+\item [\texttt{fdecavity}]\hfill \\
+  Manual switch to toggle between exporting a supersystem cavity. \ttt{false} by default.
+\end{description}

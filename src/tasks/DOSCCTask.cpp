@@ -34,7 +34,7 @@
 #include "potentials/bundles/PotentialBundle.h"                     //Get Fock matrix.
 #include "settings/Settings.h"                                      //New system settings.
 #include "system/SystemController.h"                                //Construct dummy systems.
-#include "tasks/LocalizationTask.h"                                 //Run localization. TMP REMOVE ME!
+#include "tasks/LocalizationTask.h"                                 //Run localization.
 /* Include Std and External Headers */
 #include <iomanip> //setw(...)
 

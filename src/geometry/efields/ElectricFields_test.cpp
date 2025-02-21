@@ -28,8 +28,6 @@
 
 namespace Serenity {
 
-class ElectricFieldTest : public ::testing::Test {};
-
 /**
  * @test
  * @brief Tests EField.h

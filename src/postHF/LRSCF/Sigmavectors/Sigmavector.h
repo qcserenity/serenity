@@ -25,7 +25,6 @@
 #include "data/matrices/MatrixInBasis.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/Options.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -76,6 +75,16 @@ class Sigmavector {
 
   std::vector<MatrixInBasis<SCFMode>> getPerturbedFockMatrix();
 
+  /** @brief Function to calculate and return Fock-like matrix F_IJ.
+   *  @param I/J the particular number of the subsystem
+   *  @param P_J pseudo density matrices that are to be contracted with ERIs. The dimensions of P_J are nSets and within
+   * that nGuess. Similarly, the return dimensions are nSets and nGuess (and for the MatrixInBasis obviously nBasis *
+   * nBasis).
+   *  @return Fock-like matrix F_IJ.
+   */
+  virtual std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
+  calcF(unsigned int I, unsigned int J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) = 0;
+
  protected:
   /**
    * @brief Calculates and returns pseudo density matrices P_I for guess vectors of subsystem I
@@ -89,10 +98,6 @@ class Sigmavector {
   ///@brief Calculate and store sigma vectors for sets of guess vectors from subsystem I from Fock-like matrix.
   virtual void addToSigma(unsigned int I, unsigned int iStartI,
                           std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> F_IJ);
-
-  ///@brief Function to calculate and return Fock-like matrix F_IJ.
-  virtual std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>>
-  calcF(unsigned int I, unsigned int J, std::unique_ptr<std::vector<std::vector<MatrixInBasis<SCFMode>>>> P_J) = 0;
 
   ///@brief Returns an (nShells x nShells) matrix for the set of density matrices containing maximum entries for
   /// prescreening.

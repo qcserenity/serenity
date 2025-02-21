@@ -18,8 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Header */
+/* Include Class Header*/
 #include "integrals/looper/TwoElecThreeCenterCalculator.h"
+/* Include Serenity Internal Headers */
 #include "memory/MemoryManager.h"
 
 namespace Serenity {

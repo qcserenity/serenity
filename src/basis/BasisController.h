@@ -273,12 +273,20 @@ class BasisController : public NotifyingClass<Basis>, public ObjectSensitiveClas
    */
   bool isAtomicCholesky();
 
+  /**
+   * @brief Getter for integral prescreening factors based on the differential overlap.
+   *        \f$ DOI_{ij} = \sqrt{\int \mathrm{d}r \chi_i^2(r) \chi_j^2(r)} \f$
+   * @return The prescreening factors.
+   */
+  std::shared_ptr<std::vector<ShellPairData>> getDOIPrescreeningFactors();
+
  protected:
   void produceBasis();
 
   std::unique_ptr<Basis> _basis;
   std::shared_ptr<std::vector<ShellPairData>> _shellPairList;
   std::shared_ptr<std::vector<ShellPairData>> _RIPrescreeningFactors;
+  std::shared_ptr<std::vector<ShellPairData>> _doiPrescreeningFactors;
   void calculateRIPrescreeningFactors();
   void createShellPairData();
   virtual std::unique_ptr<Basis> produceBasisFunctionVector() = 0;

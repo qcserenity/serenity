@@ -28,8 +28,8 @@
 #include "tasks/LocalizationTask.h"                             //Orbital localization.
 #include "tasks/ScfTask.h"                                      //Clean electronic structures.
 #include "testsupply/SystemController__TEST_SUPPLY.h"           //Test systems.
-                                                                /* Include Std and External Headers */
-#include <gtest/gtest.h>                                        //Testing framework.
+/* Include Std and External Headers */
+#include <gtest/gtest.h> //Testing framework.
 
 namespace Serenity {
 class DLPNO_CCSD_T0Test : public ::testing::Test {

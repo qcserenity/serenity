@@ -18,8 +18,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "geometry/Triangle.h"
+/* Include Serenity Internal Headers */
 #include "geometry/Point.h"
+/* Include Std and External Headers */
 #include <iostream>
 
 namespace Serenity {

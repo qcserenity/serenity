@@ -27,8 +27,8 @@
 #include <memory>
 #include <vector>
 
-/* Forward declarations */
 namespace Serenity {
+/* Forward declarations */
 template<typename>
 class Matrix;
 
@@ -47,7 +47,7 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   explicit Geometry(std::vector<std::shared_ptr<Atom>> atoms);
   /**
    * @brief Constructor.
-   * @param atomSymbols    The atoic symbols.
+   * @param atomSymbols    The atomic symbols.
    * @param atomPositions  The atom positions, dimensions: (nAtoms,3)
    */
   explicit Geometry(std::vector<std::string> atomSymbols, Matrix<double> atomPositions);
@@ -238,7 +238,7 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
   /**
    * @param rhs is added to this instance.
    */
-  Geometry& operator+=(const Geometry& rhs);
+  void operator+=(const Geometry& rhs);
 
   /**
    * @brief checks if two geometries are equal.

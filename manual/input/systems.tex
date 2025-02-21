@@ -1,0 +1,684 @@
+\section{Systems}\label{sec:system}
+Each system is defined by one system block which contains general keywords and can contain one layer of sub-blocks.
+All relevant keywords are discussed in this section.
+\subsection{General Keywords}\label{sec:system:general}
+The keywords given directly inside the system block and not within one of the nested blocks are presented
+in this section.\\
+A regular system will need both the \ttt{geometry} and also the \ttt{name} keyword.
+Further keywords can be given if their values need to differ from the defaults.
+A loaded system only needs the \ttt{load} keyword and a \ttt{name}.
+All other keywords will be deduced from the stored settings.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   The system name.
+ \item [\texttt{geometry}]\hfill \\
+   The path to the geometry (.xyz). This or \ttt{load} has to be given.
+   \item [\texttt{path}]\hfill \\
+   The path to store HDF5 files.
+   \item [\texttt{load}]\hfill \\
+   The path to load HDF5 and settings files from. If this is given all other settings are replaced by the loaded settings. \serenity will search 
+   for a directory with \ttt{name} at the given path.
+   \item [\texttt{charge}]\hfill \\
+   The charge of the system. Default is $0$.
+   \item [\texttt{spin}]\hfill \\
+   The spin of the system. Given as alpha spin electron excess. Default is $0$.
+ \item [\texttt{scfmode}]\hfill \\
+   The orbital mode of the SCF. Default is \ttt{RESTRICTED}. If \ttt{UNRESTRICTED} is chosen, an unrestricted calculation is enforced.
+  \item [\texttt{method}]\hfill \\
+  The general electronic structure method for this system. By default, \ttt{HF} (Hartree--Fock) is chosen. The other option is \ttt{DFT} (density-functional theory). Note that \ttt{method HF} means that any density fitting will be ignored. To actually perform Hartree--Fock calculations with density fitting, use \ttt{method HF} and \ttt{functional HF} in the \ttt{DFT} block.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{ignorecharge}]\hfill \\
+  Adds an electron in case the sum of charge and spin is odd. Default is \ttt{false}.
+  \item [\texttt{externalGridPotential}]\hfill \\
+  The path to load a potential from. Similar to external charges (see Sec.~\ref{sec:system:extchrg}), this potential is added to the system's core Hamiltonian. The file content is expected to be row-wise gridpoints with the coordinates and potential values given in atomic units, with the first line being ignored.
+  \begin{lstlisting}
+  #   x         y         z           w              pot   
+  <x-coord> <y-coord> <z-coord> <grid-weight> <potential-value>
+  <x-coord> <y-coord> <z-coord> <grid-weight> <potential-value>
+  ...
+  \end{lstlisting}
+  Note that this is consistent with the format of the \ttt{ExportGridTask} (see Sec.~\ref{sec:tasks:ExportGridTask}).
+\end{description}
+
+\subsection{SCF Block}\label{sec:system:scf}
+All settings available pertaining the SCF and its convergence are given in this sub-block of the system block.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+    +scf
+      maxCycles 100
+      damping dynamic
+    -scf
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{initialguess}]\hfill \\
+   The initial guess for the electronic structure. Possible options are:\\
+   \ttt{HCORE}: $h_{core}$ guess, i.e. ignoring electron-electron interactions.\\
+   \ttt{EHT}: extended Hueckel theory guess.\\
+   \ttt{ATOM\_SCF}: Attempts to load precalculated BHLYP/MINAO densities from disk and projects onto the basis set used in the calculation. If not found for a particular atom type
+   or other problems occur, uses \ttt{ATOM\_SCF\_INPLACE} as a fall-back solution.\\
+   \ttt{ATOM\_SCF\_INPLACE}: Generate the atomic densities on the fly with atom-wise SCFs in the basis of the calculation. Always starts from an Hcore guess with spherical densities.\\
+   \ttt{SAP}: superposition of atomic potentials.\\
+   The default is \ttt{ATOM\_SCF}. For atoms using effective core potentials, the \ttt{ATOM\_SCF\_INPLACE}
+   guess is used as the default.
+ \item [\texttt{damping}]\hfill \\
+   The mode of damping of the new Fock matrix with the last one during the SCF.\\
+   \ttt{NONE}: no damping.\\
+   \ttt{SERIES}: damping value decreases in each step.\\
+   \ttt{STATIC}: static damping value.\\
+   \ttt{DYNAMIC}: dynamic damping value adjustment (see Ref.~\cite{cances2000can}).\\
+   The default is \ttt{SERIES}.
+   \item [\texttt{maxCycles}]\hfill \\
+   Maximum number of SCF cycles. Default is $100$.
+   \item [\texttt{energyThreshold}]\hfill \\
+   Convergence criterion for the energy. Default is \ttt{5e-8}.
+   \item [\texttt{rmsdThreshold}]\hfill \\
+   Convergence criterion for the density matrix. Default is \ttt{1e-8}.
+  \item [\texttt{diisThreshold}]\hfill \\
+   The convergence criterion for the DIIS ([F,P]) error. Default is \ttt{5e-7}. Note that if two out of these three convergence criteria are fulfilled, the SCF is considered converged.
+   \item[\texttt{allowNotConverged}]\hfill \\
+   If the maximum number of SCF cycles is reached, Serenity will continue even with non-converged orbitals. By default \ttt{false}.
+   \item [\texttt{minimumLevelshift}]\hfill \\
+   Minimum diagonal level-shift to be used. Default is $0.0$. Typical values are $0.3$ or $0.1$. Setting this to values larger than $0$ will
+   help non-converging SCF procedures. However, it increases the number of iterations.
+   \item [\texttt{rohf}]\hfill \\
+   Can be used to invoke a restricted open-shell HF or KS calculation (ground-state). 
+   Available are two flavors: \ttt{SUHF} \cite{Andrews1991} and \ttt{CUHF} \cite{Tsuchimochi2010}.
+   Both are implemented as constrained UHF procedures. SUHF also requires a parameter (\texttt{suhfLambda}) which interpolates between
+   UHF ($\lambda = 0$) and ROHF ($\lambda = \infty$). As a result, \ttt{SUHF} does not yield the \textit{exact} ROHF wavefunction with
+   zero spin contamination in practice. \ttt{SUHF} may also struggle with convergence issues for $\lambda > 10$ and \ttt{CUHF} should
+   basically always be preferred. Defaults to \ttt{NONE}.
+   \item [\texttt{suhfLambda}]\hfill\\
+   Scaling parameter for the SUHF procedure. Defaults to \ttt{0.01}.
+   \item [\texttt{degeneracyThreshold}]\hfill\\
+   Defaults to \ttt{0.0}. If set to something other than zero, fractionally occupies orbitals whose difference in eigenvalues is below this double.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{writeRestart}]\hfill \\
+    Interval to write checkpoints during SCF. Default is $5$.
+   \item [\texttt{seriesDampingStart}]\hfill \\
+    Start value for the series damping. Default is $0.7$.
+    \item [\texttt{seriesDampingEnd}]\hfill \\
+    End value for the series damping. Default is $0.2$.
+    \item [\texttt{seriesDampingStep}]\hfill \\
+    Increment value for the series damping. Default is $0.05$.
+    \item [\texttt{seriesDampingInitialSteps}]\hfill \\
+    Number of initial steps without increment. Default is $2$.
+    \item [\texttt{staticDampingFactor}]\hfill \\
+    Damping value for the static damping. Default is $0.7$.
+    \item [\texttt{endDampErr}]\hfill \\
+    $\text{[F,P]}$ value at which the damping ends. Default is $0.05$.
+    If the SCF has problems converging it may help to stop the damping at a lower error. However, this can
+    increase the number of SCF iterations needed significantly.
+    \item [\texttt{diisFlush}]\hfill \\
+    Number of cycles after which the DIIS starts anew without previously stored data.
+    \item [\texttt{diisStartError}]\hfill \\
+    $\text{[F,P]}$ value at which the DIIS starts. Default is $0.05$.
+    \item [\texttt{diisMaxStore}]\hfill \\
+    The number of Fock Matrices stored in the DIIS. Default is $10$. If oscillations in the SCF occur, it can
+    help to change this number. Typical values are between $5$ and $15$.
+    \item [\texttt{useLevelshift}]\hfill \\
+    Use a level-shift for the diagonal elements of the virtual--virtual Fock matrix block. Default is \ttt{true}.
+    \item [\texttt{useOffDiagLevelshift}]\hfill \\
+    Use a scaling for the virtual--occupied Fock matrix block. Default is \ttt{false}.
+    \item [\texttt{canOrthThreshold}]\hfill \\
+    Minimum eigenvalue of the overlap matrix to be tolerated. Default is 1e-7. This eliminates linear dependencies
+    in the basis set. The default threshold is quite conservative. Linear dependencies can lead to numerical instability
+    for procedures that depend explicitly on the orbital coefficients, e.g. coupled cluster.
+    \item [\texttt{useADIIS}]\hfill \\
+    Use the A-DIIS procedure \cite{hu2010} at the beginning of the SCF. Default is \ttt{false}. This interpolation scheme
+    includes an energy minimization criterion into the Fock matrix update. The A-DIIS is supposed to be stable even for a
+    bad initial guess. The A-DIIS is turned off automatically when the DIIS procedure starts.
+ \end{description}
+
+\subsection{Basis Block}\label{sec:system:basis}
+All settings available pertaining the usage and generation of basis sets.
+The basis sets can be found in \texttt{data/basis}. These are not exclusive. Any folder with \textsc{Turbomole}
+style basis sets can be given and every file can be added to it, given that the file names are spelled in
+uppercase.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method HF
+    charge 0
+    spin 1
+    +basis
+      label def2-SVP
+    -basis
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{label}]\hfill \\
+ Basis set name. \serenity will search for a file with the given label in uppercase at the \ttt{basisLibPath}. Default is \ttt{6-31GS}.
+
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{makeSphericalBasis}]\hfill \\
+    Use spherical harmonics basis. Default is \ttt{true}. If \ttt{false}, a Cartesian basis set is constructed.
+    \item [\texttt{basisLibPath}]\hfill \\
+    Basis set file location (default taken from environment variable).
+    \item [\texttt{auxJLabel}]\hfill \\
+    Auxiliary basis set name for Coulomb interactions (RI). Default is \ttt{RI\_J\_Weigend}.
+    \item [\texttt{auxJKLabel}]\hfill \\
+    Auxiliary basis set name for Coulomb and exchange interactions (RI). Default is none.
+    \item [\texttt{auxCLabel}]\hfill \\
+    Auxiliary basis set name for Correlation interactions (RI). If none is given, \serenity will search for a
+    basis-set file for the given basis with a filename \ttt{label}-RI-C.
+    \item [\texttt{firstECP}]\hfill \\
+    Atomic number threshold for the use of ECPs if available in the basis-set file. Default is $37$ (starting from the fifth period).
+    It is possible to manipulate/add the ECP definition to any basis-set file. For an example see the DEF2-SVP basis-set file.
+    \item [\texttt{integralThreshold}]\hfill \\
+    Threshold for the prescreening in integral evaluations. Default it is calculated as $1\cdot 10^{-8}/(3 M)$, where $M$ is
+    the number of Cartesian basis functions.
+    \item [\texttt{integralIncrementThresholdStart}]\hfill \\
+    Initial integral prescreening threshold. Default is 1e-8.
+    \item [\texttt{integralIncrementThresholdEnd}]\hfill \\
+    Final integral prescreening threshold. Default it is equal to \texttt{integralThreshold}.
+    \item [\texttt{incrementalSteps}]\hfill \\
+    SCF-step interval to fully calculate the Fock matrix instead of only the Fock matrix increment due to increments in the density matrix. Default is $5$.
+    \item [\texttt{densFitJ}]\hfill \\
+    The density fitting approach to be used for Coulomb contributions. By default, the \ttt{RI} approximation is used. Furthermore, different approaches using the Cholesky decomposition can be chosen, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densFitJ}.
+    \item [\texttt{densFitK}]\hfill \\
+    The density fitting approach to be used for exchange contributions. By default, no density fitting is used. Besides the \ttt{RI} approximation, different approaches using the Cholesky decomposition, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}, can be chosen.
+    \item [\texttt{densFitLRK}]\hfill \\
+    The density fitting approach to be used for long-range exchange contributions. By default, no density fitting is used. Besides the \ttt{RI} approximation, different approaches using the Cholesky decomposition, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}, can be chosen.
+    \item [\texttt{densFitCorr}]\hfill \\
+    The density fitting approach to be used to calculate correlation related contributions. By default, the \ttt{RI} approximation is used. Furthermore, different approaches using the Cholesky decomposition can be chosen, namely the generic Cholesky decomposition \ttt{CD}, the atomic Cholesky decomposition \ttt{ACD} and the atomic-compact Cholesky decomposition \ttt{ACCD}. The full four center integrals may be used by selecting \ttt{NONE} for \ttt{densFitCorr}.
+    \item [\texttt{cdThreshold}]\hfill\\
+    Decomposition threshold for all Cholesky decomposition based methods. The default is \ttt{1e-6}.
+    \item [\texttt{extendSphericalACDShells}]\hfill\\
+    The scheme to generate complete spherical basis function products represented as a spherical function. \ttt{NONE} uses the pure product of the spherical basis functions. With the default setting \ttt{SIMPLE} a single additional basis function is added to account for missing contributions. Using \ttt{COMLETE} the full product is approximated.
+    \item [\texttt{secondCD}]\hfill\\
+    The decomposition threshold for the secondary decomposition. This threshold is used if an ACD or ACCD auxiliary basis set is generated for a spherical basis set. The default value is \ttt{1e-8}.
+    \item [\texttt{cdOffset}]\hfill\\
+    Offset value used if an ACD or ACCD auxiliary basis set is generated for spherical basis sets. The default value is \ttt{1e-2}.
+    \item[\texttt{intCondition}]
+    Threshold to determine whether a four center integral should be cached or not.
+    The caching criterion is based on the number of primitive  functions entering each basis function and their angular
+    momentum. In general, integrals over highly contracted basis functions with low angular momentum are more likely to
+    be cached. By default, \ttt{-1} (no integral caching is used). For small to medium-sized molecules
+    (\emph{e.g.} up to 3000 basis functions) a threshold of \ttt{4} gives a balanced speed/memory-usage. The larger the
+    threshold the more selective will the integral caching be.
+ \end{description}
+
+\subsection{Grid Block}\label{sec:system:grid}
+All settings available to tune the generation of integration grids, which are used e.g. to evaluate exchange--correlation or nonadditive kinetic energy contributions.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method DFT
+    charge 0
+    spin 1
+    +grid
+      accuracy 5
+      smallGridAccuracy 3
+    -grid
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{accuracy}]\hfill \\
+  Overall accuracy of the integration grid. Range: 1 to 7, with 7 being most accurate.\\ Default is $4$.
+ \item [\texttt{smallGridAccuracy}]\hfill \\
+ Accuracy for intermediate grids (e.g. a small grid can be used during an SCF, but once converged the energy is evaluated again on the larger grid). Range: 1 to 7, with 7 being most accurate. Default is $2$.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{gridType}]\hfill \\
+    Procedure how to combine atomic grids. Default is \ttt{SSF}.
+    All options are:\\
+    \ttt{BECKE}: the fuzzy cells \cite{beck1988}.\\ 
+    \ttt{SSF}: the algorithm by Stratmann, Scuseria and Frisch \cite{stra1996}.\\ 
+    \ttt{VORONOI}: sharp cuts between atoms.
+    \item [\texttt{radialGridType}]\hfill \\
+    Procedure how to construct the radial part of the grid. Default is \ttt{AHLRICHS}.
+    All options are:\\
+    \ttt{BECKE}: \cite{beck1988, Gill2003} \\
+    \ttt{HANDY}: \cite{Murray1993, Gill2003} \\
+    \ttt{AHLRICHS}: \cite{Treutler1995, krack1998adaptive} \\
+    \ttt{KNOWLES}: \cite{Mura1996, Gill2003} \\
+    \ttt{EQUI}: equidistant points
+    \item [\texttt{sphericalGridType}]\hfill \\
+    Procedure how to construct the spherical part of the grid. Currently the only option and default is 
+    the point distribution according to the work of Lebedev (\ttt{LEBEDEV}).
+    \item [\texttt{gridPointSorting}]\hfill \\
+    Enable or disable grid point sorting in order to enhance grid evaluation efficiency. Note that it should be
+    set to \ttt{false} if using the \ttt{withAtomInfo} option within the \ttt{ExportGridTask}. Default is \ttt{true}.
+    \item [\texttt{blocksize}]\hfill \\
+    Size of blocked grid data  for parallelisation. Default is $128$.
+    \item [\texttt{blockAveThreshold}]\hfill \\
+    Threshold for average weights of blocks of data. Setting this to zero will increase accuracy and computational time of the numerical 
+    integration for DFT type calculations. Default is 1e-11.
+    \item [\texttt{basFuncRadialThreshold}]\hfill \\
+    Threshold for the evaluation of basis functions on grid points. Setting this to zero will increase accuracy and computational time of the numerical 
+    integration for DFT type calculations. Default is 1e-9.
+    \item [\texttt{weightThreshold}]\hfill \\
+    Threshold for grid point reduction. Default is 1e-14.
+    \item [\texttt{smoothing}]\hfill \\
+    Smoothing parameters for grid cells. Default is 3. This is the number of recursions on Becke's smoothing 
+    function if \ttt{BECKE} is chosen as \ttt{gridType}, see Ref.~\cite{beck1988}.
+ \end{description}
+
+
+\subsection{DFT Block}\label{sec:system:dft}
+The \ttt{DFT} block contains all options pertaining only DFT calculations.
+Note that changes in this block do not automatically enable the \ttt{method dft}
+keyword from the general system settings.
+This keyword is still required in order to use \ttt{DFT} instead of the default \ttt{HF}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name methyl 
+    geometry methyl.xyz
+    method DFT 
+    charge 0
+    spin 1
+    +dft
+      functional PBE0
+    -dft
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{functional}]\hfill \\
+  The exchange--correlation energy functional to use. A full list of functionals is given in the table below.
+  The default is \ttt{BP86}.
+ \item [\texttt{dispersion}]\hfill \\
+ The version of Grimme's dispersion correction. The default is \ttt{NONE}. The options are:
+ No correction (\ttt{NONE}), the third set of parameters (with zero damping, also called D3(0)) (\ttt{D3}),
+ the third set of parameters (with zero damping, also called D3(0)) and 3 center correction term (\ttt{D3ABC}),
+ the third set of parameters with Becke-Johnson damping (\ttt{D3BJ}),
+ or the third set of parameters with Becke-Johnson damping and 3 center correction term (\ttt{D3BJABC}).
+\end{description}
+
+The following two tables list all possible exchange--correlation energy functionals and kinetic energy functionals.
+The latter may be used for embedding calculations :
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|>{\ttfamily}c|l|} \hline
+\multicolumn{4}{|c|}{\textbf{Kinetic Energy Functionals}} \\ \hline
+Functional & \multicolumn{1}{c|}{Notes} & Functional & \multicolumn{1}{c|}{Notes} \\ \hline
+NONE     & No functional will be used. && \\ \hline
+\hline \multicolumn{4}{|c|}{LDA} \\ \hline
+TF       & & &\\ \hline
+\hline \multicolumn{4}{|c|}{GGA} \\ \hline
+PW91K    &                       &PBE2KS   & sDFT optimized PBE2K\\ \hline
+LLP91K   &                       &PBE3K    & \\ \hline
+LLP91KS  & sDFT optimized LLP91K &PBE4K    & \\ \hline
+PBE2K    &                       &E2000K   & \\ \hline
+\end{tabular}\end{table}
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|>{\ttfamily}c|l|} \hline
+\multicolumn{4}{|c|}{\textbf{Exchange--Correlation Energy Functionals}} \\ \hline
+Functional & \multicolumn{1}{c|}{ Notes} & Functional & \multicolumn{1}{c|}{ Notes} \\ \hline
+NONE     & No functional will be used. & & \\ \hline
+\hline \multicolumn{4}{|c|}{LDA} \\ \hline
+SLATER   & & LDA       & \\ \hline
+VWN3     & & LDAERF    & \\ \hline
+VWN5     & & LDAERF\_JT& \\ \hline
+\hline \multicolumn{4}{|c|}{GGA} \\ \hline
+OLYP     & &B97      & \\ \hline
+BLYP     & &B97\_1   & \\ \hline
+PBE      & &B97\_2   & \\ \hline
+BP86     & &B97\_D   & \\ \hline
+KT1      & &KT3      & \\ \hline
+KT2      & &PW91     & \\ \hline
+\hline \multicolumn{4}{|c|}{Hybrid} \\ \hline
+PBE0     & & B3P86    & As implemented in Turbomole \\ \hline
+BHLYP    & & B3P86\_G & As implemented in Gaussian \\ \hline
+B3LYP    & As implemented in Turbomole & BPW91    & \\ \hline
+B3LYP\_G & As implemented in Gaussian & HF       & Performs a HF calculation.\\ \hline
+\hline \multicolumn{4}{|c|}{Double Hybrid} \\ \hline
+B2PLYP   & &ROB2PLYP & \\ \hline
+B2GPPLYP & &B2PIPLYP & \\ \hline
+DSDBLYP  & &B2PPW91  & \\ \hline
+DSDPBEP86& &DUT      & \\ \hline
+B2KPLYP  & &PUT      & \\ \hline
+B2TPLYP  & &&\\ \hline
+\hline \multicolumn{4}{|c|}{Range-Separated Hybrid} \\ \hline
+CAMB3LYP   &   & WB97      & Instabilities might occur in \texttt{libxc}. \\ \hline
+LCBLYP     &   & WB97X     & See \texttt{WB97}. \\ \hline
+LCBLYP\_47 &   & WB97X\_V  & See \texttt{WB97}. \\ \hline
+LCBLYP\_100&   & WB97X\_D  & See \texttt{WB97}. \\ \hline
+\hline \multicolumn{4}{|c|}{Model Potential} \\ \hline
+SAOP     & & &\\ \hline
+\end{tabular}\end{table}
+
+\subsection{CUSTOMFUNC Block}\label{sec:system:customfunc}
+This block allows to customize density functionals. As soon as the \texttt{basicFunctionals} list contains an entry, the custom functional is active, \textit{i. e.}
+the custom functional takes precedence over a functional defined in the DFT block.
+
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{impl}]\hfill \\
+  The external library from which the basic functionals are taken. Default is \ttt{Libxc}, the alternative is \ttt{XCFun}.
+  \item [\texttt{basicFunctionals}]\hfill \\
+  A list of basic functionals that together make up the custom functional. Note that all of them have to be available in the same functional library. Default is an empty list (\ttt{\{\}}).
+  \item [\texttt{mixingFactors}]\hfill \\
+  A list of doubles by which the corresponding basic functionals are weighted. Default is a list containing a \ttt{$1.0$}.
+  \item [\texttt{hfExchangeRatio}]\hfill \\
+  A double defining the amount of Hartree--Fock exchange. Default is \ttt{$0.0$}.
+  \item [\texttt{hfCorrelRatio}]\hfill \\
+  A double defining the amount of MP2 correlation. Default is \ttt{$0.0$}.
+  \item [\texttt{lrExchangeRatio}]\hfill \\
+  A double denoting the amount of long-range Hartree--Fock exchange. Default is \ttt{$0.0$}.
+  \item [\texttt{mu}]\hfill \\
+  The range-separation parameter. Default is \ttt{$0.0$} meaning no range-separation.
+  \item [\texttt{ssScaling}]\hfill \\
+  Same-spin scaling parameter. Default is \ttt{$1.0$}.
+  \item [\texttt{osScaling}]\hfill \\
+  Opposite-spin scaling parameter. Default is \ttt{$1.0$}.
+\end{description}
+
+\subsubsection{Example Input}
+A B3LYP variant with a higher amount of Hartree--Fock exchange.
+\begin{lstlisting}
+  +system
+    name methyl
+    geometry methyl.xyz
+    method DFT
+    charge 0
+    spin 1
+    +customfunc
+      basicfunctionals {x_slater x_b88 c_lyp c_vwn}
+      mixingfactors {0.65 0.72 0.81 0.19}
+      hfExchangeRatio 0.35
+    -customfunc
+  -system
+ \end{lstlisting}
+
+\subsection{PCM Block}\label{sec:system:pcm}
+
+The PCM block contains all options for implicit solvent models. Note that this block can
+be used not only in the system definition but in the task definition, too. If set for
+a system, the PCM settings will apply to the system. For tasks, the PCM settings will apply
+to the task, which may affect multiple systems. For the embedding step of FDE-type
+calculations any system-specific PCM-settings are ignored and only the task specific settings
+are applied.
+
+GEPOL-type \cite{Pascual-Ahuir1987} (solvent-excluded and solvent-accessible-surface) and
+a Delley-type \cite{Delley2006} surface are available. Note, that the GEPOL-type surfaces
+show discontinuities at the intersection between spheres surrounding atoms. The Delley-type
+surface does not show these problems.
+
+The parameters for the tabulated solvents are taken from
+\url{{https://pcmsolver.readthedocs.io}}.
+Note that this data is provided for convenience and may contain errors.
+
+A detailed description of the implementation of the Delley-type surface is given in Sec.~\ref{sec:MolcSurface}.
+Analytical gradients are implemented for single systems and CPCM only.
+
+For single systems the calculation of a cavity formation energy using the Pierotti--Claverie scaled particle
+theory formula \cite{langlet1988improvements} is possible. For the calculation of this energy a Van-der-Waals
+type surface (DELLEY-type surface, Van-der-Waals-radii) is used.
+
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name water  
+    geometry water.xyz
+    method HF  
+    charge 0
+    spin 0
+    +pcm 
+      use true
+      solverType CPCM 
+      solvent ETHANOL
+    -pcm 
+  -system
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{use}]\hfill \\
+  If true, the implicit solvent model is used. The default is \ttt{false}.
+ \item [\texttt{solverType}]\hfill \\
+ The type of solver continuum model to be used. \ttt{CPCM} selects the continuum-like PCM and 
+ \ttt{IEFPCM} selects the integral equation formalism variant of PCM. \ttt{CPCM} is the default.
+ \item [\texttt{solvent}]\hfill \\
+ Select a predefined and tabulated solvent. The default is \ttt{WATER}. All options are given in the table below.
+ The manual solvent definition can be triggered by selecting \ttt{EXPLICIT} as the solvent. If done so, the keywords 
+ \ttt{eps} (static permittivity) and \ttt{probeRadius} (solvent probe radius) have to be set manually.
+ \item [\texttt{cavityFormation}]\hfill \\
+ Enable the calculation of a cavity formation energy using scaled particle theory. The default
+ is \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{scaling}]\hfill \\
+    If true, the atom-radii used for the cavity construction are scaled by a factor of $1.2$. This is commonly done 
+    when using the \texttt{BONDI} (VdW radii) of the atoms for cavity construction. For the \ttt{UFF} radii set it is 
+    advised to turn this scaling off. The default is \ttt{true}.
+    \item [\texttt{cavity}]\hfill \\
+    The type of cavity used with the PCM. The default is a Delley-type cavity (\ttt{DELLEY}). Other options are 
+    a primitive version of the GEPOL cavity which is available as a solvent excluded surface \ttt{GEPOL\_SES} and 
+    solvent accessible surface \ttt{GEPOL\_SAS}.
+    \item [\texttt{radiiType}]\hfill \\
+    The atomic radii-set to be used in the cavity construction. The default is the Bondi-Mantina radii set \ttt{BONDI}.
+    Note that not for all atoms radii are tabulated in this set. For the \ttt{UFF} radii set all atoms are supported.
+    If the \texttt{UFF} radii set is used, it is advised to select \ttt{scaling} as \ttt{false}.
+    \item [\texttt{minDistance}]\hfill \\
+    Minimum distance tolerated between surface grid points in Bohr. The default is $0.2$. This prevents singularities
+    for extremely close points.
+    \item [\texttt{minRadius}]\hfill \\
+    Minimal radius in Bohr for additional spheres not centered on atoms (GEPOL-type surfaces only). The default is $0.377$ au.
+    \item [\texttt{correction}]\hfill \\
+    Correction $k$ for the apparent surface charge scaling factor in the CPCM. The default is $0.0$. In the related 
+    COSMO solvation model $k$ is chosen as $0.5$. This has little effect on solvent with a high static permittivity
+    but may be important for others.
+    \item [\texttt{probeRadius}]\hfill \\
+    Radius in Bohr of the spherical probe approximating a solvent molecule. The default is $1.0$. This is only used if
+    the explicit solvent definition is used by selecting \ttt{solvent=EXPLICIT}. Otherwise, the tabulated
+    data is used.
+    \item [\texttt{eps}]\hfill \\
+    The static dielectric permittivity of the medium. The default is $1.0$. This is only used if 
+    the explicit solvent definition is used by selecting \ttt{solvent=EXPLICIT}. Otherwise, the tabulated
+    data is used.  
+    \item [\texttt{patchLevel}]\hfill \\
+    Wavelet cavity mesh patch level for GEPOL cavities. The default is $0$. This increases the resolution of the 
+    GEPOL-type cavity at the intersection between spheres.
+    \item [\texttt{overlapFactor}]\hfill \\
+    Maximum ratio of a new sphere to be allowed to be covered within the already present ones. This is only used for 
+    GEPOL-type surfaces. The default is $0.7$.  
+    \item [\texttt{cacheSize}]\hfill \\
+    Maximum number of two center integrals to be stored in memory. The default is $128$.
+    \item [\texttt{lLarge}]\hfill \\
+    Angular momentum used for the spherical grid construction for non-hydrogen atoms for DELLEY-type surfaces. The default
+    is $7$, which corresponds to 110 spherical grid points for each  non-hydrogen atom.
+    \item [\texttt{lSmall}]\hfill \\
+    Angular momentum used for the spherical grid construction for hydrogen atoms for DELLEY-type surfaces. The default
+    is $4$, which corresponds to 50 spherical grid points for each hydrogen atom.
+    \item [\texttt{alpha}]\hfill \\
+    The sharpness parameter for the molecular surface model function for DELLEY-type surfaces. The default
+    is $50$, which corresponds to fairly sharp surfaces. Since the model employs an exponential 
+    molecular surface model function, results are relatively stable with variation of the parameter. The surface 
+    will typically become obese for values smaller than $10$, which leads to a lowered dielectric interaction with 
+    the continuum.
+    \item [\texttt{projectionCutOff}]\hfill \\
+    The cut-off for the projection to the molecular surface for DELLEY-type surfaces. Each atom-wise grid 
+    point is projected to the molecular surface. If the molecular surface is too far away, the grid point is 
+    assumed to be unimportant and covered within the molecule. The value is given in atomic units. Its default is 
+    $5.0$.
+    \item [\texttt{oneCavity}]\hfill \\
+    Only cavity points connected to the point with the most extreme
+    x-coordinate are kept after cavity construction. Two points are connected if they are within
+    $connectivityFactor\times probeRadius$ from another. This can be used to eliminate cavity points within a 
+    molecular cluster. The default is \ttt{false}.
+    \item [\texttt{connectivityFactor}]\hfill \\
+    The scaling factor for point connection. The default is $2.0$. Increase this for low
+    resolution cavities. This is only used for \ttt{oneCavity=true}.
+    \item [\texttt{numberDensity}]\hfill \\
+    The number density (in a.u.) of the solvent. The default is $1.0$. This is only used if 
+    \ttt{solvent=EXPLICIT} and \ttt{cavityFormation=true} are given.
+    \item [\texttt{temperature}]\hfill \\
+    The temperature used in the scaled particle theory treatment of the cavity formation. The
+    default is $298.15$. This is only used if \ttt{cavityFormation=true} is given.
+    \item [\texttt{cavityProbeRadius}]\hfill \\
+    The probe radius used for the calculation of the cavity formation energy. The default is $5.0$.
+    This is only used if \ttt{solvent=EXPLICIT} and \ttt{cavityFormation=true} are given. 
+    \item [\texttt{saveCharges}]\hfill \\
+	Switch to determine whether we want to save the PCM charges. The default is \ttt{false}.
+ \end{description}
+
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|l|} \hline 
+\multicolumn{2}{|c|}{\textbf{PCM Solvents}} \\ \hline
+Solvent & \multicolumn{1}{c|}{ Keyword} \\ \hline 
+Water               & WATER, H2O \\ \hline 
+Propylenecarbonate  & PROPYLENECARBONATE, C4H6O3 \\ \hline 
+Dimethylsulfoxide   & DIMETHYLSULFOXIDE, DMSO, C2H6OS \\ \hline 
+Nitromethane        & NITROMETHANE, CH3NO2 \\ \hline 
+Acetonitrile        & ACETONITRILE, CH3CN \\ \hline 
+Methanol            & METHANOL, MEOH, CH3OH \\ \hline 
+Ethanol             & ETHANOL, ETOH, CH3CH2OH  \\ \hline 
+Acetone             & ACETONE, C2H6CO \\ \hline 
+1,2-Dichlorethane   & 1,2-DICHLORETHANE, DICHLORETHANE, C2H4CL2  \\ \hline 
+Methylenechloride   & METHYLENECHLORIDE, CH2CL2  \\ \hline
+Tetrahydrofurane    & TETRAHYDROFURANE, THF, C4H8O  \\ \hline 
+Aniline             & ANILINE, C6H5NH2 \\ \hline 
+Chlorobenzene       & CHLOROBENZENE, C6H5CL \\ \hline 
+Chloroform          & CHLOROFORM, CHCL3 \\ \hline 
+Toluene             & TOLUENE, C6H5CH3 \\ \hline 
+1,4-Dioxane         & DIOXANE, C4H8O2, 1,4-DIOXANE \\ \hline 
+Benzene             & BENZENE, C6H6 \\ \hline 
+Carbontetrachloride & CARBONTETRACHLORIDE, CCL4 \\ \hline 
+Cyclohexane         & CYCLOHEXANE, C6H12 \\ \hline 
+N-Heptane           & N-HEPTANE, C7H16 \\ \hline 
+Explicit            & EXPLICIT (triggers explicit solvent definition) \\ \hline 
+\end{tabular}\end{table}
+
+\subsection{EField Block}\label{sec:system:efield}
+The \ttt{EField} block contains options regarding external electric fields. Currently,
+two strategies for using electric fields can be chosen. First, a molecular system is placed between 
+two circular plates consisting of opposing point charges which will be referred to as numerical
+electric field. The algorithm used for constructing these capacitor plates loosely resembles the
+method used in TITAN~\cite{stuyver2020}.
+Second the so-called analytical electric fields are produced by incorporating
+dipole integrals into the core Hamiltonian.
+Parameters of this algorithm can be adjusted here.
+\subsubsection{Example Input}
+Numerical efield:
+\begin{lstlisting}
+  +system
+    name water 
+    geometry water.xyz
+    +efield
+      use true
+      pos1 {0.0 0.0 0.0}
+      pos2 {0.0 0.0 1.0}
+      distance 50
+      nRings 50
+      fieldStrength 1e-3
+      nameOutput efieldplate
+    -efield
+  -system
+ \end{lstlisting}
+Analytical efield:
+\begin{lstlisting}
+  +system
+    name water 
+    geometry water.xyz
+   +efield
+     use true
+     analytical true
+     pos1 {0.0 0.0 0.0}
+     pos2 {0.0 0.0 1.0}
+     fieldStrength 1e-3
+   -efield
+ -system
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{use}]\hfill \\
+  A boolean to trigger the electric field usage.
+  The default is \ttt{false}.
+  \item [\texttt{analytical}]\hfill \\
+  A boolean to trigger the analytical electric field usage. If chosen \ttt{false}
+  the numerical field is used.
+  The default is \ttt{false}.
+ \item [\texttt{pos1}]\hfill \\
+  The electric field will point from \ttt{pos1} to \ttt{pos2}, \emph{i.e.}
+  the positively charged plates will appear on the side of \ttt{pos1} and 
+  the negatively charged plates will appear on the side of \ttt{pos2}.
+  The default for \ttt{pos1} is \ttt{\{0.0 0.0 0.0\}}.
+ \item [\texttt{pos2}]\hfill \\
+  See \ttt{pos1}.
+  The default for \ttt{pos2} is \ttt{\{0.0 0.0 1.0\}}.
+ \item [\texttt{distance}]\hfill \\
+ Specifies the distance between the center point of the capacitor plates and 
+ the position in the middle between \ttt{pos1} and \ttt{pos2} in \AA. The default is \ttt{50.0}.
+ \item [\texttt{nRings}]\hfill \\
+ The capacitor plates are organized in rings made up of point charges. This keyword specifies the
+ number of rings to construct. The default is \ttt{50}.
+ \item [\texttt{radius}]\hfill \\
+ The radius between two adjacent rings in \AA. The default is \ttt{1.0}.
+ \item [\texttt{fieldStrength}]\hfill \\
+ The strength of the electric field in atomic units. Note that 1 a.u. is
+ approximately equivalent to $5.14\cdot 10^{11}~\mathrm{V/m}$. The default is \ttt{1e-3}.
+ \item [\texttt{nameOutput}]\hfill \\
+ If specified, the electric field plates will be written to disk as an xyz-file. Negative
+ charges will be printed as boron atoms (B), positive charges as xenon atoms (Xe).
+\end{description}
+
+\subsection{EXTCHARGES Block}\label{sec:system:extchrg}
+The \ttt{EXTCHARGES} block contains options for using external charges. At the moment, only a path
+to a file containing the charge positions and values can be defined. These charges will be included in
+the system's core Hamiltonian. Furthermore, the energy from the interaction with these charges will be added to
+the system. The interaction between the external charges is not included.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +system
+    name water
+    geometry water.xyz
+   +extcharges
+     externalChargesFile point-charges.pc
+   -extcharges
+ -system
+\end{lstlisting}
+Charges and coordinates must be provided row-wise in the file. All coordinates must be given in Angstrom and charges
+in atomic units.
+\begin{lstlisting}
+<total number of charges>
+<charge-value> <x-coordinate> <y-coordinate> <z-coordinate>
+<charge-value> <x-coordinate> <y-coordinate> <z-coordinate>
+...
+\end{lstlisting}
+Example file:
+\begin{lstlisting}
+45678
+-0.573704   1.513000  -5.452000   496.216000
+ 0.290609   2.398000  -5.884000   496.044000
+ 0.290609   1.863000  -4.590000   495.850000
+-0.573704   4.253000   2.507000   503.760000
+...
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{externalChargesFile}]\hfill \\
+  The file path to the external charge file. If empty, no external charges are used. By default an empty string.
+\end{description}

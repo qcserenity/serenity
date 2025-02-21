@@ -43,8 +43,8 @@ class Grid;
  * Caution: Make sure in every implementation that the notifyObjects() method is called whenever
  * the managed data changes!
  */
-template<Options::SCF_MODES T>
-class DensityOnGridController : public NotifyingClass<DensityOnGrid<T>>, public ObjectSensitiveClass<Grid> {
+template<Options::SCF_MODES SCFMode>
+class DensityOnGridController : public NotifyingClass<DensityOnGrid<SCFMode>>, public ObjectSensitiveClass<Grid> {
  public:
   /**
    * @param gridController
@@ -56,15 +56,15 @@ class DensityOnGridController : public NotifyingClass<DensityOnGrid<T>>, public 
   /**
    * @returns the current (lazily evaluated) density on the grid
    */
-  virtual const DensityOnGrid<T>& getDensityOnGrid() = 0;
+  virtual const DensityOnGrid<SCFMode>& getDensityOnGrid() = 0;
   /**
    * @returns the current (lazily evaluated) gradient of the density on the grid
    */
-  virtual const Gradient<DensityOnGrid<T>>& getDensityGradientOnGrid() = 0;
+  virtual const Gradient<DensityOnGrid<SCFMode>>& getDensityGradientOnGrid() = 0;
   /**
    * @returns the current (lazily evaluated) Hessian of the density on the grid
    */
-  virtual const Hessian<DensityOnGrid<T>>& getDensityHessianOnGrid() = 0;
+  virtual const Hessian<DensityOnGrid<SCFMode>>& getDensityHessianOnGrid() = 0;
   /**
    * @returns the number of grid points of the Grid on which the density will be represented.
    */
@@ -132,9 +132,9 @@ class DensityOnGridController : public NotifyingClass<DensityOnGrid<T>>, public 
 
   bool _upToDate;
 
-  std::unique_ptr<DensityOnGrid<T>> _densityOnGrid;
-  std::unique_ptr<Gradient<DensityOnGrid<T>>> _densityGradientOnGrid;
-  std::unique_ptr<Hessian<DensityOnGrid<T>>> _densityHessianOnGrid;
+  std::unique_ptr<DensityOnGrid<SCFMode>> _densityOnGrid;
+  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>> _densityGradientOnGrid;
+  std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>> _densityHessianOnGrid;
 };
 
 } // namespace Serenity

@@ -36,8 +36,9 @@ class Geometry;
 class MolecularSurface;
 /**
  * @brief A class for the possible usage scenarios of the surface.
- *   FDE:    Use for an embedding calculations. The surface may cover multiple systems.
- *   ACTIVE: Use for an isolated system. The surface will cover only one system.
+ *   FDE:        Use for an embedding calculations. The surface may cover multiple systems.
+ *   ACTIVE:     Use for an isolated system. The surface will cover only one system.
+ *   ACTIVE_VDW: Use in the case of calculating the cavity formation energy. The Van-der-Waals surface for one system.
  */
 enum class MOLECULAR_SURFACE_TYPES { FDE, ACTIVE, ACTIVE_VDW };
 
@@ -45,21 +46,24 @@ enum class MOLECULAR_SURFACE_TYPES { FDE, ACTIVE, ACTIVE_VDW };
  * @class MolecularSurfaceController MolecularSurfaceController.h
  * @brief A class that holds all information of a molecular surface required to perform
  *        CPCM and IEFPCM calculations. It can construct the molecular surface by itself.
- *        This, it will reconstruct it if changes to the geometry occur.\n\n
+ *        This, it will reconstruct it if changes to the geometry occur.
+ *
+ *
  *
  *   The implementation is based on: [1] Chemical Reviews, 2005, Vol. 105, No. 83013\n\n
  *   All notations are taken from the reference.
  *   Notations:\n
- *     \f$ a_i \f$ : Area of tessarae i.\n
- *     \f$ \pmb{s}_i \f$ : Coordinates of the representative point of tessarae i.\n
+ *     \f$ a_i \f$ : Area of tesserae i.\n
+ *     \f$ \pmb{s}_i \f$ : Coordinates of the representative point of tesserae i.\n
  *     \f$ \pmb{n}_i \f$ : Normal vector on the surface at point \f$ \pmb{s}_i \f$.\n
  *     \f$ k \f$ : Constant factor k. Values of \f$ k = 1.0694 \f$ or \f$ k = 1.07 \f$
  *                 are commonly used.
  *     \f$ R_I \f$ : The radius of sphere \f$ I \f$.
  *
  *    This class inherits from GridController. The associated grid is the molecular surface.
- *      Any object that may depend on the surface, can use the NotifyingClass<Grid> functionallity
- *      of GridController.\n
+ *      Any object that may depend on the surface, can use the NotifyingClass<Grid> functionality
+ *      of GridController.
+ *
  *    This class inherits from ObjectSensitiveClass<Geometry>. It will reconstruct the grid
  *      if any changed to the underlying geometry occur.
  */
@@ -156,7 +160,7 @@ class MolecularSurfaceController : public GridController, ObjectSensitiveClass<G
   unsigned int getNGridPoints() override;
   /**
    * @brief Getter for the underlying geometry.
-   * @return the geometry.
+   * @return The geometry.
    */
   std::shared_ptr<Geometry> getGeometry();
   /**
@@ -166,6 +170,27 @@ class MolecularSurfaceController : public GridController, ObjectSensitiveClass<G
    * @return The cavity formation energy.
    */
   double getCavityEnergy();
+
+  /**
+   * @brief Setter for the underlying MolecularSurface.
+   * @param surface The molecular surface.
+   */
+  void setSurface(std::unique_ptr<MolecularSurface>&& surface);
+
+  /**
+   * @brief Boolean value to save the information if the molecular surface has been loaded from a file.
+   */
+  bool isLoaded();
+
+  /**
+   * @brief Getter for the path of the charges belonging to a molecular surface.
+   */
+  std::string getChargesPath();
+
+  /**
+   * @brief Print some information about the surface.
+   */
+  void printInfo();
 
  private:
   // The geometry.
@@ -186,8 +211,6 @@ class MolecularSurfaceController : public GridController, ObjectSensitiveClass<G
   std::shared_ptr<double> _cavityEnergy;
   // The constant factor used for the diagonal entries of S and D.
   const double _k = 1.0694;
-  // Print some information about the surface.
-  void printInfo();
   // (Re-)Build the molecular surface.
   void buildSurface();
   // Calculates the cavity energy.

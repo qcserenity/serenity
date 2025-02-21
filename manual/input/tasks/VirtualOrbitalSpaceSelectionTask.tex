@@ -1,0 +1,43 @@
+\subsection{Task: Virtual Orbital Space Selection}
+\label{sec:VOSS}
+Selects, manipulates or localizes a specific virtual orbital space for a subsystem.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task VOSS
+  act A
+  act ALE
+  env B
+  excludeprojection true
+  localizedVirtualorbitals true
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{VOSSTASK}, \ttt{VOSS} and \ttt{VIRTUALORBITALSPACESELECTIONTASK}.
+	\item[\texttt{activeSystems}]\hfill \\
+	A list of active systems.
+	\item[\texttt{environmentSystems}]\hfill \\
+	A list of the environment systems.
+  \item[\texttt{excludeProjection}]\hfill\\
+  Excludes occupied orbitals of environment subsystems in projection-based embedding calculations from the virtual orbital space of the active subsystem. The default is \ttt{false}. 
+  \item[\texttt{localCanonicalVirtuals}]\hfill\\
+  Select canonical virtual orbitals located on the active subsystem based on a modified overlap criterion. The default is \ttt{0.0}. This requires two active systems. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
+  \item[\texttt{envCanonicalVirtuals}]\hfill\\
+  Select canonical virtual orbitals located on the environment subsystems based on a modified overlap criterion. The default is \ttt{0.0}. This requires two active systems. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
+  \item[\texttt{localizedVirtualorbitals}]\hfill\\
+  Performs a localization of the virtual orbitals and selects the virtual orbitals located on the subsystem. The default is \ttt{false}. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
+  \item[\texttt{localizedEnvVirtualorbitals}]\hfill\\
+  Performs a localization of the virtual orbitals and selects the virtual orbitals located on the subsystem. The default is \ttt{false}. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item[\texttt{recalculateFockMatrix}]\hfill\\
+  Recalculates the Fock matrix. The default is \ttt{false}.
+  \item[\texttt{identifier}]\hfill\\
+  Additional identifier for the file in which the new orbitals and orbital energies are stored. The default is \ttt{""}
+  \item[\texttt{mixingOccAndVirtualOrbitals}]\hfill\\
+  Takes the occ orbitals of environment subsystem 1 and the virtuals of the environment subsystem 2. The structure of the supersystem needs to be given by the active system. The new orbital space is saved in the active system. The default is \ttt{false}.
+  \item[\texttt{relaxation}]\hfill\\
+  Performs an additional orbital space orthogonalization in case of \texttt{mixingOccAndVirtualOrbitals} is used. The default is \ttt{false}.
+\end{description}

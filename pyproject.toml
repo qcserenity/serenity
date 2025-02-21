@@ -1,0 +1,95 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "qcserenity"
+version = "1.6.2"
+authors = [
+  { name="University of Muenster, Neugebauer Group", email="serenity@uni-muenster.de" }
+]
+description = "A quantum chemistry program focused on subsystems and embedding"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Intended Audience :: Science/Research",
+  "Development Status :: 5 - Production/Stable"
+]
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+plotting = ["matplotlib"]
+heatmap = ["ase", "scipy"]
+visualization = ["py3Dmol", "ipywidgets"]
+
+[project.urls]
+Homepage = "https://github.com/qcserenity/serenity"
+Issues = "https://github.com/qcserenity/serenity/issues"
+Repository = "https://github.com/qcserenity/serenity"
+
+[tool.scikit-build]
+messages.after-success = "{green}Wheel successfully built! Hooray!"
+messages.after-failure = """
+{bold.red}Sorry{normal}, build failed. Your platform is {platform.platform}. Better luck next time!
+"""
+build.verbose = true
+logging.level = "INFO"
+build-dir = "/project/build"
+sdist.include = ["dev/templates/*"]
+wheel.exclude = ["bin/**", "include/**", "lib/**", "lib64/*", "share/cmake/**", "share/libecpint/**", "share/libint/**"]
+
+[tool.scikit-build.cmake.define]
+SERENITY_PYTHON_BINDINGS = true
+SERENITY_ENABLE_TESTS = false
+SERENITY_USAGE_FROM_SOURCE = false
+SERENITY_USE_LAPLACE_MINIMAX = true
+HDF5_ROOT="/usr/local/h5"
+BUILD_SHARED_LIBS = true
+
+[tool.cibuildwheel]
+build-verbosity = 1
+# 3.7 is the minimum python version supported by scikit-build-core
+build = ["cp37-*", "cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.linux]
+# install eigen3, blas, lapack, boost and hdf5 
+before-all = """
+  yum install -y eigen3-devel wget tar bzip2 openblas-devel lapack-devel
+  wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2
+  tar --bzip2 -xf boost_1_66_0.tar.bz2
+  cd boost_1_66_0
+  ./bootstrap.sh
+  ./b2 install -d0 --with-math --with-container
+  cd ..
+  wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-1.12.0/src/hdf5-1.12.0.tar.bz2
+  tar --bzip2 -xf hdf5-1.12.0.tar.bz2
+  cd hdf5-1.12.0
+  ./configure --prefix=/usr/local/h5 --enable-cxx --silent --enable-silent-rules
+  make -j 8
+  make install -j 8
+  cd ..
+"""
+archs = ["x86_64"]
+# set LD_LIBRARY_PATH for serenity, xcfun and hdf5
+repair-wheel-command = """
+ls /project/qcserenity
+echo $SERENITY_USAGE_FROM_SOURCE
+export LD_LIBRARY_PATH=/project/build/lib64:/usr/local/h5/lib:/project/lib:/project/build/lib:$LD_LIBRARY_PATH
+auditwheel repair -w {dest_dir} {wheel}
+"""
+# only build CPython and not PyPy
+skip = ["*-musllinux_x86_64", "pp*"]

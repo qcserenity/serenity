@@ -18,11 +18,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-#include "tasks/OrbitalsIOTask.h"                     //To be tested.
-#include "data/ElectronicStructure.h"                 //GetEnergy.
-#include "geometry/Atom.h"                            //Manually construct geometry.
-#include "geometry/AtomTypeFactory.h"                 //Manually construct geometry.
-#include "geometry/Geometry.h"                        //Manually construct geometry.
+/* Include Serenity Internal Headers */
+#include "tasks/OrbitalsIOTask.h"     //To be tested.
+#include "data/ElectronicStructure.h" //GetEnergy.
+#include "geometry/Atom.h"            //Manually construct geometry.
+#include "geometry/AtomTypeFactory.h" //Manually construct geometry.
+#include "geometry/Geometry.h"        //Manually construct geometry.
+#include "parameters/Constants.h"
 #include "potentials/bundles/PotentialBundle.h"       //getFockMatrix()
 #include "settings/Settings.h"                        //Settings.
 #include "system/SystemController.h"                  //Test systems.
@@ -375,8 +377,8 @@ TEST_F(OrbitalsIOTaskTest, restricted_turbomole_write) {
   }
   EXPECT_EQ(line.substr(0, 8), "-.671812");
 
-  SystemController__TEST_SUPPLY::cleanUp();
   std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/mos");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
 }
 
 TEST_F(OrbitalsIOTaskTest, unrestricted_turbomole_write) {
@@ -414,9 +416,9 @@ TEST_F(OrbitalsIOTaskTest, unrestricted_turbomole_write) {
   }
   EXPECT_EQ(line.substr(0, 8), "-.671812");
 
-  SystemController__TEST_SUPPLY::cleanUp();
   std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/alpha");
   std::remove("./TestSystem_WaterMonOne_6_31Gs_DFT/beta");
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
 }
 
 TEST_F(OrbitalsIOTaskTest, restricted_molden_write_spherical) {
@@ -442,7 +444,7 @@ TEST_F(OrbitalsIOTaskTest, restricted_molden_write_spherical) {
   for (unsigned int i = 0; i < 5; i++) {
     getline(input, line);
   }
-  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467210599E+01");
   for (unsigned int i = 0; i < 6; i++) {
     getline(input, line);
   }
@@ -484,7 +486,7 @@ TEST_F(OrbitalsIOTaskTest, unrestricted_molden_write_spherical) {
   for (unsigned int i = 0; i < 5; i++) {
     getline(input, line);
   }
-  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467210599E+01");
   for (unsigned int i = 0; i < 6; i++) {
     getline(input, line);
   }
@@ -527,7 +529,7 @@ TEST_F(OrbitalsIOTaskTest, restricted_molden_write_cartesian) {
   for (unsigned int i = 0; i < 5; i++) {
     getline(input, line);
   }
-  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467210599E+01");
   for (unsigned int i = 0; i < 6; i++) {
     getline(input, line);
   }
@@ -570,7 +572,7 @@ TEST_F(OrbitalsIOTaskTest, unrestricted_molden_write_cartesian) {
   for (unsigned int i = 0; i < 5; i++) {
     getline(input, line);
   }
-  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467198143E+01");
+  EXPECT_EQ(line, "H   1   1 0.00000000000000E+01 0.00000000000000E+01 0.18361467210599E+01");
   for (unsigned int i = 0; i < 6; i++) {
     getline(input, line);
   }

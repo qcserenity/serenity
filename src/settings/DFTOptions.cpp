@@ -80,5 +80,53 @@ void resolve<std::vector<CompositeFunctionals::KINFUNCTIONALS>>(std::string& val
   }
 }
 
+template<>
+void resolve<CompositeFunctionals::IMPLEMENTATIONS>(std::string& value, CompositeFunctionals::IMPLEMENTATIONS& field) {
+  // the lowercase strings are not supposed to act as keys, but are intended for the reverse resolve call
+  static const std::map<std::string, CompositeFunctionals::IMPLEMENTATIONS> m1 = {
+      {"XCFUN", CompositeFunctionals::IMPLEMENTATIONS::XCFUN},
+      {"LIBXC", CompositeFunctionals::IMPLEMENTATIONS::LIBXC},
+      {"xcfun", CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR}};
+  static const std::map<std::string, CompositeFunctionals::IMPLEMENTATIONS> m2 = {
+      {"XCFUN", CompositeFunctionals::IMPLEMENTATIONS::XCFUN},
+      {"LIBXC", CompositeFunctionals::IMPLEMENTATIONS::LIBXC},
+      {"libxc", CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR}};
+#if defined SERENITY_PREFER_XCFUN && defined SERENITY_USE_XCFUN && defined SERENITY_USE_LIBXC
+  check(m1, value, field);
+#elif defined SERENITY_USE_XCFUN && defined SERENITY_USE_LIBXC
+  check(m2, value, field);
+#elif defined SERENITY_USE_XCFUN
+  check(m1, value, field);
+#else
+  check(m2, value, field);
+#endif
+}
+
+template<>
+void resolve<std::vector<BasicFunctionals::BASIC_FUNCTIONALS>>(std::string& value,
+                                                               std::vector<BasicFunctionals::BASIC_FUNCTIONALS>& field) {
+  if (value.empty()) {
+    if (field.size()) {
+      value = "{ ";
+      for (BasicFunctionals::BASIC_FUNCTIONALS val : field) {
+        std::string varAsString;
+        resolve<BasicFunctionals::BASIC_FUNCTIONALS>(varAsString, val);
+        value += (varAsString + " ");
+      }
+      value += "}";
+    }
+  }
+  else {
+    field.clear();
+    std::istringstream iss(value);
+    std::string word;
+    while (iss >> word) {
+      BasicFunctionals::BASIC_FUNCTIONALS toResolve;
+      resolve<BasicFunctionals::BASIC_FUNCTIONALS>(word, toResolve);
+      field.push_back(toResolve);
+    }
+  }
+}
+
 } /* namespace Options */
 } /* namespace Serenity */

@@ -39,6 +39,7 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemContr
   auto basisController = systemController->getBasisController();
   const unsigned int nOrbitals = basisController->getNBasisFunctions();
   auto settings = systemController->getSettings();
+
   /*
    * Create new set of orbitals
    */
@@ -48,7 +49,6 @@ HCoreGuessCalculator<SCFMode>::calculateInitialGuess(std::shared_ptr<SystemContr
   auto coefficientMatrix = std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisController));
   auto& c = *coefficientMatrix;
   const auto oneIntController = systemController->getOneElectronIntegralController();
-  //  auto F = oneIntController->getOneElectronIntegrals();
   /*
    * Solve h*C= S*C*eps
    */

@@ -27,15 +27,16 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-DensityOnGridCalculator<T>::DensityOnGridCalculator(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
-                                                    const double blockAverageThreshold)
+template<Options::SCF_MODES SCFMode>
+DensityOnGridCalculator<SCFMode>::DensityOnGridCalculator(std::shared_ptr<BasisFunctionOnGridController> basisFunctionOnGridController,
+                                                          const double blockAverageThreshold)
   : _basisFunctionOnGridController(basisFunctionOnGridController), _blockAverageThreshold(blockAverageThreshold) {
   assert(_basisFunctionOnGridController);
 }
 
-template<Options::SCF_MODES T>
-void DensityOnGridCalculator<T>::calcDensityOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid) {
+template<Options::SCF_MODES SCFMode>
+void DensityOnGridCalculator<SCFMode>::calcDensityOnGrid(const DensityMatrix<SCFMode>& densityMatrix,
+                                                         DensityOnGrid<SCFMode>& densityOnGrid) {
   Timings::takeTime("Tech. -  Density On Grid Eval.");
   assert(isDefinedInSameBasis(densityMatrix, *_basisFunctionOnGridController));
   assert(isDefinedOnSameGrid(densityOnGrid, *_basisFunctionOnGridController));
@@ -43,17 +44,17 @@ void DensityOnGridCalculator<T>::calcDensityOnGrid(const DensityMatrix<T>& densi
   Timings::timeTaken("Tech. -  Density On Grid Eval.");
 }
 
-template<Options::SCF_MODES T>
-DensityOnGrid<T> DensityOnGridCalculator<T>::calcDensityOnGrid(const DensityMatrix<T>& densityMatrix) {
-  DensityOnGrid<T> densOnGrid(_basisFunctionOnGridController->getGridController());
+template<Options::SCF_MODES SCFMode>
+DensityOnGrid<SCFMode> DensityOnGridCalculator<SCFMode>::calcDensityOnGrid(const DensityMatrix<SCFMode>& densityMatrix) {
+  DensityOnGrid<SCFMode> densOnGrid(_basisFunctionOnGridController->getGridController());
   calcDensityOnGrid(densityMatrix, densOnGrid);
   return densOnGrid;
 }
 
-template<Options::SCF_MODES T>
-void DensityOnGridCalculator<T>::calcDensityAndGradientOnGrid(const DensityMatrix<T>& densityMatrix,
-                                                              DensityOnGrid<T>& densityOnGrid,
-                                                              Gradient<DensityOnGrid<T>>& densityGradientOnGrid) {
+template<Options::SCF_MODES SCFMode>
+void DensityOnGridCalculator<SCFMode>::calcDensityAndGradientOnGrid(const DensityMatrix<SCFMode>& densityMatrix,
+                                                                    DensityOnGrid<SCFMode>& densityOnGrid,
+                                                                    Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid) {
   Timings::takeTime("Tech. -  Density On Grid Eval.");
   assert(isDefinedInSameBasis(densityMatrix, *_basisFunctionOnGridController));
   assert(isDefinedOnSameGrid(densityOnGrid, *_basisFunctionOnGridController));
@@ -63,19 +64,20 @@ void DensityOnGridCalculator<T>::calcDensityAndGradientOnGrid(const DensityMatri
   Timings::timeTaken("Tech. -  Density On Grid Eval.");
 }
 
-template<Options::SCF_MODES T>
-DensityOnGrid<T> DensityOnGridCalculator<T>::calcDensityAndGradientOnGrid(const DensityMatrix<T>& densityMatrix,
-                                                                          Gradient<DensityOnGrid<T>>& densityGradientOnGrid) {
-  DensityOnGrid<T> densOnGrid(_basisFunctionOnGridController->getGridController());
+template<Options::SCF_MODES SCFMode>
+DensityOnGrid<SCFMode>
+DensityOnGridCalculator<SCFMode>::calcDensityAndGradientOnGrid(const DensityMatrix<SCFMode>& densityMatrix,
+                                                               Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid) {
+  DensityOnGrid<SCFMode> densOnGrid(_basisFunctionOnGridController->getGridController());
   calcDensityAndGradientOnGrid(densityMatrix, densOnGrid, densityGradientOnGrid);
   return densOnGrid;
 }
 
-template<Options::SCF_MODES T>
-void DensityOnGridCalculator<T>::calcDensityAndDerivativesOnGrid(const DensityMatrix<T>& densityMatrix,
-                                                                 DensityOnGrid<T>& densityOnGrid,
-                                                                 Gradient<DensityOnGrid<T>>& densityGradientOnGrid,
-                                                                 Hessian<DensityOnGrid<T>>& densityHessianOnGrid) {
+template<Options::SCF_MODES SCFMode>
+void DensityOnGridCalculator<SCFMode>::calcDensityAndDerivativesOnGrid(const DensityMatrix<SCFMode>& densityMatrix,
+                                                                       DensityOnGrid<SCFMode>& densityOnGrid,
+                                                                       Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid,
+                                                                       Hessian<DensityOnGrid<SCFMode>>& densityHessianOnGrid) {
   Timings::takeTime("Tech. -  Density On Grid Eval.");
   assert(isDefinedInSameBasis(densityMatrix, *_basisFunctionOnGridController));
   assert(isDefinedOnSameGrid(densityOnGrid, *_basisFunctionOnGridController));
@@ -85,8 +87,8 @@ void DensityOnGridCalculator<T>::calcDensityAndDerivativesOnGrid(const DensityMa
   Timings::timeTaken("Tech. -  Density On Grid Eval.");
 }
 
-template<Options::SCF_MODES T>
-std::shared_ptr<GridController> DensityOnGridCalculator<T>::getGridController() const {
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<GridController> DensityOnGridCalculator<SCFMode>::getGridController() const {
   return _basisFunctionOnGridController->getGridController();
 }
 

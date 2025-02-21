@@ -44,6 +44,8 @@ namespace Options {
  * @param field The field to be parsed to.
  *
  * Note that this function has to be implemented for every possible option data type.
+ * Also note that the resolve function is intended to work in both directions (from string to T when parsing the input,
+ * from T to string e.g. when writing the settings to file).
  */
 // Default resolve function.
 template<class T>
@@ -160,9 +162,13 @@ inline void resolve<std::string>(std::string& value, std::string& field) {
 template<>
 inline void resolve<std::vector<unsigned int>>(std::string& value, std::vector<unsigned int>& field) {
   if (value.empty()) {
-    for (unsigned int val : field) {
-      std::string varAsString = boost::lexical_cast<std::string>(val);
-      value += (varAsString + " ");
+    if (field.size()) {
+      value = "{ ";
+      for (unsigned int val : field) {
+        std::string varAsString = boost::lexical_cast<std::string>(val);
+        value += (varAsString + " ");
+      }
+      value += "}";
     }
   }
   else {
@@ -219,6 +225,44 @@ inline void resolve<std::vector<std::vector<unsigned int>>>(std::string& value, 
     }
     catch (...) {
       throw SerenityError("ERROR: Could not convert '" + value + "' into a vector of vector of unsigned integers.");
+    }
+  }
+}
+template<>
+inline void resolve<std::vector<std::vector<double>>>(std::string& value, std::vector<std::vector<double>>& field) {
+  if (value.empty()) {
+    for (unsigned outer = 0; outer < field.size(); ++outer) {
+      for (unsigned inner = 0; inner < field[outer].size(); ++inner) {
+        std::string varAsString = boost::lexical_cast<std::string>(field[outer][inner]);
+        value += (varAsString + " ");
+      }
+    }
+  }
+  else {
+    std::string bad_symbols = ",?\\'\"&*()^%$#@!{}[]|<>?+";
+    for (auto& c : bad_symbols) {
+      if (value.find(c) != std::string::npos)
+        throw SerenityError("ERROR: List inputs require spaces as delimiters.");
+    }
+    boost::replace_all(value, ";", " ; ");
+    try {
+      field.clear();
+      std::istringstream iss(value);
+      std::string word;
+      field.push_back({});
+      unsigned item = 0;
+      while (iss >> word) {
+        if (word == ";") {
+          field.push_back({});
+          item++;
+        }
+        else {
+          field[item].push_back(std::stod(word));
+        }
+      }
+    }
+    catch (...) {
+      throw SerenityError("ERROR: Could not convert '" + value + "' into a vector of vector of doubles.");
     }
   }
 }
@@ -316,9 +360,13 @@ inline void resolve<std::vector<bool>>(std::string& value, std::vector<bool>& fi
 template<>
 inline void resolve<std::vector<double>>(std::string& value, std::vector<double>& field) {
   if (value.empty()) {
-    for (double val : field) {
-      std::string varAsString = boost::lexical_cast<std::string>(val);
-      value += (varAsString + " ");
+    if (field.size()) {
+      value = "{ ";
+      for (double val : field) {
+        std::string varAsString = boost::lexical_cast<std::string>(val);
+        value += (varAsString + " ");
+      }
+      value += "}";
     }
   }
   else {
@@ -367,6 +415,13 @@ inline void resolve<std::vector<std::string>>(std::string& value, std::vector<st
   }
 }
 
+/**
+ * @brief A helper function converting a key string to a field of a map, or, conversely, find the first key that matches
+ * the given field.
+ * @param m The map containing pairs of std::string and members of class T.
+ * @param key The key used to lookup map entries. If it is empty, fill it so that its map entry matches the given field.
+ * @param field The class T object found as the key's entry. In reverse mode, this is the search value.
+ */
 template<class T>
 void check(const std::map<std::string, T> m, std::string& key, T& field) {
   if (key.empty()) {

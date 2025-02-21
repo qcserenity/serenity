@@ -77,9 +77,9 @@ class BoughtonPulayAlgorithm : public PAOSelector {
   std::shared_ptr<OneElectronIntegralController> _oneElectronIntegralController;
   // The atom centered basis controller.
   std::shared_ptr<AtomCenteredBasisController> _atomCenteredBasisController;
-  // The orbital-wise mullike charges.
+  // The orbital-wise Mulliken charges.
   std::shared_ptr<Eigen::MatrixXd> _mullikenGrossCharges;
-  // The coefficients of the occupied orbtials.
+  // The coefficients of the occupied orbitals.
   std::shared_ptr<Eigen::MatrixXd> _occupiedCoefficients;
   // The completeness threshold.
   double _completeness;

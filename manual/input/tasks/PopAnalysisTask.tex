@@ -1,0 +1,20 @@
+\subsection{Task: Population Analysis}
+This task calculates the atom-wise electron populations of a given system.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task POP
+  system water
+  algorithm IAO
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{PopulationAnalysisTask}, \ttt{Population} and \ttt{POP}.
+ \item [\texttt{activeSystems}]\hfill \\
+  The system for which to calculate the atomic populations.
+ \item [\texttt{algorithm}]\hfill \\
+  The algorithm used for the population analysis.
+  Options are: \ttt{Mulliken}, \ttt{Hirshfeld}, \ttt{Becke}, \ttt{IAO} (intrinsic atomic orbital analysis),\ttt{IAOShell}, \ttt{CM5} (Charge Model 5), and \ttt{CHELPG} (shell-wise IAO analysis). The default algorithm is \ttt{Mulliken}.
+\end{description}

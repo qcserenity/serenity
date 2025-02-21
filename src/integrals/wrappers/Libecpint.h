@@ -20,10 +20,9 @@
 #ifndef LIBECPINT_H_
 #define LIBECPINT_H_
 
-// Serenity includes
+/* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h" // RESTRICTED/UNRESTRICTED
-
-// Other includes
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>
@@ -38,11 +37,11 @@ namespace Serenity {
 class Atom;
 class BasisController;
 class Shell;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class MatrixInBasis;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class SPMatrix;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class MatrixinBasis;
 template<Options::SCF_MODES SCFMode>
 using DensityMatrix = MatrixInBasis<SCFMode>;

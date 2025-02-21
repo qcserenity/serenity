@@ -15,7 +15,6 @@
 #     formatting.sh src -m apply -f
 # the process is done file-wise, i.e. slower but providing more detailed information.
 
-set -o errexit
 set -o nounset
 set -o pipefail
 
@@ -111,7 +110,7 @@ check_formatting () {
       exit 1;
     fi
   fi
-  echo "Finished checking the format specifiations."
+  echo "Finished checking the format specifications."
 }
 
 parse_excludes () {

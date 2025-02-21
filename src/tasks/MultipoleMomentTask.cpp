@@ -48,7 +48,7 @@ void MultipoleMomentTask::run() {
   }
 
   if (settings.highestOrder > 2)
-    throw SerenityError("Only diploes and quadrupoles are available.");
+    throw SerenityError("Only dipoles and quadrupoles are available.");
 
   printf("\n");
   printf("%4s Origin chosen as:\n", "");
@@ -100,7 +100,7 @@ void MultipoleMomentTask::calculateMultipoleMoments(Eigen::Vector3d& dipoleMomen
   auto molCharge = system->getCharge();
 
   // Always calculate the analytical multipole moments, since we do not have a numerical implementation
-  // for orders higher than 1 and it hardy takes any time.
+  // for orders higher than 1 and it hardly takes any time.
   const auto lastSCFMode = system->getSCFMode();
   std::vector<std::vector<double>> multipoleMoment;
   if (lastSCFMode == RESTRICTED) {

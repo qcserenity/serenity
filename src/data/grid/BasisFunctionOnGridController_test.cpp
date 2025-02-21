@@ -23,7 +23,7 @@
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "integrals/Normalization.h"
 #include "math/Derivatives.h"
 #include "testsupply/BasisController__TEST_SUPPLY.h"
@@ -503,8 +503,9 @@ class SphBFOnGridTest : public testing::Test {
     _geom = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>(1, std::make_shared<Atom>("SC", 0.0, 0.0, 0.0)));
     auto basis = AtomCenteredBasisControllerFactory::produce(_geom, baslibpath, true, true, 37, "CC-PV5Z");
 
-    auto grid = GridControllerFactory::produce(_geom, Options::GRID_TYPES::BECKE, 3, Options::RADIAL_GRID_TYPES::AHLRICHS,
-                                               Options::SPHERICAL_GRID_TYPES::LEBEDEV, 7, 0.0, true); /*1e-14*/
+    auto grid = AtomCenteredGridControllerFactory::produce(_geom, Options::GRID_TYPES::BECKE, 3,
+                                                           Options::RADIAL_GRID_TYPES::AHLRICHS,
+                                                           Options::SPHERICAL_GRID_TYPES::LEBEDEV, 7, 0.0, true); /*1e-14*/
 
     _weights = grid->getWeights();
 
@@ -689,8 +690,9 @@ TEST_F(SphBFOnGridTest, Hess_Calc) {
 
   auto basis = AtomCenteredBasisControllerFactory::produce(_geom, baslibpath, true, true, 37, "CC-PV5Z");
 
-  auto grid = GridControllerFactory::produce(_geom, Options::GRID_TYPES::BECKE, 3, Options::RADIAL_GRID_TYPES::AHLRICHS,
-                                             Options::SPHERICAL_GRID_TYPES::LEBEDEV, 4, 0.0, true); /*1e-14*/
+  auto grid = AtomCenteredGridControllerFactory::produce(_geom, Options::GRID_TYPES::BECKE, 3,
+                                                         Options::RADIAL_GRID_TYPES::AHLRICHS,
+                                                         Options::SPHERICAL_GRID_TYPES::LEBEDEV, 4, 0.0, true); /*1e-14*/
 
   auto bfOnGridCalc = BasisFunctionOnGridControllerFactory::produce(128, 0.0, 2, basis, grid); /* 1e-09 */
   bfOnGridCalc->getBlockOnGridData(0);

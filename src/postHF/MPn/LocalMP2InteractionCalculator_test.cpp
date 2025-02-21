@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "postHF/MPn/LocalMP2InteractionCalculator.h"           //To be tested.
 #include "geometry/Geometry.h"                                  //Supersystem construction.
 #include "postHF/LocalCorrelation/LocalCorrelationController.h" //LocalCorrelation settings.

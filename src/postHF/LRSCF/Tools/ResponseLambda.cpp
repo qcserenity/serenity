@@ -19,7 +19,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/ResponseLambda.h"
-
 /* Include Serenity Internal Headers */
 #include "dft/Functional.h"
 #include "postHF/LRSCF/Kernel/Kernel.h"
@@ -94,18 +93,24 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
     }
     else {
       auto func_enum = this->_lrscf[I]->getLRSCFSettings().func;
-      auto func = resolveFunctional(func_enum);
+      auto func = this->_lrscf[I]->getLRSCFSettings().customFunc.basicFunctionals.size()
+                      ? Functional(this->_lrscf[I]->getLRSCFSettings().customFunc)
+                      : resolveFunctional(func_enum);
 
       // Resolve functional.
       if (func_enum == CompositeFunctionals::XCFUNCTIONALS::NONE) {
-        func = resolveFunctional(_lrscf[I]->getSysSettings().dft.functional);
+        func = this->_lrscf[I]->getSysSettings().customFunc.basicFunctionals.size()
+                   ? Functional(this->_lrscf[I]->getSysSettings().customFunc)
+                   : resolveFunctional(_lrscf[I]->getSysSettings().dft.functional);
       }
       _usesExchange = func.isHybrid() ? func.isHybrid() : _usesExchange;
       _usesLRExchange = func.isRSHybrid() ? func.isRSHybrid() : _usesLRExchange;
       _usesDoubleHybrid = func.isDoubleHybrid() ? func.isDoubleHybrid() : _usesDoubleHybrid;
     }
   }
-  auto naddXCfunc = resolveFunctional(_settings.embedding.naddXCFunc);
+  auto naddXCfunc = _settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                        ? Functional(_settings.embedding.customNaddXCFunc)
+                        : resolveFunctional(_settings.embedding.naddXCFunc);
   _usesExchange = naddXCfunc.isHybrid() ? naddXCfunc.isHybrid() : _usesExchange;
   _usesLRExchange = naddXCfunc.isRSHybrid() ? naddXCfunc.isRSHybrid() : _usesLRExchange;
   for (auto naddXCfunc : _settings.embedding.naddXCFuncList) {
@@ -131,10 +136,13 @@ ResponseLambda<SCFMode>::ResponseLambda(std::vector<std::shared_ptr<SystemContro
 
   if (_usesDoubleHybrid) {
     printBigCaption("Double-Hybrid TDDFT");
-    _doubleHybridCorrRatio = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getHfCorrelRatio();
+    Functional func = _lrscf[0]->getSysSettings().customFunc.basicFunctionals.size()
+                          ? Functional(_lrscf[0]->getSysSettings().customFunc)
+                          : resolveFunctional(_lrscf[0]->getSysSettings().dft.functional);
+    _doubleHybridCorrRatio = func.getHfCorrelRatio();
     // Set spin scaling factors from functional.
-    _settings.sss = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getssScaling();
-    _settings.oss = resolveFunctional(_lrscf[0]->getSysSettings().dft.functional).getosScaling();
+    _settings.sss = func.getssScaling();
+    _settings.oss = func.getosScaling();
     printf("  WF corr. ratio        : %7.3f\n", _doubleHybridCorrRatio);
     printf("  Same-spin scaling     : %7.3f\n", _settings.sss);
     printf("  Opposite-spin scaling : %7.3f\n\n", _settings.oss);

@@ -29,10 +29,14 @@
 #include "data/grid/ExternalDensityOnGridController.h"
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
+#include "dft/Functional.h"
+#include "dft/functionals/BasicFunctionals.h"
+#include "dft/functionals/CompositeFunctionals.h"
 #include "dft/functionals/FunctionalLibrary.h"
 #include "dft/functionals/wrappers/XCFun.h"
 #include "geometry/Geometry.h"
-#include "grid/GridControllerFactory.h"
+#include "geometry/GeometryAdderFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "io/FormattedOutputStream.h" //Filtered output streams
 #include "misc/SerenityError.h"
 #include "misc/WarningTracker.h"
@@ -48,7 +52,6 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std:
   : _settings(settings),
     _naddKinFunc(settings.embedding.naddKinFunc),
     _naddXCFunc(settings.embedding.naddXCFunc),
-    _gridController(act[0]->getGridController()),
     _gga(false),
     _nLRSCF(nLRSCF) {
   // Build system
@@ -60,37 +63,32 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std:
   }
 
   //  Build reference geometry.
-  std::shared_ptr<Geometry> geometry = std::make_shared<Geometry>();
-
-  // Build subsystem-based grid.
-  if (settings.subsystemgrid.size() != 0) {
-    for (unsigned I = 0; I < settings.subsystemgrid.size(); ++I) {
-      if (settings.subsystemgrid[I] > _systems.size()) {
-        throw SerenityError("Your index for the subsystem-based grid is too large!");
-      }
-      (*geometry) += (*_systems[settings.subsystemgrid[I] - 1]->getGeometry());
-    }
-  }
-  // Build supersystem grid.
-  else {
-    for (unsigned I = 0; I < _systems.size(); ++I) {
-      (*geometry) += (*_systems[I]->getGeometry());
-    }
-  }
-  geometry->deleteIdenticalAtoms();
-  _gridController = GridControllerFactory::produce(geometry, _settings.grid, gridAccuracy);
+  std::shared_ptr<Geometry> geometry = GeometryAdderFactory::produce(_systems, _settings.subsystemgrid);
+  _gridController = AtomCenteredGridControllerFactory::produce(geometry, _settings.grid, gridAccuracy);
 
   // Get and check data from input functionals
   for (auto sys : _systems) {
+    // HF when system uses HF and no other Kernel functional is specified
     if (sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF &&
-        settings.func == CompositeFunctionals::XCFUNCTIONALS::NONE) {
-      _func.push_back(CompositeFunctionals::XCFUNCTIONALS::HF);
+        settings.func == CompositeFunctionals::XCFUNCTIONALS::NONE && !(settings.customFunc.basicFunctionals.size())) {
+      _func.push_back(resolveFunctional(CompositeFunctionals::XCFUNCTIONALS::HF));
     }
-    else if (settings.func == CompositeFunctionals::XCFUNCTIONALS::NONE) {
-      _func.push_back(sys->getSettings().dft.functional);
+    // LRSCFTask before system settings and custom before composite
+    // use the custom LRSCF functional if there is one
+    else if (settings.customFunc.basicFunctionals.size()) {
+      _func.push_back(Functional(settings.customFunc));
     }
+    // use the composite LRSCF functionl if there is one
+    else if (settings.func != CompositeFunctionals::XCFUNCTIONALS::NONE) {
+      _func.push_back(resolveFunctional(settings.func));
+    }
+    // no LRSCF functional -> use the system settings
+    else if (sys->getSettings().customFunc.basicFunctionals.size()) {
+      _func.push_back(Functional(sys->getSettings().customFunc));
+    }
+    // system settings composite functional at last
     else {
-      _func.push_back(settings.func);
+      _func.push_back(resolveFunctional(sys->getSettings().dft.functional));
     }
   }
 
@@ -101,8 +99,12 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std:
     }
   }
 
-  Functional EnaddXC = resolveFunctional(_naddXCFunc);
-  Functional EnaddKIN = resolveFunctional(_naddKinFunc);
+  Functional EnaddXC = settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                           ? Functional(settings.embedding.customNaddXCFunc)
+                           : resolveFunctional(_naddXCFunc);
+  Functional EnaddKIN = settings.embedding.customNaddKinFunc.basicFunctionals.size()
+                            ? Functional(settings.embedding.customNaddKinFunc)
+                            : resolveFunctional(_naddKinFunc);
   if (EnaddKIN.isHybrid() || EnaddKIN.isRSHybrid()) {
     throw SerenityError("ERROR: Found hybrid functional for non-additive kinetic kernel.");
   }
@@ -114,8 +116,7 @@ Kernel<SCFMode>::Kernel(std::vector<std::shared_ptr<SystemController>> act, std:
   }
 
   for (auto funcXC : _func) {
-    Functional EXC = resolveFunctional(funcXC);
-    if (EXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
+    if (funcXC.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
       _gga = true;
     }
   }
@@ -679,13 +680,16 @@ void Kernel<SCFMode>::calculateDerivatives() {
   // total density objects
   auto totalDensity = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
   auto totalDensityGradient = makeGradientPtr<DensityOnGrid<SCFMode>>(_gridController);
-  Functional exc_nadd = resolveFunctional(_naddXCFunc);
-  Functional kin_nadd = resolveFunctional(_naddKinFunc);
+  Functional exc_nadd = _settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                            ? Functional(_settings.embedding.customNaddXCFunc)
+                            : resolveFunctional(_naddXCFunc);
+  Functional kin_nadd = _settings.embedding.customNaddKinFunc.basicFunctionals.size()
+                            ? Functional(_settings.embedding.customNaddKinFunc)
+                            : resolveFunctional(_naddKinFunc);
   // Loop over systems
   // Subsystem contributions
   unsigned int counter = 0;
   for (auto sys : _systems) {
-    Functional exc = resolveFunctional(_func[counter]);
     // Returns the density/density gradients on the custom grid
     // Calculate density of sys and add to total density
     auto densityOnGridController = getDensityOnGridController(sys);
@@ -709,10 +713,10 @@ void Kernel<SCFMode>::calculateDerivatives() {
     // Calculate derivatives of sys functional and add to storage objects
     auto name = sys->getSettings().name;
     FunctionalLibrary<SCFMode> flib(sys->getSettings().grid.blocksize);
-    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc, densityOnGridController, 2);
+    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, _func[counter], densityOnGridController, 2);
     // Complete kernel contributions
-    storeDerivatives(funcData, (*density), exc.getFunctionalClass(), _pp.find(name)->second, _gg.find(name)->second,
-                     _pg.find(name)->second);
+    storeDerivatives(funcData, (*density), _func[counter].getFunctionalClass(), _pp.find(name)->second,
+                     _gg.find(name)->second, _pg.find(name)->second);
     // Subsystem specific kernel contributions
     if (exc_nadd.getFunctionalClass() != CompositeFunctionals::CLASSES::NONE) {
       auto funcData_naddxc = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc_nadd, densityOnGridController, 2);
@@ -772,7 +776,7 @@ void Kernel<SCFMode>::calculateDerivativesMixedEmbedding() {
   Functional kin_nadd = resolveFunctional(_naddKinFunc);
   // Subsystem contributions
   for (unsigned int iSys = 0; iSys < _systems.size(); iSys++) {
-    // Denisty on custom grid
+    // Density on custom grid
     auto densityOnGridController = getDensityOnGridController(_systems[iSys]);
     auto density = std::unique_ptr<DensityOnGrid<SCFMode>>(new DensityOnGrid<SCFMode>(_gridController));
     (*density) = densityOnGridController->getDensityOnGrid();
@@ -783,11 +787,10 @@ void Kernel<SCFMode>::calculateDerivativesMixedEmbedding() {
     // Calculate derivatives of sys functional and add to storage objects
     auto name = _systems[iSys]->getSettings().name;
     FunctionalLibrary<SCFMode> flib(_systems[iSys]->getSettings().grid.blocksize);
-    Functional exc = resolveFunctional(_func[iSys]);
-    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, exc, densityOnGridController, 2);
+    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, _func[iSys], densityOnGridController, 2);
     // Subsystem kernel contributions
-    storeDerivatives(funcData, (*density), exc.getFunctionalClass(), _pp.find(name)->second, _gg.find(name)->second,
-                     _pg.find(name)->second);
+    storeDerivatives(funcData, (*density), _func[iSys].getFunctionalClass(), _pp.find(name)->second,
+                     _gg.find(name)->second, _pg.find(name)->second);
     if (embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::HUZINAGA ||
         embeddingmodes[iSys] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
       // Systems from exact embedding
@@ -899,7 +902,7 @@ Kernel<Options::SCF_MODES::RESTRICTED>::getDensityOnGridController(std::shared_p
   auto basisFunctionOnGridController =
       BasisFunctionOnGridControllerFactory::produce(sys->getSettings(), sys->getBasisController(), _gridController);
   auto densityOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::RESTRICTED>>(
-      basisFunctionOnGridController, sys->getSettings().grid.blockAveThreshold);
+      basisFunctionOnGridController, _settings.grid.blockAveThreshold);
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> densityMatrixController = nullptr;
   if (sys->getLastSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
     // ToDo
@@ -921,7 +924,7 @@ Kernel<Options::SCF_MODES::UNRESTRICTED>::getDensityOnGridController(std::shared
   auto basisFunctionOnGridController =
       BasisFunctionOnGridControllerFactory::produce(sys->getSettings(), sys->getBasisController(), _gridController);
   auto densityOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::UNRESTRICTED>>(
-      basisFunctionOnGridController, sys->getSettings().grid.blockAveThreshold);
+      basisFunctionOnGridController, _settings.grid.blockAveThreshold);
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> densityMatrixController = nullptr;
   // If restricted environment system is used, build unrestricted DensityMatrixController
   if (sys->getLastSCFMode() == Options::SCF_MODES::RESTRICTED) {

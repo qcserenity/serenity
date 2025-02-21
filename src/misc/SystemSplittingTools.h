@@ -36,9 +36,9 @@ namespace Serenity {
 class SystemController;
 class Atom;
 class Geometry;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class MatrixInBasis;
 class BasisController;
 class OneElectronIntegralController;
@@ -58,12 +58,12 @@ class SystemSplittingTools {
   /**
    * @brief Splits the electronic structure of the system based on the selected orbitals for the active system.
    * @param system The system which will be split.
-   * @param activeOrbtials The selection of the active orbitals.
+   * @param activeOrbitals The selection of the active orbitals.
    * @return Electronic structures for the subsystems (act : env)
    */
   static std::pair<std::shared_ptr<ElectronicStructure<SCFMode>>, std::shared_ptr<ElectronicStructure<SCFMode>>>
   splitElectronicStructure(std::shared_ptr<SystemController> system,
-                           SpinPolarizedData<SCFMode, std::vector<bool>>& activeOrbtials);
+                           SpinPolarizedData<SCFMode, std::vector<bool>>& activeOrbitals);
   /**
    * @brief Resorts the orbital coefficients from the old basis set to the new basis set. Note that basis functions
    *        which are not present in both basis sets will be omitted/lead to zero entries.
@@ -115,7 +115,7 @@ class SystemSplittingTools {
 
   /**
    * @brief Calculates the occupations of the subsystems from the orbital selection.
-   * @param activeOrbtials The selection of active orbitals.
+   * @param activeOrbitals The selection of active orbitals.
    * @return The occupation numbers for environment and active system (act : env)
    */
   static std::pair<SpinPolarizedData<SCFMode, unsigned int>, SpinPolarizedData<SCFMode, unsigned int>>
@@ -123,14 +123,14 @@ class SystemSplittingTools {
 
   /**
    * @brief Calculates the number of electrons in active and environment system.
-   * @param activeOrbtials List of occupied orbitals of the active system. Length of the vector
+   * @param activeOrbitals List of occupied orbitals of the active system. Length of the vector
    *                       denotes the number of active orbitals and True/False denotes which
    *                       orbital belongs to the active system.
    * @return The number of electrons for the active and environment system. (act : env)
    */
   static std::pair<SpinPolarizedData<SCFMode, unsigned int>, SpinPolarizedData<SCFMode, unsigned int>>
-  getNElectrons(SpinPolarizedData<SCFMode, std::vector<bool>>& activeOrbtials) {
-    return getNElectrons(getNOccupiedOrbitals(activeOrbtials));
+  getNElectrons(SpinPolarizedData<SCFMode, std::vector<bool>>& activeOrbitals) {
+    return getNElectrons(getNOccupiedOrbitals(activeOrbitals));
   }
   /**
    * @brief Calculates the number of electrons in active and environment system.

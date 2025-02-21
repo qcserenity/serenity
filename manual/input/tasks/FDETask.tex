@@ -1,0 +1,56 @@
+\subsection{Task: Frozen-Density Embedding}
+\label{sec:FDE}
+This task performs frozen-density embedding (FDE) calculations, possibly using different embedding modes or local correlation settings.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task FDE
+  act acetone
+  env water1
+  env water2
+  +emb
+    embeddingMode NADDFUNC
+    naddXCFunc PW91
+    naddKinFunc PW91k
+  -emb
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{FDE} and \ttt{FDETask}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used in the actual FDE calculation.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts mutiple environment systems that are used in embedded calculation.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}), local correlation (\ttt{lc}), localization(\ttt{loc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=PW91}, \ttt{embeddingMode=NADD\_FUNC}, \ttt{PNOSETTINGS=TIGHT}, and \ttt{method=DLPNO\_MP2}.
+	\item [\texttt{gridCutOff}] \hfill \\
+    A distance cutoff for the integration grid used to calculate the non-additive  energy functional potentials. Negative values equal no cut off. By default \ttt{-1.0}
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By default \ttt{LOCAL} to use local MP2. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{DF} which uses the density fitting approach specified with \ttt{densfitCorr} in the system block.
+	\item [\texttt{maxResidual}] \hfill \\
+	Convergence threshold for the local MP2 calculation. By default \ttt{1e-5}.
+	\item [\texttt{maxCycles}] \hfill \\
+	Maximum number of iterations before canceling the amplitude optimization in local MP2. By default \ttt{100}.
+	\item [\texttt{calculateMP2Energy}] \hfill \\
+	Calculate the MP2 contribution of double-hybrid functionals. By default \ttt{true}.
+	\item [\texttt{calculateEnvironmentEnergy}] \hfill \\
+	Calculate the energy of the environment systems. By default \ttt{false}.
+	\item [\texttt{calculateSolvationEnergy}] \hfill \\
+	Calculate the interaction of the active system with the joined environment and the energy of the active system. The environment is referenced
+	as a continuum. By default \ttt{false}.
+    \item[\texttt{calculateUnrelaxedMP2Density}]\hfill \\
+    If true, the unrelaxed MP2 density of the active system is calulated. By default \ttt{false}.
+	\item [\texttt{skipSCF}] \hfill \\
+	Skip the SCF procedure and perform an energy evaluation only. By default \ttt{false}.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item [\texttt{smallSupersystemGrid}]\hfill \\
+	If true will use the \ttt{smallGridAccuracy} of the given active system instead of the normal grid accuracy for the supersystem grid. By default \ttt{false}.
+	\item [\texttt{finalGrid}]\hfill \\
+	If true, non-additive xc and kin energies will only be evaluated once on a supersystem grid, at the end of the orbital optimization. By default \ttt{true}.
+\end{description}

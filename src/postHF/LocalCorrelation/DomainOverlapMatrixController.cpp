@@ -19,7 +19,7 @@
  */
 /* Include Class Header*/
 #include "postHF/LocalCorrelation/DomainOverlapMatrixController.h"
-/* Include Std and External Headers */
+/* Include Serenity Internal Headers */
 #include "data/OrbitalPair.h"                           //OrbitalPair definition.
 #include "data/PAOController.h"                         //PAOController
 #include "data/SingleSubstitution.h"                    //SingleSubstitution definition.

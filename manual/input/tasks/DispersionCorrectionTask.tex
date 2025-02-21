@@ -1,0 +1,27 @@
+\subsection{Task: Dispersion Correction}
+This task evaluates different types of dispersion corrections for the given system.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task Dispersion
+   system water
+   dispType D3BJ
+   functional PBE0
+   gradient True
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{DispersionCorrectionTask}, \ttt{Dispersion},  and \ttt{Disp}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Accepts a single active system and calculates its dispersion correction.
+  \item [\texttt{dispType}]\hfill \\
+    The type of dispersion correction to calculate. By default \ttt{D3BJ} is chosen.
+    For a list of valid options see the \ttt{dispersion} keyword in Section~\ref{sec:system:dft}.
+  \item [\texttt{functional}]\hfill \\
+    Any exchange correlation functional for which parameters are available, by default the system functional is used (\ttt{NONE}). A functional given in this task has priority over the system functional.
+  \item [\texttt{gradient}]\hfill \\
+    Boolean switch, if true, will additionally calculate the cartesian nuclear gradient corrections.
+  \item [\texttt{hessian}]\hfill \\
+    Boolean switch, if true, will additionally calculate the nuclear Hessian corrections.
+\end{description}

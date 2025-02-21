@@ -477,7 +477,7 @@ Eigen::MatrixXd CC2Controller<UNRESTRICTED>::getGLagrangeAmplitudesV(unsigned a,
 
 template<>
 Eigen::MatrixXd CC2Controller<RESTRICTED>::getELagrangeAmplitudes(unsigned i, unsigned j, double eigenvalue, int) {
-  // trafoVector is the excited state Lagrange multiplier in this case
+  // trafoVector is the excited-state Lagrange multiplier in this case
   Eigen::MatrixXd amp = _Yia.middleRows(i * _nv, _nv) * _Jia->middleRows(j * _nv, _nv).transpose() +
                         _Jia->middleRows(i * _nv, _nv) * _Yia.middleRows(j * _nv, _nv).transpose() +
                         _exlSingles1.segment(i * _nv, _nv) * _Fia.segment(j * _nv, _nv).transpose() +
@@ -534,7 +534,7 @@ Eigen::MatrixXd CC2Controller<UNRESTRICTED>::getELagrangeAmplitudes(unsigned i, 
 
 template<>
 Eigen::MatrixXd CC2Controller<RESTRICTED>::getELagrangeAmplitudesV(unsigned a, unsigned b, double eigenvalue, int) {
-  // trafoVector is the excited state Lagrange multiplier in this case
+  // trafoVector is the excited-state Lagrange multiplier in this case
   Eigen::MatrixXd amp = _Yia.middleRows(a * _no, _no) * _Jia->middleRows(b * _no, _no).transpose() +
                         _Jia->middleRows(a * _no, _no) * _Yia.middleRows(b * _no, _no).transpose() +
                         _exlSingles1.segment(a * _no, _no) * _Fia.segment(b * _no, _no).transpose() +

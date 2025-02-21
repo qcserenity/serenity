@@ -1,0 +1,44 @@
+\subsection{Task: Top Down Static Embedding}\label{sec:tasks:TopDownStaticEmbedding}
+This tasks runs a top-down embedding calculations without additional relaxation of the orbital subspaces after supersystem partitioning.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task TDSTATIC
+  act waterA
+  act waterB
+  env waterC
+  useQuasiRestrictedOrbitals true
+  +emb
+      naddXcFunc pbe
+      embeddingMode fermi
+  -emb
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{TDSTATIC}, \ttt{STATIC}, and \ttt{TOPDOWNSTATICEMBEDDINGTASK}.
+    \item [\texttt{activeSystems}]\hfill \\
+    Accepts multiple active systems.
+    \item [\texttt{environmentSystems}]\hfill \\
+    Accepts multiple environment systems.
+    \item [\texttt{useQuasiRestrictedOrbitals}]\hfill \\
+    If true, quasi restricted orbitals are generated und used for the subsystem partitioning.
+    All orbital localization steps will be restricted to rotations within the quasi restricted orbital subspaces.
+    \item[\texttt{sub-blocks}]\hfill \\
+    Possible sub-blocks are the embedding (\ttt{emb} with \ttt{naddXCFunc=BP86} and \ttt{embeddingMode=FERMI}), the local correlation (\ttt{lc} with \ttt{pnoMethod=None}),
+    the PCM (\ttt{pcm}) settings, the orbital localization settings (\ttt{loc} with \ttt{splitValenceAndCore=true}), the system splitting settings (\ttt{split}),
+    and the system addition settings (\ttt{add}).
+
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{maxCycles}]\hfill \\
+    The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+    By default, 100 cycles are allowed.
+    \item [\texttt{normThreshold}]\hfill \\
+    The threshold at which the coupled cluster/MP2 iterations are considered converged. By default \ttt{1.0e-5}.
+    \item [\texttt{writePairEnergies}]\hfill \\
+    Write the pair energies to a file with name: systemName\_pairEnergies\_CCSD.dat or systemName\_pairEnergies\_MP2.dat
+\end{description}

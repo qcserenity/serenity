@@ -18,15 +18,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Class Header*/
+/* Include Serenity Internal Headers */
 #include "tasks/FXDTask.h"
+#include "io/HDF5.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include "tasks/ScfTask.h"
-/* Include Serenity Internal Headers */
-#include "io/HDF5.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

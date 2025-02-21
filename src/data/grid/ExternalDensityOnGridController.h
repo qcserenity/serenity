@@ -36,31 +36,31 @@ namespace Serenity {
  * data changes. Because it is completely unknown how data are provided the template argument is
  * void (i.e. may be anything).
  */
-template<Options::SCF_MODES T>
-class ExternalDensityOnGridController : public DensityOnGridController<T>, public ObjectSensitiveClass<void> {
+template<Options::SCF_MODES SCFMode>
+class ExternalDensityOnGridController : public DensityOnGridController<SCFMode>, public ObjectSensitiveClass<void> {
  public:
   /**
    * @brief Constructor.
    * @param densityOnGrid The density on a grid.
    */
-  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid);
+  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid);
 
   /**
    * @brief Constructor.
    * @param densityOnGrid The density on a grid.
    * @param densityGradientOnGrid The gradient of the density on a grid.
    */
-  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
-                                  std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid);
+  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid,
+                                  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid);
   /**
    * @brief Constructor
    * @param densityOnGrid The density on a grid.
    * @param densityGradientOnGrid The gradient of the density on a grid.
    * @param densityHessianOnGrid The hessian of the density on a grid.
    */
-  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
-                                  std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid,
-                                  std::unique_ptr<Hessian<DensityOnGrid<T>>>& densityHessianOnGrid);
+  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid,
+                                  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid,
+                                  std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>>& densityHessianOnGrid);
   /**
    * @brief Constructor.
    * @param densityOnGrid The density on a grid.
@@ -68,11 +68,11 @@ class ExternalDensityOnGridController : public DensityOnGridController<T>, publi
    * @param densityHessianOnGrid The hessian of the density on a grid.
    * @param externalUpdateFunction This function is called whenever an object of this class is notified (->notify()).
    */
-  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
-                                  std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid,
-                                  std::unique_ptr<Hessian<DensityOnGrid<T>>>& densityHessianOnGrid,
-                                  std::function<void(DensityOnGrid<T>& densityOnGrid, Gradient<DensityOnGrid<T>>& densityGradientOnGrid,
-                                                     Hessian<DensityOnGrid<T>>& densityHessianOnGrid)>
+  ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid,
+                                  std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid,
+                                  std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>>& densityHessianOnGrid,
+                                  std::function<void(DensityOnGrid<SCFMode>& densityOnGrid, Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid,
+                                                     Hessian<DensityOnGrid<SCFMode>>& densityHessianOnGrid)>
                                       externalUpdateFunction);
   /**
    * @brief Default destructor.
@@ -81,15 +81,15 @@ class ExternalDensityOnGridController : public DensityOnGridController<T>, publi
   /**
    * @return The density on a grid.
    */
-  virtual const DensityOnGrid<T>& getDensityOnGrid() override final;
+  virtual const DensityOnGrid<SCFMode>& getDensityOnGrid() override final;
   /**
    * @return The density gradient on a gird.
    */
-  virtual const Gradient<DensityOnGrid<T>>& getDensityGradientOnGrid() override final;
+  virtual const Gradient<DensityOnGrid<SCFMode>>& getDensityGradientOnGrid() override final;
   /**
    * @return The hessian of the density on a grid.
    */
-  virtual const Hessian<DensityOnGrid<T>>& getDensityHessianOnGrid() override final;
+  virtual const Hessian<DensityOnGrid<SCFMode>>& getDensityHessianOnGrid() override final;
   /**
    * @brief Delete old data and update it.
    */
@@ -106,8 +106,8 @@ class ExternalDensityOnGridController : public DensityOnGridController<T>, publi
   /**
    * @brief The external update function.
    */
-  std::function<void(DensityOnGrid<T>& densityOnGrid, Gradient<DensityOnGrid<T>>& densityGradientOnGrid,
-                     Hessian<DensityOnGrid<T>>& densityHessianOnGrid)>
+  std::function<void(DensityOnGrid<SCFMode>& densityOnGrid, Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid,
+                     Hessian<DensityOnGrid<SCFMode>>& densityHessianOnGrid)>
       _externalUpdateFunction;
 };
 

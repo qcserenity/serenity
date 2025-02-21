@@ -28,10 +28,11 @@
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/matrices/FockMatrix.h"
 #include "dft/functionals/CompositeFunctionals.h"
-#include "dft/functionals/wrappers/XCFun.h"
+#include "dft/functionals/FunctionalLibrary.h"
 #include "integrals/RI_J_IntegralControllerFactory.h"
 #include "potentials/Potential.h"
 #include "settings/DFTOptions.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
@@ -68,16 +69,32 @@ TEST_F(FuncPotentialTest, H2_FockMatrix_LDA) {
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> F = funcPot.getMatrix();
 
-  // TODO create more data for the test
-  EXPECT_NEAR(F(0, 0), -0.57441271, 1e-3);
-  EXPECT_NEAR(F(1, 0), -0.35994699, 1e-3);
-  EXPECT_NEAR(F(2, 0), -0.18209255, 1e-3);
-  EXPECT_NEAR(F(0, 1), -0.35994699, 1e-3);
-  EXPECT_NEAR(F(0, 2), -0.18209255, 1e-3);
-  EXPECT_NEAR(F(0, 3), 0.0, 1e-3);
+  Eigen::MatrixXd Fref(F.rows(), F.cols());
+  Fref << -0.57441268, -0.35994693, -0.18271077, 0.00000000, -0.00000000, -0.04902895, -0.16012787, -0.22667697,
+      -0.15485856, 0.00000000, -0.00000000, 0.31414675, -0.35994693, -0.39073307, -0.26090443, -0.00000000, -0.00000000,
+      -0.06919500, -0.22667697, -0.30277168, -0.23298247, -0.00000000, -0.00000000, 0.21569841, -0.18271077,
+      -0.26090443, -0.22635598, -0.00000000, -0.00000000, -0.04509360, -0.15485856, -0.23298247, -0.21254820,
+      0.00000000, -0.00000000, 0.08411795, -0.00000000, -0.00000000, -0.00000000, -0.41596543, -0.00000000, -0.00000000,
+      0.00000000, 0.00000000, 0.00000000, -0.20426443, 0.00000000, 0.00000000, -0.00000000, -0.00000000, -0.00000000,
+      -0.00000000, -0.41596543, 0.00000000, 0.00000000, -0.00000000, -0.00000000, -0.00000000, -0.20426443, -0.00000000,
+      -0.04902895, -0.06919500, -0.04509360, -0.00000000, 0.00000000, -0.45412511, -0.31414675, -0.21569841,
+      -0.08411795, -0.00000000, -0.00000000, 0.16418006, -0.16012787, -0.22667697, -0.15485856, 0.00000000, 0.00000000,
+      -0.31414675, -0.57441268, -0.35994693, -0.18271077, 0.00000000, 0.00000000, 0.04902895, -0.22667697, -0.30277168,
+      -0.23298247, 0.00000000, -0.00000000, -0.21569841, -0.35994693, -0.39073307, -0.26090443, -0.00000000, 0.00000000,
+      0.06919500, -0.15485856, -0.23298247, -0.21254820, 0.00000000, -0.00000000, -0.08411795, -0.18271077, -0.26090443,
+      -0.22635598, 0.00000000, 0.00000000, 0.04509360, 0.00000000, -0.00000000, 0.00000000, -0.20426443, 0.00000000,
+      -0.00000000, 0.00000000, -0.00000000, 0.00000000, -0.41596543, 0.00000000, 0.00000000, -0.00000000, -0.00000000,
+      -0.00000000, 0.00000000, -0.20426443, -0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, -0.41596543,
+      0.00000000, 0.31414675, 0.21569841, 0.08411795, 0.00000000, -0.00000000, 0.16418006, 0.04902895, 0.06919500,
+      0.04509360, 0.00000000, 0.00000000, -0.45412511;
 
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
+  for (unsigned i = 0; i < F.rows(); i++) {
+    for (unsigned j = 0; j < F.cols(); j++) {
+      EXPECT_NEAR(F(i, j), Fref(i, j), 1e-6);
+    }
+  }
 }
+
 /**
  * @test FuncPotentialTest
  * @brief Tests the Fock Matrix of an unrestricted H2 dimer
@@ -95,22 +112,35 @@ TEST_F(FuncPotentialTest, H2_FockMatrix_LDA_UNRES) {
 
   FockMatrix<Options::SCF_MODES::UNRESTRICTED> F(std::move(funcPot.getMatrix()));
 
-  // TODO create more data for the test
-  EXPECT_NEAR(F.alpha(0, 0), -0.57441271, 1e-3);
-  EXPECT_NEAR(F.alpha(1, 0), -0.35994699, 1e-3);
-  EXPECT_NEAR(F.alpha(2, 0), -0.18209255, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 1), -0.35994699, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 2), -0.18209255, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 3), 0.0, 1e-3);
-  EXPECT_NEAR(F.beta(0, 0), -0.57441271, 1e-3);
-  EXPECT_NEAR(F.beta(1, 0), -0.35994699, 1e-3);
-  EXPECT_NEAR(F.beta(2, 0), -0.18209255, 1e-3);
-  EXPECT_NEAR(F.beta(0, 1), -0.35994699, 1e-3);
-  EXPECT_NEAR(F.beta(0, 2), -0.18209255, 1e-3);
-  EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-3);
+  SPMatrix<Options::SCF_MODES::RESTRICTED> Fref(F.alpha.rows(), F.alpha.rows());
 
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
+  Fref << -0.57441269, -0.35994693, -0.18271077, -0.00000000, -0.00000000, -0.04902895, -0.16012787, -0.22667697,
+      -0.15485856, 0.00000000, 0.00000000, 0.31414676, -0.35994693, -0.39073307, -0.26090443, 0.00000000, 0.00000000,
+      -0.06919500, -0.22667697, -0.30277168, -0.23298246, 0.00000000, 0.00000000, 0.21569841, -0.18271077, -0.26090443,
+      -0.22635598, -0.00000000, -0.00000000, -0.04509360, -0.15485856, -0.23298246, -0.21254820, 0.00000000, 0.00000000,
+      0.08411795, -0.00000000, -0.00000000, -0.00000000, -0.41596543, 0.00000000, -0.00000000, 0.00000000, -0.00000000,
+      0.00000000, -0.20426443, -0.00000000, -0.00000000, -0.00000000, 0.00000000, 0.00000000, 0.00000000, -0.41596543,
+      0.00000000, -0.00000000, 0.00000000, -0.00000000, -0.00000000, -0.20426443, -0.00000000, -0.04902895, -0.06919500,
+      -0.04509360, 0.00000000, 0.00000000, -0.45412511, -0.31414676, -0.21569841, -0.08411795, 0.00000000, -0.00000000,
+      0.16418006, -0.16012787, -0.22667697, -0.15485856, 0.00000000, -0.00000000, -0.31414676, -0.57441269, -0.35994693,
+      -0.18271077, 0.00000000, -0.00000000, 0.04902895, -0.22667697, -0.30277168, -0.23298246, -0.00000000, 0.00000000,
+      -0.21569841, -0.35994693, -0.39073307, -0.26090443, 0.00000000, 0.00000000, 0.06919500, -0.15485856, -0.23298246,
+      -0.21254820, 0.00000000, -0.00000000, -0.08411795, -0.18271077, -0.26090443, -0.22635598, -0.00000000,
+      -0.00000000, 0.04509360, 0.00000000, 0.00000000, 0.00000000, -0.20426443, -0.00000000, 0.00000000, 0.00000000,
+      0.00000000, -0.00000000, -0.41596543, 0.00000000, 0.00000000, 0.00000000, 0.00000000, -0.00000000, -0.00000000,
+      -0.20426443, -0.00000000, -0.00000000, 0.00000000, -0.00000000, 0.00000000, -0.41596543, 0.00000000, 0.31414676,
+      0.21569841, 0.08411795, -0.00000000, -0.00000000, 0.16418006, 0.04902895, 0.06919500, 0.04509360, 0.00000000,
+      0.00000000, -0.45412511;
+
+  for (unsigned i = 0; i < F.rows(); i++) {
+    for (unsigned j = 0; j < F.cols(); j++) {
+      for_spin(F) {
+        EXPECT_NEAR(F_spin(i, j), Fref(i, j), 1e-6);
+      };
+    }
+  }
 }
+
 /**
  * @test FuncPotentialTest
  * @brief Tests the Fock Matrix of an H2 dimer
@@ -127,16 +157,30 @@ TEST_F(FuncPotentialTest, H2_FockMatrix_GGA) {
       systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86));
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> F = funcPot.getMatrix();
+  Eigen::MatrixXd Fref(F.rows(), F.cols());
+  Fref << -0.61072924, -0.37691231, -0.19074153, -0.00000000, -0.00000000, -0.05083544, -0.16794150, -0.23708736,
+      -0.16166006, -0.00000000, -0.00000000, 0.32982024, -0.37691231, -0.40248997, -0.26694842, 0.00000000, -0.00000000,
+      -0.07272697, -0.23708736, -0.31224301, -0.23861279, -0.00000000, 0.00000000, 0.22395203, -0.19074153, -0.26694842,
+      -0.22783477, -0.00000000, -0.00000000, -0.04742038, -0.16166006, -0.23861279, -0.21417415, -0.00000000,
+      0.00000000, 0.08747430, -0.00000000, 0.00000000, -0.00000000, -0.42730841, -0.00000000, -0.00000000, -0.00000000,
+      -0.00000000, -0.00000000, -0.20982739, 0.00000000, -0.00000000, -0.00000000, -0.00000000, -0.00000000,
+      -0.00000000, -0.42730841, 0.00000000, -0.00000000, -0.00000000, 0.00000000, 0.00000000, -0.20982739, 0.00000000,
+      -0.05083544, -0.07272697, -0.04742038, -0.00000000, 0.00000000, -0.46998471, -0.32982024, -0.22395203,
+      -0.08747430, 0.00000000, 0.00000000, 0.16971738, -0.16794150, -0.23708736, -0.16166006, -0.00000000, -0.00000000,
+      -0.32982024, -0.61072924, -0.37691231, -0.19074153, -0.00000000, 0.00000000, 0.05083544, -0.23708736, -0.31224301,
+      -0.23861279, -0.00000000, -0.00000000, -0.22395203, -0.37691231, -0.40248997, -0.26694842, 0.00000000, 0.00000000,
+      0.07272697, -0.16166006, -0.23861279, -0.21417415, -0.00000000, 0.00000000, -0.08747430, -0.19074153, -0.26694842,
+      -0.22783477, 0.00000000, -0.00000000, 0.04742038, -0.00000000, -0.00000000, -0.00000000, -0.20982739, 0.00000000,
+      0.00000000, -0.00000000, 0.00000000, 0.00000000, -0.42730841, -0.00000000, 0.00000000, -0.00000000, 0.00000000,
+      0.00000000, 0.00000000, -0.20982739, 0.00000000, 0.00000000, 0.00000000, -0.00000000, -0.00000000, -0.42730841,
+      0.00000000, 0.32982024, 0.22395203, 0.08747430, -0.00000000, 0.00000000, 0.16971738, 0.05083544, 0.07272697,
+      0.04742038, 0.00000000, 0.00000000, -0.46998471;
 
-  // TODO create more data for the test
-  EXPECT_NEAR(F(0, 0), -0.61072924201172829, 1e-3);
-  EXPECT_NEAR(F(1, 0), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F(2, 0), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F(0, 1), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F(0, 2), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F(0, 3), 0.0, 1e-3);
-
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
+  for (unsigned i = 0; i < F.rows(); i++) {
+    for (unsigned j = 0; j < F.cols(); j++) {
+      EXPECT_NEAR(F(i, j), Fref(i, j), 1e-6);
+    }
+  }
 }
 
 /**
@@ -155,29 +199,41 @@ TEST_F(FuncPotentialTest, H2_FockMatrix_GGA_UNRES) {
       systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86));
 
   FockMatrix<Options::SCF_MODES::UNRESTRICTED> F(std::move(funcPot.getMatrix()));
+  SPMatrix<RESTRICTED> Fref(F.alpha.rows(), F.alpha.rows());
 
-  // TODO create more data for the test
-  EXPECT_NEAR(F.alpha(0, 0), -0.61072924201172829, 1e-3);
-  EXPECT_NEAR(F.alpha(1, 0), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F.alpha(2, 0), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 1), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 2), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F.alpha(0, 3), 0.0, 1e-3);
-  EXPECT_NEAR(F.beta(0, 0), -0.61072924201172829, 1e-3);
-  EXPECT_NEAR(F.beta(1, 0), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F.beta(2, 0), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F.beta(0, 1), -0.37691230665476133, 1e-3);
-  EXPECT_NEAR(F.beta(0, 2), -0.19074153073625871, 1e-3);
-  EXPECT_NEAR(F.beta(0, 3), 0.0, 1e-3);
+  Fref << -0.61072925, -0.37691231, -0.19074153, 0.00000000, 0.00000000, -0.05083544, -0.16794150, -0.23708736, -0.16166006,
+      0.00000000, -0.00000000, 0.32982025, -0.37691231, -0.40248996, -0.26694841, 0.00000000, -0.00000000, -0.07272697,
+      -0.23708736, -0.31224301, -0.23861279, -0.00000000, -0.00000000, 0.22395203, -0.19074153, -0.26694841, -0.22783476,
+      0.00000000, 0.00000000, -0.04742038, -0.16166006, -0.23861279, -0.21417414, 0.00000000, 0.00000000, 0.08747430,
+      0.00000000, 0.00000000, 0.00000000, -0.42730840, -0.00000000, -0.00000000, 0.00000000, -0.00000000, 0.00000000,
+      -0.20982739, 0.00000000, -0.00000000, 0.00000000, -0.00000000, 0.00000000, -0.00000000, -0.42730840, -0.00000000,
+      -0.00000000, 0.00000000, -0.00000000, -0.00000000, -0.20982739, 0.00000000, -0.05083544, -0.07272697, -0.04742038,
+      -0.00000000, -0.00000000, -0.46998471, -0.32982025, -0.22395203, -0.08747430, -0.00000000, 0.00000000, 0.16971738,
+      -0.16794150, -0.23708736, -0.16166006, 0.00000000, -0.00000000, -0.32982025, -0.61072925, -0.37691231, -0.19074153,
+      -0.00000000, 0.00000000, 0.05083544, -0.23708736, -0.31224301, -0.23861279, -0.00000000, 0.00000000, -0.22395203,
+      -0.37691231, -0.40248996, -0.26694841, -0.00000000, 0.00000000, 0.07272697, -0.16166006, -0.23861279, -0.21417414,
+      0.00000000, -0.00000000, -0.08747430, -0.19074153, -0.26694841, -0.22783476, -0.00000000, -0.00000000, 0.04742038,
+      0.00000000, -0.00000000, 0.00000000, -0.20982739, -0.00000000, -0.00000000, -0.00000000, -0.00000000, -0.00000000,
+      -0.42730840, 0.00000000, -0.00000000, -0.00000000, -0.00000000, 0.00000000, 0.00000000, -0.20982739, 0.00000000,
+      0.00000000, 0.00000000, -0.00000000, 0.00000000, -0.42730840, 0.00000000, 0.32982025, 0.22395203, 0.08747430,
+      -0.00000000, 0.00000000, 0.16971738, 0.05083544, 0.07272697, 0.04742038, -0.00000000, 0.00000000, -0.46998471;
 
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
+  for (unsigned i = 0; i < F.rows(); i++) {
+    for (unsigned j = 0; j < F.cols(); j++) {
+      for_spin(F) {
+        EXPECT_NEAR(F_spin(i, j), Fref(i, j), 1e-6);
+      };
+    }
+  }
 }
+
 /**
  * @test FuncPotentialTest
  * @brief Tests the LDA XC part of the gradient.
  */
 TEST_F(FuncPotentialTest, H2_Gradient_LDA) {
-  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  auto systemController =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, true);
 
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
       systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
@@ -189,14 +245,12 @@ TEST_F(FuncPotentialTest, H2_Gradient_LDA) {
       systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::LDA));
   auto result = funcPot.getGeomGradients();
 
-  // Reference for this test are XC Gradients as of 22.03.16
-  EXPECT_NEAR(result(0, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 2), -0.24575394748581764, 1e-4);
-  EXPECT_NEAR(result(1, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 2), 0.24575394748581764, 1e-4);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  EXPECT_NEAR(result(0, 0), 0.0, 1e-6);
+  EXPECT_NEAR(result(0, 1), 0.0, 1e-6);
+  EXPECT_NEAR(result(0, 2), -2.379533e-01, 1e-6);
+  EXPECT_NEAR(result(1, 0), 0.0, 1e-6);
+  EXPECT_NEAR(result(1, 1), 0.0, 1e-6);
+  EXPECT_NEAR(result(1, 2), 2.379533e-01, 1e-6);
 }
 
 /**
@@ -204,7 +258,8 @@ TEST_F(FuncPotentialTest, H2_Gradient_LDA) {
  * @brief Tests the unrestricted LDA XC part of the gradient.
  */
 TEST_F(FuncPotentialTest, H2_Gradient_LDA_UNRES) {
-  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  auto systemController =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, true);
 
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMat =
       systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController();
@@ -216,21 +271,20 @@ TEST_F(FuncPotentialTest, H2_Gradient_LDA_UNRES) {
       systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::LDA));
   auto result = funcPot.getGeomGradients();
 
-  // Reference for this test are XC Gradients as of 22.03.16
-  EXPECT_NEAR(result(0, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 2), -0.24575394748581764, 1e-4);
-  EXPECT_NEAR(result(1, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 2), 0.24575394748581764, 1e-4);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  EXPECT_NEAR(result(0, 0), 0.0, 1e-6);
+  EXPECT_NEAR(result(0, 1), 0.0, 1e-6);
+  EXPECT_NEAR(result(0, 2), -2.379533e-01, 1e-6);
+  EXPECT_NEAR(result(1, 0), 0.0, 1e-6);
+  EXPECT_NEAR(result(1, 1), 0.0, 1e-6);
+  EXPECT_NEAR(result(1, 2), 2.379533e-01, 1e-6);
 }
+
 /**
  * @test FuncPotentialTest
- * @brief Tests the BP86 XC part of the gradient.
+ * @brief Tests the PBE XC part of the gradient.
  */
 TEST_F(FuncPotentialTest, H2_Gradient_GGA) {
-  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI);
 
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
       systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
@@ -239,24 +293,23 @@ TEST_F(FuncPotentialTest, H2_Gradient_GGA) {
 
   systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   FuncPotential<Options::SCF_MODES::RESTRICTED> funcPot(
-      systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86));
+      systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::PBE));
   auto result = funcPot.getGeomGradients();
 
-  // Reference for this test are XC Gradients as of 22.03.16
-  EXPECT_NEAR(result(0, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 2), -0.2542114, 1e-4);
-  EXPECT_NEAR(result(1, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 2), 0.2542114, 1e-4);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  EXPECT_NEAR(result(0, 0), 0.0, 5e-6);
+  EXPECT_NEAR(result(0, 1), 0.0, 5e-6);
+  EXPECT_NEAR(result(0, 2), -0.25023729, 5e-6);
+  EXPECT_NEAR(result(1, 0), 0.0, 5e-6);
+  EXPECT_NEAR(result(1, 1), 0.0, 5e-6);
+  EXPECT_NEAR(result(1, 2), 0.25023729, 5e-6);
 }
+
 /**
  * @test FuncPotentialTest
- * @brief Tests the unrestricted BP86 XC part of the gradient.
+ * @brief Tests the unrestricted PBE XC part of the gradient.
  */
 TEST_F(FuncPotentialTest, H2_Gradient_GGA_UNRES) {
-  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE_NORI);
 
   std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMat =
       systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController();
@@ -265,18 +318,17 @@ TEST_F(FuncPotentialTest, H2_Gradient_GGA_UNRES) {
 
   systemController->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>();
   FuncPotential<Options::SCF_MODES::UNRESTRICTED> funcPot(
-      systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86));
+      systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::PBE));
   auto result = funcPot.getGeomGradients();
 
-  // Reference for this test are XC Gradients as of 22.03.16
-  EXPECT_NEAR(result(0, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(0, 2), -0.2542114, 1e-4);
-  EXPECT_NEAR(result(1, 0), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 1), 0.0, 1e-5);
-  EXPECT_NEAR(result(1, 2), 0.2542114, 1e-4);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  EXPECT_NEAR(result(0, 0), 0.0, 5e-6);
+  EXPECT_NEAR(result(0, 1), 0.0, 5e-6);
+  EXPECT_NEAR(result(0, 2), -0.25023729, 5e-6);
+  EXPECT_NEAR(result(1, 0), 0.0, 5e-6);
+  EXPECT_NEAR(result(1, 1), 0.0, 5e-6);
+  EXPECT_NEAR(result(1, 2), 0.25023729, 5e-6);
 }
+
 /**
  * @test FuncPotentialTest
  * @brief Tests the BP86 matrix-potential calculated 2 ways.
@@ -299,14 +351,14 @@ TEST_F(FuncPotentialTest, H2_Potential_GGA) {
   auto gridToMatrix =
       std::make_shared<ScalarOperatorToMatrixAdder<Options::SCF_MODES::RESTRICTED>>(basisFunctionOnGridController, 0.0);
 
-  XCFun<Options::SCF_MODES::RESTRICTED> xcFun(128);
-  auto funcData1 = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS,
-                                  CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86),
-                                  densOnGridController);
+  FunctionalLibrary<Options::SCF_MODES::RESTRICTED> flib(128);
+  auto funcData1 = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS,
+                                 CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86),
+                                 densOnGridController);
 
-  auto funcData2 = xcFun.calcData(FUNCTIONAL_DATA_TYPE::POTENTIAL,
-                                  CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86),
-                                  densOnGridController);
+  auto funcData2 = flib.calcData(FUNCTIONAL_DATA_TYPE::POTENTIAL,
+                                 CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86),
+                                 densOnGridController);
 
   FockMatrix<Options::SCF_MODES::RESTRICTED> F1(dMat->getDensityMatrix().getBasisController());
   FockMatrix<Options::SCF_MODES::RESTRICTED> F2(dMat->getDensityMatrix().getBasisController());
@@ -314,17 +366,44 @@ TEST_F(FuncPotentialTest, H2_Potential_GGA) {
   gridToMatrix->addScalarOperatorToMatrix(F2, *funcData2.potential);
   gridToMatrix->addScalarOperatorToMatrix(F1, *funcData1.dFdRho, *funcData1.dFdGradRho);
 
-  EXPECT_NEAR(F1(0, 0), F2(0, 0), 3e-6);
-  EXPECT_NEAR(F1(1, 0), F2(1, 0), 1e-6);
-  EXPECT_NEAR(F1(1, 1), F2(1, 1), 1e-6);
-  EXPECT_NEAR(F1(2, 0), F2(2, 0), 3e-6);
-  EXPECT_NEAR(F1(2, 1), F2(2, 1), 1e-6);
-  EXPECT_NEAR(F1(2, 2), F2(2, 2), 3e-6);
-  EXPECT_NEAR(F1(3, 0), F2(3, 0), 1e-6);
-  EXPECT_NEAR(F1(3, 1), F2(3, 1), 1e-6);
-  EXPECT_NEAR(F1(3, 2), F2(3, 2), 1e-6);
-  EXPECT_NEAR(F1(3, 3), F2(3, 3), 1e-6);
-
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
+  for (unsigned i = 0; i < F1.size(); i++) {
+    EXPECT_NEAR(F1.data()[i], F2.data()[i], 1e-5);
+  }
 }
+
+TEST_F(FuncPotentialTest, CompositeVsCustomFunctional) {
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, true);
+  std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat =
+      systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
+
+  std::shared_ptr<GridController> grid = systemController->getGridController();
+
+  FuncPotential<Options::SCF_MODES::RESTRICTED> funcPot(
+      systemController, dMat, grid, CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::BP86));
+
+  Settings settings;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.basis.label = "6-31GS";
+  settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                          BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  settings.customFunc.mixingFactors = {1.0, 1.0};
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  auto systemController2 =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, settings, 0, 0);
+  std::shared_ptr<DensityMatrixController<Options::SCF_MODES::RESTRICTED>> dMat2 =
+      systemController2->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController();
+
+  std::shared_ptr<GridController> grid2 = systemController2->getGridController();
+
+  FuncPotential<Options::SCF_MODES::RESTRICTED> funcPot2(systemController2, dMat2, grid2, Functional(settings.customFunc));
+
+  FockMatrix<Options::SCF_MODES::RESTRICTED> F = funcPot.getMatrix();
+  FockMatrix<Options::SCF_MODES::RESTRICTED> F2 = funcPot2.getMatrix();
+
+  for (unsigned i = 0; i < F.size(); i++) {
+    EXPECT_NEAR(F.data()[i], F2.data()[i], 1e-8);
+  }
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController2);
+}
+
 } // namespace Serenity

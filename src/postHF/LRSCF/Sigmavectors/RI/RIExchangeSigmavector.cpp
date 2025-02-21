@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/RI/RIExchangeSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
 #include "basis/BasisFunctionMapper.h" //Construct joined fitting basis.
@@ -44,6 +43,13 @@ RIExchangeSigmavector<SCFMode>::RIExchangeSigmavector(std::vector<std::shared_pt
                                                       std::vector<Eigen::MatrixXd> b, const std::vector<int> pm,
                                                       bool densFitK, bool densFitLRK)
   : ExchangeSigmavector<SCFMode>(lrscf, b, pm, densFitK, densFitLRK) {
+}
+
+template<Options::SCF_MODES SCFMode>
+RIExchangeSigmavector<SCFMode>::RIExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf,
+                                                      const std::vector<int> pm, bool densFitK, bool densFitLRK)
+  : ExchangeSigmavector<SCFMode>(lrscf, pm, densFitK, densFitLRK) {
+  throw SerenityError("AO representation of the RIExchangeSigmavector is not implemented yet!");
 }
 
 template<>

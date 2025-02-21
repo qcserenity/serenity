@@ -39,7 +39,6 @@
 #include "math/IntegerMaths.h"
 #include "math/RegularRankFourTensor.h"
 #include "misc/WarningTracker.h"
-
 /* Include Std and External Headers */
 #ifdef _OPENMP
 #include <omp.h>
@@ -236,8 +235,8 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
   if (checkBasisFile(_settings.path + "/ACD-" + label + op_label, getAtomTypes(geom, label)))
     return;
 
-  auto functional = resolveFunctional(_settings.dft.functional);
-  //  auto functional = FunctionalClassResolver::resolveFunctional(_settings.dft.functional);
+  auto functional = _settings.customFunc.basicFunctionals.size() ? Functional(_settings.customFunc)
+                                                                 : resolveFunctional(_settings.dft.functional);
   const double mu = functional.getRangeSeparationParameter();
 
   auto& libint = Libint::getInstance();
@@ -332,7 +331,7 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
     //               Each block forms a new shell and for each block the index k is pushed to the back of this vector.
     //          2. If this is for a spherical basis shells for lower angular momentum are added for a complete shell
     //          structure.
-    //               For each shell genereated this way the index k is pushed to the back of this vector.
+    //               For each shell generated this way the index k is pushed to the back of this vector.
     // This information allows for a recombination of these shells (i.e for the ACCD algorithm)
     std::vector<unsigned int> shellSplit;
 
@@ -438,11 +437,16 @@ void CDIntegralController::generateACDBasis(std::shared_ptr<Geometry> geom, std:
       //==================================== //
       //         BLOCK FOR CARTESIAN BASIS SETS             //
       //====================================//
-      unsigned int maxNPrimCart = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
+
+      // Hardcoded this to 20 because changes to this number in Libint.h caused the LRSCFTaskCC2Test.CD_ADC2 to fail,
+      // which was traced back to different shell splitting behaviour of the aCD basis (Niklas Göllmann, Oct. 2024)
+
+      // unsigned int maxNPrimCart = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
+      unsigned int maxNPrimCart = 20 - (20 % 3);
 
       // Write shell split
       for (unsigned int k = 0; k < selectedPairs.size(); k++) {
-        // creat product-shell of the two shells in the selected shallpair
+        // create product-shell of the two shells in the selected shellpair
 
         unsigned int am = shells[selectedPairs[k].first]->getAngularMomentum();
         am += shells[selectedPairs[k].second]->getAngularMomentum();
@@ -570,7 +574,8 @@ void CDIntegralController::generateACCDBasis(std::shared_ptr<Geometry> geom, std
   Timings::takeTime("Chol. -    generate acCD Basis");
   auto atomTypes = getAtomTypes(geom, label);
 
-  auto functional = resolveFunctional(_settings.dft.functional);
+  auto functional = _settings.customFunc.basicFunctionals.size() ? Functional(_settings.customFunc)
+                                                                 : resolveFunctional(_settings.dft.functional);
   const double mu = functional.getRangeSeparationParameter();
   auto& libint = Libint::getInstance();
   if (op == LIBINT_OPERATOR::erf_coulomb) {
@@ -960,7 +965,8 @@ std::vector<std::pair<std::string, unsigned int>> CDIntegralController::getAtomT
 }
 
 bool CDIntegralController::checkBasisFile(std::string path, std::vector<std::pair<std::string, unsigned int>> atomTypes) {
-  auto functional = resolveFunctional(_settings.dft.functional);
+  auto functional = _settings.customFunc.basicFunctionals.size() ? Functional(_settings.customFunc)
+                                                                 : resolveFunctional(_settings.dft.functional);
   const double mu = functional.getRangeSeparationParameter();
   // check if there is already a correct basis in the systemfolder
   std::ifstream fileCheck(path);
@@ -1232,7 +1238,13 @@ CDIntegralController::splitPrimitives(std::shared_ptr<CombinedShellPair> tmpShel
   std::vector<std::shared_ptr<const CombinedShellPair>> splitShells;
 
   unsigned int nPrim = tmpShellPair->getNPrimitives();
-  unsigned int nPrimMax = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
+
+  // Hardcoded this to 20 because changes to this number in Libint.h caused the LRSCFTaskCC2Test.CD_ADC2 to fail, which
+  // was traced back to different shell splitting behaviour of the aCD basis (Niklas Göllmann, Oct. 2024)
+
+  // unsigned int nPrimMax = Libint::getNPrimMax() - (Libint::getNPrimMax() % 3);
+  unsigned int nPrimMax = 20 - (20 % 3);
+
   auto shellI = tmpShellPair->getBaseShellA();
   auto shellJ = tmpShellPair->getBaseShellB();
 

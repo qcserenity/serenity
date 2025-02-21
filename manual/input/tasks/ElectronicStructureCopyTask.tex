@@ -1,0 +1,32 @@
+\subsection{Task: Electronic-Structure Copy}
+This task copies the first active system to all environment systems by rotating the
+orbitals to their internal frames. All systems should have the same atoms ordered
+in the same way.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task ESC
+  act waterAct
+  env waterEnv1
+  env waterEnv2
+  env waterEnv3
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{ELECTRONICSTRUCTURECOPYTASK}, \ttt{COPY}, and \ttt{ESC}.
+\item [\texttt{activeSystems}]\hfill \\
+  The source system to be used.
+\item [\texttt{environmentSystems}]\hfill \\
+  The target systems to which the orbitals are to be copied.
+\item [\texttt{atomFrameIndices}]\hfill \\
+  The atom indices used for the internal frame construction.
+  If none are given, the first three atoms are used.
+\item [\texttt{orthogonalize}]\hfill \\
+  Orthogonalize the orbitals after copying using a
+  Löwdin orthogonalization. \ttt{false} by default.
+\item [\texttt{copyCharges}]\hfill \\
+  Change the charges/spins of the environment systems
+  to the charge/spin of the active system. \ttt{true} by default.
+\end{description}

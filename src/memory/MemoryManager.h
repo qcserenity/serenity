@@ -20,7 +20,6 @@
 #ifndef MEMORYMANAGER_H
 #define MEMORYMANAGER_H
 /* Include Std and External Headers */
-#include <map>
 #include <memory>
 #include <mutex>
 

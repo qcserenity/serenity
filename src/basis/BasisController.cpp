@@ -238,6 +238,39 @@ bool BasisController::isAtomicCholesky() {
   return (this->_basisString.substr(0, 4) == "ACD-" or this->_basisString.substr(0, 5) == "ACCD-") ? true : false;
 }
 
+std::shared_ptr<std::vector<ShellPairData>> BasisController::getDOIPrescreeningFactors() {
+  if (!_doiPrescreeningFactors) {
+    unsigned nShells = (*_basis).size();
+    _doiPrescreeningFactors = std::make_shared<std::vector<ShellPairData>>();
+    // intialize libint
+    auto& libint = Libint::getInstance();
+    libint.initialize_plain(LIBINT_OPERATOR::delta, 4, std::numeric_limits<double>::epsilon() / 1e4, 10,
+                            this->getMaxNumberOfPrimitives());
+
+    // loops over shells
+    Eigen::MatrixXd integrals;
+    for (unsigned int i = 0; i < nShells; ++i) {
+      const auto& shellI = *(*_basis)[i];
+      for (unsigned int j = 0; j <= i; ++j) {
+        const auto& shellJ = *(*_basis)[j];
+        // calculate integrals
+        if (libint.compute(LIBINT_OPERATOR::delta, 0, shellI, shellJ, shellI, shellJ, integrals)) {
+          double integral = std::sqrt(integrals.maxCoeff());
+          if (integral > 1e-12) {
+            (*_doiPrescreeningFactors).push_back(ShellPairData(i, j, integral));
+          }
+        } /* if (prescreen) */
+      }   /* j/shellJ */
+    }     /* i/shellI */
+    // finalize libint
+    libint.finalize(LIBINT_OPERATOR::delta, 0, 4);
+    // sort the list
+    std::sort((*_doiPrescreeningFactors).begin(), (*_doiPrescreeningFactors).end());
+    std::reverse((*_doiPrescreeningFactors).begin(), (*_doiPrescreeningFactors).end());
+  }
+  return _doiPrescreeningFactors;
+}
+
 BasisController::~BasisController() = default;
 
 } /* namespace Serenity */

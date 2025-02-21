@@ -27,6 +27,7 @@
 #include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
 #include "misc/WarningTracker.h"
+#include "parameters/Constants.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/Tools/Besley.h"
 #include "settings/LRSCFOptions.h"

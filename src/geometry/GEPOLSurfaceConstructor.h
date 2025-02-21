@@ -21,6 +21,7 @@
 #ifndef GEOMETRY_GEPOLSURFACECONSTRUCTOR_H_
 #define GEOMETRY_GEPOLSURFACECONSTRUCTOR_H_
 
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>

@@ -29,8 +29,6 @@
 
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES SCFMode>
-class ElectronicStructureCalculator;
 class SystemController;
 template<Options::SCF_MODES SCFMode>
 class PotentialBundle;
@@ -91,11 +89,6 @@ class ScfTask : public Task {
   ScfTaskSettings settings;
 
   /**
-   * @brief Getter for the electronic structure.
-   * @return Returns the electronic structure.
-   */
-  std::shared_ptr<ElectronicStructureCalculator<SCFMode>> getElectronicStructureCalculator();
-  /**
    * @brief Parse the settings to the task settings.
    * @param c The task settings.
    * @param v The visitor which contains the settings strings.
@@ -104,10 +97,12 @@ class ScfTask : public Task {
   void visit(ScfTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown settings block in ScfTaskSettings: " + blockname);
-    }
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown settings block in ScfTaskSettings: " + blockname);
   }
 
  private:

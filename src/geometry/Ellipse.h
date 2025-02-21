@@ -21,6 +21,7 @@
 #ifndef GEOMETRY_ELLIPSE_H_
 #define GEOMETRY_ELLIPSE_H_
 
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>

@@ -64,6 +64,7 @@ TEST_F(TSTaskTest, LinearWater) {
       std::ios::binary);
   std::ofstream dest((_system->getSystemPath() + "TestSystem_WATER_DISTORTED_MINBAS.hess.h5").c_str(), std::ios::binary);
   dest << src.rdbuf();
+  dest.flush();
 
   /*
    * actual test

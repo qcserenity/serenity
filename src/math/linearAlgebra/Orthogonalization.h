@@ -95,69 +95,6 @@ class Orthogonalization {
     // Print info
     printf("\n    Gram-Schmidt: Removed %3i linear dependencies.\n", (int)(nCols - linindep));
   }
-  // /**
-  //  *
-  //  * @param W Matrix to be orthonormalized
-  //  * @brief SVQB orthonormalization according to A. Stathopoulos, K. Wu; SIAM J. Sci. Comput. 23, 2165 (2002).
-  //  */
-  //  static void svqb(Eigen::MatrixXd& W) {
-  //    // 1. S' = W^T  W
-  //    // 2. Scale S = D^{-0.5} * S' * D^{-0.5}, with D = diag(S')
-  //    // 3. Solve SU = UL
-  //    // 4. Compute Q = W D^{-0.5} U L^{-0.5}
-
-  //    //1
-  //    Eigen::MatrixXd S = W.transpose() * W;
-
-  //    //2
-  //    Eigen::VectorXd D = S.diagonal();
-  //    for (unsigned int i = 0; i < D.rows(); ++i) {
-  //      if (D(i) <= 1.0e-8) D(i) = 1.0e-8;
-  //      D(i) = 1.0 / std::sqrt(D(i));
-  //    }
-  //    S = D.asDiagonal() * S * D.asDiagonal();
-
-  //    //3
-  //    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(S.cols());
-  //    es.compute(S);
-  //    Eigen::VectorXd lambda = es.eigenvalues();
-  //    Eigen::MatrixXd U = es.eigenvectors();
-
-  //    //ToDo: Consider strategies for dealing with linear dependencies!
-  //    for (unsigned int i = 0; i < lambda.rows(); ++i) {
-  //      if (lambda(i) < 1.0e-8){
-  //        lambda(i) = 1.0e-8;
-  //        std::cout << "  Linear dependency found in orthogonalization!" << std::endl;
-  //      }
-  //      lambda(i) = 1 / std::sqrt(lambda(i));
-  //    }
-
-  //    //4
-  //    W = W * D.asDiagonal() * U * lambda.asDiagonal();
-  //  }
-
-  //  static void luBiorthogonalization(Eigen::MatrixXd& A, Eigen::MatrixXd& B) {
-  //    //
-  //    // S = A^T * B = LU,
-  //    //
-  //    // where L and U are lower and upper triangular matrices.
-  //    // Multiplying by L^-1 from the left and U^-1 from the right gives
-  //    //
-  //    // L^-1 A^T * B U^-1 = I.
-  //    //
-  //    // The inverse of a triangular matrix is easily calculated
-  //    // by forward/back substitution. Note that we could also use other matrix
-  //    // decomposition schemes here. We can thus identify the biorthogonal sets as
-  //    //
-  //    // A' = L^-1 A and B' = B U^-1 .
-  //    assert(A.cols() == B.cols());
-  //    assert(A.rows() == B.rows());
-  //    Eigen::MatrixXd S = A.transpose() * B;
-  //    Eigen::PartialPivLU<Eigen::MatrixXd> lu(S);
-  //    Eigen::MatrixXd Lm1 = lu.matrixLU().triangularView<Eigen::UnitLower>().solve(Eigen::MatrixXd::Identity(A.cols(),
-  //    A.cols())); A = (Lm1 * lu.permutationP().inverse() * A.transpose()).transpose(); Eigen::MatrixXd Um1 =
-  //    lu.matrixLU().triangularView<Eigen::Upper>().solve(Eigen::MatrixXd::Identity(B.cols(), B.cols())); B = B * Um1;
-  //  }
 
   /**
    *

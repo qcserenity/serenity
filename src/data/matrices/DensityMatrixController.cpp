@@ -24,6 +24,7 @@
 #include "data/OrbitalController.h"
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/CoefficientMatrix.h"
+#include "integrals/OneElectronIntegralController.h"
 #include "io/HDF5.h"
 #include "math/linearAlgebra/MatrixFunctions.h"
 
@@ -243,7 +244,6 @@ void DensityMatrixController<SCFMode>::updateDensityMatrix() {
   assert(_molecularOrbitals);
   // Ensure that the aufbau occupations have the dimension of the basis.
   rebuildAufbauOccupations();
-  CoefficientMatrix<SCFMode> coefficients = _molecularOrbitals->getCoefficients();
   SpinPolarizedData<SCFMode, Eigen::VectorXd> energies = _molecularOrbitals->getEigenvalues();
   _occupations.reset(new SpinPolarizedData<SCFMode, Eigen::VectorXd>(_aufbauOccupations));
   auto& occupations = *_occupations;
@@ -267,10 +267,39 @@ void DensityMatrixController<SCFMode>::updateDensityMatrix() {
       }
     };
   }
+  CoefficientMatrix<SCFMode> coefficients = _molecularOrbitals->getCoefficients();
   DensityMatrix<SCFMode> dmat(_molecularOrbitals->getBasisController());
-  for_spin(dmat, occupations, coefficients) {
-    dmat_spin = symmetrize(coefficients_spin * occupations_spin.asDiagonal() * coefficients_spin.transpose());
-  };
+  if (_oneEIntController) {
+    const double occ = (SCFMode == RESTRICTED) ? 2.0 : 1.0;
+    Eigen::MatrixXd S = _oneEIntController->getOverlapIntegrals();
+    for_spin(dmat, coefficients, occupations) {
+      const unsigned int nOcc = occupations_spin.sum() / occ;
+      Eigen::MatrixXd S_MO = coefficients_spin.leftCols(nOcc).transpose() * S * coefficients_spin.leftCols(nOcc);
+      if (nOcc > 1) {
+        // Jacobi SVD for pseudo inverse of overlapMO
+        Eigen::MatrixXd singMatrix = Eigen::MatrixXd::Zero(nOcc, nOcc);
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(S_MO, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        Eigen::VectorXd sing = svd.singularValues();
+        // Invert singular values that are above a certain threshold and add to diagonal matrix
+        double invThreshold = _basisController->getPrescreeningThreshold() * nOcc * sing.maxCoeff();
+        for (unsigned i = 0; i < nOcc; ++i) {
+          singMatrix(i, i) = fabs(sing(i)) >= invThreshold ? 1 / sing(i) : 0.0;
+        }
+        Eigen::MatrixXd inverseS_MO = svd.matrixU() * singMatrix * svd.matrixV().transpose();
+        dmat_spin =
+            occ * symmetrize(coefficients_spin.leftCols(nOcc) * inverseS_MO * coefficients_spin.leftCols(nOcc).transpose());
+      }
+      else if (nOcc == 1) {
+        dmat_spin = occ * symmetrize(coefficients_spin.leftCols(nOcc) * 1 / S_MO(0, 0) *
+                                     coefficients_spin.leftCols(nOcc).transpose());
+      }
+    };
+  }
+  else {
+    for_spin(dmat, occupations, coefficients) {
+      dmat_spin = symmetrize(coefficients_spin * occupations_spin.asDiagonal() * coefficients_spin.transpose());
+    };
+  }
   bool tmp = _diskmode;
   this->setDiskMode(false, _fBaseName, _id);
   _densityMatrix.reset(new DensityMatrix<SCFMode>(dmat));

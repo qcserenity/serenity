@@ -109,10 +109,12 @@ class GWTask : public Task {
   void visit(GWTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in GWTaskSettings: " + blockname);
-    }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in GWTaskSettings: " + blockname);
   }
   /**
    * @brief The settings/keywords for GWTask:\n
@@ -127,24 +129,26 @@ class GWTask : public Task {
    *  -padePoints:         The number of points used in the pade approximation for analytic continuation
    *  -fermiShift:         The initial fermi shift of the HOMO/LUMO for analytic continuation
    *  -derivativeShift:    The shift in for the evaluation of the numerical derviation of the self-energy (for
-   * linearization) -imagShift:          Additional imaginary shift for numerical derivative if the derivative is larger
-   * than one -gridCutOff:         Gridcutoff to extend the grid of subsystem with grid points of environment subsystems
-   *  -evGW:               Wheter a evGW calculation is performed
+   * linearization)
+   *  -imagShift:          Additional imaginary shift for numerical derivative if the derivative is larger than one
+   *  -gridCutOff:         Gridcutoff to extend the grid of subsystem with grid points of environment subsystems
+   *  -evGW:               Whether an evGW calculation is performed
    *  -evGWcycles:         evGW cycles
-   *  -diis:               Wheter a DIIS is used for convergence acceleration in qpiterations or evgw cycles
+   *  -diis:               Whether a DIIS is used for convergence acceleration in qpiterations or evgw cycles
    *  -diisMaxStore:       The numbers of DIIS vectors to be stored
    *  -ConvergenceThreshold: The HOMO-LUMO gap convergence threshold for qpiterations/evGW cycles
-   *  -naf:                Wheter natural-auxiliary functions should be used
+   *  -naf:                Whether natural-auxiliary functions should be used
    *  -nafThresh:          The threshold for the naf functions
    *  -subsystemAuxillaryBasisOnly: Whether subsystem screening contributions should be calculated with subsystem
-   * auxiliary basis only -freq:               Start, end, stepsize for real axes frquency of the self-energy (only
-   * working for GW-Analytic) -damping:            Damping factor for convergence acceleration -gap: Whether to shift
+   * auxiliary basis only
+   *  -freq:               Start, end, stepsize for real axes frquency of the self-energy (only working for GW-Analytic)
+   *  -damping:            Damping factor for convergence acceleration -gap: Whether to shift
    * occupied and virtual orbitals not included in the GW caclulation by the gap of change of the highest/lowest
-   * included occupied/virtual orbital -environmentScreening: Whether environmental screening is included in an embedded
-   * GW/dRPA calculation
-   * - ltconv:  Convergence criterion for num. int with Laplace transformation.
-   * - frozenCore: Whether frozenCore approximation is used or not
-   * - coreOnly:  Whether only core orbitals are taken into account
+   * included occupied/virtual orbital
+   *  -environmentScreening: Whether environmental screening is included in an embedded GW/dRPA calculation
+   *  -ltconv:             Convergence criterion for num. int with Laplace transformation.
+   *  -frozenCore:         Whether frozenCore approximation is used or not
+   *  -coreOnly:           Whether only core orbitals are taken into account
    */
   GWTaskSettings settings;
   /// @brief The active systems

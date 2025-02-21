@@ -97,10 +97,12 @@ class BrokenSymmetryTask : public Task {
   void visit(BrokenSymmetryTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in BrokenSymmetryTaskSettings: " + blockname);
-    }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in BrokenSymmetryTaskSettings: " + blockname);
   }
 
   /**

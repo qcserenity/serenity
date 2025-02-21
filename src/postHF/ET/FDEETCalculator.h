@@ -32,9 +32,10 @@ namespace Serenity {
 class SystemController;
 template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
+class EnergyComponentController;
 /**
  * @class  FDEETCalculator FDEETCalculator.h
- * @brief  Stores and calculates all matrices needed in the FDEETTask. Is basically the "worker class".
+ * @brief  Stores and calculates all matrices needed in the ElectronTransferTask. Is basically the "worker class".
  */
 class FDEETCalculator {
  public:
@@ -65,10 +66,9 @@ class FDEETCalculator {
    * @param matrix The matrix whose blocks shall be inverted
    * @param nOccState Information about total number of occupied orbitals in each state, separated by alpha and beta
    * @param nStatesCouple Number of diabatic states that are coupled
-   * @param invThreshold Threshold below which singular values are not inverted but set to 0
    */
   void calcBlockedMoorePenrose(const std::vector<Eigen::MatrixXd>& matrix, Eigen::MatrixXi nOccState,
-                               unsigned nStatesCouple, double invThreshold);
+                               unsigned nStatesCouple, double integralThreshold);
   /**
    * @brief Calculates the transition electron density matrices of a given block matrix of pseudo inverses.
    * @param pseudoInverse A block matrix that contains pseudo inverses of the transition overlap matrix as blocks
@@ -101,9 +101,10 @@ class FDEETCalculator {
    * @param superSystem The supersystem constructed from all subsystems. Only geometry and settings are necessary.
    *                     This supersystem shall not have any electronic structure
    * @param nStatesCouple Number of diabatic states that are coupled
+   * @param useHFCoupling If off-diagonal elements are calculated with HF contributions.
    */
   void calcHamiltonian(const std::vector<std::vector<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>>& transDensMats,
-                       std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple);
+                       std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple, bool useHFCoupling);
   /**
    * @brief Calculates the Hamilton matrix in the basis of given diabatic states in disk mode. It therefore uses the
    * transition electron density matrices
@@ -111,25 +112,32 @@ class FDEETCalculator {
    * @param superSystem The supersystem constructed from all subsystems. Only geometry and settings are necessary.
    *                     This supersystem shall not have any electronic structure
    * @param nStatesCouple Number of diabatic states that are coupled
+   * @param useHFCoupling If off-diagonal elements are calculated with HF contributions.
    */
-  void calcHamiltonianDisk(std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple);
+  void calcHamiltonianDisk(std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple, bool useHFCoupling);
   /**
    * @brief Calculates the Hamilton matrix element in the basis of given diabatic states. It therefore uses the
    * transition electron density matrices. This routine is called by calcHamiltonian()
    * @param dMatC Contains the transition electron density matrices
    * @param superSystem The supersystem constructed from all subsystems. Only geometry and settings are necessary.
    *                     This supersystem shall not have any electronic structure
+   * @param useHFCoupling If off-diagonal elements are calculated with HF contributions.
+   * @return The energy components.
    */
-  double calcDFTEnergy(std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatC,
-                       std::shared_ptr<SystemController> superSystem);
+  std::shared_ptr<EnergyComponentController>
+  calcDFTEnergy(std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatC,
+                std::shared_ptr<SystemController> superSystem, bool isDiagonal, bool useHFCoupling);
   /**
    * @brief Solves a generalized eigenvalue problem in the basis of the diabatic states. Therefore uses the Hamilton
    * matrix and overlap of diabatic states (determinants).
    * @param H Hamilton matrix
    * @param determinants Overlap of diabatic states
    * @param nStatesCouple Number of diabatic states that are coupled
+   * @param analyticCoupling If coupling should be calculated when two states are given
+   * @param isPrime If H or HPrime is provided as Hamilton matrix
    */
-  void solveEigenValueProblem(Eigen::MatrixXd H, Eigen::MatrixXd determinants, unsigned nStatesCouple);
+  void solveEigenValueProblem(Eigen::MatrixXd H, Eigen::MatrixXd determinants, unsigned nStatesCouple,
+                              bool analyticCoupling = true, bool isPrime = false);
   /**
    * @brief Prints the calculated transition electron density matrices into a cube file.
    * @param superSystem The supersystem constructed from all subsystems. Only geometry and settings are necessary.
@@ -140,8 +148,16 @@ class FDEETCalculator {
   /**
    * @brief Prints the results of a FDE-ET/Diab calculation.
    * @param nStatesCouple Number of diabatic states that are coupled
+   * @param analyticCoupling If coupling was calculated when two states are given
    */
-  void printResults(unsigned nStatesCouple);
+  void printResults(unsigned nStatesCouple, bool analyticCoupling = true);
+  /**
+   * @brief Prints transformed matrices for coupling adiabatic states.
+   * @param HPrime Transformed Hamilton matrix
+   * @param S Overlap between adiabatic states
+   * @param C Coefficients in basis of adiabatic states
+   */
+  void printTransformedMatrices(Eigen::MatrixXd HPrime, Eigen::MatrixXd S, Eigen::MatrixXd C);
 
   /**
    * Getter and Setter
@@ -252,6 +268,15 @@ class FDEETCalculator {
   double _longRangeExEnergy;
   ///@brief densitymatrix files when disk mode is used
   std::shared_ptr<std::vector<std::string>> _dMatFiles;
+  /**
+   * @brief  Calculates the correction for off-diagonal terms from diabatic states.
+   * @param  superSystem The supersystem constructed from all subsystems.
+   * @param  ec The energy components of a diabatic state.
+   * @param  dMatController Contains the density matrix of the diabatic state.
+   * @return The correction.
+   */
+  double calcCorrection(std::shared_ptr<SystemController> superSystem, std::shared_ptr<EnergyComponentController> ec,
+                        std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatController);
 };
 } /* namespace Serenity */
 #endif /* FDEETCALCULATOR_H */

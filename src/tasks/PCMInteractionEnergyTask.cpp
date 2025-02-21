@@ -2,7 +2,7 @@
  * @file   PCMInteractionEnergyTask.cpp
  *
  * @date   Nov 12, 2020
- * @author Moitz Bensberg
+ * @author Moritz Bensberg
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify

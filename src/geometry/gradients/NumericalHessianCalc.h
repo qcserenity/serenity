@@ -37,7 +37,7 @@ struct EmbeddingSettings;
  * @class
  * @brief A calculator for fully numerical and semi-numerical Hessians.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class NumericalHessianCalc : public HessianCalculator {
  public:
   /**
@@ -48,7 +48,7 @@ class NumericalHessianCalc : public HessianCalculator {
    *
    * @param stepsizeGrad The step size for each step in the gradient calculations (in bohr).
    * @param stepsizeHess The step size for each step in the hessian calculations (in bohr).
-   * @param printToFile
+   * @param printToFile Print the Hessian to a file.
    */
   NumericalHessianCalc(double stepsizeGrad, double stepsizeHess, bool printToFile);
   virtual ~NumericalHessianCalc() = default;

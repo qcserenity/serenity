@@ -57,7 +57,7 @@ class Optimizer {
    * @param updateFunction Lambda function that updates energies and gradients at a given position.
    *                       The lambda function should use a set of parameters (1. argument) to evaluate
    *                       the value and gradient (2. and 3. argument) of the function.
-   *
+   * @param nRejected Counter to keep track of the number of rejected steps and obsolete cycles.
    * A short example:
    * @code
    * auto updateFunction=[](const Eigen::VectorXd& parameters,
@@ -75,8 +75,8 @@ class Optimizer {
    */
   virtual void optimize(std::function<bool(const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
                                            std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
-                            updateFunction) = 0;
-
+                            updateFunction,
+                        std::shared_ptr<unsigned int> nRejected = nullptr) = 0;
   /**
    * @brief Sets the mode of the optimization.
    * @param mode The new mode for the optimizer.

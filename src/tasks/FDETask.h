@@ -35,7 +35,7 @@
 
 namespace Serenity {
 class SystemController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class PotentialBundle;
 class EnergyComponentController;
 
@@ -109,9 +109,9 @@ class FDETask : public Task {
       visit_each(c, v);
       return;
     }
-    if (c.embedding.visitSettings(v, blockname))
+    if (c.embedding.visitAsBlockSettings(v, blockname))
       return;
-    if (c.lcSettings.visitSettings(v, blockname))
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
       return;
     if (c.loc.visitAsBlockSettings(v, blockname))
       return;
@@ -145,20 +145,6 @@ class FDETask : public Task {
    */
   void setSuperSystemGrid(std::shared_ptr<GridController> grid) {
     _supersystemgrid = grid;
-  };
-  /**
-   * @brief Getter for the grid on which the final energy is evaluated.
-   * @return The final grid.
-   */
-  std::shared_ptr<GridController> getFinalGrid() {
-    return _finalGrid;
-  };
-  /**
-   * @brief Setter for the grid on which the final energy is evaluated.
-   * @param grid The "final" grid controller.
-   */
-  void setFinalGrid(std::shared_ptr<GridController> grid) {
-    _finalGrid = grid;
   };
 
  private:

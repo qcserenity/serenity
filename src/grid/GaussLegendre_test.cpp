@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Class Header*/
+/* Include Serenity Internal Headers */
 #include "grid/GaussLegendre.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

@@ -35,14 +35,14 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-std::unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalController<T>& orbitalsA,
-                                                                   std::shared_ptr<BasisController> basisControllerB,
-                                                                   const MatrixInBasis<RESTRICTED>& overlapB) {
+template<Options::SCF_MODES SCFMode>
+std::unique_ptr<OrbitalController<SCFMode>> Transformation::transformMOs(OrbitalController<SCFMode>& orbitalsA,
+                                                                         std::shared_ptr<BasisController> basisControllerB,
+                                                                         const MatrixInBasis<RESTRICTED>& overlapB) {
   assert(basisControllerB);
   assert(overlapB.getBasisController() == basisControllerB);
   // coefficientsA of MOs in Basis A
-  CoefficientMatrix<T> coefficientsA = orbitalsA.getCoefficients();
+  CoefficientMatrix<SCFMode> coefficientsA = orbitalsA.getCoefficients();
   // The basisController of Basis A
   auto basisControllerA = orbitalsA.getBasisController();
   // The number of AOs in Basis A
@@ -91,16 +91,17 @@ std::unique_ptr<OrbitalController<T>> Transformation::transformMOs(OrbitalContro
     }
   }
   // Construct new orbitalSet
-  auto coefficientsBptr = std::unique_ptr<CoefficientMatrix<T>>(new CoefficientMatrix<T>(basisControllerB));
+  auto coefficientsBptr = std::unique_ptr<CoefficientMatrix<SCFMode>>(new CoefficientMatrix<SCFMode>(basisControllerB));
   auto& coefficientsB = *coefficientsBptr;
   coefficientsB.setZero();
   coefficientsB.block(0, 0, nOrbitalsB, nOrbitalsA) = newCoefficientsB;
   // OrbitalController requires eigenvalues. These are set to zero.
-  std::unique_ptr<SpinPolarizedData<T, Eigen::VectorXd>> eigenvaluesBptr(new SpinPolarizedData<T, Eigen::VectorXd>(nOrbitalsB));
-  auto coreOrbitalPtr = std::make_unique<SpinPolarizedData<T, Eigen::VectorXi>>(orbitalsA.getOrbitalFlags());
+  std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> eigenvaluesBptr(
+      new SpinPolarizedData<SCFMode, Eigen::VectorXd>(nOrbitalsB));
+  auto coreOrbitalPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(orbitalsA.getOrbitalFlags());
   // return new OrbitalController
-  return std::make_unique<OrbitalController<T>>(std::move(coefficientsBptr), basisControllerB,
-                                                std::move(eigenvaluesBptr), std::move(coreOrbitalPtr));
+  return std::make_unique<OrbitalController<SCFMode>>(std::move(coefficientsBptr), basisControllerB,
+                                                      std::move(eigenvaluesBptr), std::move(coreOrbitalPtr));
 }
 
 template std::unique_ptr<OrbitalController<Options::SCF_MODES::RESTRICTED>>

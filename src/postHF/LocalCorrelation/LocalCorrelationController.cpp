@@ -347,8 +347,8 @@ void LocalCorrelationController::constructFockMatrix() {
   if (_settings.reuseFockMatrix &&
       !(_settings.enforceHFFockian && _activeSystem->getSettings().method != Options::ELECTRONIC_STRUCTURE_THEORIES::HF)) {
     /*
-     * 1. Try to get the last Fock matrix form the electronic structure.
-     * 2. If fails: Try to read the Fock matrix from disk.
+     * 1. Try to get the last Fock matrix from the electronic structure.
+     * 2. If that fails: Try to read the Fock matrix from disk.
      * 3. Otherwise: Build the Fock matrix from scratch.
      */
     auto electronicStructure = _activeSystem->getElectronicStructure<RESTRICTED>();
@@ -426,12 +426,13 @@ void LocalCorrelationController::constructFockMatrix() {
       activeFockConstructor = _activeSystem->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
     }
     else {
-      throw SerenityError("ERROR: None existing electronicStructureTheory requested.");
+      throw SerenityError("ERROR: Nonexistent electronicStructureTheory requested.");
     }
   }
   f = activeFockConstructor->getFockMatrix(_activeSystem->getElectronicStructure<RESTRICTED>()->getDensityMatrix(),
                                            _activeSystem->getElectronicStructure<RESTRICTED>()->getEnergyComponentController());
   OutputControl::nOut << "                                                  ... done" << std::endl;
+
   timeTaken(1, "Fock matrix construction");
   _activeSystem->setDiskMode(true);
   _activeSystem->setDiskMode(false);
@@ -807,17 +808,18 @@ std::vector<std::shared_ptr<OrbitalPairSet>> LocalCorrelationController::getClos
 
     auto newOrbitalPairSet = std::make_shared<OrbitalPairSet>();
     double threeCenterIntegralMem = 0;
+    const bool ignoreMemoryConstraints = this->_settings.ignoreMemoryConstraints;
     for (auto pair : sortedPairs) {
       newOrbitalPairSet->push_back(pair);
       usedMemory += pair->getMemoryRequirement(_settings.method == Options::PNO_METHOD::DLPNO_MP2,
                                                _settings.linearScalingSigmaVector);
-      if (newOrbitalPairSet->size() % 1 == 0 || newOrbitalPairSet->size() == 1) {
+      if (!ignoreMemoryConstraints && (newOrbitalPairSet->size() % 10 == 0 || newOrbitalPairSet->size() == 1)) {
         auto currentKDomain = newOrbitalPairSet->getTotalFittingDomain();
         threeCenterIntegralMem = MO3CenterIntegralController::getTotalMemoryRequirement(
             this->getSparseMapController(), _activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
             currentKDomain);
       }
-      if (usedMemory + threeCenterIntegralMem >= maximumMemory) {
+      if (!ignoreMemoryConstraints && (usedMemory + threeCenterIntegralMem >= maximumMemory)) {
         _closeOrbitalPairSets.push_back(newOrbitalPairSet);
         newOrbitalPairSet = std::make_shared<OrbitalPairSet>();
         totalMemoty += usedMemory;
@@ -860,14 +862,15 @@ std::vector<std::shared_ptr<OrbitalTripleSet>> LocalCorrelationController::getOr
     auto newOrbitalTriplesSet = std::make_shared<OrbitalTripleSet>();
     double threeCenterIntegralMem = 0;
     double maximumMemory = _settings.maximumMemoryRatio * MemoryManager::getInstance()->getAvailableSystemMemory();
+    const bool ignoreMemoryConstraints = this->_settings.ignoreMemoryConstraints;
     for (auto& triple : sortedTriples) {
       newOrbitalTriplesSet->push_back(triple);
-      if (newOrbitalTriplesSet->size() % 10 == 0 || newOrbitalTriplesSet->size() == 1) {
+      if (!ignoreMemoryConstraints && (newOrbitalTriplesSet->size() % 10 == 0 || newOrbitalTriplesSet->size() == 1)) {
         auto currentKDomain = newOrbitalTriplesSet->getTotalFittingDomain();
         threeCenterIntegralMem = MO3CenterIntegralController::getTotalMemoryRequirement(
             this->getSparseMapController(), _activeSystem->getBasisController(Options::BASIS_PURPOSES::AUX_CORREL),
             currentKDomain);
-        if (threeCenterIntegralMem >= maximumMemory) {
+        if (!ignoreMemoryConstraints && threeCenterIntegralMem >= maximumMemory) {
           _orbitalTripleSets.push_back(newOrbitalTriplesSet);
           newOrbitalTriplesSet = std::make_shared<OrbitalTripleSet>();
           threeCenterIntegralMem = 0.0;

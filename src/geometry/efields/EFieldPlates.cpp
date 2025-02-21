@@ -20,12 +20,10 @@
 
 /* Include Class Header*/
 #include "geometry/efields/EFieldPlates.h"
-
 /* Include Serenity Internal Headers */
 #include "geometry/Atom.h"
 #include "parameters/Constants.h"
 #include "system/SystemController.h"
-
 /* Include Std and External Headers */
 #include <fstream>
 #include <iomanip>

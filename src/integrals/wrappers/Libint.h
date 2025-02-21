@@ -40,6 +40,7 @@ namespace Serenity {
 class BasisController;
 class Atom;
 class Point;
+class ShellPairData;
 
 enum class LIBINT_OPERATOR {
   overlap,
@@ -383,12 +384,14 @@ class Libint {
    *                     (as linear combination of primitives).
    * @param maxD         Maximum coefficient to be contracted with the integrals.
    * @param maxNPrim     Maximum number of primitives in any basis function shell.
-   * @return The entire set if integrals.
+   * @param shellPairData The shell pairs to calculate the integrals for. If not provided, all integrals are calculated.
+   * @return The integrals.
    */
   Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                 const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
                                 double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
-                                unsigned int maxNPrim = N_PRIM_MAX);
+                                unsigned int maxNPrim = N_PRIM_MAX,
+                                std::shared_ptr<std::vector<ShellPairData>> shellPairData = nullptr);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -401,12 +404,13 @@ class Libint {
    *                     (as linear combination of primitives).
    * @param maxD         Maximum coefficient to be contracted with the integrals.
    * @param maxNPrim     Maximum number of primitives in any basis function shell.
-   * @return The entire set if integrals.
+   * @return The integrals.
    */
   Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                 const std::vector<std::pair<double, Point>>& pointCharges,
                                 double precision = std::numeric_limits<double>::epsilon(), double maxD = 10,
-                                unsigned int maxNPrim = N_PRIM_MAX);
+                                unsigned int maxNPrim = N_PRIM_MAX,
+                                std::shared_ptr<std::vector<ShellPairData>> shellPairData = nullptr);
 
   /**
    * @brief Shorthand for an entire set of 1e integrals.
@@ -419,7 +423,7 @@ class Libint {
    *                     (as linear combination of primitives).
    * @param maxD         Maximum coefficient to be contracted with the integrals.
    * @param maxNPrim     Maximum number of primitives in any basis function shell.
-   * @return The entire set if integrals.
+   * @return The integrals.
    */
   Eigen::MatrixXd compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                 const std::vector<std::shared_ptr<Atom>>& atoms = std::vector<std::shared_ptr<Atom>>(0),
@@ -507,11 +511,11 @@ class Libint {
    */
   std::mutex _lock;
   /**
-   * Assuming all used basis sets have <= 20 primitives per basis function.
+   * Assuming all used basis sets have <= 23 primitives per basis function.
    * If more are used just increase this number; Libint objects will then
    * only take slightly more memory.
    */
-  static const unsigned int N_PRIM_MAX = 20;
+  static const unsigned int N_PRIM_MAX = 23;
   /**
    * Libint will truncate the primitive functions at some point. Thus, we have to make sure that
    * the error introduced like this in the final contracted integral set does not exceed our required

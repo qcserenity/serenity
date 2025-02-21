@@ -57,7 +57,7 @@ struct FXDTaskSettings {
  * Performs fragment charge difference (FCD), fragment excitation difference (FED) and multistate FED-FCD calculations
  * Literature:
  * FCD: J. Chem. Phys, 117, 5607 (2002)
- * FED: J. of Phys. Chem. C, 112, 1204 (2008)
+ * FED: J. Phys. Chem. C, 112, 1204 (2008)
  * Multistate FED-FCD: Photosynth. Res., 137, 215 (2018)
  */
 template<Options::SCF_MODES SCFMode>

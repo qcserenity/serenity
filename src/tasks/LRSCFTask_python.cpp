@@ -22,6 +22,7 @@
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 /* Include Std and External Headers */
+#include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -82,18 +83,25 @@ void export_LRSCFTask(py::module& spy) {
       .def_readwrite("stabroot", &LRSCFTaskSettings::stabroot)
       .def_readwrite("stabscal", &LRSCFTaskSettings::stabscal)
       .def_readwrite("noKernel", &LRSCFTaskSettings::noKernel)
+      .def_readwrite("excGradList", &LRSCFTaskSettings::excGradList)
+      .def_readwrite("hypthresh", &LRSCFTaskSettings::hypthresh)
       .def_readwrite("embedding", &LRSCFTaskSettings::embedding)
-      .def_readwrite("grid", &LRSCFTaskSettings::grid);
+      .def_readwrite("grid", &LRSCFTaskSettings::grid)
+      .def_readwrite("customFunc", &LRSCFTaskSettings::customFunc);
 
   py::class_<LRSCFTask<RESTRICTED>, std::shared_ptr<LRSCFTask<RESTRICTED>>>(spy, "LRSCFTask_R")
       .def(py::init<std::vector<std::shared_ptr<SystemController>>&, std::vector<std::shared_ptr<SystemController>>&>())
       .def("run", &LRSCFTask<RESTRICTED>::run)
+      .def("getTransitions", &LRSCFTask<RESTRICTED>::getTransitions)
+      .def("getProperties", &LRSCFTask<RESTRICTED>::getProperties)
       .def_readwrite("settings", &LRSCFTask<Options::SCF_MODES::RESTRICTED>::settings)
       .def_readwrite("generalSettings", &LRSCFTask<Options::SCF_MODES::RESTRICTED>::generalSettings);
 
   py::class_<LRSCFTask<UNRESTRICTED>, std::shared_ptr<LRSCFTask<UNRESTRICTED>>>(spy, "LRSCFTask_U")
       .def(py::init<std::vector<std::shared_ptr<SystemController>>&, std::vector<std::shared_ptr<SystemController>>&>())
       .def("run", &LRSCFTask<UNRESTRICTED>::run)
+      .def("getTransitions", &LRSCFTask<UNRESTRICTED>::getTransitions)
+      .def("getProperties", &LRSCFTask<UNRESTRICTED>::getProperties)
       .def_readwrite("settings", &LRSCFTask<Options::SCF_MODES::UNRESTRICTED>::settings)
       .def_readwrite("generalSettings", &LRSCFTask<Options::SCF_MODES::UNRESTRICTED>::generalSettings);
 }

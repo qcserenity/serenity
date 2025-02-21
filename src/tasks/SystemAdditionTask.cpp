@@ -62,6 +62,7 @@ void SystemAdditionTask<SCFMode>::checkGeometry(std::shared_ptr<Geometry> supers
 
 template<Options::SCF_MODES SCFMode>
 void SystemAdditionTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, {_supersystem}, _subsystems);
   printSubSectionTitle("Adding Subsystem up to a Supersystem");
   /*
    * 1. Build joined geometry.
@@ -118,8 +119,7 @@ void SystemAdditionTask<SCFMode>::run() {
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(overlapSuper, Eigen::ComputeThinU | Eigen::ComputeThinV);
     SpinPolarizedData<SCFMode, unsigned int> nOccSuper(0);
     SpinPolarizedData<SCFMode, unsigned int> nOccSuper2(0);
-    for (unsigned int iSub = 0; iSub < _subsystems.size(); ++iSub) {
-      auto subsystem = _subsystems[iSub];
+    for (auto subsystem : _subsystems) {
       CoefficientMatrix<SCFMode>& newCoefficientMatrix = *newCoefficientMatrixPtr;
       SpinPolarizedData<SCFMode, Eigen::VectorXd>& newEigenvalues = *newEigenvaluesPtr;
       SpinPolarizedData<SCFMode, Eigen::VectorXi>& newCoreOrbitals = *newCoreOrbitalPtr;

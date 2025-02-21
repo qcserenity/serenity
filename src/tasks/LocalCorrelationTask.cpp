@@ -21,8 +21,11 @@
 /* Include Class Header*/
 #include "tasks/LocalCorrelationTask.h"
 /* Include Serenity Internal Headers */
+#include "data/ElectronicStructure.h"
+#include "energies/EnergyContributions.h"
 #include "io/FormattedOutput.h"
 #include "io/FormattedOutputStream.h"
+#include "system/SystemController.h"
 #include "tasks/CoupledClusterTask.h"
 #include "tasks/MP2Task.h"
 
@@ -43,9 +46,11 @@ void LocalCorrelationTask::run() {
   OutputControl::nOut << "  Correlation method:  " << pnoMethod << std::endl;
   OutputControl::nOut << "  Localization method: " << locMethod << std::endl;
   OutputControl::nOut << "  DLPNO-Thresholds:    " << pnoSettings << std::endl;
+
   LocalizationTask locTask(_system);
   locTask.settings = settings.loc;
   locTask.run();
+
   switch (settings.lcSettings.method) {
     case Options::PNO_METHOD::NONE:
       OutputControl::mOut << "No correlation method selected exiting." << std::endl;
@@ -72,6 +77,33 @@ void LocalCorrelationTask::run() {
       ccTask.settings.normThreshold = this->settings.normThreshold;
       ccTask.run();
   }
+}
+
+double LocalCorrelationTask::getCorrelationEnergy(std::shared_ptr<SystemController> activeSystemController,
+                                                  Options::PNO_METHOD pnoMethod) {
+  double correlationEnergy = 0.0;
+  auto electronicStructure = activeSystemController->getElectronicStructure<RESTRICTED>();
+  switch (pnoMethod) {
+    case Options::PNO_METHOD::SC_MP2:
+    case Options::PNO_METHOD::DLPNO_MP2: {
+      correlationEnergy = electronicStructure->getEnergy(ENERGY_CONTRIBUTIONS::MP2_CORRECTION);
+      break;
+    }
+    case Options::PNO_METHOD::DLPNO_CCSD: {
+      correlationEnergy = electronicStructure->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+      break;
+    }
+    case Options::PNO_METHOD::DLPNO_CCSD_T0: {
+      correlationEnergy = electronicStructure->getEnergy(ENERGY_CONTRIBUTIONS::CCSD_CORRECTION);
+      correlationEnergy += electronicStructure->getEnergy(ENERGY_CONTRIBUTIONS::TRIPLES_CORRECTION);
+      break;
+    }
+    case Options::PNO_METHOD::NONE: {
+      correlationEnergy = 0.0;
+      break;
+    }
+  }
+  return correlationEnergy;
 }
 
 } /* namespace Serenity */

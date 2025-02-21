@@ -97,12 +97,12 @@ class SPMatrix<Options::SCF_MODES::RESTRICTED> : public Eigen::MatrixXd {
   }
 
   // Operator overloads for other SPMatrix objects
-  /// @brief Assignement operator.
+  /// @brief Assignment operator.
   __attribute__((always_inline)) inline SPMatrix<RESTRICTED>& operator=(const SPMatrix<RESTRICTED>& other) {
     this->Base::operator=(other);
     return *this;
   }
-  /// @brief Move assignement operator.
+  /// @brief Move assignment operator.
   __attribute__((always_inline)) inline SPMatrix<RESTRICTED>& operator=(SPMatrix<RESTRICTED>&& other) {
     this->Base::operator=(other);
     return *this;
@@ -147,13 +147,13 @@ class SPMatrix<Options::SCF_MODES::RESTRICTED> : public Eigen::MatrixXd {
   }
 
   // Operator overloads for other Eigen3 objects
-  /// @brief Assignement operator for Eigen3 objects.
+  /// @brief Assignment operator for Eigen3 objects.
   template<typename OtherDerived>
   __attribute__((always_inline)) inline SPMatrix<RESTRICTED>& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
     this->Base::operator=(other);
     return *this;
   }
-  /// @brief Move assignement operator for Eigen3 objects.
+  /// @brief Move assignment operator for Eigen3 objects.
   template<typename OtherDerived>
   __attribute__((always_inline)) inline SPMatrix<RESTRICTED>& operator=(Eigen::MatrixBase<OtherDerived>&& other) {
     this->Base::operator=(other);
@@ -170,7 +170,7 @@ class SPMatrix<Options::SCF_MODES::RESTRICTED> : public Eigen::MatrixXd {
     stream << Eigen::MatrixXd(matrix);
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
   /// @brief The type
   typedef Eigen::MatrixXd type;
@@ -213,9 +213,9 @@ class SPMatrix<Options::SCF_MODES::UNRESTRICTED> {
   inline SPMatrix<UNRESTRICTED>(SPMatrix<UNRESTRICTED>&& orig)
     : alpha((Eigen::MatrixXd)orig.alpha), beta((Eigen::MatrixXd)orig.beta) {
   }
-  /// @brief assignement operator
+  /// @brief assignment operator
   SPMatrix<UNRESTRICTED>& operator=(const SPMatrix<UNRESTRICTED>&) = default;
-  /// @brief move assignement operator
+  /// @brief move assignment operator
   SPMatrix<UNRESTRICTED>& operator=(SPMatrix<UNRESTRICTED>&&) = default;
   /**
    * @brief Stores the SPMatrix into a HDF5 file.
@@ -257,6 +257,13 @@ class SPMatrix<Options::SCF_MODES::UNRESTRICTED> {
   inline unsigned int cols() const {
     assert(alpha.cols() == beta.cols());
     return alpha.cols();
+  }
+
+  /**
+   * @brief Returns the number of entries in the alpha matrix.
+   */
+  inline unsigned int size() const {
+    return alpha.size();
   }
 
   /// @brief The alpha part.
@@ -332,7 +339,7 @@ class SPMatrix<Options::SCF_MODES::UNRESTRICTED> {
     stream << matrix.alpha << "\n \n" << matrix.beta;
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::UNRESTRICTED;
   /// @brief The type
   typedef SPMatrix<Options::SCF_MODES::UNRESTRICTED> type;

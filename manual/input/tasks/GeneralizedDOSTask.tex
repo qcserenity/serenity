@@ -1,0 +1,87 @@
+\subsection{Task: Generalized Direct Orbital Selection\label{task:gdos}}
+This task performs a generalized orbital selection for multiple structures along a reaction coordinate.
+This task does not localize any orbitals! A generalized variant of the algorithm of
+the active space selection task (see Section~\ref{sec:activeSpaceTask}) is employed.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task gdos
+   act reactant
+   act product
+   env r1
+   env r2
+   env r3
+   env p1
+   env p2
+   env p3
+   similarityLocThreshold {1e-1 1e-2}
+   similarityKinEnergyThreshold {1e-1 1e-2}
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{Name}]\hfill \\
+ Aliases for this task are \ttt{GENERALIZEDDOS} and \ttt{GDOS}.
+ \item [\texttt{Supersystems}]\hfill \\
+ Accepts multiple supersystems (\ttt{super}) which are used for the orbital comparison.
+ \item [\texttt{ActiveSystems}]\hfill \\
+ Accepts multiple active systems which are the supersystem for the orbital comparison.
+ \item [\texttt{EnvironmentSystems}]\hfill \\
+ Accepts multiple environment systems which are used as the subsystem into which the
+ supersystems are partitioned. The oder of the subsystems is important. The
+ first set of subsystems is used for the first active system, etc., as given in the
+ example. Within each set the subsystems importance to the relative energies between
+ the supersystems decreases with increasing subsystem index.
+ \item [\texttt{similarityLocThreshold}]\hfill \\
+ The threshold for the comparison of partial charges. The default is ${0.05}$.
+ \item [\texttt{similarityKinEnergyThreshold}]\hfill \\
+ The threshold for the comparison of the orbital kinetic energy. The default is ${0.05}$.
+ \item [\texttt{populationAlgorithm}]\hfill \\
+ The algorithm used to calculate partial charges. The default are shell-wise intrinsic atomic orbital (IAO)
+ charges (\ttt{IAOShell}). Other useful options are Mulliken charges (\ttt{MULLIKEN}) and atom-wise IAO
+ charges (\ttt{IAO}).
+ \item [\texttt{mapVirtuals}]\hfill \\
+ If true, the virtual orbitals are considered in the orbital mapping. By default \ttt{false}.
+ \item [\texttt{bestMatchMapping}]\hfill \\
+ If true, the selection thresholds are optimized to provide a qualitative orbital map, \emph{i.e.},
+ the thresholds are chosen such that they minimize the number of unmappable orbitals
+ under the constraint that they are smaller than \texttt{scoreStart}. By default \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{localizationThreshold}]\hfill \\
+    The atom-wise Mulliken population threshold for the assignment of atoms to the subsystems. This is done
+    after the supersystem orbital set has been separated into active and environment orbitals. If the total
+    population of the active orbitals on a given atoms exceeds this threshold it is assigned to the active
+    system. The default is $0.8$ au.
+    \item [\texttt{usePiBias}]\hfill \\
+    Use a selection threshold scaling based on the number of significant, orbital-wise partial charges for
+    each orbital. This is used to reduce the over-selection of $\pi$-orbitals. The default is \ttt{false}.
+    \item [\texttt{biasThreshold}]\hfill \\
+    The threshold for the evaluation of the number of significant partial charges for. The default is
+    \ttt{0.01}.
+    \item [\texttt{biasAverage}]\hfill \\
+    The averaging-parameter for the threshold scaling used for \ttt{usePiBias true}.
+    The default is $12.0$.
+    \item [\texttt{prioFirst}]\hfill \\
+    Prioritize the first subsystem of each subsystem set for the atom-assignment after
+    the orbital partitioning.
+    \item [\texttt{writeScores}]\hfill \\
+    If true, the scores at which each orbital is selected is written to file.
+    The orbitals are not partitioned into subsystems.
+    This is achieved with a large number of on a logarithmic scale tightly packed DOS thresholds.
+    By default \ttt{false}.
+    \item [\texttt{scoreStart}]\hfill \\
+    The start of the DOS-thresholds to be scanned for \texttt{writeScores}.
+    By default $0.1$.
+    \item [\texttt{scoreEnd}]\hfill \\
+    The end of the DOS-thresholds to be scanned for \texttt{writeScores}.
+    By default 1e-4.
+    \item [\texttt{nTest}]\hfill \\
+    The number of thresholds scanned for \texttt{writeScores}. By default $1000$.
+    \item [\texttt{writeGroupsToFile}]\hfill \\
+    If true, a file is created containing the orbital set map between structures. By default \ttt{false}.
+    \item [\texttt{checkDegeneracies}]\hfill \\
+    If true, the orbitals are checked if they are very similar with respect to the comparison criteria. By default \ttt{true}.
+    \item [\texttt{degeneracyFactor}]\hfill \\
+    Threshold scaling for the degeneracy check. By default \ttt{1.0}.
+ \end{description}

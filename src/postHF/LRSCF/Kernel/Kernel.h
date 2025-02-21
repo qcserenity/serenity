@@ -24,6 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "data/DoublySpinPolarizedData.h"
 #include "data/grid/DensityMatrixDensityOnGridController.h"
+#include "dft/Functional.h"
 #include "dft/functionals/wrappers/PartialDerivatives.h"
 #include "math/Derivatives.h"
 #include "settings/GridOptions.h"
@@ -159,7 +160,7 @@ class Kernel {
 
   // If _func is none, the functional for the active system is taken from settings.dft.
   // Else, all XC functionals are evaluated with _func.
-  std::vector<CompositeFunctionals::XCFUNCTIONALS> _func;
+  std::vector<Functional> _func;
 
   // True if gga functional is used
   bool _gga;

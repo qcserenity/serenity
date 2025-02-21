@@ -1,0 +1,27 @@
+\subsection{Task: Quasi-Restricted Orbitals}
+
+This task allows the calculation of quasi-restricted orbitals (QROs)~\cite{Neese2006} from UHF or UKS orbitals.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task QRO
+  act methyl
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{QRO} and \ttt{QUASIRESTRICTEDORBITALS}.
+ \item [\texttt{activeSystems}]\hfill \\
+  The system for which the QROs should be calculated.
+ \item [\texttt{environmentSystems}]\hfill \\
+  Environment systems may be supplied for an embedded energy/Fock matrix calculation
+  for the re-canonicalization of the QROs.
+ \item[\texttt{sub-blocks}]\hfill \\
+  The embedding settings (\ttt{emb}) settings can be added by a sub-block. They are used for the embedded energy/Fock matrix
+  calculation.
+ \item [\texttt{canonicalize}]\hfill \\
+  If \ttt{true} the QROs will be re-canonicalized. Doubly occupied orbitals are chosen to
+  diagonalize the beta-Fock matrix, singly occupied orbitals to diagonalize (alpha-Fock + beta-Fock)/2
+  and the purely virtual orbitals to diagonalize the alpha-Fock matrix.
+\end{description}

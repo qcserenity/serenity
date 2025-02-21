@@ -1,0 +1,83 @@
+\chapter{Text Input}
+
+The input of \serenity has two main types of sections, the \ttt{system} blocks and the \ttt{task} blocks.
+A chart depicting how \serenity handles input can be seen in Figure~\ref{fig:input}.
+While the chart is already quite technical, it displays how to read the sectioned input.
+Starting from the right, the main job of the program is to run tasks in a certain order.
+These tasks can be related \textit{via} the systems they use, \textit{i.e.} a \ttt{MP2Task} will be used.
+orbital data from a previous \ttt{SCFTask} if both of them are working with the same system.
+Accordingly, the first part of the input has to be the system definitions which is followed by
+a list of tasks to complete with these systems.
+In a minimal case, the systems are just a geometry and a set of settings (such as charge, spin, basis set, and so on).
+During the run these systems will be populated with more (calculated) data, such as orbitals, energies and electron densities.
+This additional data can also be read from previous runs (see the following section).
+Any feature that \serenity has is implemented as a task (or a part of a task).
+For a list of available features/tasks, see Section~\ref{sec:tasks}.
+\begin{figure}[h!]
+\label{fig:input}
+\includegraphics[width=0.95\textwidth]{./figs/SerenityInput.pdf}
+\caption{Input flow of \serenity.}
+\end{figure}\\
+As stated above, the text input of \serenity is structured into blocks containing the keywords.
+A keyword consists of a name and a value and is always given inside of a block.
+Each keyword-value pair has to be given in one separate line.
+As for the blocks, there are two main types, those are \ttt{system} and \ttt{task}.
+A block in the {\serenity} text input is started by a \ttt{+<blockname>} and ended with a
+\ttt{-<blockname>}.
+The main blocks of a simple input might thus look like this:
+\begin{lstlisting}
++system
+ name water
+ geometry ./water.xyz
+ method dft
+ +dft
+  functional PBE
+ -dft
+-system
+
++task scf
+  system water
+-task
+\end{lstlisting}
+While there are many settings and thus many keywords, all of them are defaulted, and
+each run of the program will create a file containing all settings (even the default ones)
+for restart purposes.\\
+The input accepts comments just like shell scripts.
+Thus, everything preceded by a hash is not parsed.
+This holds for entire lines but also for parts of a line.
+\begin{lstlisting}
+# not parsed
++system # also not parsed
+ name test
+ geometry test.xyz
+ # you guessed it, this is also not parsed
+-system
+\end{lstlisting}
+The entire input (with the exception of system names and path names) is case-insensitive.
+Keywords could thus look like this:
+\begin{lstlisting}
+  gradients true
+  funcTIONAL PbE0
+  maxCycles 123
+  NaMe water # note that the value of name is case sensitive
+\end{lstlisting}
+A list of values for a keyword can be parsed by enclosing them into curly brackets:
+\begin{lstlisting}
+  orbitals {1 2 3 4}
+\end{lstlisting}
+A list of settings (keywords) inside the \ttt{system} and \ttt{task} blocks will be
+presented in the following two sections.
+
+\newpage
+
+% ================
+%   System Input
+% ================
+
+\input{input/systems.tex}
+
+% ================
+%    Task Input
+% ================
+
+\input{input/tasks.tex}

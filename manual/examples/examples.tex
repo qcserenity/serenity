@@ -1,0 +1,765 @@
+\chapter{Example Inputs}
+\section{Standard SCF}
+The first example is a minimal input for a restricted HF single point calculation.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method hf
+-system
+
++task scf
+  act watera
+-task
+\end{lstlisting}
+For systems with a spin not equal to zero the calculation will automatically be run in the \ttt{unrestricted} mode
+as in the U-KS-DFT example below.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  spin 1
+  charge -1
+  +dft
+    functional pbe0
+  -dft
+  +basis
+    label def2-TZVP
+  -basis
+-system
+
++task scf
+  act watera
+-task
+\end{lstlisting}
+For systems with a spin equal to zero the unrestricted mode can be forced, using the appropriate keyword,
+as in the final example of this section:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  scfmode unrestricted
+  +dft
+    functional pbe0
+  -dft
+  +basis
+    label def2-TZVP
+  -basis
+-system
+
++task scf
+  act watera
+-task
+\end{lstlisting}
+A continuum solvation model can be enabled by changing the flag 'use' in the PCM-block to true:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  scfmode restricted
+  +dft
+    functional pbe0
+  -dft
+  +basis
+    label def2-TZVP
+  -basis
+  +pcm
+    use true
+    solverType iefpcm
+    solvent water
+    cavity delley
+  -pcm
+-system
+
++task scf
+  act watera
+-task
+\end{lstlisting}
+Density-fitting for different contributions can be controlled with the appropriate keywords in the Basis-block. If Cholesky related methods are used they can also be controlled in that block:
+\begin{lstlisting}
+  +system
+    name watera
+    geometry watera.xyz
+    method dft
+    scfmode restricted
+    +dft
+      functional cam-b3lyp
+    -dft
+    +basis
+      label def2-TZVP
+      densfitJ RI
+      densfitK NONE
+      densfitLRK ACD
+      cdThreshold 1e-6
+      secondCD 1e-8
+      extendSphericalACDShells COMPLETE
+    -basis
+  -system
+  
+  +task scf
+    act watera
+  -task
+  \end{lstlisting}
+
+\section{Coupled Cluster Calculation}
+This example shows how to perform a (frozen core) DLPNO-CCSD calculation:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method hf
+-system
+
++task scf
+  act watera
+-task
+
++task loc
+  act watera
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act watera
+  level DLPNO-CCSD
+  +LC
+    useFrozenCore true
+    pnoSettings TIGHT
+  -LC
+-task
+\end{lstlisting}
+
+\section{Geometry Optimization}
+This example shows how to optimize a structure using DFT:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional PBE
+    dispersion d3bjabc
+  -dft
+-system
+
++task opt
+  act watera
+  maxCycles 100
+  tightOpt true
+-task
+\end{lstlisting}
+in case of a sDFT optimization extra sDFT options (\ttt{naddXCFunc},\ttt{naddKinFunc}) and the names of the other system(s) (\ttt{waterb}) have to be added.
+\begin{lstlisting}
++task opt
+  act watera
+  act waterb
+  +EMB
+    naddXCFunc PBE
+    dispersion d3bjabc
+    naddKinFunc LLP91K
+  -EMB
+  maxCycles 100
+  tightOpt true
+-task
+\end{lstlisting}
+
+\section{Hessian Calculation}
+This example shows how to calculate a (sermi-numerical) Hessian using DFT:
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional PBE
+    dispersion d3bjabc
+  -dft
+-system
+
++task hess
+  act watera
+-task
+
+\end{lstlisting}
+in case of a sDFT run extra sDFT options (\ttt{naddXCFunc}, \ttt{naddKinFunc}) and the names of the other system(s) (\ttt{waterb}) have to be added.
+\begin{lstlisting}
++task hess
+  act watera
+  act waterb
+  +EMB
+    dispersion d3bjabc
+    naddXCFunc PBE
+    naddKinFunc LLP91K
+  -EMB
+-task
+\end{lstlisting}
+
+
+\section{Frozen Density Embedding (FDE)}
+A minimal input of a DFT calculation embedded in the frozen density of another system.
+The environment system will be calculated in an isolated manner implicitly.
+The basis is kept to be the default. Note that it is in principle also possible to have
+both system run using Hartree--Fock and only the interaction \textit{via} FDE.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++system
+  name waterb
+  geometry waterb.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++task fde
+  act watera
+  env waterb
+  +EMB
+    naddxcfunc pw91
+    naddkinfunc pw91k
+  -EMB
+-task
+\end{lstlisting}
+A continuum solvation model enclosing all subsystems can be used by setting 'use' to true
+in the task specific PCM-block. Note that any PCM-settings set for any subsystem are ignored
+in the embedding step of all FDE-type calculations. However, they will affect the isolated
+SCF calculations for the subsystems.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++system
+  name waterb
+  geometry waterb.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++task fde
+  act watera
+  env waterb
+  +EMB
+    naddxcfunc pw91
+    naddkinfunc pw91k
+  -EMB
+  +pcm
+    use true
+    solverType cpcm
+    solvent water
+    cavity delley
+  -pcm
+-task
+\end{lstlisting}
+
+\section{Freeze-and-Thaw (FaT/sDFT)}
+A minimal input for a \textit{freeze-and-thaw} (FaT/sDFT) calculation.
+In addition to the two given systems which will be iterated over until
+convergence, additional \ttt{environment} systems can be added, which will never
+be relaxed. More \ttt{active} systems are also possible, of course.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++system
+  name waterb
+  geometry waterb.xyz
+  method dft
+  +dft
+    functional pw91
+  -dft
+-system
+
++task fat
+  act watera
+  act waterb
+  convThresh 1e-6
+  +EMB
+    naddxcfunc pw91
+    naddkinfunc pw91k
+  -EMB
+-task
+\end{lstlisting}
+A continuum solvation model enclosing all subsystems can be used in the same way as for
+FDE.
+
+\section{MP2-in-DFT Embedding via Projection}
+The following example will combine the two given fragments/subsystems into one bigger supersystem, and optimize its orbitals using
+the settings of the environment system (KS-DFT). Afterward the orbitals will be localized and the active system will be picked,
+then the active system will be optimized (using HF), while embedded within the environment orbitals \textit{via} projection based embedding.
+Finally, the altered active system energy will be corrected using RI-MP2. Note that this example does not include a basis set truncation within
+the projection-based embedding part.
+\begin{lstlisting}
++system
+  name watera
+  geometry watera.xyz
+  method HF
+-system
+
++system
+  name waterb
+  geometry waterb.xyz
+  method dft
+  +dft
+    functional PBE
+  -dft
+-system
+
++task PBE
+  act watera
+  env waterb
+  +EMB
+    naddxcfunc PBE
+  -EMB
+-task
+
++task MP2
+ act watera
+-task
+
+\end{lstlisting}
+A continuum solvation model enclosing both subsystems can be used in the same way as for
+FDE.
+
+\section{Direct Orbital Selection-based DLPNO-CCSD(T$_0$)-in-DFT Embedding via the Huzinaga Equation}
+This example performs Direct Orbital Selection (DOS)-based DLPNO-CCSD(T$_0$)-in-DFT calculations for two points
+(reactant and transition state) along a reaction coordinate. First the active orbital space for the two systems
+is selected using the ActiveSpaceSelectionTask. Then the embedded calculations are performed in which the subsystem
+orbitals are constrained to stay orthogonal using the shifted Huzinaga equation. Finally, the local coupled cluster
+calculations are done for the active systems embedded into their respective environments.
+\begin{lstlisting}
++system
+  name Reactant
+  geometry r.xyz
+  method dft
+-system
+
++system
+  name Reactant_active
+  geometry r.xyz
+  method HF
+-system
+
++system
+  name Reactant_environment
+  geometry r.xyz
+  method dft
+-system
+
++system
+  name TransitionState
+  geometry ts.xyz
+  method dft
+-system
+
++system
+  name TransitionState_active
+  geometry ts.xyz
+  method HF
+-system
+
++system
+  name TransitionState_environment
+  geometry ts.xyz
+  method dft
+-system
+
++task ACTIVESPACETASK
+  super Reactant
+  super TransitionState
+  act Reactant_active
+  act TransitionState_active
+  env Reactant_environment
+  env TransitionState_environment
+  usePiBias true
+  alignPiOrbitals true
+-task
+
++task FDE
+  act Reactant_active
+  env Reactant_environment
+  +EMB
+    embeddingMode FERMI
+  -EMB
+-task
+
++task FDE
+  act TransitionState_active
+  env TransitionState_environment
+  +EMB
+    embeddingMode FERMI
+  -EMB
+-task
+
++task loc
+  act Reactant_active
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act Reactant_active
+  env Reactant_environment
+  level DLPNO-CCSD(T0)
+  +EMB
+    embeddingMode FERMI
+  -EMB
+  +LC
+    pnoSettings TIGHT
+  -LC
+-task
+
++task loc
+  act TransitionState_active
+  locType IBO
+  splitValenceAndCore true
+-task
+
++task CC
+  act TransitionState_active
+  env TransitionState_environment
+  level DLPNO-CCSD(T0)
+  +EMB
+    embeddingMode FERMI
+  -EMB
+  +LC
+    pnoSettings TIGHT
+  -LC
+-task
+\end{lstlisting}
+
+\section{Potential Reconstruction (OEP)}
+The following example input will run a freeze-and-thaw calculation employing accurate non-additive kinetic potentials generated using
+potential reconstruction techniques (\ttt{embeddingmode reconstruction}). It will choose what we call to Bottom-Up approach (\cite{good2010}) (as it is the Freeze and Thaw Task).
+However, the Top-Down approach (\cite{fux2010}) is also available (by choosing the TDEmbedding Task). A supersystem basis is used throughout
+the freeze-and-thaw calculation (extendBasis true, basisExtThresh -1) in order to generate accurate total densities $\rho^\mathrm{tot}(\vec{r})$. During
+the Wu--Yang potential reconstruction (\cite{wu2003}), the potential will be expressed in the def2-QZVP (\cite{weig2005}) basis. A pseudo inversion of the Hessian
+will be performed, neglecting eigenvalues lower than $|\text{max. eigenvalue}|\cdot 10^{-5}$ ( \ttt{singValThreshold 1e-5}). Furthermore, in order to generate
+physically meaningful potentials, a constraint as proposed in Ref. (\cite{heat2007}) is employed ( \ttt{smoothFactor 1e-3}).
+\begin{lstlisting}
++system
+ name ammonia1
+ geometry ammonia1.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+-system
+
++system
+ name ammonia2
+ geometry ammonia2.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+-system
+
++task fat
+  system ammonia1
+  system ammonia2
+  +EMB
+    naddXcFunc PW91
+    embeddingmode reconstruction
+    potentialBasis def2-QZVP
+    singValThreshold 1e-5
+    smoothFactor 1e-3
+  -EMB
+  extendBasis true
+  basisExtThresh -1
+-task
+\end{lstlisting}
+
+\newpage
+\section{LRSCF}
+CIS (TDHF with TDA):
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method hf
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ method tda
+ nEigen 5
+-task
+\end{lstlisting}
+\newpage
+
+ADC(2) (or CC2) with transition moments:
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method hf
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ method adc2 (or cc2)
+ nEigen 5
+ ccprops true
+-task
+\end{lstlisting}
+\newpage
+
+TDDFT Response Properties in the dipole-velocity representation:
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method dft
+ +dft
+  functional pbe0
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ frequencies { 2 3 4 }
+ gauge velocity
+-task
+\end{lstlisting}
+\newpage
+
+FDEu-TDDFT for \ttt{water1} in the environment of \ttt{water2}:
+\begin{lstlisting}
++system
+ name water1
+ geometry water_monA.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++system
+ name water2
+ geometry water_monB.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task fat
+ act water1
+ act water2
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water1
+ env water2
+ nEigen 5
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+\end{lstlisting}
+\newpage
+
+FDEc-TDDFT (coupling FDEu excitations of \ttt{water1} and \ttt{water2}). Specifically coupling
+two excitations of the first subsystem (the first and the third) and three excitations on the second subsystem (the second, the third, and the fourth):
+\begin{lstlisting}
++system
+ name water1
+ geometry water_monA.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++system
+ name water2
+ geometry water_monB.xyz
+ method dft
+ +dft
+  functional PW91
+ -dft
+ +basis
+  label def2-SVP
+ -basis
+-system
+
++task fat
+ act water1
+ act water2
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water1
+ env water2
+ nEigen 5
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water2
+ env water1
+ nEigen 5
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+
++task lrscf
+ act water1
+ act water2
+ uncoupledSubspace {2 1 3 3 2 3 4}
+ +emb
+ embeddingmode naddfunc
+ naddxcfunc pw91
+ naddkinfunc pw91k
+ -emb
+-task
+\end{lstlisting}
+\newpage
+TDDFT gradients of the second and third excited states of a water molecule using a range-separated hybrid functional and the RI-J approximation (but only for the LRSCF part) and a finer grid.
+\begin{lstlisting}
++system
+ name water
+ geometry water.xyz
+ method dft
+ +dft
+  functional camb3lyp
+ -dft
+ +basis
+  label def2-SVP
+  densfitj none   # this applies to the SCF
+  auxclabel ri-j-weigend
+ -basis
+-system
+
++task scf
+ act water
+-task
+
++task lrscf
+ act water
+ neigen 4
+ excgradlist {2 3}
+ densfitJ RI    # this applies to the LRSCF, uses the auxiliary basis defined as auxclabel
+ +grid
+  accuracy 7
+  smallgridaccuracy 7
+ -grid
+-task
+\end{lstlisting}
+\newpage
+
+\section{Restarting and Properties}
+Below you can find a small input that reads the results of a previous sDFT run, and evaluates the total energy once more.
+After that it calculates multipole moments for the subsystems, and Mulliken populations of one of the systems.
+Note that the input will not run a single SCF cycle if all the data from the sDFT run is present.
+\begin{lstlisting}
++system
+ name watera
+ load ./oldrun/watera
+-system
+
++system
+ name waterb
+ load ./oldrun/waterb
+-system
+
++task FaT
+  act watera
+  act waterb
+  +EMB
+    naddxcfunc pw91
+    naddkinfunc pw91k
+  -EMB
+  maxCycles 0
+-task
+
++task multipole
+  act watera
+-task
+
++task multipole
+  act waterb
+-task
+
++task pop
+  act watera
+  mulliken true
+-task
+\end{lstlisting}
+
+\clearpage

@@ -97,8 +97,9 @@ Eigen::MatrixXd DipoleIntegrals<SCFMode>::ao2mo(std::vector<std::vector<MatrixIn
     auto cc2 = _lrscf[iSys]->getCC2Controller();
 
     auto settings = _lrscf[iSys]->getLRSCFSettings();
-    bool pq_space = (cc2 && (!settings.frequencies.empty() || (settings.ccexdens || settings.cctrdens)) &&
-                     settings.method != Options::LR_METHOD::CISD);
+    bool pq_space = ((cc2 && (!settings.frequencies.empty() || (settings.ccexdens || settings.cctrdens)) &&
+                      settings.method != Options::LR_METHOD::CISD) ||
+                     this->_fullSpace);
 
     for_spin(nv, no, P, H) {
       unsigned nb = nv_spin + no_spin;

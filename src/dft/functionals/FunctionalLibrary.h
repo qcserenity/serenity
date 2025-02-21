@@ -30,9 +30,9 @@
 namespace Serenity {
 
 /* Forward decalartions */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class FunctionalData;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityOnGridController;
 class Functional;
 enum class FUNCTIONAL_DATA_TYPE;
@@ -41,7 +41,7 @@ enum class FUNCTIONAL_DATA_TYPE;
  * @class FunctionalLibrary FunctionalLibrary.h
  * @brief An interface for LibXC and XCFun wrappers.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class FunctionalLibrary {
  public:
   /**
@@ -59,16 +59,16 @@ class FunctionalLibrary {
    * @param densityOnGridController A controller for the density to be processed.
    * @param order Highest derivative to be evaluated. Currently, only derivatives up to 2nd order are available.
    */
-  FunctionalData<T> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
-                             const std::shared_ptr<DensityOnGridController<T>> densityOnGridController,
-                             unsigned int order = 1);
+  FunctionalData<SCFMode> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
+                                   const std::shared_ptr<DensityOnGridController<SCFMode>> densityOnGridController,
+                                   unsigned int order = 1);
 
  private:
 #ifdef SERENITY_USE_LIBXC
-  std::unique_ptr<LibXC<T>> _libxc;
+  std::unique_ptr<LibXC<SCFMode>> _libxc;
 #endif /* SERENITY_USE_LIBXC */
 #ifdef SERENITY_USE_XCFUN
-  std::unique_ptr<XCFun<T>> _xcfun;
+  std::unique_ptr<XCFun<SCFMode>> _xcfun;
 #endif /* SERENITY_USE_XCFUN */
 };
 

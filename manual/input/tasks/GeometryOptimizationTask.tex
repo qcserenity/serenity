@@ -1,0 +1,68 @@
+\subsection{Task: Geometry Optimization}
+This task performs geometry optimizations for a given structure. This task can perform both a subystem-based (Freeze-and-Thaw) and a supermolecular geometry optimization.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task Opt
+   system water
+ -task
+\end{lstlisting}
+\begin{lstlisting}
+ +task Opt
+  system water
+  optAlgorithm SQNM
+  +SQNM
+   historyLength 20
+   alpha 0.5
+  -SQNM
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{GeometryOptimizationTask}, \ttt{GeoOpt} and \ttt{Opt}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Optimizes all active systems. If more than one system is given, they are coupled via Freeze-and-Thaw calculations.
+ \item [\texttt{environmentSystems}]\hfill \\
+   Environment systems are added to Freeze-and-Thaw or Frozen-Density Embedding calculations of the active system(s) but remain electronically frozen and are not optimized.
+ \item [\texttt{sub-blocks}]\hfill \\
+   Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+   \ttt{naddXCFunc=PW91}, \ttt{embeddingMode=naddfunc}, \ttt{naddkinfunc=PW91K}.
+   \\
+   Stabilized Quasi-Newton Method (\ttt{SQNM}) settings are added via sub-block in the task settings.
+   Available options are:\\
+   \ttt{historyLength} to determine the maximum number of previous cycles used in the algorithm. The default is \ttt{10}. \\
+   \ttt{epsilon} to set the threshold for significant contributions of the overlap eigenvalues. The default is \ttt{1.0e-4}. \\
+   \ttt{alpha} to set the initial step length. The default is \ttt{1.0}. \\
+   \ttt{energyThreshold} to set the energy threshold to determine whether a step is accepted. The default is \ttt{1.0e-6}. \\
+   \ttt{trustRadius} to set the trust radius - if the maximum displacement exceeds the trust radius, the whole step will be scaled down so that the new maximum displacement is the trust radius. The default is \ttt{0.1}. \\
+ \item [\texttt{gradType}]\hfill \\
+   The type of gradients used for geometry optimization. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{ANALYTICAL}.
+ \item [\texttt{maxCycles}]\hfill \\
+   Maximum number of geometry optimization cycles. The default is \ttt{100}.
+ \item [\texttt{rmsgradThresh}]\hfill \\
+   RMS convergence criterion for the gradient. The default is \ttt{1.0e-4}. 
+ \item [\texttt{energyChangeThresh}]\hfill \\
+   Convergence criterion for the energy change. The default is \ttt{5.0e-6}. 
+ \item [\texttt{maxGradThresh}]\hfill \\ 
+   Convergence criterion for the gradient maximum. The default is \ttt{3.0e-4}. 
+ \item [\texttt{stepThresh}]\hfill \\
+   Convergence criterion for the step threshold. The default is \ttt{2.0e-3}. 
+ \item [\texttt{maxStepThresh}]\hfill \\
+   Convergence criterion for the step threshold maximum. The default is \ttt{4.0e-3}. 
+ \item [\texttt{numGradStepSize}]\hfill \\
+   Step size for numerical gradients. The default is \ttt{1.0e-3}. 
+ \item [\texttt{printLevel}]\hfill \\
+   A value to regulate the amount of output the user is provided during each FaT iteration:
+   \ttt{0}: No output; \ttt{1}: Print SCF results and grid information; \ttt{2}: Print SCF cycle info, SCF results and grid information. The default is \ttt{1}
+ \item [\texttt{transInvar}]\hfill \\
+   Make gradients translationally invariant. The default is \ttt{false}
+ \item [\texttt{FaTmaxCycles}]\hfill \\
+   The maximum number of FaT iterations. The default is \ttt{50}.
+ \item [\texttt{FaTgridCutOff}]\hfill \\
+   A distance cutoff for the integration grid used to calculate the non-additive energy functional potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+ \item [\texttt{FaTenergyConvThresh}]\hfill \\
+ Convergence criterion for the density w.r.t. Freeze-and-Thaw. The default is \ttt{1.0e-6}.
+ \item [\texttt{optAlgorithm}]\hfill \\
+  Algorithm to be used in the optimization. Options are \ttt{BFGS} (default) and \ttt{SQNM}.
+\end{description}

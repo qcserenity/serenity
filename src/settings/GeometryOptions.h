@@ -34,7 +34,7 @@ namespace Options {
  * SD: Steepest descent.\n
  * BFGS: Broyden-Fletcher-Goldfarb-Shanno.\n
  */
-enum class OPTIMIZATION_ALGORITHMS { SD = 0, BFGS = 1 };
+enum class OPTIMIZATION_ALGORITHMS { SQNM = 0, BFGS = 1 };
 template<>
 void resolve<OPTIMIZATION_ALGORITHMS>(std::string& value, OPTIMIZATION_ALGORITHMS& field);
 /**************************************************************************************************/

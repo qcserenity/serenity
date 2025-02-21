@@ -245,7 +245,7 @@ std::vector<Eigen::MatrixXd> Ao2MoExchangeIntegralTransformer::get_iaK(
     const Eigen::SparseMatrix<double> finalPAOProjection = (projectionMatrix_a * *k_PAOToFullPAOMaps[itQ.row()]).eval();
     for (unsigned int qq = 0; qq < nContQ; ++qq) {
       for (const auto& i : iIndices) {
-        // Skip if i not included in integral set.
+        // Skip if i is not included in integral set.
         const auto it_i_red = indices->find(i.first);
         if (it_i_red != indices->end() && k_PAOToFullPAOMaps[itQ.row()]->cols() > 0 && iaK[extendedQ].rows() > 0) {
           const unsigned int totQIndex = extendedQ + qq;
@@ -890,7 +890,7 @@ void Ao2MoExchangeIntegralTransformer::transformExchangeIntegrals(
 
   const auto& auxBasis = auxBasisController->getBasis();
   // Temporary precalculation of all integrals.
-  // This could be change to a block wise calculation and writing.
+  // This could be changed to a block wise calculation and writing.
   Eigen::SparseVector<int> auxSuperDomain = Eigen::VectorXi::Constant(auxBasis.size(), 1).sparseView();
   const MO3CenterIntegrals& iaK = mo3CenterIntegralController->getMO3CenterInts(MO3CENTER_INTS::ia_K, auxSuperDomain);
   OutputControl::nOut << "  Performing (ia|jb) integral transformation             ...";
@@ -953,14 +953,14 @@ void Ao2MoExchangeIntegralTransformer::transformAllIntegrals(std::shared_ptr<Bas
                                                              std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
                                                              std::vector<std::shared_ptr<OrbitalPair>>& orbitalPairs,
                                                              bool calcSigmaVectorInts, bool lowMemory,
-                                                             double memoryDemandForSet) {
+                                                             double memoryDemandForSet, bool ignoreMemoryHandling) {
   Timings::takeTime("Local Cor. -   Int. Transform.");
   const auto scfMode = Options::SCF_MODES::RESTRICTED;
   const auto sparseMaps = mo3CenterIntegralController->getSparseMapsController();
   const SparseMap& occToK = sparseMaps->getOccToAuxShellMap();
   const SparseMap& extendedOccToPAO = sparseMaps->getExtendedOccToPAOMap();
   // Temporary precalculation of all integrals.
-  // This could be change to a block wise calculation and writing.
+  // This could be changed to a block wise calculation and writing.
   Eigen::SparseVector<int> auxSuperDomain(auxBasisController->getBasis().size());
   for (auto& pair : orbitalPairs) {
     auxSuperDomain += pair->getFittingDomain();
@@ -992,16 +992,24 @@ void Ao2MoExchangeIntegralTransformer::transformAllIntegrals(std::shared_ptr<Bas
   unsigned int nThreads = 1;
   unsigned int nMaxThreads = 1;
 #ifdef _OPENMP
-  double availableMemory = MemoryManager::getInstance()->getAvailableSystemMemory() - memoryDemandForSet;
-  availableMemory = (availableMemory < 0) ? 0 : availableMemory;
-  double memoryPerThread = 1.5e+9;
-  nMaxThreads = omp_get_max_threads();
   /*
-   * Reserv 1.5 GB memory for each thread and make sure that the number of threads is at least 1.
+   * Reserve 1.5 GB memory for each thread and make sure that the number of threads is at least 1.
    */
-  nThreads = std::min((unsigned int)(availableMemory / memoryPerThread), nMaxThreads);
-  nThreads = (nThreads == 0) ? 1 : nThreads;
-  omp_set_num_threads(nThreads);
+  nMaxThreads = omp_get_max_threads();
+  if (ignoreMemoryHandling) {
+    OutputControl::nOut
+        << "  Note: Assuming that sufficient memory is available and ignoring any constraints by the operating system."
+        << std::endl;
+    nThreads = nMaxThreads;
+  }
+  else {
+    double availableMemory = MemoryManager::getInstance()->getAvailableSystemMemory() - memoryDemandForSet;
+    availableMemory = (availableMemory < 0) ? 0 : availableMemory;
+    double memoryPerThread = 1.5e+9;
+    nThreads = std::min((unsigned int)(availableMemory / memoryPerThread), nMaxThreads);
+    nThreads = (nThreads == 0) ? 1 : nThreads;
+    omp_set_num_threads(nThreads);
+  }
   Eigen::setNbThreads(1);
   OutputControl::vOut << "Number of threads used in the integral transformation: " << nThreads << std::endl;
 #endif
@@ -1097,7 +1105,8 @@ void Ao2MoExchangeIntegralTransformer::transformAllIntegrals(std::shared_ptr<Bas
                                                              std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
                                                              std::vector<std::shared_ptr<OrbitalPairSet>> orbitalPairSets,
                                                              bool dumpIntegrals, std::string pairIntegralFileName,
-                                                             bool calcSigmaVectorInts, bool lowMemory) {
+                                                             bool calcSigmaVectorInts, bool lowMemory,
+                                                             bool ignoreMemoryHandling) {
   std::shared_ptr<HDF5::H5File> file;
   if (dumpIntegrals) {
     file = std::make_shared<HDF5::H5File>(pairIntegralFileName.c_str(), H5F_ACC_TRUNC);
@@ -1106,7 +1115,7 @@ void Ao2MoExchangeIntegralTransformer::transformAllIntegrals(std::shared_ptr<Bas
     auto& orbitalPairSet = orbitalPairSets[iSet];
     // Transform integrals
     transformAllIntegrals(auxBasisController, mo3CenterIntegralController, *orbitalPairSet, calcSigmaVectorInts,
-                          lowMemory, orbitalPairSet->memoryDemand(calcSigmaVectorInts));
+                          lowMemory, orbitalPairSet->memoryDemand(calcSigmaVectorInts), ignoreMemoryHandling);
     orbitalPairSet->setInMemory(true);
     // Write to file
     if (dumpIntegrals) {

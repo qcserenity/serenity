@@ -23,6 +23,7 @@
 
 /* Include Serenity Internal Headers */
 #include "integrals/looper/TwoElecThreeCenterCalculator.h"
+#include "io/FormattedOutputStream.h"
 #include "settings/LRSCFOptions.h"
 #include "tasks/LRSCFTask.h"
 
@@ -46,6 +47,8 @@ void CC2Controller<RESTRICTED>::calculateTransitionDensities(std::vector<Eigen::
   CC2occ.diagonal() -= Eigen::VectorXd::Constant(_no, 1);
 
   for (unsigned iEigen = 0; iEigen < nEigen; ++iEigen) {
+    OutputControl::v.printf("  Calculating transition density matrices for state %3i of %3i.\n", iEigen + 1, nEigen);
+
     Eigen::Map<Eigen::MatrixXd> rightD(densityMatrices[0].col(iEigen).data(), mo, mo);
     Eigen::Map<Eigen::MatrixXd> leftD(densityMatrices[1].col(iEigen).data(), mo, mo);
 

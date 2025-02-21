@@ -33,14 +33,14 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-NonOrthogonalLocalization<T>::NonOrthogonalLocalization(std::shared_ptr<SystemController> systemController)
+template<Options::SCF_MODES SCFMode>
+NonOrthogonalLocalization<SCFMode>::NonOrthogonalLocalization(std::shared_ptr<SystemController> systemController)
   : _system(systemController) {
 }
 
-template<Options::SCF_MODES T>
-void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbitals, unsigned int maxSweeps,
-                                                    SpinPolarizedData<T, std::vector<unsigned int>> orbitalRange) {
+template<Options::SCF_MODES SCFMode>
+void NonOrthogonalLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
+                                                          SpinPolarizedData<SCFMode, std::vector<unsigned int>> orbitalRange) {
   /*
    * Do a Foster-Boys localization first
    */
@@ -48,8 +48,8 @@ void NonOrthogonalLocalization<T>::localizeOrbitals(OrbitalController<T>& orbita
   superSystemOrbLocalization.settings.locType = Options::ORBITAL_LOCALIZATION_ALGORITHMS::FOSTER_BOYS;
   superSystemOrbLocalization.run();
 
-  CoefficientMatrix<T> coefficients = orbitals.getCoefficients();
-  const auto& nOccOrbs = _system->getNOccupiedOrbitals<T>();
+  CoefficientMatrix<SCFMode> coefficients = orbitals.getCoefficients();
+  const auto& nOccOrbs = _system->getNOccupiedOrbitals<SCFMode>();
 
   auto& basis = _system->getBasisController()->getBasis();
   auto basisController = _system->getBasisController();

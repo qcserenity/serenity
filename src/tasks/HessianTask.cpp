@@ -36,22 +36,19 @@
 
 namespace Serenity {
 
-HessianTask::HessianTask(std::vector<std::shared_ptr<SystemController>> activeSystems,
-                         std::vector<std::shared_ptr<SystemController>> passiveSystems)
+template<Options::SCF_MODES SCFMode>
+HessianTask<SCFMode>::HessianTask(std::vector<std::shared_ptr<SystemController>> activeSystems,
+                                  std::vector<std::shared_ptr<SystemController>> passiveSystems)
   : _activeSystems(activeSystems), _passiveSystems(passiveSystems) {
-  assert(_activeSystems[0]);
 }
 
-HessianTask::~HessianTask() {
-}
-
-void HessianTask::run() {
-  /// TODO edit to work with unrestricted
-  const Options::SCF_MODES T(Options::SCF_MODES::RESTRICTED);
+template<Options::SCF_MODES SCFMode>
+void HessianTask<SCFMode>::run() {
+  avoidMixedSCFModes(SCFMode, _activeSystems);
   /*
    * Initial SCF
    */
-  /// TODO add restart option here
+  // TODO add restart option here
 
   /*
    * Calc gradients silently
@@ -77,23 +74,22 @@ void HessianTask::run() {
       case Options::HESSIAN_TYPES::NUMERICAL:
         if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
           hessCalc = std::unique_ptr<HessianCalculator>(
-              new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
+              new NumericalHessianCalc<SCFMode>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Numerical Hessian Calculation");
         }
         else {
           hessCalc = std::unique_ptr<HessianCalculator>(
-              new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+              new NumericalHessianCalc<SCFMode>(0.0, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Seminumerical Hessian Calculation");
         }
 
         break;
       case (Options::HESSIAN_TYPES::ANALYTICAL):
-        std::cout << "Analytical Hessian NYI!" << std::endl;
-        assert(false);
+        throw SerenityError("Error: Analytical Hessian not yet implemented!");
         break;
     }
 
-    _activeSystems[0]->getElectronicStructure<T>();
+    _activeSystems[0]->getElectronicStructure<SCFMode>();
     hessCalc->calcHessian(_activeSystems[0]);
   }
   else {
@@ -105,14 +101,14 @@ void HessianTask::run() {
       case Options::HESSIAN_TYPES::NUMERICAL:
         if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
           hessCalc = std::unique_ptr<HessianCalculator>(
-              new NumericalHessianCalc<T>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
+              new NumericalHessianCalc<SCFMode>(settings.numGradStepSize, settings.numHessStepSize, settings.printToFile));
 
           throw SerenityError(
               (std::string) "Fully numerical FaT Hessian not available! Please try a seminumerical calculation!");
         }
         else {
           hessCalc = std::unique_ptr<HessianCalculator>(
-              new NumericalHessianCalc<T>(0.0, settings.numHessStepSize, settings.printToFile));
+              new NumericalHessianCalc<SCFMode>(0.0, settings.numHessStepSize, settings.printToFile));
           printSubSectionTitle("Seminumerical Hessian Calculation");
         }
 
@@ -131,5 +127,8 @@ void HessianTask::run() {
   iOOptions.gridAccuracyCheck = check;
   timeTaken(3, "Hessian Calculation");
 }
+
+template class HessianTask<Options::SCF_MODES::RESTRICTED>;
+template class HessianTask<Options::SCF_MODES::UNRESTRICTED>;
 
 } /* namespace Serenity */

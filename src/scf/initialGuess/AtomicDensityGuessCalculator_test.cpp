@@ -21,6 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "scf/initialGuess/AtomicDensityGuessCalculator.h"
 #include "data/ElectronicStructure.h"
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -68,6 +69,9 @@ TEST_F(AtomicDensityGuessCalculatorTest, FRes_INPLACE) {
   EXPECT_NEAR(densMat(3, 3), 0.90355455479549251, 1e-6);
   EXPECT_NEAR(densMat(5, 0), 0.0, 1e-6);
   EXPECT_NEAR(densMat(0, 2), -0.27192071672522616, 1e-6);
+  // this test actually performs an SCF, and in the process leaves behind a F_FREE system folder inside the
+  // TestSystem_F_MINUS_6_31Gs folder
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys->getSystemPath() + "F_FREE/", "F_FREE");
 }
 
 } // namespace Serenity

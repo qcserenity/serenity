@@ -1,0 +1,52 @@
+\subsection{Task: Finite Field}\label{task: ff}
+\label{sec:ff}
+This task performs Finite-Field (FF) calculations for a given active system, probably using embedding settings. 
+Currently, it is possible to calculate (hyper) polarizabilites. Those properties can be calculated
+either numerically, analytically or semi-numerically depending on the provided \ttt{frequency} keyword.
+In general it is possible to calculate static and dynamic polarizabilities either numerically \ttt{frequency 0.0} or analytically \ttt{frequency 1e-9}. In the former case 12 SCF calculations will be performed varying the applied finite field.
+In the latter case the \ttt{LRSCFTask} is called using the \ttt{frequency} which is numerically zero.
+Static hyperpolarizabilities may be calculated numerically by choosing \ttt{frequency 0.0} and \ttt{hyperpolarizability true}.
+The semi-numerical calculation of static hyperpolarizabilities may be triggered by choosing \ttt{frequency 1e-9} and \ttt{hyperpolarizability true}. Additionally, it is possible to obtain hyperpolarizabilities from the numerical differentiation
+of dynamic polarizabilities with respect to a static electric field. This is possible by specifying any \ttt{frequency} and \ttt{hyperpolarizability true}.
+\subsubsection{Example Input}
+Isolated Input:
+\begin{lstlisting}
++task ff
+  act acetone
+  finiteFieldStrength 0.1
+  frequency 1.0
+  hyperpolarizability true
+-task
+\end{lstlisting}
+Embedded Input:
+\begin{lstlisting}
++task ff
+  act acetone
+  env water
+  finiteFieldStrength 0.1
+  frequency 1.0
+  hyperpolarizability true
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{FF} and \ttt{FINITEFIELD}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts a single active system for which the desired properties are calculated.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts mutiple environment systems that are used in embedded calculations.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=NONE}, \ttt{naddKinFunc=NONE}, \ttt{embeddingMode=NONE}.
+    \item [\texttt{finiteFieldStrength}]\hfill \\
+    The step-with used for numerical differentiations. By default \ttt{1.0e-2}.
+    \item [\texttt{frequency}]\hfill \\
+    Specifies the frequency for that analytical dynamic polarizabilities are calculated. Analytical static polarizabilities
+    can be calculated by specifying a frequency which is numerically zero (\emph{e.g.} \ttt{1e-9}). Numerical static polarizabilities
+    are calculated by choosing \ttt{frequency 0.0}. By default \ttt{0}.
+    \item [\texttt{hyperPolarizability}]\hfill \\
+    A boolean that decides to calculate the hyperpolarizability by numerical differentiation, in the case of numerical static polarizabilities. In the case of analytical dynamic polarizabilities, those will be obtained by a semi-numerical approach. By default \ttt{false}.
+\end{description}
+

@@ -27,6 +27,7 @@
 #include "data/matrices/MatrixInBasis.h"                    //MatrixInBasis definition.
 #include "geometry/Geometry.h"                              //Geometry definition.
 #include "grid/GridController.h"                            //Access to the grid for the evaluations.
+#include "parameters/Constants.h"
 
 namespace Serenity {
 

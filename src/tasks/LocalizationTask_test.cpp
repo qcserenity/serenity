@@ -20,8 +20,6 @@
 
 /* Include Serenity Internal Headers */
 #include "tasks/LocalizationTask.h"
-#include "io/FormattedOutputStream.h"
-#include "tasks/PlotTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

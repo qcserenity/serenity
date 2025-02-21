@@ -83,10 +83,12 @@ class GradientTask : public Task {
   void visit(GradientTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
-    }
+    // If reached, the blockname is unknown.
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
   }
   /**
    * @brief The settings/keywords for GradientTask:

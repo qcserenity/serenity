@@ -22,7 +22,6 @@
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"
-#include "grid/GridControllerFactory.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "math/diis/DIIS.h"
 #include "memory/MemoryManager.h"

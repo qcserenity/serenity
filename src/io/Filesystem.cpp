@@ -20,6 +20,8 @@
 /* Include Std and External Headers */
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <cstdio>
 #include <iostream>
 #include <string>
 #if defined(_WIN32)
@@ -47,6 +49,7 @@ void removeSystemFiles(std::string path, std::string systemName, std::string bas
   std::remove((baseName + ".basis.h5").c_str());
   std::remove((baseName + ".hess.h5").c_str());
   std::remove((baseName + ".elecPotInts.h5").c_str());
+  std::remove((baseName + "_lrscf.settings").c_str());
   std::remove((baseName + "_lrscf.iso.res.h5").c_str());
   std::remove((baseName + "_lrscf.iso.unres.h5").c_str());
   std::remove((baseName + "_lrscf.fdeu.res.h5").c_str());
@@ -65,7 +68,15 @@ void removeSystemFiles(std::string path, std::string systemName, std::string bas
   std::remove((baseName + ".cd.h-ERF_EXPANDED.h5").c_str());
   std::remove((baseName + ".cd.h.h5").c_str());
   std::remove((baseName + ".cd.h_EXPANDED.h5").c_str());
+  std::remove((baseName + ".cd.c.h5").c_str());
+  std::remove((baseName + ".cd.c_EXPANDED.h5").c_str());
+  std::remove((baseName + ".cd.o.h5").c_str());
+  std::remove((baseName + ".cd.o_EXPANDED.h5").c_str());
   std::remove((baseName + ".cd.AO.h5").c_str());
+  std::remove((baseName + "_cc2_dens.res.h5").c_str());
+  std::remove((baseName + "_cc2_dens.unres.h5").c_str());
+  std::remove((baseName + "_cc2_dens.fdec.res.h5").c_str());
+  std::remove((baseName + "_cc2_dens.fdec.unres.h5").c_str());
   std::remove((path + "ACD-" + basisLabel).c_str());
   std::remove((path + "ACD-" + basisLabel + "-ERF").c_str());
   std::remove((path + "ACCD-" + basisLabel).c_str());

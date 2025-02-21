@@ -20,17 +20,17 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/Sigmavector.h"
+/* Include Serenity Internal Headers */
 #include "basis/Basis.h"
 #include "data/OrbitalPair.h"
 #include "data/PAOController.h"
 #include "io/FormattedOutputStream.h"
 #include "memory/MemoryManager.h"
+#include "misc/Timing.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "settings/LRSCFOptions.h"
 #include "settings/Settings.h"
 #include "tasks/LRSCFTask.h"
-/* Include Serenity Internal Headers */
-#include "misc/Timing.h"
 
 namespace Serenity {
 

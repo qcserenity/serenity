@@ -1,0 +1,24 @@
+\subsection{Task: System-Splitting}
+The System-Splitting Task splits the occupied orbital set of a supersystem into subsets which are associated with fragments of the supersystem. The number of fragments is not limited, however, the union of all subsystem atoms have to give the supersystem atoms. Atoms are not allowed to be duplicated in the subsystems. The partitioning is based on the orbital localization. Basis-set changes are allowed. If the basis set of a sub- and the supersystem do not match, the density matrix of the subsystem is constructed by projecting the density matrix corresponding to the selected orbitals into the subsystem basis. Charge, spin and geometry of
+the subsystems may be changed.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task split
+  act super
+  env A
+  env B
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{SPLITTINGTASK} and \ttt{SPLIT}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used as the supersystem which is split.
+	\item[\texttt{environmentSystems}]\hfill \\
+	A list of the environment systems the supersystem is split into.
+	\item[\texttt{systemPartitioning}]\hfill \\
+	The algorithm for the system partitioning. The default is \ttt{BESTMATCH} and other possibilities are \ttt{ENFORCECHARGES}, \ttt{POPULATION}, \ttt{SPADE} and  \ttt{SPADE\_ENFORCE\_CHARGES}.
+	\item[\texttt{orbitalThreshold}]\hfill \\
+	The population threshold for the \ttt{POPULATION} partitioning with a default of \ttt{0.4}.
+\end{description}

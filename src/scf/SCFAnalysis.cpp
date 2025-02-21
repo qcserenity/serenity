@@ -31,7 +31,7 @@
 #include "data/matrices/MatrixInBasis.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/Geometry.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/Settings.h"
@@ -109,8 +109,8 @@ double SCFAnalysis<Options::SCF_MODES::UNRESTRICTED>::getS2(bool useUHForbitals)
         superSystemGeometry->deleteIdenticalAtoms();
         // supersystem grid
         Options::GRID_PURPOSES gridacc = Options::GRID_PURPOSES::DEFAULT;
-        _supersystemGrid =
-            GridControllerFactory::produce(superSystemGeometry, _systemController[0]->getSettings().grid, gridacc);
+        _supersystemGrid = AtomCenteredGridControllerFactory::produce(superSystemGeometry,
+                                                                      _systemController[0]->getSettings().grid, gridacc);
       }
 
       std::vector<std::shared_ptr<DensityOnGridController<Options::SCF_MODES::UNRESTRICTED>>> _densOnGridControllers;

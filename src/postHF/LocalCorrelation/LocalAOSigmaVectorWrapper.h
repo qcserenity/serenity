@@ -35,7 +35,7 @@ class PAOController;
 class SystemController;
 
 /**
- * @class LocalSigmaVectorWrapper LocalSigmaVectorWrapper.h
+ * @class LocalAOSigmaVectorWrapper LocalAOSigmaVectorWrapper.h
  * @brief Static class for the sigma vector that is used in local-coupled cluster.
  */
 class LocalAOSigmaVectorWrapper {

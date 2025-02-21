@@ -1,0 +1,56 @@
+\subsection{Task: DFT-embedded Local Correlation Calculations}
+This tasks performs a DFT-embedded local correlation (DLPNO-coupled cluster or MP2) calculation.
+This task only calls other tasks. It servers as an input helper. It calls the freeze-and-thaw/FDE task
+(see Section~\ref{sec:FAT} and \ref{sec:FDE}) and local correlation task
+(see Section~\ref{task:localCorrelation}).
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task DFTEMB
+   act waterA
+   env waterB
+   +emb
+     naddXCFunc PBE
+   -emb
+   +lc
+     method DLPNO-CCSD(T0)
+   -lc
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{DFTEMBEDDEDLOCALCORRELATIONTASK}, \ttt{DFTEMBEDDING}, \ttt{DFTEMB},  and \ttt{DFTEMBLC}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Accepts a single active system that is used for the local correlation calculation.
+  \item [\texttt{environmentSystems}]\hfill \\
+    Accepts a list of environment systems.
+  \item [\texttt{supersystems}]\hfill \\
+    Accepts a single supersystem which is used as a supersystem during the calculation.
+    If none is given, a supersystem is constructed on-the-fly. The supersystem geometry and
+    electronic structure will be overwritten during the calculation.
+ \item [\texttt{sub-blocks}]\hfill \\
+  The Embedding (\ttt{emb}) settings, local correlation (\ttt{lc}) settings,
+  orbital localization task (\ttt{loc}) settings, system splitting task settings (\ttt{split})
+  system addition task settings (\ttt{add}) and basis set truncation task settings (\ttt{trunc})
+  are added via sub-blocks in the task settings.
+  By default \ttt{splitValenceAndCore = true} is set for the localization task settings,
+  \ttt{truncAlgorithm = NONE} for the basis set truncation task settings,
+  \ttt{addOccupiedOrbitals = false} for the system addition task settings,
+  \ttt{enforeceHFFockian = true} for the local correlation settings,
+  and \ttt{embeddingMode = FERMI} for the embedding settings.
+ \item [\texttt{runFaT}]\hfill \\
+ If true, all subsystems are relaxed in a freeze-and-thaw procedure. By default \ttt{false}.
+ \item [\texttt{fromSupersystem}]\hfill \\
+ If true, the supersystem orbitals are calculated and partitioned into subsystems. By default \ttt{true}.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{maxCycles}]\hfill \\
+  The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+  By default \ttt{100} cycles are allowed.
+  \item [\texttt{normThreshold}]\hfill \\
+  The threshold at which the coupled cluster/MP2 iterations are considered converged. By default \ttt{1.0e-5}.
+  \item [\texttt{writePairEnergies}]\hfill \\
+  Write the pair energies to a file with name: systemName\_pairEnergies\_CCSD.dat or systemName\_pairEnergies\_MP2.dat
+\end{description}

@@ -1,0 +1,55 @@
+\subsection{Task: Energy Evaluation}\label{task: energy eval}
+This task performs an energy evaluation for the given systems with the settings
+and density currently assigned to the system. It is possible to re-evaluate the density
+of systems with a different (nadd) XC functional and to use orthogonalized subsystem 
+orbitals for the evaluation of $T_s^\text{nadd}$ or all energy contributions.
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task ENERGY
+    act water
+    +lc
+      PNOSETTINGS TIGHT
+    -lc
+  -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{EVALUATEENERGYTASK}, \ttt{ENERGYTASK}, \ttt{ENERGY}, and \ttt{E}.
+  \item [\texttt{activeSystems}]\hfill \\
+   Evaluates the energy for the active systems in a KS-DFT (one active system)
+   or FDE (more than one active system) manner, using its density and settings.
+   \item [\texttt{Supersystems}]\hfill \\
+   If \ttt{evalTsOrtho} or \ttt{evalAllOrtho} is used the supersystem with the orthogonalized orbitals can be 
+   stored here.
+   \item [\texttt{sub-blocks}]\hfill \\
+   The local correlation (\ttt{lc}) and embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the local correlation block that are relevant for this task, and their defaults are:
+    \ttt{PNOSETTINGS=TIGHT} and \ttt{method=DLPNO\_MP2}.
+    Prominent settings in the embedding block that are relevant for this task, and their defaults are: \ttt{embeddingMode=NADD\_FUNC}
+    and \ttt{naddXCFunc=PW91}.
+    \item [\texttt{mp2Type}]\hfill \\
+    MP2-type used for the evaluation of the correlation energy of double-hybrid functionals, see also \ref{task: mp2}. By default \ttt{DF}.
+    \item [\texttt{maxResidual}]\hfill \\
+    Maximum residual threshold for local MP2. By default \ttt{1e-5}.
+    \item [\texttt{maxCycles}]\hfill \\
+    Maximum number of iterations before canceling the amplitude optimization in local MP2. By default \ttt{100}.
+    \item [\texttt{useDifferentXCFunc}]\hfill \\
+    If \ttt{true} the XC-functional specified in \ttt{XCfunctional} (or the one in the \ttt{+customfunc} block) is used for the energy evaluation instead of the
+    one specified in the system block. By default \ttt{false}.
+    \item [\texttt{XCfunctional}]\hfill \\
+    The XC-functional used for the evaluation of the electron density, if \ttt{useDifferentXCFunc=true}.
+    By default \ttt{BP86}. This can also be customized by invoking a \ttt{+customfunc} block (see Sec.~\ref{sec:system:customfunc}). The custom functional, if specified, has higher priority than the \ttt{XCfunctional}, but it also requires \ttt{useDifferentXCFunc=true}.
+	\item [\texttt{evalTsOrtho}]\hfill \\
+    If enabled, the non-additive kinetic energy is evaluated from orthogonalized subsystem 
+    orbitals. If \ttt{orthogonalizationScheme=NONE} the density matrix is corrected for
+    the non-orthogonality of the MOs, use \ttt{evalAllOrtho} with \ttt{orthogonalizationScheme=NONE} 
+    if $T_s^\text{nadd}=0$ should be calculated. By default \ttt{false}.
+    \item [\texttt{evalAllOrtho}]\hfill \\
+    If enabled, all energy contributions are evaluated from orthogonalized subsystem orbitals.
+    By default \ttt{false}.
+    \item [\texttt{orthogonalizationScheme}]\hfill \\ The orthogonalization scheme used
+    for the construction of orthogonal supersystem orbitals if \ttt{evalTsOrtho} or \ttt{evalAllOrtho} are enabled.
+    By default \ttt{LOEWDIN}.
+\end{description}

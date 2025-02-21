@@ -34,7 +34,14 @@
 
 namespace Serenity {
 
-TEST(DensityAdderTest, RDensityAdder) {
+class DensityAdderTest : public ::testing::Test {
+ protected:
+  static void TearDownTestCase() {
+    SystemController__TEST_SUPPLY::cleanUp();
+  }
+};
+
+TEST_F(DensityAdderTest, RDensityAdder) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto D = sys->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix();
   auto basisFunctionOnGridController =
@@ -51,10 +58,9 @@ TEST(DensityAdderTest, RDensityAdder) {
   DensityOnGrid<Options::SCF_MODES::RESTRICTED> ptest(sys->getGridController());
   DensityAdder<Options::SCF_MODES::RESTRICTED>::add(ptest, D, sys->getBasisController(), 0.0);
   EXPECT_NEAR((p - ptest).norm(), 0.0, 1.0e-6);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 }
 
-TEST(DensityAdderTest, UDensityAdder) {
+TEST_F(DensityAdderTest, UDensityAdder) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto D = sys->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix();
   auto basisFunctionOnGridController =
@@ -72,7 +78,6 @@ TEST(DensityAdderTest, UDensityAdder) {
   DensityAdder<Options::SCF_MODES::UNRESTRICTED>::add(ptest, D, sys->getBasisController(), 0.0);
   EXPECT_NEAR((p.alpha - ptest.alpha).norm(), 0.0, 1.0e-6);
   EXPECT_NEAR((p.beta - ptest.beta).norm(), 0.0, 1.0e-6);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 }
 
 } // namespace Serenity

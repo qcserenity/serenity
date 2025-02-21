@@ -45,11 +45,12 @@ struct LocalizationTaskSettings {
       splitVirtuals(true),
       virtualEnergyCutOff(+1.0),
       nRydbergOrbitals(std::numeric_limits<unsigned int>::infinity()),
-      replaceVirtuals(false){};
+      replaceVirtuals(false),
+      separateSOMOs(false){};
   REFLECTABLE((Options::ORBITAL_LOCALIZATION_ALGORITHMS)locType, (unsigned int)maxSweeps, (unsigned int)alignExponent,
               (bool)useKineticAlign, (bool)splitValenceAndCore, (bool)useEnergyCutOff, (double)energyCutOff,
               (unsigned int)nCoreOrbitals, (bool)localizeVirtuals, (bool)splitVirtuals, (double)virtualEnergyCutOff,
-              (unsigned int)nRydbergOrbitals, (bool)replaceVirtuals)
+              (unsigned int)nRydbergOrbitals, (bool)replaceVirtuals, (bool)separateSOMOs)
  public:
   /**
    * @brief Parse the settings from the input an instance of this class.
@@ -112,13 +113,15 @@ class LocalizationTask : public Task {
    *        - nRydbergOrbitals : Use a predefined number of diffuse virtual orbitals. Not used by default.
    *        - replaceVirtuals : Reconstruct the virtual orbitals before localization by projecting all occupied orbitals
    *                            and cleanly separating valence virtuals from diffuse virtuals. This should be used if
-   * the IBO or ALIGN approaches are chosen and the same orbital set was not already reconstructed in this manner
-   * before.
+   *                            the IBO or ALIGN approaches are chosen and the same orbital set was not already
+   *                            reconstructed in this manner before.
+   *        - separateSOMOs : Run the orbital localization separately for singly occupied orbitals. This only makes
+   *                          sense if the orbitals are (quasi) restricted.
    */
   LocalizationTaskSettings settings;
 
  private:
-  template<Options::SCF_MODES T>
+  template<Options::SCF_MODES SCFMode>
   void runByLastSCFMode();
   /**
    * @brief Split valence and core orbitals.
@@ -140,6 +143,13 @@ class LocalizationTask : public Task {
    */
   template<Options::SCF_MODES SCFMode>
   SpinPolarizedData<SCFMode, std::string> getOutputPraefix();
+
+  template<Options::SCF_MODES SCFMode>
+  std::pair<SpinPolarizedData<SCFMode, std::vector<unsigned int>>, SpinPolarizedData<SCFMode, std::vector<unsigned int>>>
+  separateSOMOs(const SpinPolarizedData<SCFMode, std::vector<unsigned int>>& valenceOrbitalRange);
+
+  template<Options::SCF_MODES SCFMode>
+  std::vector<SpinPolarizedData<SCFMode, std::vector<unsigned int>>> separateOrbitalRanges();
 
   const std::shared_ptr<SystemController> _systemController;
   const std::vector<std::shared_ptr<SystemController>> _templateSystem;

@@ -56,15 +56,6 @@ TEST_F(NROCalculatorTest, NROs) {
   lrscf.run();
   task.settings.nros = true;
   task.run();
-  std::vector<std::string> partfilenames = {};
-  std::vector<std::string> holefilenames = {};
-  std::vector<std::string> SpatDirection = {"x", "y", "z"};
-  for (unsigned row = 0; row < 3; row++) {
-    partfilenames.push_back(systemController->getSystemPath() + "freq_" + std::to_string(0) + SpatDirection[row] +
-                            "particleNRO_" + std::to_string(0) + ".cube");
-    holefilenames.push_back(systemController->getSystemPath() + "freq_" + std::to_string(0) + SpatDirection[row] +
-                            "holeNRO_" + std::to_string(0) + ".cube");
-  }
   Eigen::MatrixXd expecSingularValues = Eigen::MatrixXd::Zero(8, 3);
   expecSingularValues.row(0) << 3.4037098170495778e-01, 3.3876373553641048e-01, 4.0339674414029036e-01;
   expecSingularValues.row(1) << 2.7101060750640849e-01, 2.1576636067542329e-01, 1.9878081795264674e-01;
@@ -94,6 +85,23 @@ TEST_F(NROCalculatorTest, NROs) {
   for (unsigned iocc = 0; iocc < 8; iocc++) {
     for (unsigned j = 0; j < 3; j++) {
       EXPECT_NEAR(expecSingularValues(iocc, j), nro.getSingularValues()[0](iocc, j), 1.0e-6);
+    }
+  }
+  std::vector<std::string> SpatDirection = {"x", "y", "z"};
+  for (unsigned iFreq = 0; iFreq < XY[0].cols() / 3; iFreq++) {
+    for (unsigned row = 0; row < 3; row++) {
+      double accSingularValues = 0.0;
+      for (unsigned i = 0; i < expecSingularValues.rows(); i++) {
+        if (accSingularValues < task.settings.nrominimum) {
+          std::string partfilename = (systemController->getSystemPath() + "freq_" + std::to_string(iFreq + 1) +
+                                      SpatDirection[row] + "particleNRO_" + std::to_string(i + 1) + ".cube");
+          std::string holefilename = (systemController->getSystemPath() + "freq_" + std::to_string(iFreq + 1) +
+                                      SpatDirection[row] + "holeNRO_" + std::to_string(i + 1) + ".cube");
+          EXPECT_EQ(0, std::remove(partfilename.c_str()));
+          EXPECT_EQ(0, std::remove(holefilename.c_str()));
+          accSingularValues += nro.getSingularValues()[iFreq](i, row);
+        }
+      }
     }
   }
 }

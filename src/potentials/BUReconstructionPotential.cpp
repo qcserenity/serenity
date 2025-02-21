@@ -134,7 +134,7 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
 
   auto actBasFuncOnGridController = BasisFunctionOnGridControllerFactory::produce(system->getSettings().grid.blocksize, 0.0,
                                                                                   2, actSysBasisController, this->_grid);
-  auto oneEIntControllerAct = OneIntControllerFactory::getInstance().produce(actSysBasisController, actSysGeom);
+  auto oneEIntControllerAct = system->getOneElectronIntegralController();
   auto actDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(actBasFuncOnGridController, 0.0);
   auto dummyOrbsAct = std::make_shared<OrbitalController<SCFMode>>(actSysBasisController, 0);
 
@@ -176,7 +176,8 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
   /*
    * Supersystem objects
    */
-  auto oneEIntController = OneIntControllerFactory::getInstance().produce(supSysBasisController, supSysGeom);
+  auto oneEIntController = OneIntControllerFactory::getInstance().produce(supSysBasisController, supSysGeom,
+                                                                          system->getExternalChargeController());
   auto supBasFuncOnGridController = BasisFunctionOnGridControllerFactory::produce(system->getSettings().grid.blocksize, 0.0,
                                                                                   2, supSysBasisController, this->_grid);
   auto supDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(supBasFuncOnGridController, 0.0);
@@ -186,7 +187,9 @@ void BUReconstructionPotential<SCFMode>::calculatePotential() {
    * Hybrid functional?
    */
   auto envSystemZero = _envSystems[0].lock();
-  auto functional = resolveFunctional(envSystemZero->getSettings().dft.functional);
+  auto functional = envSystemZero->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(envSystemZero->getSettings().customFunc)
+                        : resolveFunctional(envSystemZero->getSettings().dft.functional);
   double exc = _carterCycles != 0 ? -1.0 : functional.isHybrid() ? functional.getHfExchangeRatio() : -1.0;
 
   /*

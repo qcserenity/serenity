@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/ABFockMatrixConstruction/ABERIPotential.h"
+/* Include Serenity Internal Headers */
 #include "basis/ABShellPairCalculator.h"
 #include "data/ElectronicStructure.h"
 #include "potentials/ABFockMatrixConstruction/ABCoulombInteractionPotential.h"

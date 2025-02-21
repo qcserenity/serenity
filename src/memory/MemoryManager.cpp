@@ -22,11 +22,9 @@
 #include "memory/MemoryManager.h"
 /* Include Std and External Headers */
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <cassert>
 #include <cstdlib>
-#include <iostream>
 #include <sstream>
 #if __APPLE__ || __MACH__
 #include <mach/mach_host.h>
@@ -34,9 +32,9 @@
 #include <sys/sysctl.h>
 #include <unistd.h>
 #elif __linux__ || __unix__ || __unix
+#include <linux/sysinfo.h>
 #include <sys/sysinfo.h>
 #endif
-#include <sys/types.h>
 
 namespace Serenity {
 

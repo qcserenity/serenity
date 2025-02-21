@@ -32,7 +32,7 @@ namespace Serenity {
  *
  * which is wrapped up like this to have a handy object to use inside the calculations for e.g.
  * a whole molecule. A lot of data is pretty much coupled to the ordering of the held basis
- * functions. This meta-information can be recieved through the BasisController.
+ * functions. This meta-information can be received through the BasisController.
  */
 class Basis : public std::vector<std::shared_ptr<const Shell>> {
  public:

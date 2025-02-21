@@ -23,7 +23,8 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h" // Output suffix
 #include "tasks/Task.h"             // Task
-#include <limits>                   // std::numeric_limits
+/* Include Std and External Headers */
+#include <limits> // std::numeric_limits
 namespace Serenity {
 
 class SystemController;
@@ -66,12 +67,11 @@ struct PlotTaskSettings {
       gridCoordinates(false),
       ntos(false),
       ntoPlotThreshold(0.1),
-      transitionDensity(false),
-      holeparticleDensity(false),
       excitations({0}),
       nros(false),
       nrominimum(0.75),
-      fragments({}) {
+      cctrdens(false),
+      ccexdens(false) {
   }
   REFLECTABLE((std::vector<double>)p1, (std::vector<double>)p2, (std::vector<double>)p3, (std::vector<double>)p4,
               (int)atom1, (int)atom2, (int)atom3, (int)atom4, (std::vector<double>)gridSpacing, (double)borderWidth,
@@ -79,8 +79,8 @@ struct PlotTaskSettings {
               (double)projectCutOffRadius, (bool)xyHeatmap, (bool)density, (bool)allOrbitals, (bool)occOrbitals,
               (bool)electrostaticPot, (bool)sedd, (bool)dori, (bool)elf, (bool)elfts, (bool)signedDensity,
               (std::vector<unsigned int>)orbitals, (double)maxGridPoints, (bool)cavity, (bool)gridCoordinates,
-              (bool)ntos, (double)ntoPlotThreshold, (bool)transitionDensity, (bool)holeparticleDensity,
-              (std::vector<unsigned int>)excitations, (bool)nros, (double)nrominimum, (std::vector<unsigned int>)fragments)
+              (bool)ntos, (double)ntoPlotThreshold, (std::vector<unsigned int>)excitations, (bool)nros,
+              (double)nrominimum, (bool)cctrdens, (bool)ccexdens)
 };
 
 /**

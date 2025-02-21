@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "basis/CartesianToSphericalTransformer.h"
 /* Include Std and External Headers */
 #include <boost/math/special_functions/binomial.hpp>

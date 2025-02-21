@@ -27,7 +27,7 @@
 #include "data/OrbitalController.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "misc/SystemSplittingTools.h"
-#include "potentials/HuzinagaFDEProjectionPotential.h"
+#include "potentials/HuzinagaProjectionPotential.h"
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
 #include "system/SystemController.h"
 #include "tasks/LocalizationTask.h"
@@ -40,20 +40,25 @@ HoffmannProjectionPotential<SCFMode>::HoffmannProjectionPotential(
     const EmbeddingSettings& settings, std::shared_ptr<PotentialBundle<SCFMode>> activeFockMatrix, bool topDown,
     std::shared_ptr<GridController> supersystemgrid, double gridCutOff,
     std::vector<std::shared_ptr<EnergyComponentController>> allEConts)
-  : Potential<SCFMode>(activeSystem->getBasisController()), _activeSystem(activeSystem) {
+  : Potential<SCFMode>(activeSystem->getBasisController()),
+    _activeSystem(activeSystem),
+    _topDown(topDown),
+    _supersystemGrid(supersystemgrid) {
   for (auto e : environmentSystems)
     _environmentSystems.push_back(e);
   activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController()->addSensitiveObject(
       ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
 
-  _huzinagaProjection = std::make_shared<HuzinagaFDEProjectionPotential<SCFMode>>(
+  _huzinagaProjection = std::make_shared<HuzinagaProjectionPotential<SCFMode>>(
       activeSystem, environmentSystems, settings, activeFockMatrix, topDown, supersystemgrid, gridCutOff, allEConts);
 
   _s_ABs = SystemSplittingTools<SCFMode>::getProjectedSubsystems(
       activeSystem, environmentSystems, (settings.truncateProjector) ? settings.projecTruncThresh : -10.0);
 
   _envDensityCont = SystemSplittingTools<SCFMode>::getEnvironmentDensityControllers(environmentSystems, topDown);
-  auto activeDensityMatrixController = activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController();
+
+  EmbeddingSettings envEmbeddingSettings = settings;
+  _adjustedSettings_ptr = adjustSettings(envEmbeddingSettings);
   for (unsigned int iEnv = 0; iEnv < _environmentSystems.size(); ++iEnv) {
     auto pickedSystem = _environmentSystems[iEnv].lock();
     if (settings.longRangeNaddKinFunc != CompositeFunctionals::KINFUNCTIONALS::NONE) {
@@ -71,21 +76,27 @@ HoffmannProjectionPotential<SCFMode>::HoffmannProjectionPotential(
           SystemSplittingTools<SCFMode>::buildNonOrthogonalDensityMatrix(pickedSystem, distantOrbitals);
       _notProjectedEnvDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(*nonOrthogonalDensityMatrix));
     } // if settings.longRangeNaddKinFunc != CompositeFunctionals::KINFUNCTIONALS::NONE
+  }   // for iEnv
+}
+
+template<Options::SCF_MODES SCFMode>
+void HoffmannProjectionPotential<SCFMode>::finishSetup() {
+  for (unsigned int iEnv = 0; iEnv < _environmentSystems.size(); ++iEnv) {
     if (_s_ABs[iEnv]) {
+      auto pickedSystem = _environmentSystems[iEnv].lock();
       auto pickedDensityMatrixController = _envDensityCont[iEnv];
-      EmbeddingSettings envEmbeddingSettings = settings;
-      const auto adjustedSettings_ptr = adjustSettings(envEmbeddingSettings);
-      auto otherDensityMatrixController =
-          getOtherDensityMatrixController(pickedDensityMatrixController, activeDensityMatrixController, _envDensityCont);
+      auto otherDensityMatrixController = getOtherDensityMatrixController(
+          pickedDensityMatrixController,
+          _activeSystem.lock()->getElectronicStructure<SCFMode>()->getDensityMatrixController(), _envDensityCont);
       auto otherSystemController = getOtherSystemController(pickedSystem);
       _embeddingBundle.push_back(FDEPotentialBundleFactory<SCFMode>::produce(
-          pickedSystem, pickedDensityMatrixController, otherSystemController, otherDensityMatrixController,
-          adjustedSettings_ptr, (supersystemgrid) ? supersystemgrid : pickedSystem->getGridController(), nullptr, topDown));
+          pickedSystem, pickedDensityMatrixController, otherSystemController, otherDensityMatrixController, _adjustedSettings_ptr,
+          (_supersystemGrid) ? _supersystemGrid : pickedSystem->getGridController(), nullptr, _topDown));
     } // if _s_ABs[iEnv]
     else {
       _embeddingBundle.push_back(nullptr);
     }
-  } // for iEnv
+  }
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -126,6 +137,10 @@ std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> HoffmannProjectio
 template<Options::SCF_MODES SCFMode>
 FockMatrix<SCFMode>& HoffmannProjectionPotential<SCFMode>::getMatrix() {
   if (!_potential) {
+    if (!_finishedSetup) {
+      this->finishSetup();
+      _finishedSetup = true;
+    }
     _potential.reset(new FockMatrix<SCFMode>(this->_basis));
     auto& pot = *_potential;
     for_spin(pot) {
@@ -168,12 +183,6 @@ double HoffmannProjectionPotential<SCFMode>::getEnergy(const DensityMatrix<SCFMo
     getMatrix();
   energy += _huzinagaProjection->getEnergy(P);
   return energy;
-}
-
-template<Options::SCF_MODES SCFMode>
-bool HoffmannProjectionPotential<SCFMode>::checkFunctionalForLRXC(CompositeFunctionals::XCFUNCTIONALS functional) {
-  auto func = resolveFunctional(functional);
-  return func.getLRExchangeRatio() != 0.0;
 }
 
 template class HoffmannProjectionPotential<Options::SCF_MODES::RESTRICTED>;

@@ -20,9 +20,13 @@
 
 /* Include Class Header*/
 #include "postHF/MBPT/GW_ContourDeformation.h"
+/* Include Serenity Internal Headers */
 #include "math/diis/DIIS.h"
+#include "parameters/Constants.h"
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <iomanip>
+
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>

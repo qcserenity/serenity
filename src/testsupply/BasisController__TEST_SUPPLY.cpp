@@ -81,9 +81,9 @@ void BasisController__TEST_SUPPLY::prepare(TEST_BASIS_CONTROLLERS kind) {
       break;
     }
       /*****************/
-      /* ASYMETRIC_CH3 */
+      /* ASYMMETRIC_CH3 */
       /*****************/
-    case TEST_BASIS_CONTROLLERS::ASYMETRIC_CH3: {
+    case TEST_BASIS_CONTROLLERS::ASYMMETRIC_CH3: {
       /*
        * Basis
        */

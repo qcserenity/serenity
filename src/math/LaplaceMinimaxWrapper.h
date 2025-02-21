@@ -23,7 +23,6 @@
 
 /* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
-
 /* Include Std and External Headers */
 #include <stdlib.h>
 #include <Eigen/Dense>

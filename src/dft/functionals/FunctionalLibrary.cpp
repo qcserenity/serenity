@@ -26,19 +26,20 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-FunctionalLibrary<T>::FunctionalLibrary(unsigned int maxBlockSize) {
+template<Options::SCF_MODES SCFMode>
+FunctionalLibrary<SCFMode>::FunctionalLibrary(unsigned int maxBlockSize) {
 #ifdef SERENITY_USE_LIBXC
-  _libxc = std::make_unique<LibXC<T>>(maxBlockSize);
+  _libxc = std::make_unique<LibXC<SCFMode>>(maxBlockSize);
 #endif /* SERENITY_USE_LIBXC */
 #ifdef SERENITY_USE_XCFUN
-  _xcfun = std::make_unique<XCFun<T>>(maxBlockSize);
+  _xcfun = std::make_unique<XCFun<SCFMode>>(maxBlockSize);
 #endif /* SERENITY_USE_XCFUN */
 }
-template<Options::SCF_MODES T>
-FunctionalData<T> FunctionalLibrary<T>::calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
-                                                 const std::shared_ptr<DensityOnGridController<T>> densityOnGridController,
-                                                 unsigned int order) {
+template<Options::SCF_MODES SCFMode>
+FunctionalData<SCFMode>
+FunctionalLibrary<SCFMode>::calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
+                                     const std::shared_ptr<DensityOnGridController<SCFMode>> densityOnGridController,
+                                     unsigned int order) {
   if (functional.implementation() == CompositeFunctionals::IMPLEMENTATIONS::BOTH) {
     throw SerenityError("Composite functionals mixing basic functionals from LibXC & XCFun and not yet supported.");
   }

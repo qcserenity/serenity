@@ -27,7 +27,7 @@
 #include "data/OrbitalController.h"                                   //Hybrid approach.
 #include "dft/functionals/CompositeFunctionals.h"                     //Resolving of settings.
 #include "geometry/Geometry.h"                                        //Combined AB geometries.
-#include "grid/GridControllerFactory.h"                               //Combinded AB grids.
+#include "grid/AtomCenteredGridControllerFactory.h"                   //Combinded AB grids.
 #include "integrals/CDIntegralController.h"                           //Generate AB aCD-auxiliary basis
 #include "integrals/OneElectronIntegralController.h"                  //Mulliken populations/Hybrid approach.
 #include "misc/SystemSplittingTools.h" //Environment density matrix controller construction.
@@ -50,10 +50,10 @@ ABEmbeddedBundleFactory<RESTRICTED>::produce(std::shared_ptr<SystemController> a
                                              std::shared_ptr<Geometry> geometryB,
                                              std::vector<std::shared_ptr<SystemController>> environmentSystems,
                                              const std::shared_ptr<EmbeddingSettings> embeddingSettings, bool topDown) {
-  if (!_resrictedFactory)
-    _resrictedFactory.reset(new ABEmbeddedBundleFactory<RESTRICTED>);
-  return _resrictedFactory->getOrProduce(activeSystem, basisControllerB, geometryB, environmentSystems,
-                                         embeddingSettings, topDown);
+  if (!_restrictedFactory)
+    _restrictedFactory.reset(new ABEmbeddedBundleFactory<RESTRICTED>);
+  return _restrictedFactory->getOrProduce(activeSystem, basisControllerB, geometryB, environmentSystems,
+                                          embeddingSettings, topDown);
 }
 
 template<>
@@ -63,10 +63,10 @@ ABEmbeddedBundleFactory<UNRESTRICTED>::produce(std::shared_ptr<SystemController>
                                                std::shared_ptr<Geometry> geometryB,
                                                std::vector<std::shared_ptr<SystemController>> environmentSystems,
                                                const std::shared_ptr<EmbeddingSettings> embeddingSettings, bool topDown) {
-  if (!_unresrictedFactory)
-    _unresrictedFactory.reset(new ABEmbeddedBundleFactory<UNRESTRICTED>);
-  return _unresrictedFactory->getOrProduce(activeSystem, basisControllerB, geometryB, environmentSystems,
-                                           embeddingSettings, topDown);
+  if (!_unrestrictedFactory)
+    _unrestrictedFactory.reset(new ABEmbeddedBundleFactory<UNRESTRICTED>);
+  return _unrestrictedFactory->getOrProduce(activeSystem, basisControllerB, geometryB, environmentSystems,
+                                            embeddingSettings, topDown);
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -165,7 +165,9 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   if (activeSystem->getSettings().basis.densFitJ != Options::DENS_FITS::NONE) {
     abAuxBasisController = getABAuxBasisController(activeSystem, geometryB);
   }
-  const auto activeFunctional = resolveFunctional(activeSystem->getSettings().dft.functional);
+  const auto activeFunctional = activeSystem->getSettings().customFunc.basicFunctionals.size()
+                                    ? Functional(activeSystem->getSettings().customFunc)
+                                    : resolveFunctional(activeSystem->getSettings().dft.functional);
   double exchangeRatioActive = (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF)
                                    ? 1.0
                                    : activeFunctional.getHfExchangeRatio();
@@ -177,7 +179,9 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   auto activeCoulomb = std::make_shared<ABERIPotential<SCFMode>>(
       activeSystem, basisContA, basisControllerB, actDensityMatrixController, exchangeRatioActive, lrExchangeRatioActive,
       rangeSeperationParameterActive, topDown, activeSystem->getSettings().basis.densFitJ, abAuxBasisController, actAuxVec);
-  const auto naddXCFunc = resolveFunctional(embeddingSettings->naddXCFunc);
+  const auto naddXCFunc = embeddingSettings->customNaddXCFunc.basicFunctionals.size()
+                              ? Functional(embeddingSettings->customNaddXCFunc)
+                              : resolveFunctional(embeddingSettings->naddXCFunc);
   double exchangeRatioNAdd = naddXCFunc.getHfExchangeRatio();
   double rangeSeperationParameterNAdd = naddXCFunc.getRangeSeparationParameter();
   double lrExchangeRatioNAdd = naddXCFunc.getLRExchangeRatio();
@@ -186,7 +190,7 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
       rangeSeperationParameterNAdd, topDown, activeSystem->getSettings().basis.densFitJ, abAuxBasisController, envAuxBasis);
   // Build A+B grid controller
   std::shared_ptr<GridController> grid_AB =
-      GridControllerFactory::produce(combinedGeometry, activeSystem->getSettings().grid);
+      AtomCenteredGridControllerFactory::produce(combinedGeometry, activeSystem->getSettings().grid);
   std::shared_ptr<ABPotential<SCFMode>> activeExchangeCorrelation;
   if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
     auto actDensityMatrixController = {activeSystem->getElectronicStructure<SCFMode>()->getDensityMatrixController()};
@@ -206,9 +210,10 @@ ABEmbeddedBundleFactory<SCFMode>::produceNew(std::shared_ptr<SystemController> a
   if (embeddingSettings->longRangeNaddKinFunc != CompositeFunctionals::KINFUNCTIONALS::NONE) {
     auto notProjectedEnvDensMatCont = getNotProjectedEnvironmentDensityMatrixControllers(
         activeSystem, environmentSystems, embeddingSettings->basisFunctionRatio, embeddingSettings->borderAtomThreshold);
-    naddKinetic = std::make_shared<ABNAddFuncPotential<SCFMode>>(activeSystem, basisContA, basisControllerB,
-                                                                 notProjectedEnvDensMatCont, grid_AB,
-                                                                 resolveFunctional(embeddingSettings->naddKinFunc));
+    naddKinetic = std::make_shared<ABNAddFuncPotential<SCFMode>>(
+        activeSystem, basisContA, basisControllerB, notProjectedEnvDensMatCont, grid_AB,
+        embeddingSettings->customNaddKinFunc.basicFunctionals.size() ? Functional(embeddingSettings->customNaddKinFunc)
+                                                                     : resolveFunctional(embeddingSettings->naddKinFunc));
   }
   return std::unique_ptr<ABEmbeddedBundle<SCFMode>>(new ABEmbeddedBundle<SCFMode>(
       hcore, activeCoulomb, environmentCoulomb, activeExchangeCorrelation, naddExchangeCorrelation, naddKinetic));

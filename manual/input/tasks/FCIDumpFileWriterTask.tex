@@ -1,0 +1,84 @@
+\subsection{Task: FCI Dump File Writer}\label{sec:tasks:FCIDumpFileWriter}
+This tasks writes Molpro-style FCI dump file to disk. The integrals are calculated using the RI approximation and local
+integral fitting.
+
+An FCI dump file provides all two electron and one electron integrals in MO basis.
+The orbital index counting starts at 1. The third and fourth index for the one
+particle integrals are zero. The file start with (exactly) 4 lines of header, providing
+the number of orbitals, electrons, the number of excess alpha electron (MS2), orbital
+symmetry, and system symmetry. After the header the integrals are encoded through their
+value and their orbital indices.
+
+A typical FCI dump file may look like this:
+\begin{lstlisting}
+&FCI NORB= 8, NELEC= 10, MS2= 0,
+ORBSYM= 1, 1, 1, 1, 1, 1, 1, 1,
+ISYM= 1
+&END
+  8.2371169364e-01     1     1     1     1
+  6.5011589197e-02     2     1     1     1
+  6.5841092835e-01     2     2     1     1
+  1.0997174278e-01     2     1     2     1
+ -6.9437938103e-02     2     1     2     2
+ ...
+  7.7071181164e-01     8     6     0     0
+ -6.6624329107e-16     8     7     0     0
+ -6.2473727922e+00     8     8     0     0
+\end{lstlisting}
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task FCIDUMP
+  act waterA
+  env waterB
+  onlyValenceOrbitals true
+  +emb
+      naddXcFunc pbe
+      embeddingMode fermi
+  -emb
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{FCIDUMP} and \ttt{FCIDUMPFILEWRITERTASK}.
+    \item [\texttt{activeSystems}]\hfill \\
+    Accepts a single active system for which the FCI dump file will be written.
+    \item [\texttt{environmentSystems}]\hfill \\
+    Accepts multiple environment systems. Their contribution will be included in the one electron integrals.
+    \item [\texttt{outputFilePath}]\hfill \\
+    The FCI dump output file path.
+    \item [\texttt{orbitalRangeAlpha}]\hfill \\
+    The orbital range for the alpha orbitals to be written to the FCI dump file.
+    This is also the orbitals range, in the case restricted orbitals are used.
+    \item [\texttt{orbitalRangeBeta}]\hfill \\
+    The orbital range for the beta orbitals to be written to the FCI dump file.
+    \item [\texttt{onlyValenceOrbitals}]\hfill \\
+    If true, and no orbital ranges are provided, the orbital ranges are assumed to be the range of valence orbitals.
+    \item [\texttt{calculateCoreEnergy}]\hfill \\
+    If true, the energy of the core electrons is calculated and printed to the (FCI) output file.
+    \item[\texttt{sub-blocks}]\hfill \\
+    Possible sub-blocks are the embedding (\ttt{emb} with \ttt{naddXCFunc=BP86}).
+
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{mullikenThreshold}]\hfill \\
+    Prescreening threshold for the auxiliary function to orbital mapping. By default, \ttt{1.0e-4}.
+    \item [\texttt{orbitalToShellThreshold}]\hfill \\
+    Prescreening threshold for coefficient values. By default \ttt{1.0e-3}.
+    \item [\texttt{valenceOrbitalsFromEnergyCutOff}]\hfill \\
+    If true, valence orbitals are determined by an energy cut off. If false, tabulated values are used. By default, \ttt{false}.
+    \item[\texttt{energyCutOff}]\hfill \\
+    Energy cut off to determine core orbitals. By default, \ttt{-5.0}.
+    \item[\texttt{virtualEnergyCutOff}]\hfill \\
+    Energy cut off to determine virtual valence orbitals. By default, \ttt{+1.0}]
+    \item[\texttt{integralSizeCutOff}]\hfill \\
+    Integrals smaller than this value are not written to the output file. By default, \ttt{1e-9}.
+    \item[\texttt{doiNetThreshold}]\hfill \\
+    Prescreening threshold for the orbital coefficients during calculation of differential overlap integrals. By default, 1e-7.
+    \item[\texttt{doiIntegralPrescreening}]\hfill \\
+    All orbital combinations ik/jl in the integral (ik|jl) are ignored during the integral transformation that have a
+    differential overlap smaller than this threshold. By default, \ttt{1e-7}.
+\end{description}

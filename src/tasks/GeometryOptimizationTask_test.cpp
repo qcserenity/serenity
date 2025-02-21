@@ -23,6 +23,7 @@
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
 #include "integrals/wrappers/Libint.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
@@ -31,8 +32,8 @@
 
 namespace Serenity {
 /**
- * @class AnalyticalGradientTest
- * @brief Sets everything up for the tests of AnalyticalGradient.h/.cpp .
+ * @class GeometryOptimizationTest
+ * @brief Sets everything up for the tests of GeometryOptimizationTask.h/.cpp .
  *
  */
 class GeometryOptimizationTest : public ::testing::Test {

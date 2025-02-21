@@ -260,6 +260,10 @@ void ElectronicStructureCopyTask<SCFMode>::loewdingOrthogonalization(Coefficient
 
 template<Options::SCF_MODES SCFMode>
 void ElectronicStructureCopyTask<SCFMode>::run() {
+  for (auto& sys : _targetSystems) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The target system '" + sys->getSystemName() + "' needs the same SCFMode as the source system.");
+  }
   if (GLOBAL_PRINT_LEVEL > Options::GLOBAL_PRINT_LEVELS::MINIMUM)
     printSubSectionTitle("Copying Electronic Structures");
   checkSystems();

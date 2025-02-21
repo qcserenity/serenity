@@ -20,6 +20,7 @@
 #ifndef CONFIGURATION_TASKS_GEOMETRYOPTIMIZATIONTASK_H_
 #define CONFIGURATION_TASKS_GEOMETRYOPTIMIZATIONTASK_H_
 /* Include Serenity Internal Headers */
+#include "misc/Timing.h"
 #include "settings/DFTOptions.h"
 #include "settings/EmbeddingSettings.h"
 #include "settings/GeometryOptions.h"
@@ -32,8 +33,37 @@
 namespace Serenity {
 /* Forward declarations */
 class SystemController;
-class OptimizerFactory;
 class Optimizer;
+/**
+ * @class SQNMSettings GeometryOptimizationTask.h
+ * @brief Settings for the SQNM algorithm.\n
+ *
+ *
+ * Settings:\n
+ * -historyLength    - Maximum number of coordinate and gradient information of
+ *                     previous cycles used in the optimization.\n
+ * -epsilon          - Threshold to determine significant eigenvalues of the displacement overlap.\n
+ * -alpha            - Initial step length to be updated during the optimization.\n
+ * -energyThreshold  - Energy threshold to determine whether an optimization step is accepted.\n
+ * -trustRadius      - Maximum step length - step will be  scaled to this length if the trust radius is exceeded.\n
+ */
+using namespace Serenity::Reflection;
+struct SQNMSettings {
+  SQNMSettings() : historyLength(10), epsilon(1.0e-4), alpha(1.0), energyThreshold(1.0e-6), trustRadius(0.1) {
+  }
+
+ public:
+  REFLECTABLE((unsigned int)historyLength, (double)epsilon, (double)alpha, (double)energyThreshold, (double)trustRadius)
+
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("SQNM")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
+};
+
 using namespace Serenity::Reflection;
 struct GeometryOptimizationTaskSettings {
   GeometryOptimizationTaskSettings()
@@ -48,16 +78,19 @@ struct GeometryOptimizationTaskSettings {
       transInvar(false),
       FaTmaxCycles(50),
       FaTConvThresh(1.0e-6),
-      FaTgridCutOff(-1.0) {
+      FaTgridCutOff(-1.0),
+      optAlgorithm(Options::OPTIMIZATION_ALGORITHMS::BFGS) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   }
-  REFLECTABLE((Options::GRADIENT_TYPES)gradType, (unsigned int)maxCycles, (double)rmsgradThresh, (double)energyChangeThresh,
-              (double)maxGradThresh, (double)stepThresh, (double)maxStepThresh, (double)numGradStepSize,
-              (bool)transInvar, (unsigned int)FaTmaxCycles, (double)FaTConvThresh, (double)FaTgridCutOff)
+  REFLECTABLE((Options::GRADIENT_TYPES)gradType, (unsigned int)maxCycles, (double)rmsgradThresh,
+              (double)energyChangeThresh, (double)maxGradThresh, (double)stepThresh, (double)maxStepThresh,
+              (double)numGradStepSize, (bool)transInvar, (unsigned int)FaTmaxCycles, (double)FaTConvThresh,
+              (double)FaTgridCutOff, (Options::OPTIMIZATION_ALGORITHMS)optAlgorithm)
  public:
   EmbeddingSettings embedding;
+  SQNMSettings sqnm;
 };
 /**
  * @class  GeometryOptimizationTask GeometryOptimizationTask.h
@@ -80,7 +113,7 @@ class GeometryOptimizationTask : public Task {
   /**
    * @see Task
    */
-  void run();
+  void run() override;
   /**
    * @brief Parse the settings to the task settings.
    * @param c The task settings.
@@ -90,10 +123,15 @@ class GeometryOptimizationTask : public Task {
   void visit(GeometryOptimizationTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
+    if (c.embedding.visitAsBlockSettings(v, blockname)) {
+      return;
     }
+    if (c.sqnm.visitAsBlockSettings(v, blockname)) {
+      return;
+    }
+    throw SerenityError((std::string) "Unknown block in GeometryOptimizationTaskSettings: " + blockname);
   }
   /**
    * @brief The settings/keywords for the GeometryOptimizationTask:
@@ -108,6 +146,9 @@ class GeometryOptimizationTask : public Task {
    *        - FaTConvThresh Convergence threshold for the FaT calculation.
    *        - FaTgridCutOff A distance cutoff for the integration grid used to calculate
    *                        the non-additive energy functional potentials.
+   *        -optAlgorithm: The type of optimization algorithm to be used. The following options are available:
+   *          - BFGS (default)
+   *          - SQNM
    *
    */
   GeometryOptimizationTaskSettings settings;
@@ -115,6 +156,8 @@ class GeometryOptimizationTask : public Task {
  private:
   std::vector<std::shared_ptr<SystemController>> _activeSystems;
   std::vector<std::shared_ptr<SystemController>> _passiveSystems;
+  bool _minimumPrint = false;
+  timespec _time;
 };
 
 } /* namespace Serenity */

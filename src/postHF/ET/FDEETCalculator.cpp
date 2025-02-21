@@ -23,22 +23,25 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/grid/ElectrostaticPotentialOnGridController.h"
+#include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
+#include "energies/EnergyContributions.h"
 #include "geometry/MolecularSurfaceController.h"
 #include "io/CubeFileWriter.h"
 #include "io/Filesystem.h"
 #include "io/FormattedOutputStream.h"
-#include "io/FormattedOutputStream.h" // formatted output
 #include "io/HDF5.h"
 #include "parameters/Constants.h"
-#include "potentials/CoulombPotential.h"
 #include "potentials/ERIPotential.h"
+#include "potentials/ExchangePotential.h"
 #include "potentials/FuncPotential.h"
 #include "potentials/HCorePotential.h"
-#include "potentials/PCMPotential.h"
+#include "potentials/ZeroPotential.h"
 #include "potentials/bundles/DFTPotentials.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/PlotTask.h"
+/* Include Std and External Headers */
+#include <algorithm>
 
 namespace Serenity {
 
@@ -168,7 +171,7 @@ void FDEETCalculator::setPseudoInverse(std::vector<Eigen::MatrixXd> pseudo) {
 }
 
 void FDEETCalculator::calcBlockedMoorePenrose(const std::vector<Eigen::MatrixXd>& matrix, Eigen::MatrixXi nOccState,
-                                              unsigned nStatesCouple, double invThreshold) {
+                                              unsigned nStatesCouple, double integralThreshold) {
   // Calculate pseudo inverse (has same dimensions as overlapMO) and determinants of transition-overlap matrix
   std::vector<Eigen::MatrixXd> pseudoInverse(2);
   pseudoInverse[0] = Eigen::MatrixXd::Zero(nOccState.col(0).sum(), nOccState.col(0).sum());
@@ -190,6 +193,8 @@ void FDEETCalculator::calcBlockedMoorePenrose(const std::vector<Eigen::MatrixXd>
         Eigen::VectorXd sing = svd.singularValues();
         determinants(iState, jState) *= sing.prod() * fabs(svd.matrixU().determinant()) * fabs(svd.matrixV().determinant());
         // Invert singular values that are above a certain threshold and add to diagonal matrix
+        double invThreshold = integralThreshold * sing.size() * sing.maxCoeff();
+        OutputControl::vOut << "  Inversion threshold: " << invThreshold << std::endl;
         for (unsigned i = 0; i < sing.size(); ++i) {
           vals += 1;
           if (fabs(sing(i)) < invThreshold)
@@ -211,7 +216,7 @@ void FDEETCalculator::calcBlockedMoorePenrose(const std::vector<Eigen::MatrixXd>
                       << std::endl;
   OutputControl::vOut << "Dim. pseudoInverse beta:  " << pseudoInverse[1].rows() << "x" << pseudoInverse[1].cols()
                       << std::endl;
-  printf("  %5i of %5i Singular values were below the threshold of %5.2e\n\n", valsBelowThresh, vals, invThreshold);
+  OutputControl::n.printf("  %5i of %5i Singular values were below the inversion threshold.\n\n", valsBelowThresh, vals);
 }
 
 Eigen::MatrixXd FDEETCalculator::getDeterminants() {
@@ -252,12 +257,10 @@ void FDEETCalculator::calcTransDensMats(const std::vector<Eigen::MatrixXd>& pseu
       // loop over alpha and beta
       for_spin(densMat) {
         // Eq. (1)
-        auto& temp =
+        densMat_spin =
             *coeffs[iState][iSpin] *
             pseudoInverse[iSpin].block(iCount[iSpin], jCount[iSpin], nOccState(iState, iSpin), nOccState(jState, iSpin)) *
             coeffs[jState][iSpin]->transpose();
-        // remove numerical noise from matrix
-        densMat_spin = (temp + temp.transpose()) * 0.5;
         ++iSpin;
       };
       // reset loop and block vars
@@ -357,43 +360,62 @@ std::shared_ptr<std::vector<std::string>> FDEETCalculator::getDensityMatrixFiles
   return _dMatFiles;
 }
 
-double FDEETCalculator::calcDFTEnergy(std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatC,
-                                      std::shared_ptr<SystemController> superSystem) {
+std::shared_ptr<EnergyComponentController>
+FDEETCalculator::calcDFTEnergy(std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatC,
+                               std::shared_ptr<SystemController> superSystem, bool isDiagonal, bool useHFCoupling) {
+  auto D = dMatC->getDensityMatrix();
+  DensityMatrix<Options::SCF_MODES::UNRESTRICTED> Dtranspose(superSystem->getBasisController());
+  DensityMatrix<Options::SCF_MODES::UNRESTRICTED> Dsymm(superSystem->getBasisController());
+  for_spin(Dsymm, Dtranspose, D) {
+    Dtranspose_spin = D_spin.transpose();
+    Eigen::MatrixXd tmp = 1.0 * D_spin;
+    Dsymm_spin = 0.5 * (tmp + tmp.transpose());
+  };
+  dMatC->setDensityMatrix(Dsymm);
   // Hcore potential
   auto hcore = std::make_shared<HCorePotential<Options::SCF_MODES::UNRESTRICTED>>(superSystem);
   // XC potential
-  auto functional = resolveFunctional(superSystem->getSettings().dft.functional);
+  auto functional = superSystem->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(superSystem->getSettings().customFunc)
+                        : resolveFunctional(superSystem->getSettings().dft.functional);
   auto Vxc = std::make_shared<FuncPotential<UNRESTRICTED>>(superSystem->getSharedPtr(), dMatC,
                                                            superSystem->getGridController(), functional);
+
   // J potential
-  std::shared_ptr<Potential<Options::SCF_MODES::UNRESTRICTED>> J;
-  double thresh = superSystem->getSettings().basis.integralThreshold;
-  J = std::make_shared<ERIPotential<Options::SCF_MODES::UNRESTRICTED>>(
-      superSystem, dMatC, functional.getHfExchangeRatio(), thresh,
-      superSystem->getSettings().basis.integralIncrementThresholdStart,
+  auto J = std::make_shared<ERIPotential<Options::SCF_MODES::UNRESTRICTED>>(
+      superSystem, dMatC, (isDiagonal) ? functional.getHfExchangeRatio() : 0.0,
+      superSystem->getSettings().basis.integralThreshold, superSystem->getSettings().basis.integralIncrementThresholdStart,
       superSystem->getSettings().basis.integralIncrementThresholdEnd, superSystem->getSettings().basis.incrementalSteps,
       true, functional.getLRExchangeRatio(), functional.getRangeSeparationParameter());
   // PCM potential
-  bool usesPCM = superSystem->getSettings().pcm.use;
-  auto pcm = std::make_shared<PCMPotential<Options::SCF_MODES::UNRESTRICTED>>(
-      superSystem->getSettings().pcm, superSystem->getBasisController(), superSystem->getGeometry(),
-      (usesPCM) ? superSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE) : nullptr,
-      (usesPCM && superSystem->getSettings().pcm.cavityFormation)
-          ? superSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::ACTIVE_VDW)
-          : nullptr,
-      (usesPCM) ? superSystem->getElectrostaticPotentialOnMolecularSurfaceController<Options::SCF_MODES::UNRESTRICTED>(
-                      MOLECULAR_SURFACE_TYPES::ACTIVE)
-                : nullptr);
+  std::shared_ptr<Potential<Options::SCF_MODES::UNRESTRICTED>> pcm(
+      new ZeroPotential<Options::SCF_MODES::UNRESTRICTED>(superSystem->getBasisController()));
   // DFT potential
   auto dftpot = std::make_shared<DFTPotentials<Options::SCF_MODES::UNRESTRICTED>>(
       hcore, J, Vxc, pcm, superSystem->getGeometry(), dMatC, superSystem->getSettings().basis.integralThreshold);
   auto ec = std::make_shared<EnergyComponentController>();
   dftpot->getFockMatrix(dMatC->getDensityMatrix(), ec);
-  double energy = ec->getTotalEnergy();
-  // energy contributions
+  // Exchange for off-diagonal elements
+  if ((functional.isHybrid() || useHFCoupling) && !isDiagonal) {
+    dMatC->setDensityMatrix(D);
+    double hfRatio = (useHFCoupling) ? 1.0 : functional.getHfExchangeRatio();
+    auto K = std::make_shared<ExchangePotential<Options::SCF_MODES::UNRESTRICTED>>(
+        superSystem, dMatC, hfRatio, superSystem->getSettings().basis.integralThreshold,
+        superSystem->getSettings().basis.integralIncrementThresholdStart,
+        superSystem->getSettings().basis.integralIncrementThresholdEnd,
+        superSystem->getSettings().basis.incrementalSteps, true, true);
+    ec->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXACT_EXCHANGE, K->getEnergy(Dtranspose));
+    if (useHFCoupling)
+      ec->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXCHANGE_CORRELATION_NO_HF, 0.0);
+  }
+  // Dispersion
+  auto dispCorr = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
+      superSystem->getSettings().dft.dispersion, superSystem->getGeometry(), superSystem->getSettings().dft.functional);
+  ec->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, dispCorr);
+  // Energy contributions
   if (GLOBAL_PRINT_LEVEL == Options::GLOBAL_PRINT_LEVELS::VERBOSE)
     ec->printAllComponents();
-  return energy;
+  return ec;
 }
 
 Eigen::MatrixXd FDEETCalculator::getHamiltonian() {
@@ -405,7 +427,8 @@ void FDEETCalculator::setHamiltonian(Eigen::MatrixXd newH) {
 }
 
 void FDEETCalculator::calcHamiltonian(const std::vector<std::vector<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>>& transDensMats,
-                                      std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple) {
+                                      std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple,
+                                      bool useHFCoupling) {
   Eigen::MatrixXd H = Eigen::MatrixXd::Zero(nStatesCouple, nStatesCouple);
   for (unsigned iState = 0; iState < nStatesCouple; ++iState) {
     for (unsigned jState = 0; jState < nStatesCouple; ++jState) {
@@ -421,7 +444,14 @@ void FDEETCalculator::calcHamiltonian(const std::vector<std::vector<DensityMatri
       OutputControl::vOut << "Energy Components of Diabatic State Combination: " << iState + 1 << " and " << jState + 1
                           << std::endl;
       OutputControl::vOut << std::string(100, '-') << std::endl;
-      H(iState, jState) = this->calcDFTEnergy(dMatController, superSystem);
+      auto ec = this->calcDFTEnergy(dMatController, superSystem, iState == jState, useHFCoupling);
+      if (useHFCoupling && iState == jState) {
+        double correction = this->calcCorrection(superSystem, ec, dMatController);
+        H.row(iState) += correction * Eigen::VectorXd::Ones(nStatesCouple);
+        H.col(jState) += correction * Eigen::VectorXd::Ones(nStatesCouple);
+        H(iState, jState) = 0.0;
+      }
+      H(iState, jState) += ec->getTotalEnergy();
       OutputControl::vOut << std::endl;
     }
   }
@@ -429,7 +459,8 @@ void FDEETCalculator::calcHamiltonian(const std::vector<std::vector<DensityMatri
   this->setHamiltonian(H);
 }
 
-void FDEETCalculator::calcHamiltonianDisk(std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple) {
+void FDEETCalculator::calcHamiltonianDisk(std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple,
+                                          bool useHFCoupling) {
   Eigen::MatrixXd H = Eigen::MatrixXd::Zero(nStatesCouple, nStatesCouple);
   for (unsigned iState = 0; iState < nStatesCouple; ++iState) {
     for (unsigned jState = 0; jState < nStatesCouple; ++jState) {
@@ -453,7 +484,14 @@ void FDEETCalculator::calcHamiltonianDisk(std::shared_ptr<SystemController> supe
       OutputControl::vOut << "Energy Components of Diabatic State Combination: " << iState + 1 << " and " << jState + 1
                           << std::endl;
       OutputControl::vOut << std::string(100, '-') << std::endl;
-      H(iState, jState) = this->calcDFTEnergy(dMatController, superSystem);
+      auto ec = this->calcDFTEnergy(dMatController, superSystem, iState == jState, useHFCoupling);
+      if (useHFCoupling && iState == jState) {
+        double correction = this->calcCorrection(superSystem, ec, dMatController);
+        H.row(iState) += correction * Eigen::VectorXd::Ones(nStatesCouple);
+        H.col(jState) += correction * Eigen::VectorXd::Ones(nStatesCouple);
+        H(iState, jState) = 0.0;
+      }
+      H(iState, jState) += ec->getTotalEnergy();
       OutputControl::vOut << std::endl;
     }
   }
@@ -461,68 +499,90 @@ void FDEETCalculator::calcHamiltonianDisk(std::shared_ptr<SystemController> supe
   this->setHamiltonian(H);
 }
 
-void FDEETCalculator::solveEigenValueProblem(Eigen::MatrixXd H, Eigen::MatrixXd determinants, unsigned nStatesCouple) {
+double FDEETCalculator::calcCorrection(std::shared_ptr<SystemController> superSystem,
+                                       std::shared_ptr<EnergyComponentController> ec,
+                                       std::shared_ptr<DensityMatrixController<Options::SCF_MODES::UNRESTRICTED>> dMatController) {
+  double correction = 0.0;
+  auto functional = superSystem->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(superSystem->getSettings().customFunc)
+                        : resolveFunctional(superSystem->getSettings().dft.functional);
+  if (functional.isHybrid()) {
+    // XC contribution
+    correction += 0.5 * ec->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXCHANGE_CORRELATION_NO_HF);
+    correction += 0.5 * ec->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXACT_EXCHANGE);
+    // Exact exchange contribution
+    correction -=
+        0.5 * (ec->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXACT_EXCHANGE) / functional.getHfExchangeRatio());
+  }
+  else {
+    // XC contribution
+    correction += 0.5 * ec->getEnergyComponent(ENERGY_CONTRIBUTIONS::KS_DFT_EXCHANGE_CORRELATION_NO_HF);
+    // Exact exchange contribution
+    auto K = std::make_shared<ExchangePotential<Options::SCF_MODES::UNRESTRICTED>>(
+        superSystem, dMatController, 1.0, superSystem->getSettings().basis.integralThreshold,
+        superSystem->getSettings().basis.integralIncrementThresholdStart,
+        superSystem->getSettings().basis.integralIncrementThresholdEnd, superSystem->getSettings().basis.incrementalSteps);
+    correction -= 0.5 * K->getEnergy(dMatController->getDensityMatrix());
+  }
+  return correction;
+}
+
+void FDEETCalculator::solveEigenValueProblem(Eigen::MatrixXd H, Eigen::MatrixXd determinants, unsigned nStatesCouple,
+                                             bool analyticCoupling, bool isPrime) {
   Eigen::MatrixXd C;
   Eigen::VectorXd E;
   Eigen::setNbThreads(1);
   // Analytical electronic coupling
-  if (nStatesCouple == 2) {
-    auto SPrime = determinants;
-    SPrime(0, 0) = 1.0;
-    SPrime(1, 1) = 1.0;
-    SPrime(0, 1) = determinants(0, 1) / sqrt(determinants(0, 0) * determinants(1, 1));
-    SPrime(1, 0) = determinants(1, 0) / sqrt(determinants(0, 0) * determinants(1, 1));
-    Eigen::MatrixXd HPrime = H.cwiseProduct(SPrime);
-    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver(HPrime, SPrime);
-    C = solver.eigenvectors().real();
-    E = solver.eigenvalues().real();
-    double coupling = (1 / (1 - pow(SPrime(0, 1), 2))) * (HPrime(0, 1) - SPrime(0, 1) * ((HPrime(0, 0) + HPrime(1, 1)) / 2));
-    double lree = sqrt(pow(HPrime(0, 0) - HPrime(1, 1), 2) / (1 - pow(SPrime(0, 1), 2)) + 4 * pow(coupling, 2));
-    this->setAnalyticalCoupling(coupling);
-    this->setLongRangeExEnergy(lree);
+  if (nStatesCouple == 1) {
+    C = Eigen::MatrixXd::Ones(1, 1);
+    E = H(0, 0) * Eigen::VectorXd::Ones(1);
   }
   else {
-    Eigen::MatrixXd HPrime = H.cwiseProduct(determinants);
-    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver(HPrime, determinants);
-    C = solver.eigenvectors().real();
-    E = solver.eigenvalues().real();
-  }
-  // sort eigenvectors and eigenvalues in ascending order
-  for (unsigned i = 0; i < E.size(); ++i) {
-    unsigned iMin;
-    E.tail(E.size() - i).minCoeff(&iMin);
-    E.row(i).swap(E.row(iMin + i));
-    C.col(i).swap(C.col(iMin + i));
-  }
-  E = (E.head(E.size())).eval();
-  C = (C.leftCols(E.size())).eval();
-  // normalize eigenvectors
-  for (unsigned iCol = 0; iCol < C.cols(); ++iCol) {
-    C.col(iCol).normalize();
+    if (nStatesCouple == 2 && analyticCoupling) {
+      auto SPrime = determinants;
+      Eigen::MatrixXd HPrime = H;
+      if (!isPrime) {
+        SPrime(0, 0) = 1.0;
+        SPrime(1, 1) = 1.0;
+        SPrime(0, 1) = determinants(0, 1) / sqrt(determinants(0, 0) * determinants(1, 1));
+        SPrime(1, 0) = determinants(1, 0) / sqrt(determinants(0, 0) * determinants(1, 1));
+        HPrime = H.cwiseProduct(SPrime);
+      }
+      Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver(HPrime, SPrime);
+      C = solver.eigenvectors().real();
+      E = solver.eigenvalues().real();
+      double coupling =
+          (1 / (1 - pow(SPrime(0, 1), 2))) * fabs(HPrime(0, 1) - SPrime(0, 1) * ((HPrime(0, 0) + HPrime(1, 1)) / 2));
+      double lree = sqrt(pow(HPrime(0, 0) - HPrime(1, 1), 2) / (1 - pow(SPrime(0, 1), 2)) + 4 * pow(coupling, 2));
+      this->setAnalyticalCoupling(coupling);
+      this->setLongRangeExEnergy(lree);
+    }
+    else {
+      Eigen::MatrixXd HPrime = H;
+      if (!isPrime)
+        HPrime = H.cwiseProduct(determinants);
+      Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver(HPrime, determinants);
+      C = solver.eigenvectors().real();
+      E = solver.eigenvalues().real();
+    }
+    // sort eigenvectors and eigenvalues in ascending order
+    for (unsigned i = 0; i < E.size(); ++i) {
+      unsigned iMin;
+      E.tail(E.size() - i).minCoeff(&iMin);
+      E.row(i).swap(E.row(iMin + i));
+      C.col(i).swap(C.col(iMin + i));
+    }
+    E = (E.head(E.size())).eval();
+    C = (C.leftCols(E.size())).eval();
+    // normalize eigenvectors
+    for (unsigned iCol = 0; iCol < C.cols(); ++iCol) {
+      double norm = sqrt(C.col(iCol).transpose() * determinants * C.col(iCol));
+      C.col(iCol) = C.col(iCol) / norm;
+    }
   }
   this->setEigenValues(E);
   this->setLinCoeffs(C);
   Eigen::setNbThreads(0);
-  printTableHead("Normalized Linear Combination Coefficients for Construction of Adiabatic States");
-  OutputControl::nOut << std::string(10, ' ');
-  for (unsigned col = 0; col < C.cols(); ++col) {
-    OutputControl::nOut << "Psi_" << col << std::string(5, ' ');
-  }
-  OutputControl::nOut.flush();
-  OutputControl::nOut << std::endl;
-  for (unsigned row = 0; row < C.rows(); ++row) {
-    OutputControl::nOut << "Phi_" << row << std::string(2, ' ');
-    OutputControl::nOut.flush();
-    for (unsigned col = 0; col < C.cols(); ++col) {
-      printf("%10.5f", C(row, col));
-    }
-    OutputControl::nOut << std::endl;
-  }
-  OutputControl::nOut
-      << std::endl
-      << "Note: Psi_i are the adiabatic states, where Phi_i are the quasi-diabatic states used for the linear "
-         "combination."
-      << std::endl;
 }
 
 Eigen::VectorXd FDEETCalculator::getEigenValues() {
@@ -557,7 +617,7 @@ void FDEETCalculator::setLongRangeExEnergy(double newE) {
   _longRangeExEnergy = newE;
 }
 
-void FDEETCalculator::printResults(unsigned nStatesCouple) {
+void FDEETCalculator::printResults(unsigned nStatesCouple, bool analyticCoupling) {
   auto overlapMO = this->getMoOverlap();
   auto pseudoInverse = this->getPseudoInverse();
   auto determinants = this->getDeterminants();
@@ -566,18 +626,27 @@ void FDEETCalculator::printResults(unsigned nStatesCouple) {
   auto E = this->getEigenValues();
   auto coupling = this->getAnalyticalCoupling();
   auto lree = this->getLongRangeExEnergy();
-  if (nStatesCouple == 2) {
-    printSubSectionTitle("Analytical Results for Coupling of 2 States");
-    OutputControl::nOut << std::string(100, '-') << std::endl;
-    printf("%-80s %18.10f \n", "Analytical electronic coupling/a.u.:", coupling);
-    printf("%-80s %18.10f \n", "Analytical electronic coupling/eV:", coupling * HARTREE_TO_EV);
-    printf("%-80s %18.10f \n", "Long-range excitation-energy/a.u.:", lree);
-    printf("%-80s %18.10f \n", "Long-range excitation-energy/eV:", lree * HARTREE_TO_EV);
-    OutputControl::nOut << std::string(100, '-') << std::endl;
-    OutputControl::nOut << std::endl;
+  printSubSectionTitle("Results for Coupling Problem");
+  printTableHead("Normalized Linear Combination Coefficients for Construction of Adiabatic States");
+  OutputControl::nOut << std::string(10, ' ');
+  for (unsigned col = 0; col < C.cols(); ++col) {
+    OutputControl::nOut << "Psi_" << col << std::string(5, ' ');
+  }
+  OutputControl::nOut.flush();
+  OutputControl::nOut << std::endl;
+  for (unsigned row = 0; row < C.rows(); ++row) {
+    OutputControl::nOut << "Phi_" << row << std::string(2, ' ');
+    OutputControl::nOut.flush();
+    for (unsigned col = 0; col < C.cols(); ++col) {
+      OutputControl::n.printf("%10.5f", C(row, col));
+    }
     OutputControl::nOut << std::endl;
   }
-  printSubSectionTitle("Results for Coupling Problem");
+  OutputControl::nOut
+      << std::endl
+      << "Note: Psi_i are the adiabatic states, where Phi_i are the diabatic states used for the linear "
+         "combination.\n"
+      << std::endl;
   printTableHead("Hamiltonian/a.u.");
   OutputControl::nOut << std::fixed << std::setprecision(5) << H << std::endl;
   OutputControl::nOut << std::endl;
@@ -586,7 +655,46 @@ void FDEETCalculator::printResults(unsigned nStatesCouple) {
   OutputControl::nOut << std::endl;
   printTableHead("Eigenvalues/a.u.");
   OutputControl::nOut << std::fixed << std::setprecision(5) << E << std::endl;
+  if (nStatesCouple == 2 && analyticCoupling) {
+    printSubSectionTitle("Analytical Results for Coupling of 2 States");
+    OutputControl::nOut << std::string(100, '-') << std::endl;
+    OutputControl::n.printf("%-80s %18.10f \n", "Analytical electronic coupling/a.u.:", coupling);
+    OutputControl::n.printf("%-80s %18.10f \n", "Analytical electronic coupling/eV:", coupling * HARTREE_TO_EV);
+    OutputControl::n.printf("%-80s %18.10f \n", "Long-range excitation-energy/a.u.:", lree);
+    OutputControl::n.printf("%-80s %18.10f \n", "Long-range excitation-energy/eV:", lree * HARTREE_TO_EV);
+    OutputControl::nOut << std::string(100, '-') << std::endl;
+  }
+}
+
+void FDEETCalculator::printTransformedMatrices(Eigen::MatrixXd HPrime, Eigen::MatrixXd S, Eigen::MatrixXd C) {
+  printSubSectionTitle("Results for Coupling Problem in Transformed Basis");
+  printTableHead("Normalized Linear Combination Coefficients for Construction of Adiabatic States");
+  OutputControl::nOut << std::string(10, ' ');
+  for (unsigned col = 0; col < C.cols(); ++col) {
+    OutputControl::nOut << "Psi_" << col << std::string(5, ' ');
+  }
+  OutputControl::nOut.flush();
   OutputControl::nOut << std::endl;
+  for (unsigned row = 0; row < C.rows(); ++row) {
+    OutputControl::nOut << "Phi_" << row << std::string(2, ' ');
+    OutputControl::nOut.flush();
+    for (unsigned col = 0; col < C.cols(); ++col) {
+      OutputControl::n.printf("%10.5f", C(row, col));
+    }
+    OutputControl::nOut << std::endl;
+  }
+  OutputControl::nOut
+      << std::endl
+      << "Note: Psi_i are the new adiabatic states, where Phi_i are the coupled adiabatic states used for the linear "
+         "combination.\n"
+      << std::endl;
+  printTableHead("Transformed Hamiltonian/a.u.");
+  OutputControl::nOut << std::fixed << std::setprecision(5) << HPrime << std::endl;
+  OutputControl::nOut << std::endl
+                      << "Note: The element-wise product of energy contributions and overlap is shown.\n"
+                      << std::endl;
+  printTableHead("Overlap of Coupled Adiabatic States/a.u.");
+  OutputControl::nOut << std::fixed << std::setprecision(5) << S << std::endl;
 }
 
 void FDEETCalculator::printTransDensContributions(std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple) {

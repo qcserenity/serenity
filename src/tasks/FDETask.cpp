@@ -21,12 +21,14 @@
 #include "tasks/FDETask.h"
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
+#include "data/OrbitalController.h"
 #include "data/matrices/DensityMatrix.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "dft/dispersionCorrection/DispersionCorrectionCalculator.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/MolecularSurfaceController.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
+#include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
 #include "io/FormattedOutputStream.h"
 #include "misc/WarningTracker.h"
@@ -40,6 +42,7 @@
 #include "potentials/bundles/FDEPotentialBundleFactory.h"
 #include "scf/SCFAnalysis.h"
 #include "scf/Scf.h"
+#include "settings/ElectronicStructureOptions.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 /* Include Std and External Headers */
@@ -55,6 +58,7 @@ FDETask<SCFMode>::FDETask(std::shared_ptr<SystemController> activeSystem,
 
 template<Options::SCF_MODES SCFMode>
 void FDETask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _activeSystem);
   /*
    * Initialize data objects and gather data
    */
@@ -108,9 +112,10 @@ void FDETask<SCFMode>::run() {
     // supersystem grid
     Options::GRID_PURPOSES gridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    _supersystemgrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid, gridacc);
+    _supersystemgrid =
+        AtomCenteredGridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid, gridacc);
   }
-  if (settings.initializeSuperMolecularSurface && settings.embedding.pcm.use) {
+  if (settings.initializeSuperMolecularSurface && settings.embedding.pcm.use && !settings.embedding.pcm.loadedPCM) {
     // geometry of the entire system
     auto superSystemGeometry = std::make_shared<Geometry>(superSystemAtomsCavity);
     superSystemGeometry->deleteIdenticalAtoms();
@@ -119,6 +124,14 @@ void FDETask<SCFMode>::run() {
     for (auto sys : _environmentSystems)
       sys->setMolecularSurface(molecularSurface, MOLECULAR_SURFACE_TYPES::FDE);
   }
+  else if (settings.embedding.pcm.use && settings.embedding.pcm.loadedPCM) {
+    auto superSystemGeometry = std::make_shared<Geometry>(superSystemAtomsCavity);
+    superSystemGeometry->deleteIdenticalAtoms();
+    auto molecularSurface = _activeSystem->getMolecularSurface(MOLECULAR_SURFACE_TYPES::FDE);
+    for (auto sys : _environmentSystems)
+      sys->setMolecularSurface(molecularSurface, MOLECULAR_SURFACE_TYPES::FDE);
+  }
+
   // Set the grid controller to the supersystem grid if "exact" methods are used.
   if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
     _activeSystem->setGridController(_supersystemgrid);
@@ -145,43 +158,63 @@ void FDETask<SCFMode>::run() {
   double totEnvEnergy = 0.0;
   // Check if interaction energies of active systems are present at this point
   bool allInteractionsPresent =
-      _activeSystem->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY);
+      _activeSystem->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+      _activeSystem->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_HF_ENERGY);
   eConts.push_back(_activeSystem->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
 
   for (auto sys : _environmentSystems) {
-    assert((sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT ||
-            sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) &&
-           "Unknown electronic structure theory!");
     if (settings.calculateEnvironmentEnergy) {
-      auto envsettings = sys->getSettings();
-      auto envEnergies = sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
-      auto densityMatrixEnvironment = sys->template getElectronicStructure<SCFMode>()->getDensityMatrix();
-      if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
-        auto envPot = sys->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
-        envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
-      }
-      else if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-        // Dispersion correction
-        auto envDispEnergy = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
-            sys->getSettings().dft.dispersion, sys->getGeometry(), sys->getSettings().dft.functional);
-        envEnergies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, envDispEnergy);
-        auto envPot = sys->template getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
-        envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
-        envEnergies->addOrReplaceComponent(
-            std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, 0.0));
-        auto fBaseName = sys->getHDF5BaseName();
-        if (SCFMode == Options::SCF_MODES::UNRESTRICTED) {
-          fBaseName = fBaseName + ".energies.unres";
+      if (sys->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
+        auto envsettings = sys->getSettings();
+        auto envEnergies =
+            sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergyComponentController();
+        auto densityMatrixEnvironment =
+            sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrix();
+        if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+          auto envPot =
+              sys->template getPotentials<Options::SCF_MODES::RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+          envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
         }
-        else {
-          fBaseName = fBaseName + ".energies.res";
+        else if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+          // Dispersion correction
+          auto envDispEnergy = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
+              sys->getSettings().dft.dispersion, sys->getGeometry(), sys->getSettings().dft.functional);
+          envEnergies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, envDispEnergy);
+          auto envPot =
+              sys->template getPotentials<Options::SCF_MODES::RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+          envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
+          envEnergies->addOrReplaceComponent(
+              std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, 0.0));
+          auto fBaseName = sys->getHDF5BaseName() + ".energies.res";
+          envEnergies->toFile(fBaseName, sys->getSystemIdentifier());
         }
-        envEnergies->toFile(fBaseName, sys->getSystemIdentifier());
-      }
+      } // if scfmode
       else {
-        throw SerenityError("ERROR: Non-existing electronic structure theory requested");
-      }
-    } // if settings.calculateEnvironmentEnergy
+        auto envsettings = sys->getSettings();
+        auto envEnergies =
+            sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergyComponentController();
+        auto densityMatrixEnvironment =
+            sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrix();
+        if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+          auto envPot =
+              sys->template getPotentials<Options::SCF_MODES::UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+          envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
+        }
+        else if (envsettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+          // Dispersion correction
+          auto envDispEnergy = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
+              sys->getSettings().dft.dispersion, sys->getGeometry(), sys->getSettings().dft.functional);
+          envEnergies->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, envDispEnergy);
+          auto envPot =
+              sys->template getPotentials<Options::SCF_MODES::UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+          envPot->getFockMatrix(densityMatrixEnvironment, envEnergies);
+          envEnergies->addOrReplaceComponent(
+              std::pair<ENERGY_CONTRIBUTIONS, double>(ENERGY_CONTRIBUTIONS::KS_DFT_PERTURBATIVE_CORRELATION, 0.0));
+          auto fBaseName = sys->getHDF5BaseName() + ".energies.unres";
+          envEnergies->toFile(fBaseName, sys->getSystemIdentifier());
+        }
+      } // else scfmode
+    }   // if settings.calculateEnvironmentEnergy
 
     auto energyContribution = (sys->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT)
                                   ? ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY
@@ -195,8 +228,7 @@ void FDETask<SCFMode>::run() {
       allInteractionsPresent =
           allInteractionsPresent &&
           (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-           (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-            sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
+           (sys->template getElectronicStructure<SCFMode>()->checkEnergy(ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_HF_ENERGY)));
       eConts.push_back(sys->template getElectronicStructure<SCFMode>()->getEnergyComponentController());
     }
     else {
@@ -211,13 +243,11 @@ void FDETask<SCFMode>::run() {
               sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(energyContribution);
         }
         // Check interaction energies of every env system are present at this point
-        allInteractionsPresent =
-            allInteractionsPresent &&
-            (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
-                 ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-             (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-              sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
-                  ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
+        allInteractionsPresent = allInteractionsPresent &&
+                                 (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
+                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+                                  (sys->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->checkEnergy(
+                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_HF_ENERGY)));
         eConts.push_back(sys->template getElectronicStructure<RESTRICTED>()->getEnergyComponentController());
       }
       else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
@@ -231,17 +261,12 @@ void FDETask<SCFMode>::run() {
               sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(energyContribution);
         }
         // Check interaction energies of every env system are present at this point
-        allInteractionsPresent =
-            allInteractionsPresent &&
-            (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
-                 ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
-             (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(ENERGY_CONTRIBUTIONS::HF_ENERGY) &&
-              sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
-                  ENERGY_CONTRIBUTIONS::FDE_INTERACTION_ENERGY)));
+        allInteractionsPresent = allInteractionsPresent &&
+                                 (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
+                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_KS_DFT_ENERGY) ||
+                                  (sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->checkEnergy(
+                                      ENERGY_CONTRIBUTIONS::FDE_EMBEDDED_HF_ENERGY)));
         eConts.push_back(sys->template getElectronicStructure<UNRESTRICTED>()->getEnergyComponentController());
-      }
-      else {
-        throw SerenityError("ERROR: Unknown value for SCFMode detected.");
       }
     }
   }
@@ -266,9 +291,6 @@ void FDETask<SCFMode>::run() {
         else if (sys->getSCFMode() == Options::SCF_MODES::UNRESTRICTED) {
           totEnvEnergy += 0.5 * sys->template getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getEnergy(
                                     ENERGY_CONTRIBUTIONS::FDE_ELECTROSTATIC_INTERACTIONS);
-        }
-        else {
-          throw SerenityError("ERROR: Unknown value for SCFMode detected.");
         }
       }
     }
@@ -308,9 +330,6 @@ void FDETask<SCFMode>::run() {
         };
         envDensities.push_back(std::make_shared<DensityMatrixController<SCFMode>>(rDensMat));
       }
-      else {
-        throw SerenityError("ERROR: Unknown value for SCFMode detected.");
-      }
     }
   }
 
@@ -339,15 +358,36 @@ void FDETask<SCFMode>::run() {
   auto eCont = es->getEnergyComponentController();
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, actDispCorrection);
   /*
+   * Initiate ALMO procedure
+   */
+  if (settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::ALMO) {
+    double scfFactor = (SCFMode == Options::SCF_MODES::RESTRICTED) ? 0.5 : 1.0;
+    MatrixInBasis<SCFMode> customS(_activeSystem->getBasisController());
+    Eigen::MatrixXd S =
+        _activeSystem->getElectronicStructure<SCFMode>()->getOneElectronIntegralController()->getOverlapIntegrals();
+    for (unsigned int iEnv = 0; iEnv < _environmentSystems.size(); ++iEnv) {
+      auto& libint = Libint::getInstance();
+      Eigen::MatrixXd S_AB = Eigen::MatrixXd(libint.compute1eInts(
+          LIBINT_OPERATOR::overlap, _environmentSystems[iEnv]->getBasisController(), _activeSystem->getBasisController()));
+      const DensityMatrix<SCFMode> D_BB = _environmentSystems[iEnv]->getElectronicStructure<SCFMode>()->getDensityMatrix();
+      for_spin(customS, D_BB) {
+        customS_spin = S - scfFactor * S_AB * D_BB_spin * S_AB.transpose();
+      };
+    }
+    _activeSystem->getElectronicStructure<SCFMode>()->getMolecularOrbitals()->useCustomOverlap(customS, true);
+  }
+  /*
    * Attach everything and run scf
    */
   eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES, totEnvEnergy);
   if (this->settings.skipSCF) {
-    fdePot->getFockMatrix(es->getDensityMatrix(), eCont);
+    auto F = fdePot->getFockMatrix(es->getDensityMatrix(), eCont);
     es->attachPotentials(fdePot);
+    _activeSystem->template getElectronicStructure<SCFMode>()->setFockMatrix(F);
   }
   else {
-    Scf<SCFMode>::perform(actsettings, es, fdePot);
+    Scf<SCFMode>::perform(actsettings, es, fdePot, false, nullptr, 0,
+                          settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::ALMO);
   }
 
   if (settings.gridCutOff > 0.0 and settings.finalGrid and !_finalGrid) {
@@ -362,7 +402,8 @@ void FDETask<SCFMode>::run() {
     // supersystem grid
     Options::GRID_PURPOSES finalGridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    _finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystem->getSettings().grid, finalGridacc);
+    _finalGrid =
+        AtomCenteredGridControllerFactory::produce(finalGridGeometry, _activeSystem->getSettings().grid, finalGridacc);
   }
 
   if (settings.calculateSolvationEnergy) {
@@ -376,13 +417,18 @@ void FDETask<SCFMode>::run() {
     eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_SOLV_SCALED_NUCLEI_ENV_NUCLEI_COULOMB, 0.5 * actNucEnvNuc);
   }
   if (settings.gridCutOff > 0.0 and settings.finalGrid) {
-    auto naddXCfunc = resolveFunctional(settings.embedding.naddXCFunc);
+    auto naddXCfunc = settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                          ? Functional(settings.embedding.customNaddXCFunc)
+                          : resolveFunctional(settings.embedding.naddXCFunc);
     auto naddXCPot = std::make_shared<NAddFuncPotential<SCFMode>>(
         _activeSystem, _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
         envDensities, _finalGrid, naddXCfunc, std::make_pair(true, eConts), true, true);
     auto kin = std::make_shared<NAddFuncPotential<SCFMode>>(
-        _activeSystem, _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(), envDensities,
-        _finalGrid, resolveFunctional(settings.embedding.naddKinFunc), std::make_pair(false, eConts), true, true);
+        _activeSystem, _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
+        envDensities, _finalGrid,
+        settings.embedding.customNaddKinFunc.basicFunctionals.size() ? Functional(settings.embedding.customNaddKinFunc)
+                                                                     : resolveFunctional(settings.embedding.naddKinFunc),
+        std::make_pair(false, eConts), true, true);
     const auto& P =
         _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
     double eNaddKin = kin->getEnergy(P);
@@ -394,14 +440,18 @@ void FDETask<SCFMode>::run() {
   if (settings.calculateSolvationEnergy) {
     if (!_finalGrid)
       _finalGrid = _supersystemgrid;
-    auto naddXCfunc = resolveFunctional(settings.embedding.naddXCFunc);
+    auto naddXCfunc = settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                          ? Functional(settings.embedding.customNaddXCFunc)
+                          : resolveFunctional(settings.embedding.naddXCFunc);
     auto naddXCPot = std::make_shared<NAddFuncPotential<SCFMode>>(
         _activeSystem, _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
         envDensities, _finalGrid, naddXCfunc, std::make_pair(true, eConts), true, true, settings.calculateSolvationEnergy);
     auto kin = std::make_shared<NAddFuncPotential<SCFMode>>(
         _activeSystem, _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController(),
-        envDensities, _finalGrid, resolveFunctional(settings.embedding.naddKinFunc), std::make_pair(false, eConts),
-        true, true, settings.calculateSolvationEnergy);
+        envDensities, _finalGrid,
+        settings.embedding.customNaddKinFunc.basicFunctionals.size() ? Functional(settings.embedding.customNaddKinFunc)
+                                                                     : resolveFunctional(settings.embedding.naddKinFunc),
+        std::make_pair(false, eConts), true, true, settings.calculateSolvationEnergy);
 
     const auto& P =
         _activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController()->getDensityMatrix();
@@ -460,8 +510,12 @@ void FDETask<SCFMode>::run() {
 template<Options::SCF_MODES SCFMode>
 void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<PotentialBundle<SCFMode>> fdePot) {
   auto eCont = _activeSystem->getElectronicStructure<SCFMode>()->getEnergyComponentController();
-  auto functional = resolveFunctional(_activeSystem->getSettings().dft.functional);
-  auto naddXCFunctional = resolveFunctional(settings.embedding.naddXCFunc);
+  auto functional = _activeSystem->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(_activeSystem->getSettings().customFunc)
+                        : resolveFunctional(_activeSystem->getSettings().dft.functional);
+  auto naddXCFunctional = settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                              ? Functional(settings.embedding.customNaddXCFunc)
+                              : resolveFunctional(settings.embedding.naddXCFunc);
   double MP2Correlation = 0.0;
   double mp2Interaction = 0.0;
   if (settings.calculateMP2Energy) {
@@ -533,7 +587,9 @@ void FDETask<SCFMode>::calculateMP2CorrelationContribution(std::shared_ptr<Poten
       };
       LocalMP2InteractionCalculator locMP2Inter(_activeSystem, _environmentSystems, settings.lcSettings, settings.maxCycles,
                                                 settings.maxResidual, settings.embedding.fullMP2Coupling);
-      auto envXCFunctional = resolveFunctional(_environmentSystems[0]->getSettings().dft.functional);
+      auto envXCFunctional = _environmentSystems[0]->getSettings().customFunc.basicFunctionals.size()
+                                 ? Functional(_environmentSystems[0]->getSettings().customFunc)
+                                 : resolveFunctional(_environmentSystems[0]->getSettings().dft.functional);
       bool envIsDFT = _environmentSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
       if (settings.calculateEnvironmentEnergy && envXCFunctional.isDoubleHybrid() && envIsDFT) {
         double envEnergy = eCont->getEnergyComponent(ENERGY_CONTRIBUTIONS::FDE_FROZEN_SUBSYSTEM_ENERGIES);
@@ -650,6 +706,12 @@ void FDETask<SCFMode>::calculateUnrelaxedMP2Density(std::shared_ptr<PotentialBun
 template<Options::SCF_MODES SCFMode>
 void FDETask<SCFMode>::printFaTAnalysis(std::vector<std::shared_ptr<SystemController>> systems,
                                         std::shared_ptr<GridController> supersystemGrid, bool actOnly) {
+  bool skipBecauseOfMissingImplementation =
+      !actOnly && systems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF && SCFMode == UNRESTRICTED;
+  if (skipBecauseOfMissingImplementation) {
+    printf("\n");
+    return;
+  }
   SCFAnalysis<SCFMode> FaTanalysisSuperSys(systems, supersystemGrid);
   auto S2 = FaTanalysisSuperSys.getS2();
   if (actOnly) {

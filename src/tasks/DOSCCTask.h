@@ -21,6 +21,7 @@
 #ifndef TASKS_DOSCCTASK_H_
 #define TASKS_DOSCCTASK_H_
 
+/* Include Serenity Internal Headers */
 #include "tasks/GeneralizedDOSTask.h" //GDOS settings.
 #include "tasks/Task.h"
 #include "tasks/WavefunctionEmbeddingTask.h" //Wavefunction embedding task settings.
@@ -115,11 +116,11 @@ class DOSCCTask : public Task {
     }
     std::string reducedBlockName = blockname.substr(0, 2);
     LocalCorrelationSettings& lcSettings = c.wfemb.lcSettings[regionIndex];
-    if (lcSettings.visitSettings(v, reducedBlockName))
+    if (lcSettings.visitAsBlockSettings(v, reducedBlockName))
       return;
     if (!blockname.substr(0, blockname.length() - 1).compare("PAIRLC")) {
       LocalCorrelationSettings& lcSettingsPairSelection = c.lcPairSelection[regionIndex];
-      if (lcSettingsPairSelection.visitSettings(v, "LC"))
+      if (lcSettingsPairSelection.visitAsBlockSettings(v, "LC"))
         return;
     }
 

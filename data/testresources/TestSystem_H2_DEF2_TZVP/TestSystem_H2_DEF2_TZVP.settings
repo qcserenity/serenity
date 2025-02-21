@@ -13,8 +13,7 @@ IDENTIFIER 1485440789360845730
 PATH ./
 CHARGE 0
 SPIN 0
-GEOMETRY /ssdtmp/j_unsl01/workspace/serenity/data/testresources/TestSystem_H2_DEF2_TZVP/TestSystem_H2_DEF2_TZVP.xyz
-LOAD /ssdtmp/j_unsl01/workspace/serenity/data/testresources/TestSystem_H2_DEF2_TZVP/
+GEOMETRY TestSystem_H2_DEF2_TZVP/TestSystem_H2_DEF2_TZVP.xyz
 SCFMODE RESTRICTED
 METHOD HF
 +dft

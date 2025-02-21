@@ -24,8 +24,9 @@
 #include "parameters/AtomicParameters.h"
 #include "parameters/Constants.h"
 /* Include Std and External Headers */
-#include <iostream>
-#include <stdexcept>
+#include <ctype.h>
+#include <utility>
+#include <vector>
 
 namespace Serenity {
 

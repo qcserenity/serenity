@@ -55,7 +55,8 @@ void ScfTask<SCFMode>::calculateMP2Contribution() {
   auto es = _systemController->getElectronicStructure<SCFMode>();
   auto energyComponentController = es->getEnergyComponentController();
   // check for double hybrid functional
-  auto functional = resolveFunctional(systemSettings.dft.functional);
+  auto functional = systemSettings.customFunc.basicFunctionals.size() ? Functional(systemSettings.customFunc)
+                                                                      : resolveFunctional(systemSettings.dft.functional);
   double MP2Correlation = 0.0;
   if (functional.isDoubleHybrid() && settings.calculateMP2Energy) {
     Timings::takeTime("Active System -    DH-MP2 Corr.");
@@ -115,7 +116,8 @@ void ScfTask<SCFMode>::calculateDispersionCorrection() {
   auto& systemSettings = _systemController->getSettings();
   auto es = _systemController->getElectronicStructure<SCFMode>();
   auto energyComponentController = es->getEnergyComponentController();
-  auto functional = resolveFunctional(systemSettings.dft.functional);
+  auto functional = systemSettings.customFunc.basicFunctionals.size() ? Functional(systemSettings.customFunc)
+                                                                      : resolveFunctional(systemSettings.dft.functional);
   auto dispCorrection = DispersionCorrectionCalculator::calcDispersionEnergyCorrection(
       systemSettings.dft.dispersion, _systemController->getGeometry(), systemSettings.dft.functional);
   es->getEnergyComponentController()->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::KS_DFT_DISPERSION_CORRECTION, dispCorrection);
@@ -128,7 +130,8 @@ void ScfTask<SCFMode>::finalDFTEnergyEvaluation(std::shared_ptr<SPMatrix<SCFMode
     auto es = _systemController->getElectronicStructure<SCFMode>();
     auto energyComponentController = es->getEnergyComponentController();
     // XC Func with default grid.
-    auto functional = resolveFunctional(systemSettings.dft.functional);
+    auto functional = systemSettings.customFunc.basicFunctionals.size() ? Functional(systemSettings.customFunc)
+                                                                        : resolveFunctional(systemSettings.dft.functional);
     std::shared_ptr<FuncPotential<SCFMode>> Vxc = std::make_shared<FuncPotential<SCFMode>>(
         _systemController, es->getDensityMatrixController(), _systemController->getGridController(), functional);
     // Replace functional Fock matrix contribution.
@@ -187,10 +190,16 @@ void ScfTask<SCFMode>::printHeader() {
   OutputControl::n.printf("%4s SCF Mode:              %15s\n", "", scfmode.c_str());
   OutputControl::n.printf("%4s Method:                %15s\n", "", method.c_str());
   if (systemSettings.method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    std::string functional;
-    auto func = systemSettings.dft.functional;
-    Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
-    OutputControl::n.printf("%4s Functional:            %15s\n", "", functional.c_str());
+    if (systemSettings.customFunc.basicFunctionals.size()) {
+      printf("%4s Functional:            %15s\n", "", "Custom");
+      Functional(systemSettings.customFunc).print();
+    }
+    else {
+      std::string functional;
+      auto func = systemSettings.dft.functional;
+      Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
+      OutputControl::n.printf("%4s Functional:            %15s\n", "", functional.c_str());
+    }
     OutputControl::n.printf("%4s Grid Accuracy:         %13d/%1d\n", "", systemSettings.grid.smallGridAccuracy,
                             systemSettings.grid.accuracy);
     std::string dispersion;
@@ -313,6 +322,7 @@ void ScfTask<SCFMode>::performSCF(std::shared_ptr<PotentialBundle<SCFMode>> pote
       calculateDispersionCorrection();
     }
     es->setFockMatrix(F);
+    es->attachPotentials(potentials);
     // ToDo: Crashes: EvaluateEnergyTaskTest.restricted_sDFT
     // es->toHDF5(systemSettings.path + systemSettings.name, systemSettings.identifier);
   }
@@ -349,7 +359,7 @@ std::shared_ptr<PotentialBundle<SCFMode>> ScfTask<SCFMode>::getPotentialBundle()
     potentials = _systemController->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>(gridPurpose);
   }
   else {
-    throw SerenityError("ScfTask: Nonexisting electronicStructureTheory requested.");
+    throw SerenityError("ScfTask: Nonexistent electronicStructureTheory requested.");
   }
   return potentials;
 }
@@ -367,7 +377,6 @@ void ScfTask<SCFMode>::run() {
   // Allow fraction occupation of degenerate orbitals.
   double degeneracyThreshold = _systemController->getSettings().scf.degeneracyThreshold;
   _systemController->getElectronicStructure<SCFMode>()->getDensityMatrixController()->setDegeneracyThreshold(degeneracyThreshold);
-
   // Run SCF or energy evaluation.
   performSCF(potentials);
 

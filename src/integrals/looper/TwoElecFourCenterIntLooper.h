@@ -27,7 +27,6 @@
 #include "integrals/Normalization.h"
 #include "integrals/wrappers/Libint.h"
 #include "misc/Timing.h"
-
 /* Include Std and External Headers */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -119,9 +118,10 @@ class TwoElecFourCenterIntLooper {
    *                             the integral precision in case of absurdly large coefficients.
    */
   template<class Func>
-  __attribute__((always_inline)) inline void loop(Func distributionFunction, double maxD = 1) {
+  __attribute__((always_inline)) inline void loop(Func distributionFunction, double maxD = 1, bool scaleIntegrals = false) {
     loop(
-        distributionFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; }, maxD);
+        distributionFunction, [](unsigned int, unsigned int, unsigned int, unsigned int, double) { return false; },
+        maxD, scaleIntegrals);
   }
   /**
    * @brief Loops over all four-center two-electron Coulomb integrals and calls a function for each.
@@ -133,7 +133,8 @@ class TwoElecFourCenterIntLooper {
    *                      the integral precision in case of absurdly large coefficients.
    */
   template<class Func, class PrescreenFunc>
-  __attribute__((always_inline)) inline void loop(Func distributionFunction, PrescreenFunc prescreenFunc, double maxD = 1) {
+  __attribute__((always_inline)) inline void loop(Func distributionFunction, PrescreenFunc prescreenFunc,
+                                                  double maxD = 1, bool scaleIntegrals = false) {
     /*
      * Initialization
      */
@@ -213,9 +214,26 @@ class TwoElecFourCenterIntLooper {
         bool significant = libint.compute(libintOp, _deriv, basI, basJ, basK, basL, ints[threadId]);
         if (!significant)
           continue;
+
+        /*
+         * Two-electron-four-center integrals have an eightfold permutational symmetry, i.e.
+         * (ab|cd) = (ab|dc) = (ba|cd) = (ba|dc) = (cd|ab) = (cd|ba) = (dc|ab) = (dc|ba).
+         * Due to the index restrictions above, we only loop over permutationally unique
+         * quartets of shells. If, e.g., (a) == (b), that means that we have to scale the
+         * integrals in this quartet by a factor of a half to account for the fact that we
+         * will perform twice as many operations as actually necessary in any distribute
+         * functions (which intrinsically assume that we have to do any contractions eight
+         * times by default). Similar arguments hold for the other index combinations.
+         *
+         * Please note that the integrals are therefore coming out of this looper scaled,
+         * so this is only a valid approach when the distribute-function assumes that any operation has to be performed
+         * for all eight symmetric variants, e.g. when they are contracted on-the-fly in integral- direct approaches.
+         * Use the boolean of this function to prevent the scaling if you need the integrals as they actually are.
+         */
         /*
          * Unpack the integrals for the shell quadruple
          */
+        double perm = 1.0;
         for (unsigned int ii = 0; ii < nI; ++ii) {
           const unsigned int iii = ii + firstI;
           for (unsigned int jj = 0; jj < nJ; ++jj) {
@@ -230,7 +248,13 @@ class TwoElecFourCenterIntLooper {
                   continue;
                 if ((kkk)*nBasisFunctions + lll > (iii)*nBasisFunctions + jjj)
                   continue;
-                const Eigen::VectorXd integral(ints[threadId].row(ii * nJ * nK * nL + jj * nK * nL + kk * nL + ll));
+                perm = 1.0;
+                if (scaleIntegrals) {
+                  perm *= (iii == jjj) ? 0.5 : 1.0;
+                  perm *= (kkk == lll) ? 0.5 : 1.0;
+                  perm *= (iii == kkk) ? (jjj == lll ? 0.5 : 1.0) : 1.0;
+                }
+                const Eigen::VectorXd integral = perm * ints[threadId].row(ii * nJ * nK * nL + jj * nK * nL + kk * nL + ll);
                 /*
                  * Call function to use the integral; once for each permutational symmetry,
                  * but only if a new index combination is actually achieved.

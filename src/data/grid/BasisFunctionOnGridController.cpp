@@ -27,6 +27,7 @@
 #include "math/Derivatives.h"
 #include "math/FloatMaths.h"
 #include "misc/HelperFunctions.h"
+#include "misc/SerenityError.h"
 #include "misc/Timing.h"
 /* Include Std and External Headers */
 #include <omp.h>
@@ -44,7 +45,8 @@ BasisFunctionOnGridController::BasisFunctionBlockOnGridData::BasisFunctionBlockO
     functionValues(blockSize, nBasisFunctions),
     derivativeValues(derivativeLevel >= 1 ? makeGradientPtr<Eigen::MatrixXd>(blockSize, nBasisFunctions) : nullptr),
     secondDerivativeValues(derivativeLevel >= 2 ? makeHessianPtr<Eigen::MatrixXd>(blockSize, nBasisFunctions) : nullptr) {
-  assert(derivativeLevel < 3);
+  if (derivativeLevel > 2)
+    throw SerenityError("Third derivatives of basis functions on the grid are not implemented!");
   negligible.setZero();
   functionValues.setZero();
   if (derivativeValues != nullptr) {
@@ -83,9 +85,8 @@ BasisFunctionOnGridController::BasisFunctionOnGridController(std::shared_ptr<Bas
     _exponentThreshold(-log(_radialThreshold)),
     _highestDerivative(highestDerivative),
     _lastBlock(nullptr) {
-  assert(_basisController);
-  assert(_gridController);
-  assert(_highestDerivative <= 2);
+  if (highestDerivative > 2)
+    throw SerenityError("Third derivatives of basis functions on the grid are not implemented!");
 #ifdef _OPENMP
   _workspace.resize(omp_get_max_threads());
   for (int i = 0; i < omp_get_max_threads(); ++i) {
@@ -104,7 +105,8 @@ void BasisFunctionOnGridController::notify() {
 }
 
 void BasisFunctionOnGridController::setHighestDerivative(unsigned int newHighestDerivative) {
-  assert(newHighestDerivative <= 2);
+  if (newHighestDerivative > 2)
+    throw SerenityError("Third derivatives of basis functions on the grid are not implemented!");
   if (newHighestDerivative > _highestDerivative) {
     std::lock_guard<std::mutex> lock(_lock);
     /* Reinit workspace */
@@ -134,7 +136,6 @@ unsigned int BasisFunctionOnGridController::getFirstIndexOfBlock(const unsigned 
     _nBlocks = (unsigned int)ceil((double)_nPoints / _maxBlockSize);
     _upToDate = true;
   }
-  assert(blockIndex < _nBlocks);
   return blockIndex * _maxBlockSize;
 }
 

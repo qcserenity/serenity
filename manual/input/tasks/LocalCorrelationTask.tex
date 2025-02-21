@@ -1,0 +1,37 @@
+\subsection{Task: Local Correlation}\label{task:localCorrelation}
+This tasks performs a local correlation (DLPNO-coupled cluster or MP2) calculation. This task only
+calls other tasks. It serves as an input helper. It calls the localization task
+(see Section~\ref{task:localization}) and the MP2 (see Section~\ref{task: mp2}) or Coupled Cluster task
+(see Section~\ref{sec:coupledClusterTask}).
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task LC
+   system water
+   +lc
+     method DLPNO-CCSD(T0)
+   -lc
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{LOCALCORRELATIONTASK}, \ttt{LC}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Accepts a single active system which will be used in the calculation.
+ \item [\texttt{environmentSystems}]\hfill \\
+   Accepts a list of environment systems that are included in the Fock operator.
+ \item [\texttt{sub-blocks}]\hfill \\
+  Embedding (\ttt{\hyperref[sec:scb:emb]{emb}}) settings, local correlation (\ttt{\hyperref[sec:scb:lc]{lc}}) settings and
+  orbital localization task (\ttt{\hyperref[task:localization]{loc}}) settings are added via sub-blocks in the task settings.
+  By default, \ttt{splitValenceAndCore = true} is set for the localization task settings.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{maxCycles}]\hfill \\
+  The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+  By default, 100 cycles are allowed.
+  \item [\texttt{normThreshold}]\hfill \\
+  The threshold at which the coupled cluster/MP2 iterations are considered converged. By default \ttt{1.0e-5}.
+  \item [\texttt{writePairEnergies}]\hfill \\
+  Write the pair energies to a file with name: systemName\_pairEnergies\_CCSD.dat or systemName\_pairEnergies\_MP2.dat
+\end{description}

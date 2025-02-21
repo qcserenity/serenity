@@ -41,7 +41,7 @@ namespace Serenity {
  * @class LibXC LibXC.h
  * @brief A wrapper for the LibXC library
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class LibXC {
  public:
   /**
@@ -60,9 +60,9 @@ class LibXC {
    * @param densityOnGridController A controller for the density to be processed.
    * @param order Highest derivative to be evaluated. Currently, only derivatives up to 2nd order are available.
    */
-  FunctionalData<T> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
-                             const std::shared_ptr<DensityOnGridController<T>> densityOnGridController,
-                             unsigned int order = 1);
+  FunctionalData<SCFMode> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
+                                   const std::shared_ptr<DensityOnGridController<SCFMode>> densityOnGridController,
+                                   unsigned int order = 1);
 
   /**
    * @brief Returns the version number of Libxc.
@@ -92,14 +92,16 @@ class LibXC {
   unsigned int determineBlockSize(unsigned int blockIndex, unsigned int nPoints, unsigned int nBlocks);
 
   // Calculates gradient invariants
-  Eigen::MatrixXd calculateSigma(const Gradient<DensityOnGrid<T>>& gradient, const unsigned int& iGridStart,
+  Eigen::MatrixXd calculateSigma(const Gradient<DensityOnGrid<SCFMode>>& gradient, const unsigned int& iGridStart,
                                  const unsigned int& blocksize);
 
-  void complete(const FunctionalData<T>& f, const Gradient<DensityOnGrid<T>>& gradient, const unsigned int& firstIndex,
-                const unsigned int& blockSize);
+  // calculates quantities in terms of gradients from gradient invariants
+  void complete(const FunctionalData<SCFMode>& f, const Gradient<DensityOnGrid<SCFMode>>& gradient,
+                const unsigned int& firstIndex, const unsigned int& blockSize);
 
-  void eval(const FunctionalData<T>& funcData, const DensityOnGrid<T>& density,
-            std::shared_ptr<Gradient<DensityOnGrid<T>>> gradient, const double& prefactor,
+  // evaluates density functionals and derivatives, i.e. passes the necessary ingredients to Libxc and stores the output
+  void eval(const FunctionalData<SCFMode>& funcData, const DensityOnGrid<SCFMode>& density,
+            std::shared_ptr<Gradient<DensityOnGrid<SCFMode>>> gradient, const double& prefactor,
             const CompositeFunctionals::CLASSES ftype, const xc_func_type& func, unsigned int order);
 
   // Evaluates and returns energy from energy density

@@ -27,7 +27,6 @@
 #include "tasks/LRSCFTask.h"
 #include "tasks/ScfTask.h"
 #include "tasks/TDEmbeddingTask.h"
-/* Include Serenity Internal Headers */
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -117,9 +116,11 @@ TEST_F(LRSCFTaskRITest, unrestricted) {
 
   sys_a->setSpin(1);
   sys_a->setCharge(1);
+  sys_a->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
 
   sys_b->setSpin(-1);
   sys_b->setCharge(1);
+  sys_b->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
 
   ScfTask<UNRESTRICTED> scf_a(sys_a);
   scf_a.run();

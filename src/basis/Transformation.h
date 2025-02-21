@@ -77,10 +77,10 @@ class Transformation {
    * @param overlapB          The overlap integrals of basis B, i.e. \f$\mathbf{S}_B\f$
    * @return                  Returns new molecular orbitals defined in basis B
    */
-  template<Options::SCF_MODES T>
-  static std::unique_ptr<OrbitalController<T>> transformMOs(OrbitalController<T>& orbitalsA,
-                                                            std::shared_ptr<BasisController> basisControllerB,
-                                                            const MatrixInBasis<RESTRICTED>& overlapB);
+  template<Options::SCF_MODES SCFMode>
+  static std::unique_ptr<OrbitalController<SCFMode>> transformMOs(OrbitalController<SCFMode>& orbitalsA,
+                                                                  std::shared_ptr<BasisController> basisControllerB,
+                                                                  const MatrixInBasis<RESTRICTED>& overlapB);
 };
 
 } /* namespace Serenity */

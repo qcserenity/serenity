@@ -24,13 +24,14 @@
 /* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrix.h"
 #include "notification/NotifyingClass.h"
+#include "notification/ObjectSensitiveClass.h"
 
 namespace Serenity {
 
 /* Forward declarations */
-template<Options::SCF_MODES T>
+class OneElectronIntegralController;
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
-// template<class T>class ObjectSensitiveClass;
 
 /**
  * @class DensityMatrixController DensityMatrixController.h
@@ -80,6 +81,11 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
   /// @brief Updates the DensityMatrix based on the linked MOs.
   void updateDensityMatrix();
 
+  /// @brief Activate DensityMatrix calculation based on inverse MO overlap.
+  void setALMO(std::shared_ptr<OneElectronIntegralController> oneEIntController) {
+    _oneEIntController = oneEIntController;
+  }
+
   ///@brief Notification system implementation.
   void notify();
 
@@ -87,7 +93,7 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
    * @brief A function to attach orbitals to the DensityMatrixController after its creation.
    * @param molecularOrbitals
    * @param nOccupiedOrbitals
-   * @param update  Switch to disable the automatic DenstyMatrix update that would occur when calling this function.
+   * @param update  Switch to disable the automatic DensityMatrix update that would occur when calling this function.
    *                The idea behind this is that maybe the initial density guess is better than the one generated from
    *                the attached orbitals.
    */
@@ -98,7 +104,7 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
    * @brief A function to attach orbitals to the DensityMatrixController after its creation.
    * @param molecularOrbitals
    * @param occupations
-   * @param update  Switch to disable the automatic DenstyMatrix update that would occur when calling this function.
+   * @param update  Switch to disable the automatic DensityMatrix update that would occur when calling this function.
    *                The idea behind this is that maybe the initial density guess is better than the one generated from
    *                the attached orbitals.
    */
@@ -153,6 +159,7 @@ class DensityMatrixController : public NotifyingClass<DensityMatrix<SCFMode>>,
   std::shared_ptr<OrbitalController<SCFMode>> _molecularOrbitals;
   std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> _occupations;
   SpinPolarizedData<SCFMode, Eigen::VectorXd> _aufbauOccupations;
+  std::shared_ptr<OneElectronIntegralController> _oneEIntController = nullptr;
   const std::shared_ptr<BasisController> _basisController;
   bool _outOfDate;
   std::string _fBaseName;

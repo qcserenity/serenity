@@ -25,10 +25,11 @@
 #include "misc/SerenityError.h"       //Errors
 #include "settings/Settings.h"        //Set up supersystem, name assignment.
 #include "system/SystemController.h"
-#include "tasks/FDETask.h"              //Run FDE.
-#include "tasks/FreezeAndThawTask.h"    //Run FaT.
-#include "tasks/LocalCorrelationTask.h" //Run local correlation calculation.
-#include "tasks/ScfTask.h"              //Set up supersystem.
+#include "tasks/FDETask.h"                    //Run FDE.
+#include "tasks/FreezeAndThawTask.h"          //Run FaT.
+#include "tasks/LocalCorrelationTask.h"       //Run local correlation calculation.
+#include "tasks/ScfTask.h"                    //Set up supersystem.
+#include "tasks/TopDownStaticEmbeddingTask.h" // SetUpSubsystems call.
 
 namespace Serenity {
 
@@ -51,7 +52,9 @@ void DFTEmbeddedLocalCorrelationTask::run() {
     OutputControl::nOut << "  naddKinFunc:     " << naddKinFunc << std::endl;
   // Set up subsystems if necessary
   if (this->settings.fromSupersystem)
-    this->setUpSubsystems();
+    TopDownStaticEmbeddingTask<RESTRICTED>::setUpSubsystems(_supersystem, {_activeSystem}, _environmentSystems,
+                                                            this->settings.loc, this->settings.split,
+                                                            this->settings.add, this->settings.trunc);
   // Run FDE or FaT
   printSubSectionTitle("Embedded SCF Calculation");
   if (settings.runFaT) {

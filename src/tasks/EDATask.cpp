@@ -40,13 +40,15 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 EDATask<SCFMode>::EDATask(std::vector<std::shared_ptr<SystemController>> systems) {
-  assert(systems.size() > 1 && "ERROR: Two active systems need to be given for an EDA calculation.");
+  if (systems.size() != 2)
+    throw SerenityError("ERROR: Two active systems need to be given for an EDA calculation.");
   _systemA = systems[0];
   _systemB = systems[1];
 };
 
 template<Options::SCF_MODES SCFMode>
 void EDATask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, {_systemA, _systemB});
   auto& libint = Libint::getInstance();
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);

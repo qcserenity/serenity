@@ -21,7 +21,6 @@
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 #include <fstream>
@@ -81,15 +80,16 @@ TEST_F(LRSCFPopulationAnalysisTest, TransitionCharges) {
   reference.row(3) << -1.1262767702769589e+00, -2.8534864481849130e-02, -1.2963521214932783e-01, 6.1134436887175748e-08,
       -3.5965083674226451e-06, 2.6166838455524050e-01, 9.1966787494950129e-05;
 
-  // The sign of the transition charges is not arbitrary so it's simply squared here for comparison.
+  // The sign of the transition charges is arbitrary so it's simply squared here for comparison.
   charges = charges.cwiseProduct(charges).eval();
   reference = reference.cwiseProduct(reference).eval();
   double maxDiff = (charges - reference).cwiseAbs().maxCoeff();
 
   EXPECT_LE(maxDiff, 1E-6);
-
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::cleanUp();
+  EXPECT_EQ(0, std::remove((sys->getSystemPath() + sys->getSystemName() + ".correlation1.txt").c_str()));
+  EXPECT_EQ(0, std::remove((sys->getSystemPath() + sys->getSystemName() + ".correlation2.txt").c_str()));
+  EXPECT_EQ(0, std::remove((sys->getSystemPath() + sys->getSystemName() + ".correlation3.txt").c_str()));
+  EXPECT_EQ(0, std::remove((sys->getSystemPath() + sys->getSystemName() + ".correlation4.txt").c_str()));
 }
 
 TEST_F(LRSCFPopulationAnalysisTest, HoleParticlePopulations) {
@@ -107,26 +107,27 @@ TEST_F(LRSCFPopulationAnalysisTest, HoleParticlePopulations) {
   unsigned nAtoms = sys->getNAtoms();
   std::ifstream file;
 
+  // Serenity Dec 2024
   Eigen::MatrixXd holepartreferences(nAtoms * 4, nAtoms);
-  holepartreferences.row(0) << 0.0197715, 0.0851045, 0.0197662, 0.233197;
-  holepartreferences.row(1) << 0.0033025, 0.0142153, 0.00330161, 0.0389516;
-  holepartreferences.row(2) << 0.0288764, 0.124295, 0.0288685, 0.340585;
-  holepartreferences.row(3) << 0.00330215, 0.0142138, 0.00330125, 0.0389475;
+  holepartreferences.row(0) << 0.0202827, 0.0883255, 0.0202772, 0.241169;
+  holepartreferences.row(1) << 0.00338376, 0.0147354, 0.00338285, 0.0402344;
+  holepartreferences.row(2) << 0.0294375, 0.128193, 0.0294296, 0.350025;
+  holepartreferences.row(3) << 0.00338342, 0.0147339, 0.0033825, 0.0402302;
 
-  holepartreferences.row(4) << 0.00282781, 0.0107719, 0.00282706, 0.0187613;
-  holepartreferences.row(5) << 0.0326666, 0.124436, 0.0326579, 0.216728;
-  holepartreferences.row(6) << 0.0121999, 0.0464729, 0.0121967, 0.0809412;
-  holepartreferences.row(7) << 0.0326685, 0.124443, 0.0326598, 0.216741;
+  holepartreferences.row(4) << 0.00283803, 0.0108101, 0.00283727, 0.0188236;
+  holepartreferences.row(5) << 0.0326934, 0.12453, 0.0326847, 0.216844;
+  holepartreferences.row(6) << 0.0122162, 0.0465319, 0.012213, 0.0810258;
+  holepartreferences.row(7) << 0.0326953, 0.124537, 0.0326866, 0.216856;
 
-  holepartreferences.row(8) << 0.00695809, 0.101506, 0.00695801, 0.212471;
-  holepartreferences.row(9) << 0.00157967, 0.0230445, 0.00157965, 0.0482364;
-  holepartreferences.row(10) << 0.0111036, 0.161982, 0.0111035, 0.339059;
-  holepartreferences.row(11) << 0.00157919, 0.0230375, 0.00157917, 0.0482218;
+  holepartreferences.row(8) << 0.00737159, 0.106047, 0.00737152, 0.223194;
+  holepartreferences.row(9) << 0.00165649, 0.02383, 0.00165647, 0.0501544;
+  holepartreferences.row(10) << 0.0116625, 0.167776, 0.0116624, 0.353114;
+  holepartreferences.row(11) << 0.001656, 0.023823, 0.00165598, 0.0501396;
 
-  holepartreferences.row(12) << 0.00690113, 0.026725, 0.00689922, 0.0500122;
-  holepartreferences.row(13) << 0.00558584, 0.0216315, 0.00558428, 0.0404803;
-  holepartreferences.row(14) << 0.0581528, 0.2252, 0.0581366, 0.42143;
-  holepartreferences.row(15) << 0.00558424, 0.0216253, 0.00558269, 0.0404687;
+  holepartreferences.row(12) << 0.00691787, 0.0267944, 0.00691594, 0.0501287;
+  holepartreferences.row(13) << 0.0055954, 0.0216722, 0.00559385, 0.0405458;
+  holepartreferences.row(14) << 0.0581957, 0.225404, 0.0581795, 0.421701;
+  holepartreferences.row(15) << 0.0055938, 0.021666, 0.00559225, 0.0405342;
 
   for (unsigned iExc = 0; iExc < 4; iExc++) {
     Eigen::MatrixXd correlation(nAtoms, nAtoms);
@@ -143,10 +144,7 @@ TEST_F(LRSCFPopulationAnalysisTest, HoleParticlePopulations) {
     std::remove(name.c_str());
 
     double maxHolePartDiff = (correlation - holepartreferences.block(4 * iExc, 0, nAtoms, nAtoms)).cwiseAbs().maxCoeff();
-    EXPECT_LE(maxHolePartDiff, 1.000001E-6);
+    EXPECT_NEAR(maxHolePartDiff, 0, 1E-6);
   }
-
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 } /* namespace Serenity */

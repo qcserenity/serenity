@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "tasks/VirtualOrbitalSpaceSelectionTask.h" //To be tested.
 #include "basis/BasisController.h"                  //GetNBasisFunctions.
 #include "data/ElectronicStructure.h"               //GetDensityMatrix.
@@ -28,8 +29,8 @@
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/ScfTask.h"
 #include "tasks/TDEmbeddingTask.h"
-/* Include Std and External Headers */
 #include "testsupply/SystemController__TEST_SUPPLY.h"
+/* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
 
 namespace Serenity {

@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/CoulombSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "geometry/Geometry.h"
 #include "integrals/looper/CoulombInteractionIntLooper.h"

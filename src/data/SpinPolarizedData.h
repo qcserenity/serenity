@@ -53,7 +53,7 @@ namespace Serenity {
  *   For further information see e.g.:
  *   https://stackoverflow.com/questions/11287043/is-there-a-way-to-specialize-a-template-to-target-primitives
  */
-template<Options::SCF_MODES T, class U, typename E = void>
+template<Options::SCF_MODES SCFMode, class U, typename E = void>
 class SpinPolarizedData;
 
 /* =================================================
@@ -324,7 +324,7 @@ inline SpinPolarizedData<Options::SCF_MODES::UNRESTRICTED, U> makeUnrestrictedFr
 /*
  * Single argument
  */
-template<Options::SCF_MODES T, class U, bool isConstU>
+template<Options::SCF_MODES SCFMode, class U, bool isConstU>
 class ForSpinHelperOne;
 template<class U, bool isConstU>
 class ForSpinHelperOne<Options::SCF_MODES::RESTRICTED, U, isConstU> {
@@ -359,7 +359,7 @@ class ForSpinHelperOne<Options::SCF_MODES::UNRESTRICTED, U, isConstU> {
 /*
  * Two arguments
  */
-template<Options::SCF_MODES T, class U, class V, bool isConstU, bool isConstV>
+template<Options::SCF_MODES SCFMode, class U, class V, bool isConstU, bool isConstV>
 class ForSpinHelperTwo;
 template<class U, class V, bool isConstU, bool isConstV>
 class ForSpinHelperTwo<Options::SCF_MODES::RESTRICTED, U, V, isConstU, isConstV> {
@@ -414,7 +414,7 @@ class ForSpinHelperTwo<Options::SCF_MODES::UNRESTRICTED, U, V, isConstU, isConst
 /*
  * Three arguments
  */
-template<Options::SCF_MODES T, class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
+template<Options::SCF_MODES SCFMode, class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
 class ForSpinHelperThree;
 template<class U, class V, class W, bool isConstU, bool isConstV, bool isConstW>
 class ForSpinHelperThree<Options::SCF_MODES::RESTRICTED, U, V, W, isConstU, isConstV, isConstW> {
@@ -488,7 +488,7 @@ class ForSpinHelperThree<Options::SCF_MODES::UNRESTRICTED, U, V, W, isConstU, is
 /*
  * Four arguments
  */
-template<Options::SCF_MODES T, class U, class V, class W, class X, bool isConstU, bool isConstV, bool isConstW, bool isConstX>
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, bool isConstU, bool isConstV, bool isConstW, bool isConstX>
 class ForSpinHelperFour;
 template<class U, class V, class W, class X, bool isConstU, bool isConstV, bool isConstW, bool isConstX>
 class ForSpinHelperFour<Options::SCF_MODES::RESTRICTED, U, V, W, X, isConstU, isConstV, isConstW, isConstX> {
@@ -587,7 +587,8 @@ class ForSpinHelperFour<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, isConstU, 
 /*
  * Five arguments
  */
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, bool isConstU, bool isConstV,
+         bool isConstW, bool isConstX, bool isConstY>
 class ForSpinHelperFive;
 template<class U, class V, class W, class X, class Y, bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY>
 class ForSpinHelperFive<Options::SCF_MODES::RESTRICTED, U, V, W, X, Y, isConstU, isConstV, isConstW, isConstX, isConstY> {
@@ -710,7 +711,7 @@ class ForSpinHelperFive<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, isConst
  * Six arguments
  */
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, bool isConstU, bool isConstV,
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, class Z, bool isConstU, bool isConstV,
          bool isConstW, bool isConstX, bool isConstY, bool isConstZ>
 class ForSpinHelperSix;
 template<class U, class V, class W, class X, class Y, class Z, bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ>
@@ -867,7 +868,7 @@ class ForSpinHelperSix<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, isCon
  * Seven arguments
  */
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, bool isConstU,
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, class Z, class Q, bool isConstU,
          bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ>
 class ForSpinHelperSeven;
 template<class U, class V, class W, class X, class Y, class Z, class Q, bool isConstU, bool isConstV, bool isConstW,
@@ -1057,7 +1058,7 @@ class ForSpinHelperSeven<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, 
  * Eight arguments
  */
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU,
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU,
          bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR>
 class ForSpinHelperEight;
 template<class U, class V, class W, class X, class Y, class Z, class Q, class R, bool isConstU, bool isConstV,
@@ -1285,7 +1286,7 @@ class ForSpinHelperEight<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, 
  * Nine arguments
  */
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU,
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU,
          bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS>
 class ForSpinHelperNine;
 template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, bool isConstU, bool isConstV,
@@ -1547,8 +1548,9 @@ class ForSpinHelperNine<Options::SCF_MODES::UNRESTRICTED, U, V, W, X, Y, Z, Q, R
  * Ten arguments
  */
 
-template<Options::SCF_MODES T, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, class P, bool isConstU,
-         bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS, bool isConstP>
+template<Options::SCF_MODES SCFMode, class U, class V, class W, class X, class Y, class Z, class Q, class R, class S,
+         class P, bool isConstU, bool isConstV, bool isConstW, bool isConstX, bool isConstY, bool isConstZ,
+         bool isConstQ, bool isConstR, bool isConstS, bool isConstP>
 class ForSpinHelperTen;
 template<class U, class V, class W, class X, class Y, class Z, class Q, class R, class S, class P, bool isConstU, bool isConstV,
          bool isConstW, bool isConstX, bool isConstY, bool isConstZ, bool isConstQ, bool isConstR, bool isConstS, bool isConstP>

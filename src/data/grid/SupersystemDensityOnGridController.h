@@ -33,16 +33,16 @@ namespace Serenity {
  * Make sure when using it that all subsystem controllers know about the produced object by using
  * their member functions addSensitiveObject()
  */
-template<Options::SCF_MODES T>
-class SupersystemDensityOnGridController : public DensityOnGridController<T>,
-                                           public ObjectSensitiveClass<DensityOnGrid<T>> {
+template<Options::SCF_MODES SCFMode>
+class SupersystemDensityOnGridController : public DensityOnGridController<SCFMode>,
+                                           public ObjectSensitiveClass<DensityOnGrid<SCFMode>> {
  public:
   /**
    * @brief Assumes that the subsystem controllers all work on the same grid.
    * @param subsystemDensOnGridControllers the supersystem controller will take (shared) ownership
    *                                       of each of them
    */
-  SupersystemDensityOnGridController(const std::vector<std::shared_ptr<DensityOnGridController<T>>>& subsystemDensOnGridControllers);
+  SupersystemDensityOnGridController(const std::vector<std::shared_ptr<DensityOnGridController<SCFMode>>>& subsystemDensOnGridControllers);
   /**
    * @brief Default destructor.
    */
@@ -51,17 +51,17 @@ class SupersystemDensityOnGridController : public DensityOnGridController<T>,
    * @brief Getter for the density on the grid.
    * @return The density on the grid.
    */
-  virtual const DensityOnGrid<T>& getDensityOnGrid() override final;
+  virtual const DensityOnGrid<SCFMode>& getDensityOnGrid() override final;
   /**
    * @brief Getter for the density gradient on the grid.
    * @return The density gradient on the grid.
    */
-  virtual const Gradient<DensityOnGrid<T>>& getDensityGradientOnGrid() override final;
+  virtual const Gradient<DensityOnGrid<SCFMode>>& getDensityGradientOnGrid() override final;
   /**
    * @brief Getter for the density Hessian on the grid.
    * @return The density Hessian on the grid.
    */
-  virtual const Hessian<DensityOnGrid<T>>& getDensityHessianOnGrid() override final;
+  virtual const Hessian<DensityOnGrid<SCFMode>>& getDensityHessianOnGrid() override final;
   /**
    * @brief Reset all cached quantities.
    */
@@ -75,7 +75,7 @@ class SupersystemDensityOnGridController : public DensityOnGridController<T>,
  private:
   void updateData();
 
-  const std::vector<std::shared_ptr<DensityOnGridController<T>>> _subsystemDensOnGridControllers;
+  const std::vector<std::shared_ptr<DensityOnGridController<SCFMode>>> _subsystemDensOnGridControllers;
 
   bool _upToDate;
 };

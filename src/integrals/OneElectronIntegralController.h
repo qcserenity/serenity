@@ -32,6 +32,7 @@ namespace Serenity {
 class Basis;
 class BasisController;
 class Geometry;
+class ExternalChargeController;
 template<Options::SCF_MODES>
 class MatrixInBasis;
 /**
@@ -45,11 +46,12 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
  public:
   /**
    * @brief Constructor
-   * @param basisController   The reference basis.
-   * @param geometry          The reference geometry, needed for the nuclei-electron attraction integrals.
-   * @param gaugeOrigin       Gauge origin for dipole integrals.
+   * @param basisController            The reference basis.
+   * @param geometry                   The reference geometry, needed for the nuclei-electron attraction integrals.
+   * @param externalChargeController   The external charges.
    */
-  OneElectronIntegralController(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry);
+  OneElectronIntegralController(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry,
+                                std::shared_ptr<ExternalChargeController> externalChargeController);
 
   // Not defaulted to avoid includes
   virtual ~OneElectronIntegralController();
@@ -128,7 +130,7 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
    *
-   * @return Returns the kinetic integrals.
+   * @return Returns the nuclear-electron interaction integrals.
    */
   const MatrixInBasis<RESTRICTED>& getNucIntegrals() {
     if (!_nucIntegrals) {
@@ -136,6 +138,13 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
     }
     return *_nucIntegrals;
   }
+
+  /**
+   * @brief If not yet present, the necessary integrals are calculated on call.
+   *
+   * @return Returns the external charge integrals.
+   */
+  const MatrixInBasis<RESTRICTED>& getExtChargeIntegrals();
 
   /**
    * @brief If not yet present, the necessary integrals are calculated on call.
@@ -190,6 +199,16 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   std::shared_ptr<BasisController> getBasisController() const {
     return _basisController;
   }
+  /**
+   * @brief Getter for the external charges if any. If none are available, an empty vector is returned.
+   * @return The vector of external charges.
+   */
+  const std::vector<std::pair<double, Point>>& getExternalCharges();
+  /**
+   * @brief Setter to cache integrals over external charges.
+   * @param integrals The integrals.
+   */
+  void cacheExtChargeIntegrals(const MatrixInBasis<RESTRICTED>& integrals);
 
  private:
   const std::shared_ptr<BasisController> _basisController;
@@ -202,10 +221,14 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _kinIntegrals;
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _nucIntegrals;
   std::unique_ptr<MatrixInBasis<RESTRICTED>> _ecpIntegrals;
+  std::unique_ptr<MatrixInBasis<RESTRICTED>> _extChargeIntegrals;
 
+  // Dipole integrals, vector has 3 elements for x, y, z components
   std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _diplen;
   std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _dipvel;
   std::unique_ptr<std::vector<MatrixInBasis<RESTRICTED>>> _angmom;
+
+  std::shared_ptr<ExternalChargeController> _externalChargeController;
 
   bool _calcECPs;
 
@@ -214,6 +237,7 @@ class OneElectronIntegralController : public ObjectSensitiveClass<Basis> {
   void calcNucIntegrals();
   void calcECPIntegrals();
   void calcOverlapIntegrals();
+  void calcExternalChargeIntegrals();
 
   void calcDipoleLengths(Point gaugeOrigin);
   void calcDipoleVelocities(Point gaugeOrigin);

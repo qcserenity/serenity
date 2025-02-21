@@ -1,0 +1,201 @@
+% \clearpage
+\subsection{Task: LRSCF (TDDFT/CC2/BSE)}
+This task performs linear-response TDDFT/TDA calculations. In case of an uncoupled embedding calculation additional environment subsystems need to be added. In order to perform a coupled calculation more than one active system needs to be specified. Note that a coupled calculation requires a previous uncoupled calculation for the respective subsystem. These capabilities exist for excitation energies, oscillator strengths, rotatory strengths and both damped and regular linear-response properties (polarizabilties, optical rotation).\\
+
+\noindent
+In Serenity version 1.4.0 the approximate second-order coupled cluster model CC2 was added. Furthermore, CIS(D), its iterative variant CIS(D$_\infty$) and
+ADC(2) are available. For these methods, also transition moments from the ground state can be computed (and thus oscillator and rotatory strengths).
+Additionally, Bethe--Salpeter equation (BSE) calculations with and without the TDA can be performed.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
++task LRSCF
+  act water
+  nEigen 10
+  method tddft
+  frequencies { 2 3 4 }
+  frozenCore true
+  +grid
+    accuracy 7
+    smallgridaccuracy 7
+  -grid
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{LRSCFTask} and \ttt{LRSCF}.
+    \item [\texttt{activeSystems}]\hfill \\
+    The systems for the LRSCF calculation. If only one system without an environment system is used, no additional kernel contributions due to the embedding procedure are taken into account. If more than one active system is used, a coupled calculation is performed. This requires a previous uncoupled calculation for the individual active subsystems.
+    \item [\texttt{environmentSystems}]\hfill \\
+    Additional kernel contributions are taken into account in case environmentSystems are used in the LRSCF calculation.
+    \item [\texttt{sub-blocks}]\hfill \\
+    Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+    Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+    \ttt{naddXCFunc=NONE}, \ttt{embeddingMode=NONE}, \ttt{naddkinfunc=NONE}.\\
+    Grid (\ttt{grid}) settings are added via sub-blocks in the task settings.
+    Prominent settings in the grid block that are relevant for this task, and their defaults are:
+    \ttt{accuracy=4}, \ttt{smallGridAccuracy=4}.
+    Custom density functional settings (\ttt{customfunc}) settings are added via a sub-block in the task settings. This allows to define a custom functional for the evaluation of the kernel.
+    \item [\texttt{nEigen}]\hfill \\
+    Number of roots to be determined. The default is \ttt{4}.
+    \item [\texttt{conv}]\hfill \\
+    Convergence criterion for the iterative eigenvalue and response solvers. The default is \ttt{1.0e-5}.
+    \item [\texttt{method}]\hfill \\
+    Determines the method to be used. The default is \ttt{tddft}. \\ Also available are: \ttt{tda, cc2, cisdinf, cisd, adc2}.
+    \item [\texttt{analysis}]\hfill \\
+    If \ttt{false}, dominant contribution analysis and absorption/CD spectra will be suppressed. The default is \ttt{true}.
+    \item [\texttt{cctrdens}]\hfill \\
+    If \ttt{false}, no transition moments will be calculated for CC2, CIS(D$_\infty$) and ADC(2). The default is \ttt{false}.
+    \item [\texttt{ccexdens}]\hfill \\
+    If \ttt{false}, no excited state densities (and dipole moments) will be calculated for CC2, CIS(D$_\infty$) and ADC(2). The default is \ttt{false}.
+    \item [\texttt{frequencies}]\hfill \\
+    Frequencies for which dynamic polarizabilities and optical rotation are calculated for (in eV). More than one frequency can be given as~\ttt{$\{$0.1 0.2$\}$}. Default is an empty vector.
+    \item [\texttt{frequencyRange}]\hfill \\
+    Calculation of linear-response properties for a certain frequency range (in eV). Expects three arguments \ttt{$\{$start stop stepwidth$\}$}. Default is an empty vector.
+    \item [\texttt{damping}]\hfill \\
+    Damping parameter for response properties (finite lifetime effects, in eV), e.g. broadens the absorption spectrum. The default value is \ttt{0.0}.
+    \item [\texttt{gauge}]\hfill \\
+    The gauge chosen for the response property calculation. The options are \ttt{LENGTH} and \ttt{VELOCITY}. \ttt{LENGTH} gauge is chosen as default.
+    \item [\texttt{rpaScreening}]\hfill \\
+    Performs the exchange integral evaluation with static RPA screening. This keyword needs to be set to perform a BSE calculation in combination with \texttt{riCache}=\ttt{true}. The default is \ttt{false}. Note: If environmental subsystems are specified their screening contribution is included approximately. 
+    \item [\texttt{restart}]\hfill \\
+    Tries restarting from (preferably converged) eigenpairs that the task
+    looks for in the system folder. The default is \ttt{false}.
+    \item [\texttt{triplet}]\hfill \\
+    Used for triplet excitations. The default ist \ttt{false}.
+    \item [\texttt{scfstab}]\hfill \\
+    Used for SCF wavefunction stability analysis. Defaults to \ttt{NONE}. Available are
+    \begin{itemize}
+      \item Real RHF $\rightarrow$ Real RHF    : $(A+B)$, singlet \ttt{scfstab real} (internal)
+      \item Real RHF $\rightarrow$ Real UHF    : $(A+B)$, triplet \ttt{scfstab real} and \ttt{triplet true} (external)
+      \item Real RHF $\rightarrow$ Complex RHF : $(A-B)$, singlet \ttt{scfstab nonreal} (external)
+      \item Real UHF $\rightarrow$ Real UHF    : $(A+B)$ \ttt{scfstab real} (internal)
+      \item Real UHF $\rightarrow$ Complex UHF : $(A-B)$ \ttt{scfstab nonreal} (external)
+      \item Spin-Flip TD-HF/DFT \ttt{scfstab spinflip} (performed within the TDA)
+    \end{itemize}
+    The goal of an SCF is to minimize the energy with respect to orbital variation. At convergence of an SCF, the electronic gradient vanishes,
+    i.e. $F_{ia} = 0$ corresponding to a stationary point. A sufficient condition for this stationary point to be a true minimum is that the matrix of 
+    second derivatives with respect to to orbital variation (called the stability matrix) is positive definite. If it is not, there exist orbital rotations
+    between occupied and virtual orbitals that further minimze the energy. A stability analysis diagonalizes the stability matrix and can be used
+    to follow specific eigenvectors pointing towards the corresponding lower energy solution.
+    One differentiates between internal (keeping the constraints of the original SCF wavefunction) and external (lifting certain constraints of the original SCF wavefunction) stability analyses.
+    The [Real RHF $\rightarrow$ Real UHF] stability analysis (arguably most common), for example, can be used to identify triplet instabilities, i.e. finds
+    if there exists a lower triplet (UHF) wavefunction than the found singlet (RHF) one. Spin-Flip TDDFT is not a stability analysis, but was
+    implemented alongside them so it appears here for the sake of computational simplicity.
+    \item [\texttt{stabroot}]\hfill \\
+    Instruct to rotate the orbitals along the direction devised by the instability indexed by stabroot (usually 1, i.e. the lowest). 
+    Another SCF task needs to be run. This is only possible for internal stability analysis.
+    Defaults to \ttt{0}, which means that no root following will be done.
+    \item [\texttt{stabscal}]\hfill \\
+    Mixing parameter for the new orbitals. Defaults to \ttt{0.5}.\\
+    $C_\mathrm{new} = C_\mathrm{old} \cdot U $ where $U=\mathrm{exp}(\ttt{stabscal} F)$ and $F$ contains the orbital rotation parameters.
+    \item[\texttt{excGradList}]\hfill \\
+    A 1-based list of excited states for which gradients are to be calculated. Excited-State gradients are calculated when this list is not empty.
+    Calculating TDDFT gradients with Libxc (instead of XCFun) requires compilation of Serenity with the CMake flag \texttt{-DDISABLE\_KXC=OFF}.
+    \end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{maxCycles}]\hfill \\
+    Maximum number of iterations for the iterative eigenvalue solver. The default is \ttt{100}.
+    \item [\texttt{maxSubspaceDimension}]\hfill \\
+    Maximum dimension of subspace of the iterative eigenvalue solver. The default is \ttt{1e9}.
+    \item [\texttt{dominantThresh}]\hfill \\
+    Orbital transitions with squared coefficients starting from the largest summed up to \ttt{dominantThresh} are considered dominant and their contribution is written into the output. The default value is \ttt{0.85}.
+    \item [\texttt{func}]\hfill \\
+    Exchange--correlation functional for the kernel evaluation. The default is to use the exchange--correlation functional as defined in the system settings. This can be customized by specifying a \ttt{+customfunc} block (see Sec.~\ref{sec:system:customfunc}) in the \ttt{LRSCFTask} input. The priority order is \ttt{func} from the \ttt{LRSCFTask} before the system settings, and within those categories a customized functional beats the composite variant.
+    \item [\texttt{gaugeOrigin}]\hfill \\
+    The gauge origin for the dipole integrals. The default is the center of mass of the molecule. Can be changed via \ttt{$\{x~y~z\}$}.
+    \item [\texttt{besleyAtoms}]\hfill \\
+    Number of atoms included in the orbital restriction according to Besley (the first $n$ atoms will be taken from the xyz file). The default is \ttt{0}.
+    \item [\texttt{besleyCutoff}]\hfill \\
+    Besley cut off for occupied and virtual orbitals. This needs to be specified in a vector \ttt{$\{$OCC VIRT$\}$}.
+    \item [\texttt{excludeProjection}]\hfill \\
+    Exclude all artificially shifted virtual orbitals from the set of reference orbitals in a projection-based embedding calculation. The default is \ttt{false}. This keyword needs to be handled carefully if chosen in combination with basis-set restriction.
+    \item [\texttt{uncoupledSubspace}]\hfill \\
+    Uncoupled subspace for the FDEc-LRSCF problem. Given a set of active subsystems, a subspace of excitations vectors can be defined by: \\  \ttt{$\{$ 2 1 2} \\
+    \ttt{3 4 8 10 $\}$}, \\ where the first number $n$ gives the number of states, which are going to be included of that subsystem and the following $n$ numbers define the respective uncoupled eigenvectors (where the first excitation is labeled as 1). For this example, vectors 1 and 2 are taken from subsystem one, and vectors 4, 8 and 10 are chosen from active subsystem 2. If uncoupledSubspace is not set, all uncoupled vectors will be used to span the subspace.
+    \item [\texttt{fullFDEc}]\hfill \\
+    Converge the \emph{approximate} FDEc roots obtained from the uncoupled initial guess to the accuracy given by \ttt{convThresh}. In order to ensure convergence to the correct roots (and not any lower lying ones), a root-following procedure is employed. The default is \ttt{false}.
+    \item [\texttt{loadType}]\hfill \\
+    Reference states used to build transformation matrix for FDEc calculation. The options are \ttt{ISOLATED}, \ttt{UNCOUPLED} and \ttt{COUPLED}. The default is \ttt{UNCOUPLED}.
+    \item[\texttt{couplingPattern}]\hfill\\
+    Sets a special coupling pattern, e.g. for coupled / uncoupled coupling.
+    \item[\texttt{diis}]\hfill\\
+    Specifies whether the nonlinear eigenvalue solver uses a DIIS after preoptimization. If false, the quasi-linear Davidson algorithm will be used until \ttt{conv}
+    is reached.
+    \item[\texttt{diisStore}]\hfill\\
+    Specifies how many diis vectors can be stored (for CC2 ground state and nonlinear
+    eigenvalue solver). Default is 50.
+    \item[\texttt{preopt}]\hfill\\
+    Convergence threshold for the preoptimization of eigenvectors in nonlinear
+    eigenvalue solvers for CC2/ADC(2). Up to this threshold, a quasi-linear
+    Davidson algorithm will be used, after this a DIIS eigenvalue solver 
+    is turned on and converged to the parameter given by \ttt{conv}. The default is \ttt{1e-3}.
+    \item[\texttt{sss}]\hfill\\
+    Scaling parameter for same-spin contributions (CC2/ADC(2)). The default is \ttt{1.0}.
+    \item[\texttt{oss}]\hfill\\
+    Scaling parameter for opposite-spin contributions (CC2/ADC(2)). The default is \ttt{1.0}.
+    \item[\texttt{nafThresh}]\hfill\\
+    Truncates the three-center MO integral basis using the natural auxiliary function technique.
+    Threshold for truncation. The smaller, the fewer NAFs are truncated. NAFs are used if this 
+    threshold is != 0. The default is \ttt{0}.
+    \item[\texttt{sameDensity}]\hfill\\
+    If two subsystems are used in the calculation with the same occupied but different virtual orbital spaces,
+    the kernel must be evaluated with only one density. Because the \ttt{LRSCFTask} cannot find out so itself,
+    this keyword is used to tell it which subsystems have the same density, e.g.~\ttt{$\{1\quad 2\}$} (start counting at 1).
+    \item[\texttt{subsystemgrid}]\hfill\\
+    Only includes the grid points associated with atoms of the specified subsystems in the kernel evaluation.
+    \item[\texttt{partialResponseConstruction}]\hfill\\
+    Invokes a partial response-matrix construction for (not full) FDEc calculations.
+    Exploits symmetry of the response matrix and is therefore substantially faster than
+    a regular FDEc calculation.
+    The default is \ttt{false}.
+    \item[\texttt{densFitJ}]\hfill\\
+    Invokes density fitting for the Coulomb sigma vector. Uses the auxiliary basis defined in the system settings as \ttt{auxCLabel}.
+    Options are \ttt{NONE}, \ttt{RI}, \ttt{ACD}, and \ttt{ACCD}. The default is \ttt{RI}.
+    \item[\texttt{densFitK}]\hfill\\
+    Invokes density fitting for the exchange sigma vector. Uses the auxiliary basis defined in the system settings as \ttt{auxCLabel}.
+    Options are \ttt{NONE}, \ttt{RI}, \ttt{ACD}, and \ttt{ACCD}. The default is \ttt{NONE}.
+    \item[\texttt{densFitLRK}]\hfill\\
+    Invokes density fitting for the long-range exchange sigma vector. Uses the auxiliary basis defined in the system settings as \ttt{auxCLabel}.
+    Options are \ttt{NONE}, \ttt{RI}, \ttt{ACD}, and \ttt{ACCD}. The default is \ttt{NONE}.
+    \item[\texttt{densFitCache}]\hfill\\
+    Invokes density fitting for RIIntegrals, used for ADC(2)/CC2. Uses the auxiliary basis defined in the system settings as \ttt{auxCLabel}.
+    Options are \ttt{RI}, \ttt{ACD}, and \ttt{ACCD}. The default is \ttt{RI}.
+    \item[\texttt{transitionCharges}]\hfill\\
+    Calculates transition charges and stores them on disk. The default is \ttt{false}. Also calculates particle and hole populations, prints them and stores the hole-particle-correlation on disk.
+    \item[\texttt{grimme}]\hfill\\
+    Invokes Grimme's simplified TDA/TDDFT. The default is \ttt{false}.
+    \item[\texttt{adaptivePrescreening}]\hfill\\
+    Uses looser prescreening thresholds in the beginning of the Davidson iterations. Increases performance. The default is \ttt{true}.
+    \item[\texttt{frozenCore}]\hfill\\
+    Removes core orbitals from the reference orbitals (tabulated number for each atom type). The default is \ttt{false}.
+    \item[\texttt{frozenVirtual}]\hfill\\
+    Removes virtual orbitals from the reference orbitals that are higher lying than E(HOMO) + \ttt{frozenVirtual}. The default is \ttt{0.0} which does not remove any virtuals..
+    \item[\texttt{coreOnly}]\hfill\\
+    Removes all but core orbitals from the reference orbitals (can be used to perform X-ray calculations). The default is \ttt{false}.
+    \item[\texttt{ltconv}]\hfill \\
+	  Convergence parameter for the Laplace transformation if LT-SOS-CC2/ADC(2) is used. By default \ttt{0}. Note that this requires compilation with \ttt{-DSERENITY\_USE\_LAPLACE\_MINIMAX=ON}.
+    \item[\texttt{aocache}]\hfill \\
+	  Triggers that three center integrals are kept in memory for CC2/ADC(2) calculations. By default \ttt{true}.
+    \item[\texttt{noKernel}]\hfill \\ 
+	  Can be used to turn off the numerical integration of the XC and kinetic kernels. This keyword combined with
+    \texttt{auxclabel MINPARKER\_S/SP} in the basis block of the system settings can be used to do TDDFT-ris calculations 
+    \cite{zhou2023minimal}. By default \ttt{false}.
+    \item[\texttt{approxCoulomb}]\hfill \\
+	  This keyword accepts up to two distance thresholds (doubles) \{$t_1$ $t_2$\}, where $t_1$ must be smaller than $t_2$.
+    If used in an LRSCFTask with two or more active subsystems, the inter-subsystem blocks of the CoulombSigmavector
+    can be calculated at different levels of approximation for the $((ia)_I|(jb)_J)$-type integrals. Let $R$ denote the
+    inter-subsystem distance, which is calculated as the closest pair of atoms of the two geometries, then the conditions are as follows:\\
+    $R < t_1$: Four-center integrals (NORI) or RI using the union of the two basis sets (depending on the \texttt{densfitJ} keyword).\\
+    $t_1 < R < t_2$: ``Monomer-RI''-type approximation where for the three-center integrals only fitting functions of the subsystem belonging to the orbital transition $ia$ are used. \\
+    $t_2 < R$: Simplified TDA. \\
+    If only one threshold is given, the second one is set to infinity. By default empty (nothing done \emph{approximately}).
+    \item[\texttt{noCoupling}]\hfill \\
+	  Skips off-diagonal blocks of the response matrix in the formation of $\sigma$-vectors no matter what. By default \ttt{false}.
+    \item[\texttt{hypthresh}]\hfill \\
+    Density threshold for TDDFT gradient calculations. If the density at a point falls below this threshold, the third derivatives of the xc functional (sometimes called the hyperkernel) are set to zero at this point. 
+\end{description}
+
+% \clearpage

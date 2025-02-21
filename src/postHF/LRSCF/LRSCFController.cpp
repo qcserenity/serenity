@@ -26,11 +26,12 @@
 #include "data/OrbitalController.h"
 #include "geometry/Atom.h"
 #include "integrals/OneElectronIntegralController.h"
-#include "io/FormattedOutputStream.h" //Filtered output.
+#include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
-#include "math/linearAlgebra/MatrixFunctions.h" //Matrix sqrt
+#include "math/linearAlgebra/MatrixFunctions.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/WarningTracker.h"
+#include "parameters/Constants.h"
 #include "postHF/LRSCF/RICC2/ADC2Controller.h"
 #include "postHF/LRSCF/RICC2/CC2Controller.h"
 #include "postHF/LRSCF/Tools/Besley.h"
@@ -41,7 +42,6 @@
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
-
 /* Include Std and External Headers */
 #include <numeric>
 
@@ -69,6 +69,10 @@ LRSCFController<SCFMode>::LRSCFController(std::shared_ptr<SystemController> syst
   if (sysSettings.load != "") {
     _system->template getElectronicStructure<SCFMode>()->toHDF5(sysSettings.path + sysSettings.name, sysSettings.identifier);
   }
+  // AR: the member variable _settings is declared as const in the LRSCFController and therefore cannot be given to
+  // Options::resolve because resolve goes both ways and takes references
+  LRSCFTaskSettings settingsCopyToPrint = _settings;
+  settingsCopyToPrint.printSettings(this->_system->getSystemPath() + this->_system->getSystemName() + "_lrscf.settings");
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -111,7 +115,7 @@ void LRSCFController<SCFMode>::loadFromH5(Options::LRSCF_TYPE type) {
   Eigen::VectorXd eigenvalues;
 
   auto loadEigenpairs = [&](std::string input) {
-    printf("\n   $  %-20s\n\n", input.c_str());
+    OutputControl::n.printf("\n   $  %-20s\n\n", input.c_str());
 
     HDF5::H5File file(input.c_str(), H5F_ACC_RDONLY);
     HDF5::dataset_exists(file, "RIGHT");
@@ -133,7 +137,7 @@ void LRSCFController<SCFMode>::loadFromH5(Options::LRSCF_TYPE type) {
       throw SerenityError("The number of loaded eigenvectors and eigenvalues does not match.");
     }
 
-    printf("  Found %3i eigenpairs.\n\n\n", (int)eigenvalues.rows());
+    OutputControl::n.printf("  Found %3i eigenpairs.\n\n\n", (int)eigenvalues.rows());
 
     _excitationEnergies = std::make_shared<Eigen::VectorXd>(eigenvalues);
     _excitationVectors = std::make_shared<std::vector<Eigen::MatrixXd>>(XY);
@@ -147,7 +151,7 @@ void LRSCFController<SCFMode>::loadFromH5(Options::LRSCF_TYPE type) {
   }
   catch (...) {
     if (settings.load != "") {
-      printf("  Could not find any. Instead\n");
+      OutputControl::n.printf("  Could not find any. Instead\n");
       try {
         loadEigenpairs(settings.path + fName);
       }
@@ -186,6 +190,22 @@ void LRSCFController<SCFMode>::setSolution(std::shared_ptr<std::vector<Eigen::Ma
   HDF5::save(file, "LEFT", (*eigenvectors)[1]);
   HDF5::save(file, "EIGENVALUES", (*eigenvalues));
   file.close();
+
+  for (unsigned i = 0; i < (*eigenvectors)[0].cols(); i++) {
+    MatrixInBasis<SCFMode> T(this->getBasisController());
+
+    unsigned iaStart = 0;
+    for_spin(T, _nOcc, _nVirt) {
+      Eigen::Map<Eigen::MatrixXd> right =
+          Eigen::Map<Eigen::MatrixXd>((*eigenvectors)[0].col(i).data() + iaStart, _nVirt_spin, _nOcc_spin);
+      Eigen::Map<Eigen::MatrixXd> left =
+          Eigen::Map<Eigen::MatrixXd>((*eigenvectors)[1].col(i).data() + iaStart, _nVirt_spin, _nOcc_spin);
+      T_spin.bottomRightCorner(_nVirt_spin, _nVirt_spin) = 0.5 * (right * right.transpose() + left * left.transpose());
+      T_spin.topLeftCorner(_nOcc_spin, _nOcc_spin) = -0.5 * (right.transpose() * right + left.transpose() * left);
+      iaStart += _nOcc_spin * _nVirt_spin;
+    };
+    _unrelaxedDiffDensities->push_back(T);
+  }
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -254,7 +274,7 @@ std::shared_ptr<BasisController> LRSCFController<SCFMode>::getBasisController(Op
 template<>
 std::shared_ptr<SPMatrix<RESTRICTED>> LRSCFController<RESTRICTED>::getMOFockMatrix() {
   if (!_system->template getElectronicStructure<RESTRICTED>()->checkFock()) {
-    throw SerenityError("LRSF: No Fock matrix present in your system.");
+    throw SerenityError("LRSCF: No Fock matrix present in your system.");
   }
   auto fock = _system->template getElectronicStructure<RESTRICTED>()->getFockMatrix();
   if (!_settings.rpaScreening) {
@@ -483,7 +503,7 @@ void LRSCFController<SCFMode>::calculateScreening(const Eigen::VectorXd& eia) {
       _riints = nullptr;
       _screening = std::make_shared<Eigen::MatrixXd>(screen);
     }
-    printf(" .. done.\n\n");
+    OutputControl::n.printf(" .. done.\n\n");
   }
   else {
     throw SerenityError("No RI integrals for screening initialized!");
@@ -547,26 +567,26 @@ void LRSCFController<SCFMode>::editReference(SpinPolarizedData<SCFMode, std::vec
     std::string system = _system->getSettings().name;
     // Print info
     if (SCFMode == Options::SCF_MODES::RESTRICTED) {
-      std::cout << " System: " << system << " \n";
-      printf(" New reference orbitals (occ | virt): \n");
+      OutputControl::nOut << " System: " << system << " \n";
+      OutputControl::n.printf(" New reference orbitals (occ | virt): \n");
     }
     else {
-      std::cout << " System: " << system << " \n";
-      printf("%s New reference orbitals (occ | virt): \n", (iSpin == 0) ? "Alpha" : "Beta");
+      OutputControl::nOut << " System: " << system << " \n";
+      OutputControl::n.printf("%s New reference orbitals (occ | virt): \n", (iSpin == 0) ? "Alpha" : "Beta");
     }
 
     bool printedOccVirtSep = false;
     for (unsigned iMO = 0; iMO < indexWhiteList_spin.size(); ++iMO) {
       if (indexWhiteList_spin[iMO] >= oldnOcc && !printedOccVirtSep) {
-        printf("   |");
+        OutputControl::n.printf("   |");
         printedOccVirtSep = true;
       }
-      printf("%4i", indexWhiteList_spin[iMO] + 1);
+      OutputControl::n.printf("%4i", indexWhiteList_spin[iMO] + 1);
       if ((iMO + 1) % 10 == 0) {
-        printf("\n");
+        OutputControl::n.printf("\n");
       }
     }
-    printf("\n");
+    OutputControl::n.printf("\n");
     iSpin += 1;
   };
 }
@@ -762,8 +782,8 @@ void LRSCFController<SCFMode>::rotateOrbitalsSCFInstability() {
     WarningTracker::printWarning(
         " You are following roots that are not result of a real stability analysis, make sure this is intended.", true);
   }
-  printf(" Following instability root : %5i\n", _settings.stabroot);
-  printf(" Orbital mixing parameter   : %5.1f\n\n", _settings.stabscal);
+  OutputControl::n.printf(" Following instability root : %5i\n", _settings.stabroot);
+  OutputControl::n.printf(" Orbital mixing parameter   : %5.1f\n\n", _settings.stabscal);
   if (_settings.stabroot > _settings.nEigen) {
     throw SerenityError(
         "The stabroot keyword must be lower or equal to the number of roots determined in the first place.");

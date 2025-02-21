@@ -25,8 +25,9 @@
 /* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h" //Options::SCF_MODES
 #include "settings/LRSCFOptions.h"               //Options::GAUGE
-#include <Eigen/Dense>                           //Dense matrices.
-#include <memory>                                //shared_ptr
+/* Include Std and External Headers */
+#include <Eigen/Dense> //Dense matrices.
+#include <memory>      //shared_ptr
 
 namespace Serenity {
 

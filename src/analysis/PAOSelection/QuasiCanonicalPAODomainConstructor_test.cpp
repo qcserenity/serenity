@@ -26,8 +26,8 @@
 #include "system/SystemController.h"                                  //Test systems.
 #include "tasks/ScfTask.h"                                            //Clean electronic structure.
 #include "testsupply/SystemController__TEST_SUPPLY.h"                 //Test systems.
-                                                                      /* Include Std and External Headers */
-#include <gtest/gtest.h>                                              //Testing framework.
+/* Include Std and External Headers */
+#include <gtest/gtest.h> //Testing framework.
 
 namespace Serenity {
 class QuasiCanonicalPAODomainConstructorTest : public ::testing::Test {

@@ -136,6 +136,8 @@ TEST_F(ElectronicStructureCopyTaskTest, restrictedBasisSetChange) {
 TEST_F(ElectronicStructureCopyTaskTest, unrestricted) {
   auto source = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs_DFT, true);
   auto target = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs_DFT, true);
+  source->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
+  target->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   ScfTask<UNRESTRICTED> scf(source);
   scf.run();
 

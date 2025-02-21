@@ -25,7 +25,6 @@
 #include "data/matrices/CoefficientMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "settings/EmbeddingSettings.h"
-
 /* Include Std and External Headers */
 #include <memory>
 

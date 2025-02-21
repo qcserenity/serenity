@@ -96,41 +96,45 @@ class Point : public std::array<double, 3> {
    * @param   rhs
    * @returns the shifted point
    */
-  Point& operator+=(const Point& rhs) {
+  void operator+=(const Point& rhs) {
     this->at(0) += rhs[0];
     this->at(1) += rhs[1];
     this->at(2) += rhs[2];
-    return *this;
   }
   /**
    * @param   rhs
    * @returns the shifted point
    */
-  Point& operator-=(const Point& rhs) {
+  void operator-=(const Point& rhs) {
     this->at(0) -= rhs[0];
     this->at(1) -= rhs[1];
     this->at(2) -= rhs[2];
-    return *this;
   }
   /**
    * @param   factor
    * @returns the shifted point
    */
-  Point& operator*=(const double factor) {
+  void operator*=(const double factor) {
     this->at(0) *= factor;
     this->at(1) *= factor;
     this->at(2) *= factor;
-    return *this;
   }
   /**
    * @param   factor
    * @returns the shifted point
    */
-  Point& operator/=(const double factor) {
+  void operator/=(const double factor) {
     this->at(0) /= factor;
     this->at(1) /= factor;
     this->at(2) /= factor;
-    return *this;
+  }
+  /**
+   * @brief Operator ==
+   * @param other The other point.
+   * @return True, if the coordinates match.
+   */
+  bool operator==(const Point& other) const {
+    return this->isSamePoint(other, 1e-9);
   }
 
   /**
@@ -139,7 +143,7 @@ class Point : public std::array<double, 3> {
    * @param precision Precision to compare two doubles.
    * @return A bool determining if the two points are identical.
    */
-  bool isSamePoint(const Point& point, double precision);
+  bool isSamePoint(const Point& point, double precision) const;
 
   /**
    * @brief Getter for the point as an Eigen::Vector3d.

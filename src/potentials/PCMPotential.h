@@ -35,12 +35,12 @@ namespace Serenity {
 class BasisController;
 class Geometry;
 struct PCMSettings;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ContinuumModel;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectrostaticPotentialOnGridController;
 class MolecularSurfaceController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
 
 /**

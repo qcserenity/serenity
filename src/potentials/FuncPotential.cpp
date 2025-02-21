@@ -129,35 +129,21 @@ Eigen::MatrixXd FuncPotential<SCFMode>::getGeomGradients() {
 
   // Create mapping
   auto orbitalSet = system->template getActiveOrbitalController<SCFMode>();
-  std::vector<unsigned int> mapping(nBasisFunctions);
-  std::vector<bool> hasElementBeenSet(nBasisFunctions, false);
-  const auto& basisIndices = basisController->getBasisIndices();
-  // Vector to check whether ALL basis function shells are assigned to an atom index
-  for (unsigned int iAtom = 0; iAtom < basisIndices.size(); ++iAtom) {
-    const unsigned int firstIndex = basisIndices[iAtom].first;
-    const unsigned int endIndex = basisIndices[iAtom].second;
-    for (unsigned int mu = firstIndex; mu < endIndex; ++mu) {
-      mapping[mu] = iAtom;
-      hasElementBeenSet[mu] = true;
-    }
-  }
-  // Check
-  for (bool x : hasElementBeenSet) {
-    if (not x)
-      throw SerenityError("FuncPotential: Missed gradient element in gradient evaluation.");
-  }
+  std::vector<unsigned int> mapping = basisController->getAtomIndicesOfBasis();
 
   // Get potential and (in case of GGAs) potential gradients
   const auto& potential = *(funcData.dFdRho);
   auto potentialGradients = funcData.dFdGradRho;
 
-  // Get grid and BFs on it TODO check whether derivative level needs to be modified
+  // Get grid and BFs on it
   unsigned int nBlocks = _basisFunctionOnGridController->getNBlocks();
-  const auto& weights = _basisFunctionOnGridController->getGridController()->getWeights();
+  const Eigen::VectorXd& weights = _basisFunctionOnGridController->getGridController()->getWeights();
 
   // Get density Matrix
   auto densityMatrix(system->template getElectronicStructure<SCFMode>()->getDensityMatrix());
   Eigen::MatrixXd gradientContr = Eigen::MatrixXd::Zero(nAtoms, 3);
+
+  Timings::takeTime("Active System - Func. Pot. Grad");
 #pragma omp parallel
   {
     Eigen::MatrixXd gradientContrPriv(nAtoms, 3);
@@ -173,35 +159,32 @@ Eigen::MatrixXd FuncPotential<SCFMode>::getGeomGradients() {
       assert(blockOnGridData->derivativeValues);
       const auto& bfDerivatives = *blockOnGridData->derivativeValues;
       const unsigned int blockSize = blockOnGridData->functionValues.rows();
-      /*
-       * Check ExchangeCorrelationDerivativeCalculator.h for formulas and reference
-       */
+      const unsigned int pointStartIndex = _basisFunctionOnGridController->getFirstIndexOfBlock(blockIndex);
+      SpinPolarizedData<SCFMode, Eigen::VectorXd> weightedPot;
+      for_spin(weightedPot, potential) {
+        weightedPot_spin =
+            weights.segment(pointStartIndex, blockSize).cwiseProduct(potential_spin.segment(pointStartIndex, blockSize));
+      };
+
       for (unsigned int mu = 0; mu < nBasisFunctions; ++mu) {
-        auto muAtom = mapping[mu];
         if (blockOnGridData->negligible[mu])
           continue;
-        for (unsigned int nu = 0; nu <= mu; ++nu) {
+        SpinPolarizedData<SCFMode, Eigen::VectorXd> potMu;
+        for_spin(potMu, weightedPot) {
+          potMu_spin = weightedPot_spin.cwiseProduct(bfValues.col(mu));
+        };
+        // auto muAtom = mapping[mu];
+        for (unsigned int nu = 0; nu < nBasisFunctions; ++nu) {
           if (blockOnGridData->negligible[nu])
             continue;
           auto nuAtom = mapping[nu];
-          const unsigned int pointStartIndex = _basisFunctionOnGridController->getFirstIndexOfBlock(blockIndex);
           // A common prefactor for the calculations below
-          for_spin(potential, densityMatrix) {
-            Eigen::VectorXd prefac =
-                (mu == nu ? 1.0 : 2.0) * densityMatrix_spin(mu, nu) * weights.segment(pointStartIndex, blockSize);
-            Eigen::VectorXd pot = potential_spin.segment(pointStartIndex, blockSize).array() * prefac.array();
-            gpp[muAtom + (0 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(nu).array() * bfDerivatives.x.col(mu).array()));
-            gpp[muAtom + (1 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(nu).array() * bfDerivatives.y.col(mu).array()));
-            gpp[muAtom + (2 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(nu).array() * bfDerivatives.z.col(mu).array()));
-            gpp[nuAtom + (0 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(mu).array() * bfDerivatives.x.col(nu).array()));
-            gpp[nuAtom + (1 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(mu).array() * bfDerivatives.y.col(nu).array()));
-            gpp[nuAtom + (2 * nAtoms)] -=
-                pot.dot(Eigen::VectorXd(bfValues.col(mu).array() * bfDerivatives.z.col(nu).array()));
+          for_spin(potMu, densityMatrix) {
+            // factor of 2 due to the product rule
+            double prefac = 2 * densityMatrix_spin(mu, nu);
+            gpp[nuAtom + (0 * nAtoms)] -= prefac * potMu_spin.dot(bfDerivatives.x.col(nu));
+            gpp[nuAtom + (1 * nAtoms)] -= prefac * potMu_spin.dot(bfDerivatives.y.col(nu));
+            gpp[nuAtom + (2 * nAtoms)] -= prefac * potMu_spin.dot(bfDerivatives.z.col(nu));
           };
           if (_functional.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
             const auto& bfSecondDer = *blockOnGridData->secondDerivativeValues;
@@ -211,8 +194,7 @@ Eigen::MatrixXd FuncPotential<SCFMode>::getGeomGradients() {
             const auto& vdy = potentialGradients->y;
             const auto& vdz = potentialGradients->z;
             for_spin(vdx, vdy, vdz, densityMatrix) {
-              Eigen::VectorXd prefac =
-                  (mu == nu ? 1.0 : 2.0) * densityMatrix_spin(mu, nu) * weights.segment(pointStartIndex, blockSize);
+              Eigen::VectorXd prefac = 2 * densityMatrix_spin(mu, nu) * weights.segment(pointStartIndex, blockSize);
 
               Eigen::VectorXd potentialx = vdx_spin.segment(pointStartIndex, blockSize).array() * prefac.array();
               Eigen::VectorXd potentialy = vdy_spin.segment(pointStartIndex, blockSize).array() * prefac.array();
@@ -226,21 +208,6 @@ Eigen::MatrixXd FuncPotential<SCFMode>::getGeomGradients() {
               Eigen::VectorXd ZmuXnu = bfDerivatives.z.col(mu).array() * bfDerivatives.x.col(nu).array();
               Eigen::VectorXd ZmuYnu = bfDerivatives.z.col(mu).array() * bfDerivatives.y.col(nu).array();
               Eigen::VectorXd ZmuZnu = bfDerivatives.z.col(mu).array() * bfDerivatives.z.col(nu).array();
-
-              gpp[muAtom + (0 * nAtoms)] -=
-                  (potentialx.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.xx.col(mu).array())) + XmuXnu)) +
-                  (potentialy.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.xy.col(mu).array())) + XmuYnu)) +
-                  (potentialz.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.xz.col(mu).array())) + XmuZnu));
-
-              gpp[muAtom + (1 * nAtoms)] -=
-                  (potentialx.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.xy.col(mu).array())) + YmuXnu)) +
-                  (potentialy.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.yy.col(mu).array())) + YmuYnu)) +
-                  (potentialz.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.yz.col(mu).array())) + YmuZnu));
-
-              gpp[muAtom + (2 * nAtoms)] -=
-                  (potentialx.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.xz.col(mu).array())) + ZmuXnu)) +
-                  (potentialy.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.yz.col(mu).array())) + ZmuYnu)) +
-                  (potentialz.dot(Eigen::VectorXd((bfValues.col(nu).array() * bfSecondDer.zz.col(mu).array())) + ZmuZnu));
 
               gpp[nuAtom + (0 * nAtoms)] -=
                   (potentialx.dot(Eigen::VectorXd((bfValues.col(mu).array() * bfSecondDer.xx.col(nu).array())) + XmuXnu)) +
@@ -264,6 +231,7 @@ Eigen::MatrixXd FuncPotential<SCFMode>::getGeomGradients() {
 #pragma omp critical
     { gradientContr += gradientContrPriv; }
   } /* END OpenMP parallel */
+  Timings::timeTaken("Active System - Func. Pot. Grad");
   if (_functional.getFunctionalClass() == CompositeFunctionals::CLASSES::GGA) {
     _basisFunctionOnGridController->setHighestDerivative(derivorder);
   }

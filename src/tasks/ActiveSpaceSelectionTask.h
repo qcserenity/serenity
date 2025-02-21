@@ -35,7 +35,7 @@ using namespace Serenity::Reflection;
 class SystemController;
 class Atom;
 class Geometry;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
 
 struct ActiveSpaceSelectionTaskSettings {
@@ -82,7 +82,7 @@ class ActiveSpaceSelectionTask : public Task {
    *                            printed to disk. Names will be supersystem-name + "_env".
    */
   ActiveSpaceSelectionTask(std::vector<std::shared_ptr<SystemController>> supersystems,
-                           std::vector<std::shared_ptr<SystemController>> acitveSystems,
+                           std::vector<std::shared_ptr<SystemController>> activeSystems,
                            std::vector<std::shared_ptr<SystemController>> environmentSystems);
   /**
    * @brief Default Destructor.

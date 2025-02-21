@@ -1,6 +1,38 @@
 Changelog
 =========
 
+Release 1.6.2 (21.02.2025)
+--------------------------
+
+### Functionalities
+
+- Designable density functionals in the input by mixing basic functionals (Anton Rikus)
+- Stabilized Quasi-Newton Method (SQNM) optimizer for minima (Thorben Wiegmann)
+- Added WF in DFT geometry optimizations for HF (Thorben Wiegmann)
+- CHELPG and CM5 partial charges (Thorben Wiegmann)
+- Approximate embedding electrostatics via partial charges (Lars Hellmann)
+- Approximate embedding via the Loewdin expansion of kinetic energy expectation values
+  computed from non-orthogonal Slater determinants (Denis G. Artiukhin)
+- TDDFT Gradients: restricted/unrestricted, LDA/GGA/hybrid and range-separated functionals, CIS/TDA/TDHF as well,
+  RI-J possible, but so far only for an isolated system (Anton Rikus)
+- Added tasks for exporting and importing solvation models with corresponding solvent cavities and charges
+  to/from files that can be used by Serenity (Lukas Paetow)
+- Transition, particle and hole densities can also be plotted for subsystem TDDFT (Anton Rikus)
+- Transition and excited state densities from CC2/ADC(2) can be plotted (Anton Rikus)
+- Read in external grid potential (Leon Fischer)
+- Added a task that writes FCI dump files (Moritz Bensberg).
+- Added a task that runs top-down embedding calculations without SCF-based orbital relaxation after subsystem
+  partitioning (Moritz Bensberg).
+- Added a new embedding flavor, ALMO-MSDFT (Lukas Lampe).
+
+### Technical Features
+- Added classes for easier calculation of gradient contributions from two-electron
+  integrals using the RI approximation and from one-electron integrals (Anton Rikus)
+- Basis files can be directly read in Turbomole format (Anton Rikus)
+- LRSCFTaskSettings are written on disk (Anton Rikus)
+- Added test systems with converged LRSCF excitation vectors (Anton Rikus)
+- Python wrapper published on PyPI, allowing `pip install qcserenity` (Anton Rikus)
+
 Release 1.6.1 (19.03.2024)
 --------------------------
 
@@ -27,7 +59,7 @@ Release 1.6.0 (16.11.2023)
 
 #### Linear-Response Framework
 
-- CC2/ADC(2) ground- and excited state densities and dipole moments (Niklas Niemeyer)
+- CC2/ADC(2) ground- and excited-state densities and dipole moments (Niklas Niemeyer)
 - CC2 dynamic polarizabilities and optical rotation (Niklas Niemeyer)
 - Triplet excitation energies for CC2/ADC(2) (Niklas Niemeyer)
 - Rework Kernel sigmavector (Niklas Niemeyer)

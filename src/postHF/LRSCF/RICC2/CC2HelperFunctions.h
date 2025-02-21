@@ -170,7 +170,7 @@ class CC2HelperFunctions {
                                              const Eigen::VectorXd& diagonal);
 
   /**
-   * @brief Calculates state densities (all excited states).
+   * @brief Calculates transition densities (all excited states).
    *
    * @param lrscf The LRSCF controllers.
    * @param transitiondensities The object to store the densities in.

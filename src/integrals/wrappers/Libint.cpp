@@ -502,7 +502,18 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
 
 Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
                                       const std::vector<std::pair<double, std::array<double, 3>>> pointCharges,
-                                      double precision, double maxD, unsigned int maxNPrim) {
+                                      double precision, double maxD, unsigned int maxNPrim,
+                                      std::shared_ptr<std::vector<ShellPairData>> shellPairData) {
+  if (!shellPairData) {
+    shellPairData = std::make_shared<std::vector<ShellPairData>>();
+    const unsigned int nShells = basis->getReducedNBasisFunctions();
+    for (unsigned int iShell = 0; iShell < nShells; ++iShell) {
+      for (unsigned int jShell = 0; jShell <= iShell; ++jShell) {
+        shellPairData->emplace_back(iShell, jShell, 1.0);
+      }
+    }
+  }
+
   bool normAux = !(basis->isAtomicCholesky());
   libint2::Operator libintOp = resolveLibintOperator(op);
   const auto& bas = basis->getBasis();
@@ -510,22 +521,23 @@ Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisC
   Eigen::MatrixXd results(nBFs, nBFs);
   results.setZero();
   this->initialize(op, 0, 2, pointCharges, 0.0, precision, maxD, maxNPrim);
+  const auto& pairData = *shellPairData;
 #pragma omp parallel
   {
     Eigen::MatrixXd ints;
-#pragma omp for schedule(static, 1)
-    for (unsigned int i = 0; i < bas.size(); ++i) {
-      unsigned int offI = basis->extendedIndex(i);
+#pragma omp for schedule(dynamic, 1)
+    for (unsigned int iShellPair = 0; iShellPair < pairData.size(); ++iShellPair) {
+      const unsigned int i = pairData[iShellPair].bf1;
+      const unsigned int j = pairData[iShellPair].bf2;
+      const unsigned int offI = basis->extendedIndex(i);
+      const unsigned int offJ = basis->extendedIndex(j);
       const unsigned int nI = bas[i]->getNContracted();
-      for (unsigned int j = 0; j <= i; ++j) {
-        unsigned int offJ = basis->extendedIndex(j);
-        const unsigned int nJ = bas[j]->getNContracted();
-        if (this->compute(libintOp, 0, *bas[i], *bas[j], ints, normAux)) {
-          Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
-          results.block(offJ, offI, nJ, nI) = tmp;
-          if (i != j)
-            results.block(offI, offJ, nI, nJ) = tmp.transpose();
-        }
+      const unsigned int nJ = bas[j]->getNContracted();
+      if (this->compute(libintOp, 0, *bas[i], *bas[j], ints, normAux)) {
+        Eigen::Map<Eigen::MatrixXd> tmp(ints.col(0).data(), nJ, nI);
+        results.block(offJ, offI, nJ, nI) = tmp;
+        if (i != j)
+          results.block(offI, offJ, nI, nJ) = tmp.transpose();
       }
     }
   } /* END OpenMP parallel */
@@ -691,14 +703,14 @@ void Libint::initialize(LIBINT_OPERATOR op, const unsigned int deriv, const unsi
   this->initialize(op, deriv, nCenter, convertedCharges, mu, precision, maxD, maxNPrim);
 }
 Eigen::MatrixXd Libint::compute1eInts(LIBINT_OPERATOR op, std::shared_ptr<BasisController> basis,
-                                      const std::vector<std::pair<double, Point>>& pointCharges, double precision,
-                                      double maxD, unsigned int maxNPrim) {
+                                      const std::vector<std::pair<double, Point>>& pointCharges, double precision, double maxD,
+                                      unsigned int maxNPrim, std::shared_ptr<std::vector<ShellPairData>> shellPairData) {
   std::vector<std::pair<double, std::array<double, 3>>> convertedCharges;
   for (const auto& charge : pointCharges) {
     convertedCharges.emplace_back(charge.first,
                                   std::array<double, 3>{charge.second.getX(), charge.second.getY(), charge.second.getZ()});
   }
-  return compute1eInts(op, basis, convertedCharges, precision, maxD, maxNPrim);
+  return compute1eInts(op, basis, convertedCharges, precision, maxD, maxNPrim, shellPairData);
 }
 
 } /* namespace Serenity */

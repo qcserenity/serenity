@@ -33,8 +33,8 @@ namespace Serenity {
 /* Forward declarations */
 class SystemController;
 
-template<Options::SCF_MODES T>
-class NonOrthogonalLocalization : public Localization<T> {
+template<Options::SCF_MODES SCFMode>
+class NonOrthogonalLocalization : public Localization<SCFMode> {
  public:
   NonOrthogonalLocalization(std::shared_ptr<SystemController> systemController);
   virtual ~NonOrthogonalLocalization() = default;
@@ -46,8 +46,8 @@ class NonOrthogonalLocalization : public Localization<T> {
    *        Jacobi rotation on every orbital.
    * @param orbitalRange  The range of orbitals to be rotated in.
    */
-  virtual void localizeOrbitals(OrbitalController<T>& orbitals, unsigned int maxSweeps,
-                                SpinPolarizedData<T, std::vector<unsigned int>> orbitalRange) override final;
+  virtual void localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
+                                SpinPolarizedData<SCFMode, std::vector<unsigned int>> orbitalRange) override final;
 
  private:
   /**

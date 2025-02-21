@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "basis/Basis.h" //Loop shells.
 #include "basis/BasisController.h"
+#include "data/ExternalChargeController.h"
 #include "data/matrices/MatrixInBasis.h"
 #include "geometry/Geometry.h"
 #include "integrals/wrappers/Libecpint.h"
@@ -34,8 +35,9 @@
 namespace Serenity {
 
 OneElectronIntegralController::OneElectronIntegralController(std::shared_ptr<BasisController> basisController,
-                                                             std::shared_ptr<const Geometry> geometry)
-  : _basisController(basisController), _geometry(geometry) {
+                                                             std::shared_ptr<const Geometry> geometry,
+                                                             std::shared_ptr<ExternalChargeController> externalChargeController)
+  : _basisController(basisController), _geometry(geometry), _externalChargeController(externalChargeController) {
   _basisController->addSensitiveObject(this->_self);
   // Check for ECPs
   _calcECPs = false;
@@ -58,6 +60,7 @@ void OneElectronIntegralController::clearOneInts() {
   _diplen.reset(nullptr);
   _dipvel.reset(nullptr);
   _angmom.reset(nullptr);
+  _extChargeIntegrals.reset(nullptr);
 }
 
 void OneElectronIntegralController::calcOverlapIntegrals() {
@@ -222,5 +225,35 @@ void OneElectronIntegralController::calcDipoleMagnetics(Point gaugeOrigin) {
   }   /* shell i */
   libint.finalize(LIBINT_OPERATOR::emultipole1, 1, 2);
   timeTaken(2, "magnetic-dipole integrals");
+}
+void OneElectronIntegralController::calcExternalChargeIntegrals() {
+  if (!this->getExternalCharges().empty()) {
+    auto& libint = Libint::getInstance();
+    takeTime("DOI - analytical");
+    auto shellPairData = _basisController->getDOIPrescreeningFactors();
+    timeTaken(2, "DOI - analytical");
+    _extChargeIntegrals = std::make_unique<MatrixInBasis<RESTRICTED>>(this->_basisController);
+    *_extChargeIntegrals =
+        libint.compute1eInts(LIBINT_OPERATOR::nuclear, this->_basisController, this->getExternalCharges(),
+                             std::numeric_limits<double>::epsilon(), 10, Libint::getNPrimMax(), shellPairData);
+    return;
+  }
+  _extChargeIntegrals = std::make_unique<MatrixInBasis<RESTRICTED>>(this->_basisController);
+  _extChargeIntegrals->setZero();
+}
+const std::vector<std::pair<double, Point>>& OneElectronIntegralController::getExternalCharges() {
+  return _externalChargeController->getExternalCharges();
+}
+void OneElectronIntegralController::cacheExtChargeIntegrals(const MatrixInBasis<RESTRICTED>& integrals) {
+  _extChargeIntegrals = std::make_unique<MatrixInBasis<RESTRICTED>>(integrals);
+}
+const MatrixInBasis<RESTRICTED>& OneElectronIntegralController::getExtChargeIntegrals() {
+  if (!_extChargeIntegrals) {
+    if (this->getExternalCharges().empty()) {
+      throw SerenityError("Integrals over external charges were requested but no charges are available!");
+    }
+    calcExternalChargeIntegrals();
+  }
+  return *_extChargeIntegrals;
 }
 } /* namespace Serenity */

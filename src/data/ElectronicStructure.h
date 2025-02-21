@@ -38,6 +38,7 @@ class OneElectronIntegralController;
 template<Options::SCF_MODES SCFMode>
 class PotentialBundle;
 class Geometry;
+class ExternalChargeController;
 
 enum class ES_STATE { INITIAL = 1, GUESS = 2, CONVERGED = 3, FAILED = 4, OTHER = 5 };
 
@@ -81,6 +82,7 @@ class ElectronicStructure {
    * @param nCoreElectrons    The number of core orbitals.
    */
   ElectronicStructure(std::shared_ptr<BasisController> basisController, std::shared_ptr<const Geometry> geometry,
+                      std::shared_ptr<ExternalChargeController> externalCharges,
                       const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
                       const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
   /**
@@ -93,12 +95,25 @@ class ElectronicStructure {
                       std::shared_ptr<OneElectronIntegralController> oneEIntController,
                       const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals);
   /**
+   * @brief Copy constructor/conversion constructor between RESTRICTED and UNRESTRICTED.
+   * @param other The other electronic structure.
+   */
+  ElectronicStructure(std::shared_ptr<ElectronicStructure<RESTRICTED>> other);
+  /**
+   * @brief Copy constructor/conversion constructor between RESTRICTED and UNRESTRICTED.
+   * @param other The other electronic structure.
+   */
+  ElectronicStructure(std::shared_ptr<ElectronicStructure<UNRESTRICTED>> other);
+  /**
    * @brief Constructor from HDF5 file.
    * @param fBaseName The basename of the HDF5 files.
-   * @param basisController The BasisController of the current System.
+   * @param basis The BasisController of the current System.
+   * @param geometry The geometry.
+   * @param externalCharges The external charges.
+   * @param id The string id identifier.
    */
-  ElectronicStructure(std::string fBaseName, std::shared_ptr<BasisController> basis,
-                      std::shared_ptr<const Geometry> geometry, std::string id);
+  ElectronicStructure(std::string fBaseName, std::shared_ptr<BasisController> basis, std::shared_ptr<const Geometry> geometry,
+                      std::shared_ptr<ExternalChargeController> externalCharges, std::string id);
 
   /// @brief Default destructor.
   virtual ~ElectronicStructure() = default;
@@ -125,10 +140,6 @@ class ElectronicStructure {
     _molecularOrbitals = newOrbitals;
     _densityMatrixController->attachOrbitals(_molecularOrbitals, _densityMatrixController->getOccupations());
   }
-
-  //  inline void setDensityMatrixController(std::shared_ptr<DensityMatrixController<SCFMode> > newDensMatCont) {
-  //	  _densityMatrixController = newDensMatCont;
-  //  }
 
   /* ===============================
    *             Energies
@@ -186,7 +197,8 @@ class ElectronicStructure {
    * @return Returns the potentials used to generate the FockMatrix.
    */
   inline std::shared_ptr<PotentialBundle<SCFMode>> getPotentialBundle() {
-    assert(_potentials && "No potentials available in the electronic structure.");
+    if (!_potentials)
+      throw SerenityError("No potentials available in the electronic structure.");
     return _potentials;
   }
   ///@brief whether a fock matrix exists

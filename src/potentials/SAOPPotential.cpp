@@ -29,7 +29,9 @@
 #include "data/grid/GridPotential.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/matrices/DensityMatrixController.h"
-#include "dft/functionals/wrappers/XCFun.h"
+#include "dft/Functional.h"
+#include "dft/functionals/BasicFunctionals.h"
+#include "dft/functionals/FunctionalLibrary.h"
 #include "io/FormattedOutputStream.h"
 #include "misc/HelperFunctions.h"
 #include "settings/DFTOptions.h"
@@ -65,7 +67,7 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
     };
     if (_systemController->template hasElectronicStructure<SCFMode>())
       _orbitalController = _systemController->template getActiveOrbitalController<SCFMode>();
-    XCFun<SCFMode> xcFun(128);
+    FunctionalLibrary<SCFMode> flib(128);
     if (_orbitalController) {
       // the density
       const auto& density = _densityOnGridController->getDensityOnGrid();
@@ -129,23 +131,23 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
        */
       Functional functional(CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR,
                             {BasicFunctionals::BASIC_FUNCTIONALS::C_VWN}, {1.0});
-      auto funcDataVWN = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
+      auto funcDataVWN = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
       auto& nu_LDA_c = *funcDataVWN.dFdRho;
       functional = Functional(CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR,
                               {BasicFunctionals::BASIC_FUNCTIONALS::X_SLATER}, {1.0});
-      auto funcDataSLATER = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
+      auto funcDataSLATER = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
       auto& nu_LDA_x = *funcDataSLATER.dFdRho;
       /*
        * 1. e) Calculate BECKEX (Becke 88) and PW91C (Perdew-Wang 91) energy densities
        */
       functional = Functional(CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR,
                               {BasicFunctionals::BASIC_FUNCTIONALS::C_PW91}, {1.0});
-      auto funcDataPerdew = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
+      auto funcDataPerdew = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
       double energyPerdew = funcDataPerdew.energy;
       auto epuvPerdew = funcDataPerdew.epuv;
       functional = Functional(CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR,
-                              {BasicFunctionals::BASIC_FUNCTIONALS::X_B86}, {1.0});
-      auto funcDataBECKE = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
+                              {BasicFunctionals::BASIC_FUNCTIONALS::X_B88}, {1.0});
+      auto funcDataBECKE = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, _densityOnGridController);
       double energyBecke = funcDataBECKE.energy;
       auto epuvBecke = funcDataBECKE.epuv;
       // using the energy provided by the Becke exachange and Perdew correlation functionals
@@ -269,15 +271,15 @@ FockMatrix<SCFMode>& SAOPPotential<SCFMode>::getMatrix() {
        * 4. Transforming the potential from grid representation to a matrix
        */
       _gridToMatrix->addScalarOperatorToMatrix(pot, saopGridPotential);
-    } /* if orbtialsAvailable */
+    } /* if orbitalsAvailable */
     else {
       OutputControl::vOut << std::endl;
       OutputControl::vOut << "SAOP-Potential: No initial orbital data available."
                           << " Making initial guess using LDA functional." << std::endl
                           << std::endl;
-      auto funcData = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS,
-                                     CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::LDA),
-                                     _densityOnGridController);
+      auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS,
+                                    CompositeFunctionals::resolveFunctional(CompositeFunctionals::FUNCTIONALS::LDA),
+                                    _densityOnGridController);
       _gridToMatrix->addScalarOperatorToMatrix(pot, *funcData.dFdRho);
       _energy = funcData.energy;
     } /* else if orbitalsAvailable */

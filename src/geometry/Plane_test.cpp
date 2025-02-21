@@ -26,8 +26,6 @@
 
 namespace Serenity {
 
-class PlaneTest : public ::testing::Test {};
-
 /**
  * @test
  * @brief Tests Plane.h: Plane--Plane intersection.

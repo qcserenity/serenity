@@ -42,7 +42,7 @@ class GridController;
  * This class provides the density on a precalculated grid
  * depending on the basis and grid of the system.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityOnGridCalculator {
  public:
   /**
@@ -62,7 +62,7 @@ class DensityOnGridCalculator {
    * @param[in] densityMatrix the electron density of the system in matrix form
    * @returns the density on the grid as vector
    */
-  DensityOnGrid<T> calcDensityOnGrid(const DensityMatrix<T>& densityMatrix);
+  DensityOnGrid<SCFMode> calcDensityOnGrid(const DensityMatrix<SCFMode>& densityMatrix);
   /**
    * Call this to avoid a copy of the density on the grid
    * @brief Uses the class MatrixOperatorToGridTransformer to calculate
@@ -72,7 +72,7 @@ class DensityOnGridCalculator {
    * @param[in]  densityMatrix the electron density of the system in matrix form
    * @param[out] densityOnGrid the density on the grid as vector, will be resized/overwritten
    */
-  void calcDensityOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid);
+  void calcDensityOnGrid(const DensityMatrix<SCFMode>& densityMatrix, DensityOnGrid<SCFMode>& densityOnGrid);
   /**
    * @brief Uses the class MatrixOperatorToGridTransformer to calculate
    * the density and its gradient for all grid points.
@@ -82,8 +82,8 @@ class DensityOnGridCalculator {
    *                      calling this method.
    * @returns the density on the grid as vector
    */
-  DensityOnGrid<T> calcDensityAndGradientOnGrid(const DensityMatrix<T>& densityMatrix,
-                                                Gradient<DensityOnGrid<T>>& densityGradientOnGrid);
+  DensityOnGrid<SCFMode> calcDensityAndGradientOnGrid(const DensityMatrix<SCFMode>& densityMatrix,
+                                                      Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid);
   /**
    * Call this to avoid a copy of the density on the grid
    * @brief Uses the class MatrixOperatorToGridTransformer to calculate
@@ -94,8 +94,8 @@ class DensityOnGridCalculator {
    * @param[out] densityGradientOnGrid gradient additional to the density also the density gradient is calculated when
    *                      calling this method.
    */
-  void calcDensityAndGradientOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid,
-                                    Gradient<DensityOnGrid<T>>& densityGradientOnGrid);
+  void calcDensityAndGradientOnGrid(const DensityMatrix<SCFMode>& densityMatrix, DensityOnGrid<SCFMode>& densityOnGrid,
+                                    Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid);
   /**
    * @brief Calculates the density and its first and second derivatives on the grid.
    *
@@ -106,9 +106,9 @@ class DensityOnGridCalculator {
    * @param[out] densityHessianOnGrid Hessian additional to the density also the density Hessian is calculated when
    *                      calling this method.
    */
-  void calcDensityAndDerivativesOnGrid(const DensityMatrix<T>& densityMatrix, DensityOnGrid<T>& densityOnGrid,
-                                       Gradient<DensityOnGrid<T>>& densityGradientOnGrid,
-                                       Hessian<DensityOnGrid<T>>& densityHessianOnGrid);
+  void calcDensityAndDerivativesOnGrid(const DensityMatrix<SCFMode>& densityMatrix, DensityOnGrid<SCFMode>& densityOnGrid,
+                                       Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid,
+                                       Hessian<DensityOnGrid<SCFMode>>& densityHessianOnGrid);
   /**
    * @returns the used BasisFunctionOnGridController.
    */

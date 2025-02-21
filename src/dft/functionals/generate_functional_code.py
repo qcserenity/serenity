@@ -11,7 +11,7 @@
 # the License, or (at your option) any later version.\n\n
 # Serenity is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.\n\n
 # You should have received a copy of the GNU Lesser General
 # Public License along with Serenity.
@@ -31,10 +31,11 @@
 #   1. BasicFunctionals.h
 #   2. BasicFunctionals.cpp
 #   3. BasicFunctionals_tests.cpp
-#   4. CompositeFunctionals.h
-#   5. CompositeFunctionals.cpp
-#   6. CompositeFunctionals_tests.cpp
-#   7. CompositeFunctionals_python.pp
+#   4. BasicFunctionals_python.pp
+#   5. CompositeFunctionals.h
+#   6. CompositeFunctionals.cpp
+#   7. CompositeFunctionals_tests.cpp
+#   8. CompositeFunctionals_python.pp
 #
 # =============================================================
 
@@ -53,7 +54,7 @@ with open('BasicFunctionals.h', 'w') as bf:
     bf.write(' * @author Jan P. Unsleber\n')
     bf.write(' *\n')
     bf.write(' * IMPORTANT:\\n\n')
-    bf.write(' * This file was automatically generated please do not alter it.\n')
+    bf.write(' * This file was automatically generated, please do not alter it.\n')
     bf.write(' * Any required changes should be made to the generating Python script\n')
     bf.write(' * which should be located close by.\n')
     bf.write(' *\n')
@@ -73,6 +74,7 @@ with open('BasicFunctionals.h', 'w') as bf:
     bf.write(' */\n')
     bf.write('#ifndef BASICFUNCTIONALS_H_\n')
     bf.write('#define BASICFUNCTIONALS_H_\n\n')
+    bf.write('/* Include Std and External Headers */\n')
     bf.write('#include <array>\n\n')
     bf.write('namespace Serenity {\n')
     bf.write('namespace BasicFunctionals {\n\n')
@@ -92,10 +94,10 @@ with open('BasicFunctionals.h', 'w') as bf:
     bf.write('};\n')
 
     bf.write('#ifdef SERENITY_USE_LIBXC\n')
-    bf.write('int getLibXCAlias(const BASIC_FUNCTIONALS& functional);\n')
+    bf.write('int getLibXCAlias(BASIC_FUNCTIONALS& functional);\n')
     bf.write('#endif /* SERENITY_USE_LIBXC */\n\n')
     bf.write('#ifdef SERENITY_USE_XCFUN\n')
-    bf.write('char* getXCFunAlias(const BASIC_FUNCTIONALS& functional);\n')
+    bf.write('char* getXCFunAlias(BASIC_FUNCTIONALS& functional);\n')
     bf.write('#endif /* SERENITY_USE_XCFUN */\n\n')
 
     # Define Purposes
@@ -162,7 +164,7 @@ with open('BasicFunctionals.cpp', 'w') as bf:
     bf.write(' * @author Jan P. Unsleber\n')
     bf.write(' *\n')
     bf.write(' * IMPORTANT:\\n\n')
-    bf.write(' * This file was automatically generated please do not alter it.\n')
+    bf.write(' * This file was automatically generated, please do not alter it.\n')
     bf.write(' * Any required changes should be made to the generating Python script\n')
     bf.write(' * which should be located close by.\n')
     bf.write(' *\n')
@@ -182,15 +184,19 @@ with open('BasicFunctionals.cpp', 'w') as bf:
     bf.write(' */\n')
     bf.write('/* Include Class Header*/\n')
     bf.write('#include "dft/functionals/BasicFunctionals.h"\n')
+    bf.write('/* Include Serenity Internal Headers */\n')
     bf.write('#include "misc/SerenityError.h"\n')
+    bf.write('#include "settings/DFTOptions.h"\n')
+    bf.write('/* Include Std and External Headers */\n')
+    bf.write('#include <string>\n')
     bf.write('#ifdef SERENITY_USE_LIBXC\n')
     bf.write('#include <xc_funcs.h>\n')
-    bf.write('#endif /* SERENITY_USE_LIBXC */\n\n')
+    bf.write('#endif /* SERENITY_USE_LIBXC */\n')
     bf.write('\n')
     bf.write('namespace Serenity {\n')
     bf.write('namespace BasicFunctionals {\n\n')
     bf.write('#ifdef SERENITY_USE_LIBXC\n')
-    bf.write('int getLibXCAlias(const BASIC_FUNCTIONALS& functional) {\n')
+    bf.write('int getLibXCAlias(BASIC_FUNCTIONALS& functional) {\n')
     bf.write('  int alias = -1;\n')
     bf.write('  switch (functional) {\n')
     for f in functionals:
@@ -201,14 +207,16 @@ with open('BasicFunctionals.cpp', 'w') as bf:
         bf.write('      alias = {};\n'.format(data[4]))
         bf.write('      break;\n')
     bf.write('    default:\n')
-    bf.write('      throw SerenityError("Basic functional unknown to LibXC.");\n')
+    bf.write('      std::string s;\n')
+    bf.write('      Options::resolve<BasicFunctionals::BASIC_FUNCTIONALS>(s, functional);\n')
+    bf.write('      throw SerenityError("Basic functional " + s + " unknown to LibXC.");\n')
     bf.write('      break;\n')
     bf.write('  }\n')
     bf.write('  return alias;\n')
     bf.write('}\n')
     bf.write('#endif /* SERENITY_USE_LIBXC */\n\n')
     bf.write('#ifdef SERENITY_USE_XCFUN\n')
-    bf.write('char* getXCFunAlias(const BASIC_FUNCTIONALS& functional) {\n')
+    bf.write('char* getXCFunAlias(BASIC_FUNCTIONALS& functional) {\n')
     bf.write('  char* alias = (char*)"null";\n')
     bf.write('  switch (functional) {\n')
     for f in functionals:
@@ -219,13 +227,30 @@ with open('BasicFunctionals.cpp', 'w') as bf:
         bf.write('      alias = (char*)"{}";\n'.format(data[5]))
         bf.write('      break;\n')
     bf.write('    default:\n')
-    bf.write('      throw SerenityError("Basic functional unknown to XCFun.");\n')
+    bf.write('      std::string s;\n')
+    bf.write('      Options::resolve<BasicFunctionals::BASIC_FUNCTIONALS>(s, functional);\n')
+    bf.write('      throw SerenityError("Basic functional " + s + " unknown to XCFun.");\n')
     bf.write('      break;\n')
     bf.write('  }\n')
     bf.write('  return alias;\n')
     bf.write('}\n')
     bf.write('#endif /* SERENITY_USE_XCFUN */\n\n')
     bf.write('} /* namespace BasicFunctionals */\n')
+    bf.write('namespace Options {\n')
+    bf.write('template<>')
+    bf.write('void resolve<BasicFunctionals::BASIC_FUNCTIONALS>(std::string& value, BasicFunctionals::BASIC_FUNCTIONALS& field) {')
+    bf.write('static const std::map<std::string, BasicFunctionals::BASIC_FUNCTIONALS> m = {\n')
+    first = True
+    for f in functionals:
+        data = f.split()
+        if not first:
+            bf.write(',\n')
+        bf.write('    {{"{}", BasicFunctionals::BASIC_FUNCTIONALS::{}}}'.format(data[3], data[3]))
+        first = False
+    bf.write('};\n')
+    bf.write('check(m, value, field);\n')
+    bf.write('}\n')
+    bf.write('} /* namespace Options */\n')
     bf.write('} /* namespace Serenity */\n\n')
 
 functionals = []
@@ -254,7 +279,7 @@ with open('CompositeFunctionals.h', 'w') as cf:
     cf.write(' * @author Jan P. Unsleber\n')
     cf.write(' *\n')
     cf.write(' * IMPORTANT:\\n\n')
-    cf.write(' * This file was automatically generated please do not alter it.\n')
+    cf.write(' * This file was automatically generated, please do not alter it.\n')
     cf.write(' * Any required changes should be made to the generating Python script\n')
     cf.write(' * which should be located close by.\n')
     cf.write(' *\n')
@@ -274,6 +299,7 @@ with open('CompositeFunctionals.h', 'w') as cf:
     cf.write(' */\n')
     cf.write('#ifndef COMPOSITEFUNCTIONALS_H_\n')
     cf.write('#define COMPOSITEFUNCTIONALS_H_\n')
+    cf.write('/* Include Std and External Headers */\n')
     cf.write('#include <array>\n\n')
     cf.write('\n')
     cf.write('namespace Serenity {\n\n')
@@ -371,7 +397,7 @@ with open('CompositeFunctionals.cpp', 'w') as cf:
     cf.write(' * @author Jan P. Unsleber\n')
     cf.write(' *\n')
     cf.write(' * IMPORTANT:\\n\n')
-    cf.write(' * This file was automatically generated please do not alter it.\n')
+    cf.write(' * This file was automatically generated, please do not alter it.\n')
     cf.write(' * Any required changes should be made to the generating Python script\n')
     cf.write(' * which should be located close by.\n')
     cf.write(' *\n')
@@ -394,7 +420,13 @@ with open('CompositeFunctionals.cpp', 'w') as cf:
     cf.write('/* Include Serenity Internal Headers */\n')
     cf.write('#include "dft/Functional.h"\n')
     cf.write('#include "dft/functionals/BasicFunctionals.h"\n')
+    cf.write('#include "misc/SerenityError.h"\n')
     cf.write('#include "settings/Options.h"\n')
+    cf.write('/* Include Std and External Headers */\n')
+    cf.write('#include <map>\n')
+    cf.write('#include <string>\n')
+    cf.write('#include <utility>\n')
+    cf.write('#include <vector>\n')
     cf.write('\n')
     cf.write('namespace Serenity {\n')
     cf.write('namespace CompositeFunctionals {\n\n')
@@ -582,7 +614,7 @@ with open('BasicFunctionals_test.cpp', 'w') as bf:
     bf.write(' * @author Jan P. Unsleber\n')
     bf.write(' *\n')
     bf.write(' * IMPORTANT:\\n\n')
-    bf.write(' * This file was automatically generated please do not alter it.\n')
+    bf.write(' * This file was automatically generated, please do not alter it.\n')
     bf.write(' * Any required changes should be made to the generating Python script\n')
     bf.write(' * which should be located close by.\n')
     bf.write(' *\n')
@@ -668,7 +700,7 @@ with open('CompositeFunctionals_test.cpp', 'w') as cf:
     cf.write(' * @author Jan P. Unsleber\n')
     cf.write(' *\n')
     cf.write(' * IMPORTANT:\\n\n')
-    cf.write(' * This file was automatically generated please do not alter it.\n')
+    cf.write(' * This file was automatically generated, please do not alter it.\n')
     cf.write(' * Any required changes should be made to the generating Python script\n')
     cf.write(' * which should be located close by.\n')
     cf.write(' *\n')
@@ -856,6 +888,46 @@ with open('CompositeFunctionals_test.cpp', 'w') as cf:
 #   Python Bindings   #
 # =================== #
 
+with open('BasicFunctionals_python.cpp', 'w') as bf:
+    bf.write('/**\n')
+    bf.write(' * @file   BasicFunctionals_python.cpp\n')
+    bf.write(' *\n')
+    bf.write(' * @date   Feb 18, 2025\n')
+    bf.write(' * @author Anton Rikus\n')
+    bf.write(' *\n')
+    bf.write(' * IMPORTANT:\\n\n')
+    bf.write(' * This file was automatically generated, please do not alter it.\n')
+    bf.write(' * Any required changes should be made to the generating Python script\n')
+    bf.write(' * which should be located close by.\n')
+    bf.write(' *\n')
+    bf.write(' * @copyright \\n\n')
+    bf.write(' *  This file is part of the program Serenity.\\n\\n\n')
+    bf.write(' *  Serenity is free software: you can redistribute it and/or modify\n')
+    bf.write(' *  it under the terms of the GNU Lesser General Public License as\n')
+    bf.write(' *  published by the Free Software Foundation, either version 3 of\n')
+    bf.write(' *  the License, or (at your option) any later version.\\n\\n\n')
+    bf.write(' *  Serenity is distributed in the hope that it will be useful,\n')
+    bf.write(' *  but WITHOUT ANY WARRANTY; without even the implied warranty of\n')
+    bf.write(' *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n')
+    bf.write(' *  GNU General Public License for more details.\\n\\n\n')
+    bf.write(' *  You should have received a copy of the GNU Lesser General\n')
+    bf.write(' *  Public License along with Serenity.\n')
+    bf.write(' *  If not, see <http://www.gnu.org/licenses/>.\\n\n')
+    bf.write(' */\n')
+    bf.write('/* Include Serenity Internal Headers */\n')
+    bf.write('#include "dft/functionals/BasicFunctionals.h"\n')
+    bf.write('/* Include Std and External Headers */\n')
+    bf.write('#include <pybind11/pybind11.h>\n\n')
+    bf.write('using namespace Serenity;\n')
+    bf.write('namespace py = pybind11;\n\n')
+    bf.write('void export_BasicFunctionals(py::module& m) {\n\n')
+    bf.write('  py::enum_<BasicFunctionals::BASIC_FUNCTIONALS>(m, "BASIC_FUNCTIONALS")\n')
+    for i, f in enumerate(basics):
+        data = f.split()
+        bf.write('      .value("{}", BasicFunctionals::BASIC_FUNCTIONALS::{})\n'.format(data[3], data[3]))
+    bf.write('      .export_values();\n')
+    bf.write('}\n')
+
 with open('CompositeFunctionals_python.cpp', 'w') as cf:
     cf.write('/**\n')
     cf.write(' * @file   CompositeFunctionals_python.cpp\n')
@@ -864,7 +936,7 @@ with open('CompositeFunctionals_python.cpp', 'w') as cf:
     cf.write(' * @author Jan P. Unsleber\n')
     cf.write(' *\n')
     cf.write(' * IMPORTANT:\\n\n')
-    cf.write(' * This file was automatically generated please do not alter it.\n')
+    cf.write(' * This file was automatically generated, please do not alter it.\n')
     cf.write(' * Any required changes should be made to the generating Python script\n')
     cf.write(' * which should be located close by.\n')
     cf.write(' *\n')

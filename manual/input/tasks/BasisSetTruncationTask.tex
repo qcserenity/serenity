@@ -1,0 +1,35 @@
+\subsection{Task: Basis-Set Truncation\label{task:truncation}}
+Performs a truncation of the basis set of the given system. Only basis functions centered
+on dummy atoms are truncated. All others are considered to be the core basis of the
+system. Note that this task can manipulate the geometry of the given system such that 
+dummy atoms without any basis functions will not survive. This effectively truncates any associated 
+fitting basis.
+
+{\color{red}IMPORTANT:} There will be no orbitals available for the system after executing this
+task! Only the density matrix is available. This task should always be followed by an SCF-like step!
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task BST
+    act water
+    truncAlgorithm NETPOPULATION
+  -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{BASISSETTRUNCATIONTASK}, \ttt{BasisSetTask} and \ttt{BST}.
+  \item [\texttt{activeSystems}]\hfill \\
+    Will use the first active system and truncate the basis set based on the density of the given system.
+  \item [\texttt{truncAlgorithm}]\hfill \\
+    The algorithm used for basis set truncation. By default the Mulliken-net-population
+    algorithm (\ttt{NETPOPULATION}) is taken. This algorithm eliminates basis functions from the active
+    system where the sum of all squared occupied orbital coefficients is lower than \ttt{netThreshold}.
+    Alternatively the primitive net-population algorithm (\ttt{PRIMITIVENETPOP}) can be requested. This
+    algorithm reduces the number of basis functions by the factor \ttt{truncationFactor}.
+  \item[\texttt{netThreshold}] \hfill \\
+    Mulliken-net-population up to which an basis function centred on dummy atoms is not truncated, requires
+    \ttt{truncAlgorithm}=\ttt{NETPOPULATION}. By default \ttt{1e-4}.
+  \item[\texttt{truncationFactor}] \hfill \\
+    The ratio of basis functions on dummy atoms used in addition ordered by importance in their MnP, requires
+    \ttt{truncAlgorithm}=\ttt{PRIMITIVENETPOP}. By default \ttt{0.0}.
+\end{description}

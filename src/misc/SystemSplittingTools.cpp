@@ -174,9 +174,9 @@ SystemSplittingTools<SCFMode>::selectDistantOrbitals(SPMatrix<SCFMode>& orbitalP
       }
     } // for iEnvOrb
   };
-  std::cout << std::endl;
-  std::cout << "Number of orbitals considered to be distant (alpha+beta): " << numberOfDistantOrbitals << std::endl;
-  std::cout << std::endl;
+  OutputControl::nOut << std::endl;
+  OutputControl::nOut << "Number of orbitals considered to be distant (alpha+beta): " << numberOfDistantOrbitals << std::endl;
+  OutputControl::nOut << std::endl;
   return distantOrbitals;
 }
 
@@ -228,10 +228,12 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   // Build coefficient matrix and eigenvalue vectors
   auto actCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
   auto actEigenPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(nBasisFunctions);
-  auto actCoreOPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Zero(nBasisFunctions));
+  auto actCoreOPtr =
+      std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Constant(nBasisFunctions, 3));
   auto envCoeffPtr = std::make_unique<CoefficientMatrix<SCFMode>>(basisController);
   auto envEigenPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXd>>(nBasisFunctions);
-  auto envCoreOPtr = std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(nBasisFunctions);
+  auto envCoreOPtr =
+      std::make_unique<SpinPolarizedData<SCFMode, Eigen::VectorXi>>(Eigen::VectorXi::Constant(nBasisFunctions, 3));
 
   // Split coefficients
   auto& actCoefficients = *actCoeffPtr;
@@ -287,6 +289,8 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
     for (unsigned int i = activeOrbitals_spin.size(); i < nBasisFunctions; ++i) {
       actEigenvalues_spin(aIndex) = superEigenvalues_spin(i);
       envEigenvalues_spin(eIndex) = superEigenvalues_spin(i);
+      actCoreOrbitals_spin(aIndex) = superCoreOrbitals_spin(i);
+      envCoreOrbitals_spin(eIndex) = superCoreOrbitals_spin(i);
       ++aIndex;
       ++eIndex;
     }
@@ -692,14 +696,14 @@ void SystemSplittingTools<SCFMode>::splitSupersystemBasedOnAssignment(std::share
       const DensityMatrix<SCFMode>& selectedDensity = subsystemES->getDensityMatrix();
       DensityMatrix<SCFMode> projectedDensity =
           SystemSplittingTools<SCFMode>::projectMatrixIntoNewBasis(selectedDensity, subsystem->getBasisController());
-      subsystemES = std::make_shared<ElectronicStructure<SCFMode>>(
-          subsystem->getBasisController(), subsystem->getGeometry(), subsystemES->getNOccupiedOrbitals(),
-          subsystemES->getMolecularOrbitals()->getNCoreOrbitals());
+      subsystemES = std::make_shared<ElectronicStructure<SCFMode>>(subsystem->getOneElectronIntegralController(),
+                                                                   subsystemES->getNOccupiedOrbitals(),
+                                                                   subsystemES->getMolecularOrbitals()->getNCoreOrbitals());
       subsystemES->getDensityMatrixController()->setDensityMatrix(projectedDensity);
     }
     else {
       // The same basis set is used for the subsystem and the supersystem.
-      // The coefficients may need to be resorted, but no projection is necessary!
+      // The coefficients may need to be sorted, but no projection is necessary!
       subsystemES = SystemSplittingTools<SCFMode>::resortBasisSetOfElectronicStructure(
           subsystemES, subsystem->getBasisController(), subsystem->getOneElectronIntegralController());
     }

@@ -21,25 +21,22 @@
 #ifndef SOLVATION_CONTINUUMMODEL_H_
 #define SOLVATION_CONTINUUMMODEL_H_
 
+/* Include Serenity Internal Headers */
 #include "data/grid/GridPotential.h"           //Can not use forward declaration due to this class being a typedef.
 #include "data/matrices/DensityMatrix.h"       //Can not use forward declaration due to this class being a typedef.
 #include "notification/ObjectSensitiveClass.h" //Notify.
 #include "settings/PCMSettings.h"              //Default constructor of PCMSettings.
-
 /* Include Std and External Headers */
 #include <memory> //smrt_ptr
 #include <vector> //std::vector
 
 namespace Serenity {
 /* Forward Declarations */
-class Geometry;
 class GridController;
 class MolecularSurfaceController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectrostaticPotentialOnGridController;
-template<Options::SCF_MODES T>
-class DensityMatrixController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class MatrixInBasis;
 
 /**
@@ -78,10 +75,11 @@ class ContinuumModel : public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
    */
   double getTotalPCMEnergy();
   /**
-   * @brief Force reinit of the partial charges.
+   * @brief Force reinit of the partial charges, given that the charges are not loaded from a file.
    */
   void notify() override final {
-    _pcmCharges = nullptr;
+    if (!_settings.loadedPCM)
+      _pcmCharges = nullptr;
   };
   /**
    * @brief Getter for the underlying PCMSettings.

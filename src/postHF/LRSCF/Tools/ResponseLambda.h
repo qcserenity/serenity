@@ -41,7 +41,7 @@ class Kernel;
 
 /**
  * @class ResponseLambda.
- * @brief Sets up a all needed sigma vector calculators.
+ * @brief Sets up all needed sigma vector calculators.
  */
 template<Options::SCF_MODES SCFMode>
 class ResponseLambda {

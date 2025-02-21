@@ -124,6 +124,7 @@ const SpinPolarizedData<SCFMode, Eigen::VectorXi>& SystemSplittingTask<SCFMode>:
 
 template<Options::SCF_MODES SCFMode>
 void SystemSplittingTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, {_supersystem}, _subsystems);
   checkInput();
   _assignment = std::make_shared<SpinPolarizedData<SCFMode, Eigen::VectorXi>>();
   SpinPolarizedData<SCFMode, Eigen::VectorXi>& assignment = *_assignment;

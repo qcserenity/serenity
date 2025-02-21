@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/FockSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/LRSCFController.h"
 

@@ -23,11 +23,11 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
+#include "data/matrices/MatrixInBasis.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/Options.h"
-#include <Eigen/Dense>
-
 /* Include Std and External Headers */
+#include <Eigen/Dense>
 #include <memory>
 
 namespace Serenity {
@@ -43,6 +43,7 @@ class LRSCFController;
  * @brief  Calculates natural-transition-orbitals from linear response TDDFT/TDA/CIS/TDHF calculation
  *
  * The theory can be found in: J. Chem. Phys, 118, 4775 (2013) "Natural transition orbitals"
+ * Hole and particle densities can be found in: J. Herbert, Phys. Chem. Chem. Phys., 26, 3755 (2024)
  */
 template<Options::SCF_MODES SCFMode>
 class NTOCalculator {
@@ -66,44 +67,49 @@ class NTOCalculator {
   /// @returns the folder in which the NTO of i gets written
   std::string getDir(unsigned int i, unsigned int iSubsystem);
   /// @returns the NTO matrix for the occupied orbitals of iState
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getOccNTOs(unsigned int iState, unsigned int iSubsystem) {
-    if (!_hasBeenCalculated) {
-      calcNTOs(iState);
-    }
-    else if (_state != iState) {
-      calcNTOs(iState);
-    }
+  const SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getOccNTOs(unsigned int iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
     return _occNTOs[iSubsystem];
   }
   /// @returns the NTO matrix for the virtual orbitals of iState
-  SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getVirtNTOs(unsigned int iState, unsigned int iSubsystem) {
-    if (!_hasBeenCalculated) {
-      calcNTOs(iState);
-    }
-    else if (_state != iState) {
-      calcNTOs(iState);
-    }
+  const SpinPolarizedData<SCFMode, Eigen::MatrixXd>& getVirtNTOs(unsigned int iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
     return _virtNTOs[iSubsystem];
   }
   /// @returns the eigenvalues of the occupied NTO matrix of iState
-  SpinPolarizedData<SCFMode, Eigen::VectorXd>& getOccEigenvalues(unsigned int iState) {
-    if (!_hasBeenCalculated) {
-      calcNTOs(iState);
-    }
-    else if (_state != iState) {
-      calcNTOs(iState);
-    }
+  const SpinPolarizedData<SCFMode, Eigen::VectorXd>& getOccEigenvalues(unsigned int iState) {
+    makeAvailable(iState);
     return _occEigenvalues;
   }
   /// @returns the eigenvalues of the virtual NTO matrix of iState
-  SpinPolarizedData<SCFMode, Eigen::VectorXd>& getVirtEigenvalues(unsigned int iState) {
-    if (!_hasBeenCalculated) {
-      calcNTOs(iState);
-    }
-    else if (_state != iState) {
-      calcNTOs(iState);
-    }
+  const SpinPolarizedData<SCFMode, Eigen::VectorXd>& getVirtEigenvalues(unsigned int iState) {
+    makeAvailable(iState);
     return _virtEigenvalues;
+  }
+
+  /// @returns the transition density for a specific state and subsystem in the AO basis of that subsystem
+  const MatrixInBasis<SCFMode>& getTransitionDensity(unsigned iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
+    return _transitionDensity[iSubsystem];
+  }
+
+  /// @returns the hole density for a specific state and subsystem in the AO basis of that subsystem
+  const MatrixInBasis<SCFMode>& getHoleDensity(unsigned iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
+    return _holeDensity[iSubsystem];
+  }
+
+  /// @returns the particle density for a specific state and subsystem in the AO basis of that subsystem
+  const MatrixInBasis<SCFMode>& getParticleDensity(unsigned iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
+    return _particleDensity[iSubsystem];
+  }
+
+  /// @returns the hole density correction for a specific state and subsystem in the AO basis of that subsystem. This is
+  /// only relevant (non-zero) for FDEc.
+  const MatrixInBasis<SCFMode>& getHoleDensityCorrection(unsigned iState, unsigned int iSubsystem) {
+    makeAvailable(iState);
+    return _holeDensityCorrection[iSubsystem];
   }
 
  private:
@@ -124,11 +130,13 @@ class NTOCalculator {
   // The environment systems
   std::vector<std::shared_ptr<SystemController>> _environmentSystems;
   // The NTO plotting threshold
-  const double _plottingThreshold;
+  const double _ntoThreshold;
   // The lrscfController
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> _lrscf;
   // The combined excitation vector X+Y
   Eigen::MatrixXd _XPY;
+  // The combined excitation vector X-Y
+  Eigen::MatrixXd _XMY;
   // The excitation energies
   Eigen::VectorXd _eigenvalues;
   // The occupied NTO matrix
@@ -139,12 +147,25 @@ class NTOCalculator {
   SpinPolarizedData<SCFMode, Eigen::VectorXd> _occEigenvalues;
   // The virtual NTO matrix eigenvalues
   SpinPolarizedData<SCFMode, Eigen::VectorXd> _virtEigenvalues;
-  // Calculated the NTO matrices, eigenvalues, eigenvectors
-  void calcNTOs(int iState);
-  // Check if NTO calculation has been performed
-  bool _hasBeenCalculated;
-  // The state for which the NTO calculation has been performed
-  unsigned int _state;
+  // The densities related to the excitation, vector length is the number of subsystems
+  std::vector<MatrixInBasis<SCFMode>> _transitionDensity, _holeDensity, _particleDensity, _holeDensityCorrection;
+  // Calculates the NTO matrices, eigenvalues, eigenvectors
+  void calcNTOs(unsigned int iState);
+  // Calculates the transition density
+  void calcTransitionDensity(unsigned int iState);
+  // Calculates the hole and particle density and the hole density correction
+  void calcParticleAndHoleDensity(unsigned int iState);
+  // Makes the NTOs and transition, hole and particle densities available for a specific state
+  void makeAvailable(unsigned iState) {
+    if (_state != iState) {
+      calcNTOs(iState);
+      calcTransitionDensity(iState);
+      calcParticleAndHoleDensity(iState);
+      _state = iState;
+    }
+  }
+  // The state for which the calculation has been performed
+  unsigned int _state = 999999;
 };
 
 } /* namespace Serenity */

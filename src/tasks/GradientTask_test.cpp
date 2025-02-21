@@ -332,7 +332,7 @@ TEST_F(GradientTaskTest, F2CPCMGradients) {
 
   Eigen::MatrixXd analyGrads = systemControllerF2->getGeometry()->getGradients();
   // Note that analytical and numerical CPCM gradients deviate somewhat, since the
-  // change in tessarea area is not respected in the analytical gradients.
+  // change in tesserae area is not respected in the analytical gradients.
   EXPECT_NEAR(analyGrads(0, 0), numGrads(0, 0), 5e-5);
   EXPECT_NEAR(analyGrads(0, 1), numGrads(0, 1), 5e-5);
   EXPECT_NEAR(analyGrads(0, 2), numGrads(0, 2), 5e-5);

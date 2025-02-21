@@ -162,7 +162,9 @@ double LocalMP2InteractionCalculator::calculateActiveOnlyLocalMP2Energy(std::sha
     localMP2.settings.maxResidual = _maxResidual;
     localMP2.settings.maxCycles = _maxCycles;
     if (_supersystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-      auto functional = resolveFunctional(_supersystem->getSettings().dft.functional);
+      auto functional = _supersystem->getSettings().customFunc.basicFunctionals.size()
+                            ? Functional(_supersystem->getSettings().customFunc)
+                            : resolveFunctional(_supersystem->getSettings().dft.functional);
       localMP2.settings.osScaling = functional.getosScaling();
       localMP2.settings.ssScaling = functional.getssScaling();
     }
@@ -192,7 +194,9 @@ double LocalMP2InteractionCalculator::calculateActiveOnlyLocalMP2Energy(std::sha
     localMP2.settings.maxResidual = _maxResidual;
     localMP2.settings.maxCycles = _maxCycles;
 
-    auto functional = resolveFunctional(tmpActiveSystem->getSettings().dft.functional);
+    auto functional = tmpActiveSystem->getSettings().customFunc.basicFunctionals.size()
+                          ? Functional(tmpActiveSystem->getSettings().customFunc)
+                          : resolveFunctional(tmpActiveSystem->getSettings().dft.functional);
     localMP2.settings.osScaling = functional.getosScaling();
     localMP2.settings.ssScaling = functional.getssScaling();
     return localMP2.calculateEnergyCorrection().sum();
@@ -210,7 +214,9 @@ std::shared_ptr<LocalCorrelationController> LocalMP2InteractionCalculator::runLo
   localMP2.settings.maxResidual = _maxResidual;
   localMP2.settings.maxCycles = _maxCycles;
   if (_supersystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    auto functional = resolveFunctional(_supersystem->getSettings().dft.functional);
+    auto functional = _supersystem->getSettings().customFunc.basicFunctionals.size()
+                          ? Functional(_supersystem->getSettings().customFunc)
+                          : resolveFunctional(_supersystem->getSettings().dft.functional);
     localMP2.settings.osScaling = functional.getosScaling();
     localMP2.settings.ssScaling = functional.getssScaling();
   }
@@ -273,7 +279,9 @@ void LocalMP2InteractionCalculator::calculateLocalMP2Energies() {
   _couplingCorrectionEnergy = _activeEnergy - activeOnlyMP2Energy;
   // Scaling for DFT/double hybrid functionals.
   if (_supersystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    auto functional = resolveFunctional(_supersystem->getSettings().dft.functional);
+    auto functional = _supersystem->getSettings().customFunc.basicFunctionals.size()
+                          ? Functional(_supersystem->getSettings().customFunc)
+                          : resolveFunctional(_supersystem->getSettings().dft.functional);
     _interactionEnergy *= functional.getHfCorrelRatio();
     _environmentEnergy *= functional.getHfCorrelRatio();
     _activeEnergy *= functional.getHfCorrelRatio();

@@ -81,7 +81,7 @@ double EnergyComponentController::getEnergyComponentFromChildren(const ENERGY_CO
     throw SerenityError(
         (std::string) "ERROR: The energy contribution was not fully integrated into the ENERGY_CONTRIBUTION "
                       "framework.\n" +
-        "       It is missing int the ENERGY_CONTRIBUTIONS_CHILDREN_MAP map. This may be an implementaiton error\n" +
+        "       It is missing in the ENERGY_CONTRIBUTIONS_CHILDREN_MAP map. This may be an implementation error\n" +
         "       or may be caused by loading corrupted/outdated files.");
   // False if the present data is insufficient to calculate the requested energy type.
   if (not(EnergyComponentPrinter::ENERGY_CONTRIBUTIONS_CHILDREN_MAP.at(energyType).size() > 0))
@@ -105,7 +105,7 @@ bool EnergyComponentController::checkEnergyComponentFromChildren(const ENERGY_CO
     throw SerenityError(
         (std::string) "ERROR: The energy contribution was not fully integrated into the ENERGY_CONTRIBUTION "
                       "framework.\n" +
-        "       It is missing int the ENERGY_CONTRIBUTIONS_CHILDREN_MAP map. This may be an implementaiton error\n" +
+        "       It is missing in the ENERGY_CONTRIBUTIONS_CHILDREN_MAP map. This may be an implementation error\n" +
         "       or may be caused by loading corrupted/outdated files.");
   // False if the present data is insufficient to calculate the requested energy type.
   if (not(EnergyComponentPrinter::ENERGY_CONTRIBUTIONS_CHILDREN_MAP.at(energyType).size() > 0)) {

@@ -34,8 +34,12 @@
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-IBOLocalization<SCFMode>::IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly, bool replaceVirtuals)
-  : _system(systemController), _IAOsOnly(IAOsOnly), _replaceVirtuals(replaceVirtuals){};
+IBOLocalization<SCFMode>::IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly,
+                                          bool replaceVirtuals, bool enforceRestrictedOrbitals)
+  : _system(systemController),
+    _IAOsOnly(IAOsOnly),
+    _replaceVirtuals(replaceVirtuals),
+    _enforceRestrictedOrbitals(enforceRestrictedOrbitals){};
 
 template<Options::SCF_MODES SCFMode>
 void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
@@ -92,11 +96,17 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
                                C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
                                _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
                                _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION)));
-  if (replaceVirtBeforeLoc) {
+  if (replaceVirtBeforeLoc && !_virtualOrbitalsReplaced) {
+    _virtualOrbitalsReplaced = true;
+    /*
+     * If we have a SOMO that should not mix with the remaining virtual orbital space, we must not include it in the
+     * reconstruction of the virtual orbital space.
+     */
+    auto nOccValenceProjection =
+        (_enforceRestrictedOrbitals) ? restrictedOccupations() : _system->template getNOccupiedOrbitals<SCFMode>();
     IAOPopulationCalculator<SCFMode>::reconstructVirtualValenceOrbitalsInplace(
-        C, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
-        _system->template getNOccupiedOrbitals<SCFMode>(), _system->getBasisController(),
-        _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION));
+        C, _system->getOneElectronIntegralController()->getOverlapIntegrals(), nOccValenceProjection,
+        _system->getBasisController(), _system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION));
     orbitals.updateOrbitals(C, orbitals.getEigenvalues());
   }
   // Coefficients in IAO basis
@@ -105,7 +115,12 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
   auto& spinCIAO = CIAOandOthoA.first;
   const auto& spinOthoA = CIAOandOthoA.second;
 
+  bool skipLoop = false;
   for_spin(spinOthoA, spinCIAO, C, orbitalRange) {
+    if (skipLoop) {
+      return;
+    }
+
     auto& CIAO = spinCIAO_spin;
     const unsigned int nCIAOOrbs = CIAO.cols();
     const auto& othoA = spinOthoA_spin;
@@ -205,11 +220,36 @@ void IBOLocalization<SCFMode>::localizeOrbitals(OrbitalController<SCFMode>& orbi
                                        .abs()
                                        .sum();
         if (sanityCheck > 1e-6)
-          throw SerenityError("The orbitals are no longer orthogonal after IBO localization!");
+          throw SerenityError("The orbitals are no longer orthogonal after IBO localization! Maximum overlap: " +
+                              std::to_string(sanityCheck));
       }
     } /* rotations while loop */
-  };  /* spin loop */
+    if (_enforceRestrictedOrbitals && SCFMode != RESTRICTED) {
+      skipLoop = true;
+      this->restrictOrbitals(C);
+    }
+  }; /* spin loop */
   orbitals.updateOrbitals(C, orbitals.getEigenvalues());
+}
+template<>
+void IBOLocalization<UNRESTRICTED>::restrictOrbitals(CoefficientMatrix<UNRESTRICTED>& coefficientMatrix) {
+  coefficientMatrix.beta = coefficientMatrix.alpha;
+}
+template<>
+void IBOLocalization<RESTRICTED>::restrictOrbitals(CoefficientMatrix<RESTRICTED>&) {
+  return;
+}
+template<>
+SpinPolarizedData<RESTRICTED, unsigned int> IBOLocalization<RESTRICTED>::restrictedOccupations() {
+  return _system->getNOccupiedOrbitals<RESTRICTED>();
+}
+template<>
+SpinPolarizedData<UNRESTRICTED, unsigned int> IBOLocalization<UNRESTRICTED>::restrictedOccupations() {
+  auto nOcc = _system->getNOccupiedOrbitals<UNRESTRICTED>();
+  auto maxOcc = std::max(nOcc.alpha, nOcc.beta);
+  nOcc.alpha = maxOcc;
+  nOcc.beta = maxOcc;
+  return nOcc;
 }
 
 template class IBOLocalization<Options::SCF_MODES::RESTRICTED>;

@@ -1,0 +1,96 @@
+\subsection{Task: Wavefunction Embedding Task}
+\label{sec:WFinWFTask}
+Allows the DLPNO-based coupled-cluster-in-coupled-cluster embedding according to Ref.~\cite{Sparta2017}.
+\subsubsection{Example Input}
+You can start the embedding calculation either from subsystems with previously calculated orbitals
+(\ttt{fromFragments true}), or by partitioning a supersystem into subsystems based on the localization
+of the supersystem orbitals on the subsystems (\emph{e.g.}, see the Top-Down embedding task in
+Section~\ref{sec:topDownTask}).
+
+Embedding with already calculated subsystem orbitals:
+\begin{lstlisting}
++task WFEMB
+  act supersystem
+  env frag1
+  env frag2
+  env frag3
+  fromFragments true
+  fullDecomposition false
+  +lc0
+    method DLPNO-CCSD(T0)
+    pnoSettings normal
+    useFrozenCore true
+  -lc0
+  +lc1
+    method DLPNO-CCSD
+    pnoSettings loose
+    useFrozenCore true
+  -lc1
+  +lc2
+    method NONE
+    useFrozenCore true
+  -lc2
+-task
+\end{lstlisting}
+
+Embedding by partitioing of the supersystem orbitals:
+\begin{lstlisting}
++task WFEMB
+  act supersystem
+  env frag1
+  env frag2
+  fromFragments false
+  fullDecomposition false
+  +lc0
+    method DLPNO-CCSD(T0)
+    pnoSettings normal
+    useFrozenCore true
+  -lc0
+  +lc1
+    method DLPNO-CCSD
+    pnoSettings loose
+    useFrozenCore true
+  -lc1
+  +loc
+    locType IBO
+  -loc
+  +split
+    systemPartitioning bestmatch
+  -split
+-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{WFEMB} and \ttt{WAVEFUNCTIONEMBEDDING}.
+	\item[\texttt{activeSystems}]\hfill \\
+	The supersystems to be used.
+	\item[\texttt{environmentSystems}]\hfill \\
+	The subsystems to be used.
+    \item [\texttt{sub-blocks}]\hfill \\
+    The embedding (\ttt{emb}), local correlation (\ttt{lc}), PCM (\ttt{pcm}), localization task settings (\ttt{loc}) and
+    system splitting task settings (\ttt{split}) are added via sub-blocks in the task settings.
+    The local correlation settings are added as a list of settings. For each fragment (environment) system there is
+    a local correlation settings object that determines the settings employed for the orbitals of this system. The
+    task assumes that systems/settings with a lower index are tighter.
+    By default \ttt{splitValenceAndCore = true} is set for the localization task settings.
+    \item [\texttt{fullDecomposition}]\hfill \\
+    If true, a full energy decomposition is calculated in terms of energy of the fragments and interaction energy.
+    By default \ttt{false}.
+    \item [\texttt{fromFragments}]\hfill \\
+    If true, the supersystem is ignored and overwritten with the union of the subsystems. By default \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item[\texttt{accurateInteraction}]\hfill\\
+  If true, the settings with the lower subsystem index are used for cross system pairs.
+  Otherwise: the settings with the higher subsystem index are used. By default \ttt{true}.
+  \item [\texttt{maxCycles}]\hfill \\
+  The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+  By default 100 cycles are allowed.
+  \item [\texttt{normThreshold}]\hfill \\
+  The threshold at which the coupled cluster iterations are considered converged. By default \ttt{1.0e-5}.
+  \item[\texttt{writePairEnergies}] \hfill \\
+  If true, write the pair energies to a file with the name: systemName\_pairEnergies\_MultiLevelCC.dat. \ttt{False} by default.
+\end{description}

@@ -30,21 +30,21 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES SPIN>
+template<Options::SCF_MODES SCFMode>
 std::function<Eigen::VectorXd(std::shared_ptr<GridController>)>
-SEDD<SPIN>::getSEDDLambda(const std::shared_ptr<SystemController> systemController) {
+SEDD<SCFMode>::getSEDDLambda(const std::shared_ptr<SystemController> systemController) {
   auto calculateSEDD = [systemController](std::shared_ptr<GridController> gridController) {
     auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
         systemController->getSettings(), systemController->getAtomCenteredBasisController(), gridController);
     auto oldmaxderiv = basisFunctionOnGridController->getHighestDerivative();
     basisFunctionOnGridController->setHighestDerivative(2);
-    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SPIN>>(
+    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SCFMode>>(
         basisFunctionOnGridController, systemController->getSettings().grid.blockAveThreshold);
-    const auto& densMatrix(systemController->getElectronicStructure<SPIN>()->getDensityMatrix());
-    DensityOnGrid<SPIN> dens(gridController);
-    // creates an object of type Gradient<densOnGrid<T>> and Hessian<densOnGrid<T>>
-    auto densGradOnGrid(makeGradient<DensityOnGrid<SPIN>>(gridController));
-    auto densHessOnGrid(makeHessian<DensityOnGrid<SPIN>>(gridController));
+    const auto& densMatrix(systemController->getElectronicStructure<SCFMode>()->getDensityMatrix());
+    DensityOnGrid<SCFMode> dens(gridController);
+    // creates an object of type Gradient<densOnGrid<SCFMode>> and Hessian<densOnGrid<SCFMode>>
+    auto densGradOnGrid(makeGradient<DensityOnGrid<SCFMode>>(gridController));
+    auto densHessOnGrid(makeHessian<DensityOnGrid<SCFMode>>(gridController));
 
     Eigen::VectorXd result(gridController->getNGridPoints());
     densOnGridCalculator->calcDensityAndDerivativesOnGrid(densMatrix, dens, densGradOnGrid, densHessOnGrid);
@@ -77,21 +77,21 @@ SEDD<SPIN>::getSEDDLambda(const std::shared_ptr<SystemController> systemControll
   return calculateSEDD;
 }
 
-template<Options::SCF_MODES SPIN>
+template<Options::SCF_MODES SCFMode>
 std::function<Eigen::VectorXd(std::shared_ptr<GridController>)>
-SEDD<SPIN>::getDORILambda(const std::shared_ptr<SystemController> systemController) {
+SEDD<SCFMode>::getDORILambda(const std::shared_ptr<SystemController> systemController) {
   auto calculateDORI = [systemController](std::shared_ptr<GridController> gridController) {
     auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
         systemController->getSettings(), systemController->getAtomCenteredBasisController(), gridController);
     auto oldmaxderiv = basisFunctionOnGridController->getHighestDerivative();
     basisFunctionOnGridController->setHighestDerivative(2);
-    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SPIN>>(
+    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SCFMode>>(
         basisFunctionOnGridController, systemController->getSettings().grid.blockAveThreshold);
-    const auto& densMatrix(systemController->getElectronicStructure<SPIN>()->getDensityMatrix());
-    DensityOnGrid<SPIN> dens(gridController);
-    // creates an object of type Gradient<densOnGrid<T>> and Hessian<densOnGrid<T>>
-    auto densGradOnGrid(makeGradient<DensityOnGrid<SPIN>>(gridController));
-    auto densHessOnGrid(makeHessian<DensityOnGrid<SPIN>>(gridController));
+    const auto& densMatrix(systemController->getElectronicStructure<SCFMode>()->getDensityMatrix());
+    DensityOnGrid<SCFMode> dens(gridController);
+    // creates an object of type Gradient<densOnGrid<SCFMode>> and Hessian<densOnGrid<SCFMode>>
+    auto densGradOnGrid(makeGradient<DensityOnGrid<SCFMode>>(gridController));
+    auto densHessOnGrid(makeHessian<DensityOnGrid<SCFMode>>(gridController));
 
     Eigen::VectorXd result(gridController->getNGridPoints());
     densOnGridCalculator->calcDensityAndDerivativesOnGrid(densMatrix, dens, densGradOnGrid, densHessOnGrid);
@@ -127,21 +127,21 @@ SEDD<SPIN>::getDORILambda(const std::shared_ptr<SystemController> systemControll
   return calculateDORI;
 }
 
-template<Options::SCF_MODES SPIN>
+template<Options::SCF_MODES SCFMode>
 std::function<Eigen::VectorXd(std::shared_ptr<GridController>)>
-SEDD<SPIN>::getSignedDensityLambda(const std::shared_ptr<SystemController> systemController) {
+SEDD<SCFMode>::getSignedDensityLambda(const std::shared_ptr<SystemController> systemController) {
   auto calculateSignedDensity = [systemController](std::shared_ptr<GridController> gridController) {
     auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
         systemController->getSettings(), systemController->getAtomCenteredBasisController(), gridController);
     auto oldmaxderiv = basisFunctionOnGridController->getHighestDerivative();
     basisFunctionOnGridController->setHighestDerivative(2);
-    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SPIN>>(
+    auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<SCFMode>>(
         basisFunctionOnGridController, systemController->getSettings().grid.blockAveThreshold);
-    const auto& densMatrix(systemController->getElectronicStructure<SPIN>()->getDensityMatrix());
-    DensityOnGrid<SPIN> dens(gridController);
-    // creates an object of type Gradient<densOnGrid<T>> and Hessian<densOnGrid<T>>
-    auto densGradOnGrid(makeGradient<DensityOnGrid<SPIN>>(gridController));
-    auto densHessOnGrid(makeHessian<DensityOnGrid<SPIN>>(gridController));
+    const auto& densMatrix(systemController->getElectronicStructure<SCFMode>()->getDensityMatrix());
+    DensityOnGrid<SCFMode> dens(gridController);
+    // creates an object of type Gradient<densOnGrid<SCFMode>> and Hessian<densOnGrid<SCFMode>>
+    auto densGradOnGrid(makeGradient<DensityOnGrid<SCFMode>>(gridController));
+    auto densHessOnGrid(makeHessian<DensityOnGrid<SCFMode>>(gridController));
 
     densOnGridCalculator->calcDensityAndDerivativesOnGrid(densMatrix, dens, densGradOnGrid, densHessOnGrid);
 

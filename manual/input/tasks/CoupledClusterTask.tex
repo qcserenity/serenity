@@ -1,0 +1,56 @@
+\subsection{Task: Coupled Cluster\label{sec:coupledClusterTask}}
+This task performs coupled cluster calculations, possibly using canonical and local coupled cluster.
+Additionally, this task also performs embedded coupled cluster calculations. Effects of an optional
+PCM are taken only into account on the level of the orbitals/Fock matrix.
+
+\subsubsection{Example Input}
+\textbf{Canonical coupled cluster:}
+\begin{lstlisting}
+ +task CC
+   system water
+   level CCSD
+ -task
+\end{lstlisting}
+\textbf{Local coupled cluster:}
+
+{\color{red}IMPORTANT: } The orbital localization step for local coupled cluster is not carried out
+within this task! Please make sure that the orbitals have been localized before using the local
+correlation version of this task (see Sec.~\ref{task:localization}).
+\begin{lstlisting}
+ +task CC
+   system water
+   level DLPNO-CCSD
+   +lc
+     pno_settings tight
+   -lc
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{CoupledClusterTask} and \ttt{CC}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Accepts a single active system that will be used in the actual coupled cluster calculation.
+ \item [\texttt{environmentSystems}]\hfill \\
+   Accepts multiple environment systems that are used in embedded coupled cluster calculations.
+ \item [\texttt{sub-blocks}]\hfill \\
+   The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+   Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+   \ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+   Similarly, \ttt{pnoSettings=NORMAL} is a commonly changed default in the local correlation settings.
+ \item [\texttt{level}]\hfill \\
+   The type of coupled cluster calculation to perform. By default a (canonical) \ttt{CCSD} calculation is performed
+   Alternatively canonical \ttt{CCSD(T)} and local \ttt{DLPNO-CCSD}, \ttt{DLPNO-CCSD(T0)} calculations can be
+   requested with this keyword.
+ \item [\texttt{maxCycles}]\hfill \\
+   The maximum number of cycles allowed until convergence is expected by the coupled cluster iterations.
+   By default \ttt{100} cycles are allowed.
+ \item [\texttt{normThreshold}]\hfill \\
+   The threshold at which the coupled cluster iterations are considered converged. By default \ttt{1.0e-5}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{writePairEnergies}]\hfill \\
+  Write the pair energies to a file with name: systemName\_pairEnergies\_CCSD.dat. This only works for
+  DLPNO-CCSD/DLPNO-CCSD(T0). By default \ttt{false}.
+\end{description}

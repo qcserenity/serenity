@@ -32,6 +32,7 @@ namespace Options {
  *   SERENITY:  Serenity HDF5 files.
  *   MOLPRO:    Molpro-xml orbital file.
  *   MOLCAS:    Molcas hdf5 file format (.scf.h5 files).
+ *   MOLDEN:    Molden file format.
  */
 enum class ORBITAL_FILE_TYPES { SERENITY = 0, TURBOMOLE = 1, MOLPRO = 2, MOLCAS = 3, MOLDEN = 4 };
 template<>

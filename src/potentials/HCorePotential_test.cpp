@@ -159,7 +159,6 @@ TEST_F(HCorePotentialTest, H2_rgrad) {
   EXPECT_NEAR(derivative(1, 0), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 1), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 2), 0.861249627698, 1e-5);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 /**
@@ -178,7 +177,6 @@ TEST_F(HCorePotentialTest, H2_ugrad) {
   EXPECT_NEAR(derivative(1, 0), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 1), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 2), 0.861249627698, 1e-5);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP);
 }
 
 /**
@@ -197,7 +195,6 @@ TEST_F(HCorePotentialTest, H2_grad_rBP86) {
   EXPECT_NEAR(derivative(1, 0), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 1), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 2), 0.963490664845073, 1e-5);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
 }
 
 /**
@@ -216,7 +213,6 @@ TEST_F(HCorePotentialTest, H2_grad_uBP86) {
   EXPECT_NEAR(derivative(1, 0), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 1), 0.0, 1e-5);
   EXPECT_NEAR(derivative(1, 2), 0.96350268865774491, 1e-5);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86);
 }
 
 /**
@@ -281,12 +277,76 @@ TEST_F(HCorePotentialTest, ExternalChargesAndECPs) {
   read.run();
 
   HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(sys);
-
   double energy = hCorePot.getEnergy(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix());
 
-  EXPECT_NEAR(energy, -10893.046900933725, 2e-5); // Taken from "working" implementation (08.11.2023)
+  // Taken from "working" implementation (23.01.2025); fixed an error during file reading.
+  EXPECT_NEAR(energy, -10893.052566566843, 2e-5);
+
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot2(sys);
+  double energy2 = hCorePot.getEnergy(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix());
+  EXPECT_NEAR(energy2, energy, 1e-9);
+
   // orbital coefficients on disk.
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(HCorePotentialTest, Constructor) {
+  // Please always load. This system is rather large!
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  std::string pathToTestsResources;
+  std::string moPath;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/TestSystem_WCCR1010_P1_Def2_SVP_HF/external_charges.dat";
+    moPath = (std::string)env_p + "testresources/TestSystem_WCCR1010_P1_Def2_SVP_HF";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  auto settings = sys->getSettings();
+  settings.extCharges.externalChargesFile = pathToTestsResources;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF, settings, 1);
+
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(sys);
+  EXPECT_NO_THROW(hCorePot.getMatrix());
+
+  // orbital coefficients on disk.
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WCCR1010_def2_SVP_HF);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+/**
+ * @test HCorePotentialTest
+ * @brief Tests the HCore energy for an H2 molecule, including a constant external potential defined on a grid
+ * (RESTRICTED).
+ */
+TEST_F(HCorePotentialTest, externalGridPotential) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE);
+  std::string pathToTestsResources;
+  std::string moPath;
+  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
+    pathToTestsResources = (std::string)env_p + "testresources/TestSystem_H2_DEF2_TZVP_PBE/externalGridPotential.dat";
+    moPath = (std::string)env_p + "testresources/TestSystem_H2_DEF2_TZVP_PBE";
+  }
+  else {
+    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
+  }
+  auto settings = sys->getSettings();
+  settings.externalGridPotential = pathToTestsResources;
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE, settings, 0, 0);
+  OrbitalsIOTask<RESTRICTED> read(sys);
+  read.settings.fileFormat = Options::ORBITAL_FILE_TYPES::SERENITY;
+  read.settings.path = moPath;
+  read.run();
+
+  HCorePotential<Options::SCF_MODES::RESTRICTED> hCorePot(sys);
+  double energy = hCorePot.getEnergy(sys->getElectronicStructure<RESTRICTED>()->getDensityMatrix());
+
+  // orbital coefficients from disk (calculated without the external potential) lead to this energy. Since the potential
+  // used here is 1.0 at each grid point, it should increase the energy by 2 since there are 2 electrons in H2
+  EXPECT_NEAR(energy, -2.50308689114 + 2, 1e-6);
+
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

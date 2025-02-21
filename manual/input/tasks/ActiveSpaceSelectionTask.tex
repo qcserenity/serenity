@@ -1,0 +1,73 @@
+\subsection{Task: Active-Space Selection\label{sec:activeSpaceTask}}
+This tasks performs an occupied orbital selection for the calculation of relative
+energies along a reaction path. The atoms of all supersystems have to be identical
+and ordered in the same way. If active and environment systems are provided via the
+input, the results of the selection are saved in these systems. The charge, atoms, basis
+set and spin may be changed. If no environment and/or active systems are provided
+via the input, systems are constructed and written to disk with the names
+supersystem name + ``\_act''/``\_env'' for active and environment system, respectively.
+For information regarding the methodology we refer to the original publications~\cite{Bensberg2019a,Bensberg2020}.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task AS
+    super reactant  
+    super transition
+    super product
+    similarityLocThreshold 1e-2
+    similarityKinEnergyThreshold 1e-2
+    +loc
+      locType IBO
+    -loc
+  -task
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{Name}]\hfill \\
+ Aliases for this task are \ttt{ACTIVESPACESELECTIONTASK}, \ttt{ACTIVESPACETASK} and \ttt{AS}.  
+ \item [\texttt{Supersystems}]\hfill \\
+ Accepts multiple supersystems (\ttt{super}) which are used for the orbital comparison.   
+ \item [\texttt{ActiveSystems}]\hfill \\
+ Accepts multiple active systems to which the active orbitals are parsed. The first
+ active system is assumed to correspond to the first super system, the second to the second
+ supersystem etc. 
+ \item [\texttt{EnvironmentSystems}]\hfill \\
+ Accepts multiple environment systems to which the environment orbitals are parsed. The first
+ environment system is assumed to correspond to the first supersystem. 
+ \item [\texttt{sub-blocks}]\hfill \\
+ Orbital localization task (\ttt{loc}) settings are added via sub-blocks in the task settings.
+ \item [\texttt{similarityLocThreshold}]\hfill \\
+ The threshold for the comparison of partial charges. The default is \ttt{0.05}.
+ \item [\texttt{similarityKinEnergyThreshold}]\hfill \\
+ The threshold for the comparison of the orbital kinetic energy. The default is \ttt{0.05}.
+ \item [\texttt{populationAlgorithm}]\hfill \\
+ The algorithm used to calculate partial charges. The default are shell-wise intrinsic atomic orbital (IAO)
+ charges (\ttt{IAOShell}). Other useful options are Mulliken charges (\ttt{MULLIKEN}) and atom-wise IAO
+ charges (\ttt{IAO}).
+ \item [\texttt{alignPiOrbitals}]\hfill \\
+ Align the orbitals of all supersystems to the orbitals of the first supersystem (after localization). This
+ is useful to avoid degenerate localization minima especially for $\pi$-systems. Default is \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{localizationThreshold}]\hfill \\
+    The atom-wise Mulliken population threshold for the assignment of atoms to the subsystems. This is done
+    after the supersystem orbital set has been separated into active and environment orbitals. If the total
+    population of the active orbitals on a given atoms exceeds this threshold it is assigned to the active
+    system. The default is \ttt{0.8} au.
+    \item [\texttt{load}]\hfill \\
+    If true, the SCF procedure is skipped and the tasks tries to load the supersystem results. The default
+    is \ttt{false}.
+    \item [\texttt{usePiBias}]\hfill \\
+    Use a selection threshold scaling based on the number of significant, orbital-wise partial charges for
+    each orbital. This is used to reduce the over-selection of $\pi$-orbitals. The default is \ttt{false}.
+    \item [\texttt{biasThreshold}]\hfill \\
+    The threshold for the evaluation of the number of significant partial charges for. The default is
+    \ttt{0.01}.
+    \item [\texttt{biasAverage}]\hfill \\
+    The averaging-parameter for the threshold scaling used for \ttt{usePiBias true}.
+    The default is \ttt{12.0}.
+    \item [\texttt{skipLocalization}]\hfill \\
+    If \ttt{true}, the localization step is skipped. This can be useful if the orbitals were already
+    localized. The default is \ttt{false}.
+ \end{description}

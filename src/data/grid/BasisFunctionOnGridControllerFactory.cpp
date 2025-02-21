@@ -22,10 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "dft/Functional.h"
 #include "dft/functionals/CompositeFunctionals.h"
-#include "grid/GridControllerFactory.h"
 #include "settings/Settings.h"
-/* Include Std and External Headers */
-#include <cassert>
 
 namespace Serenity {
 

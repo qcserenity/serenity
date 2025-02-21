@@ -18,7 +18,7 @@
  */
 #ifndef SIGMACALCULATOR_H
 #define SIGMACALCULATOR_H
-/* Include Serenity Internal Headers */
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <algorithm>
 #include <memory>

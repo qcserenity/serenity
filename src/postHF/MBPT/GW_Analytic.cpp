@@ -20,7 +20,9 @@
 
 /* Include Class Header*/
 #include "postHF/MBPT/GW_Analytic.h"
+/* Include Serenity Internal Headers */
 #include "math/diis/DIIS.h"
+#include "parameters/Constants.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/Sigmavectors/CoulombSigmavector.h"
 #include "postHF/LRSCF/Sigmavectors/RI/RICoulombSigmavector.h"

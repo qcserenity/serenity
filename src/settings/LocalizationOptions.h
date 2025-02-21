@@ -56,7 +56,15 @@ void resolve<ORBITAL_LOCALIZATION_ALGORITHMS>(std::string& value, ORBITAL_LOCALI
 /**************************************************************************************************/
 /*                                   Population Analysis                                          */
 /**************************************************************************************************/
-enum class POPULATION_ANALYSIS_ALGORITHMS { MULLIKEN = 0, HIRSHFELD = 1, IAO = 2, IAOShell = 3, BECKE = 4 };
+enum class POPULATION_ANALYSIS_ALGORITHMS {
+  MULLIKEN = 0,
+  HIRSHFELD = 1,
+  IAO = 2,
+  IAOShell = 3,
+  BECKE = 4,
+  CM5 = 5,
+  CHELPG = 6
+};
 template<>
 void resolve<POPULATION_ANALYSIS_ALGORITHMS>(std::string& value, POPULATION_ANALYSIS_ALGORITHMS& field);
 

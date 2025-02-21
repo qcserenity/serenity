@@ -22,7 +22,6 @@
 
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>

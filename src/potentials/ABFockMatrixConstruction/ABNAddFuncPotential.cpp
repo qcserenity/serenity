@@ -145,7 +145,7 @@ SPMatrix<SCFMode>& ABNAddFuncPotential<SCFMode>::getMatrix() {
           std::make_shared<ExternalDensityOnGridController<SCFMode>>(superDensityOnGrid, superDensityGradOnGrid);
     } /* else !isGGA */
 
-    // initializing XCFun
+    // initializing the functional library
     FunctionalLibrary<SCFMode> flib(128);
     // Calculating supersystem part
     auto superFuncDat = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, _functional, superDensOnGridController, 1);

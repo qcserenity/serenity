@@ -23,20 +23,21 @@ function(import_laplace_minimax)
     GIT_TAG 55414f3
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/ext-laplace-minimax
     CONFIGURE_COMMAND cmake ../laplace-minimax-static -DCMAKE_Fortran_FLAGS=-fPIC -DCMAKE_Fortran_COMPILER=${LAPLACE_COMPILER}
-    BUILD_COMMAND make VERBOSE=1
+    BUILD_COMMAND ${CMAKE_COMMAND} -E echo "Building laplace-minimax" && ${CMAKE_COMMAND} --build <BINARY_DIR>
     UPDATE_COMMAND ""
     INSTALL_COMMAND cp <BINARY_DIR>/liblaplace-minimax.a ${CMAKE_CURRENT_BINARY_DIR}/lib/liblaplace-minimax.a && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/data/ && cp -r <SOURCE_DIR>/data/ ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/
+    # this is necessary for compatibility with Ninja
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/lib/liblaplace-minimax.a
   )
 
   add_library(laplace-minimax STATIC IMPORTED)
   set_property(TARGET laplace-minimax PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/lib/liblaplace-minimax.a)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES libgfortran.so)
-    set(LAPLACE_COMPILER "gfortran")
+    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES gfortran)
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES ifcore.so ifport.so)
+    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES ifcore ifport)
   else ()
-    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES libgfortran.so)
+    set_property(TARGET laplace-minimax PROPERTY INTERFACE_LINK_LIBRARIES gfortran)
   endif()
   set_property(TARGET laplace-minimax PROPERTY POSITION_INDEPENDENT_CODE ON)
   add_dependencies(laplace-minimax laplace-minimax-static)

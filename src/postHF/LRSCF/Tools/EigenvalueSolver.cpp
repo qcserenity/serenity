@@ -21,6 +21,7 @@
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/EigenvalueSolver.h"
 /* Include Serenity Internal Headers */
+#include "io/FormattedOutputStream.h"
 #include "math/linearAlgebra/Orthogonalization.h"
 #include "misc/SerenityError.h"
 #include "parameters/Constants.h"
@@ -146,6 +147,7 @@ void EigenvalueSolver::iterate() {
       _subspaceMatrix = (lu.inverse() * _subspaceMatrix).eval();
     }
     else {
+      OutputControl::dOut << "  Subspace metric:\n" << _subspaceMatrix << std::endl;
       throw SerenityError("Subspace metric cannot be inverted.");
     }
     Eigen::EigenSolver<Eigen::MatrixXd> subspaceSolver(_subspaceMatrix);

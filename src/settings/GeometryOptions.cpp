@@ -28,7 +28,7 @@ namespace Options {
 
 template<>
 void resolve<OPTIMIZATION_ALGORITHMS>(std::string& value, OPTIMIZATION_ALGORITHMS& field) {
-  static const std::map<std::string, OPTIMIZATION_ALGORITHMS> m = {{"SD", OPTIMIZATION_ALGORITHMS::SD},
+  static const std::map<std::string, OPTIMIZATION_ALGORITHMS> m = {{"SQNM", OPTIMIZATION_ALGORITHMS::SQNM},
                                                                    {"BFGS", OPTIMIZATION_ALGORITHMS::BFGS}};
   check(m, value, field);
 }

@@ -18,8 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "basis/CombinedShellPair.h"
+/* Include Serenity Internal Headers */
 #include "math/IntegerMaths.h"
 #include "misc/SerenityError.h"
 

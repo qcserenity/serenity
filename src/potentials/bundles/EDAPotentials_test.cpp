@@ -22,12 +22,11 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "integrals/wrappers/Libint.h"
-#include "io/FormattedOutputStream.h" //Test only, remove me!
+#include "io/FormattedOutputStream.h"
 #include "scf/Scf.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 

@@ -50,11 +50,14 @@ class ExchangeSigmavector : public Sigmavector<SCFMode> {
 
   /**
    * @brief Default like constructor to be used if only the AO representation is required.
-   *        Note that for simplicity <pm> is set to 0. Thus only the term
-   *              \f$ \tilde{F}_{ij} = \sum_{k l} \tilde{P}_{kl} (ik|jl) \f$ is calculated.
    * @param lrscf The (dummy) lrscf controller.
+   * @param pm Signs for the exchange evaluation. In the case <pm> is set to 0, only the term
+   *              \f$ \tilde{F}_{\mu\nu} = \sum_{\kappa\lambda} \tilde{P}_{\kappa\lambda} (\mu\kappa|\nu\lambda) \f$ is
+   * calculated. <pm> = {1} results in \f$ \tilde{F}_{\mu\nu} = \sum_{\kappa\lambda} \tilde{P}_{\kappa\lambda}
+   * \left((\mu\kappa|\nu\lambda) + (\mu\lambda|\nu\kappa) \right)\f$
    */
-  ExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf);
+  ExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, const std::vector<int> pm = {0},
+                      bool densFitK = false, bool densFitLRK = false);
 
   /**
    * @brief calculates the coulomb pseudo-fock Matrix contribution of the response matrix with respect to a set of guess

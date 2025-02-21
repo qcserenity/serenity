@@ -41,7 +41,7 @@ namespace Serenity {
  * @class XCFun XCFun.h
  * @brief A wrapper for the XCFun library
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class XCFun {
  public:
   /**
@@ -60,9 +60,9 @@ class XCFun {
    * @param densityOnGridController A controller for the density to be processed.
    * @param order Highest derivative to be evaluated. Currently, only derivatives up to 2nd order are available.
    */
-  FunctionalData<T> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
-                             const std::shared_ptr<DensityOnGridController<T>> densityOnGridController,
-                             unsigned int order = 1);
+  FunctionalData<SCFMode> calcData(FUNCTIONAL_DATA_TYPE type, const Functional functional,
+                                   const std::shared_ptr<DensityOnGridController<SCFMode>> densityOnGridController,
+                                   unsigned int order = 1);
 
  private:
   unsigned int _maxBlockSize;
@@ -76,17 +76,18 @@ class XCFun {
   unsigned int determineBlockSize(unsigned int blockIndex, unsigned int nPoints, unsigned int nBlocks);
 
   // Calculates gradient invariants
-  Eigen::MatrixXd calculateSigma(const Gradient<DensityOnGrid<T>>& gradient, const unsigned int& iGridStart,
+  Eigen::MatrixXd calculateSigma(const Gradient<DensityOnGrid<SCFMode>>& gradient, const unsigned int& iGridStart,
                                  const unsigned int& blocksize);
 
   // Prepare XCFun input from Serenity objects
-  void prepareInput(const unsigned int iGridStart, const xcfun_vars xcVars, const DensityOnGrid<T>& density,
-                    const std::shared_ptr<Gradient<DensityOnGrid<T>>> gradient,
-                    const std::shared_ptr<Hessian<DensityOnGrid<T>>> hessian, Eigen::MatrixXd& input);
+  void prepareInput(const unsigned int iGridStart, const xcfun_vars xcVars, const DensityOnGrid<SCFMode>& density,
+                    const std::shared_ptr<Gradient<DensityOnGrid<SCFMode>>> gradient,
+                    const std::shared_ptr<Hessian<DensityOnGrid<SCFMode>>> hessian, Eigen::MatrixXd& input);
 
   // Stores XCFun output in FunctionalData object
+  // from XCFun website: output is given in graded reverse lexicographical order
   void parseOutput(const unsigned int order, const xcfun_vars xcVars, const unsigned int iGridStart,
-                   Eigen::MatrixXd& output, FunctionalData<T>& funcData);
+                   Eigen::MatrixXd& output, FunctionalData<SCFMode>& funcData);
 
   // Evaluates and returns energy from energy density
   double calcEnergy(std::shared_ptr<GridData<RESTRICTED>> epuv, const Eigen::VectorXd& weights);

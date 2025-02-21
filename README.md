@@ -3,19 +3,21 @@
 **Table of Contents** 
 - [Synopsis](#synopsis)
 - [License and Copyright Info](#license-and-copyright-info)
-- [Download](#download)  
+- [Download](#download)
 - [Install](#install)
-    - [Prerequisites](#prerequisites)
-    - [Install Using CMake and Make](#install-using-cmake-and-make)
-    - [Install Including Python Interface](#install-including-python-interface)
-    - [Tests](#tests)
-    - [Documentation](#documentation)
-    - [Troubleshooting](#troubleshooting) 
+  - [Installing Precompiled Binaries of the Python Interface](#installing-precompiled-binaries-of-the-python-interface)
+  - [Prerequisites For Building From Source](#prerequisites-for-building-from-source)
+  - [Build From Source Using CMake and Make](#build-from-source-using-cmake-and-make)
+  - [Build From Source Including Python Interface](#build-from-source-including-python-interface)
+  - [Tests](#tests)
+  - [Documentation](#documentation)
+  - [Troubleshooting:](#troubleshooting)
 - [User Manual](#user-manual)
+- [Getting Started](#getting-started)
 - [How to Cite Serenity](#how-to-cite-serenity)
 - [Contact](#contact)
-    - [Bugs and Feature Requests](#bugs-and-feature-requests)
-    - [Other](#other)
+  - [Bugs and Feature Requests](#bugs-and-feature-requests)
+  - [Other](#other)
 
 ## Synopsis
 Serenity is a quantum chemistry code originally
@@ -40,18 +42,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ## Download
 
-In order to download the source files of the latest Serenity release please
-visit:  
-https://github.com/qcserenity/serenity
+The source code is available on [Github](https://github.com/qcserenity/serenity/) and on [PyPI](https://pypi.org/project/qcserenity/).
+
 
 ## Install
 
 Please read the following instructions carefully.
 
-### Prerequisites
+### Installing Precompiled Binaries of the Python Interface
+For CPython versions 3.7 - 3.13, wheels are available via [PyPI](https://pypi.org/project/qcserenity/). Just run
+> pip install qcserenity
+
+which installs the `qcserenity` python package. Directly in this package are some python utility functions. The pybind11 wrapper to the C++ code resides in a submodule of `qcserenity` called `serenipy`. Also see the manual and [Getting Started](#getting-started) 
+
+### Prerequisites For Building From Source
 The code has been tested and compiled on Linux with GCC/G++
-(Versions 7 and newer) and Clang (Versions 8 and newer)
-compilation with other compilers such as ICC should be
+(Versions 7 and newer) and Clang (Versions 8 and newer).
+Compilation with other compilers such as ICC should be
 possible on Linux. Old GCC/G++ compilers (4.8.5 or older)
 are known to be insufficient.
 
@@ -62,7 +69,7 @@ Compilation with GCC on macOS should most likely also be possible.
 Compilation on and for Windows is not supported at the moment.
 
 The following programs/libraries must be available on your system:
- - CMake (Version >= 3.12)
+ - CMake (Version >= 3.15)
  - Boost (for package managers: including boost-devel)
  - OpenMP
  - Eigen3
@@ -71,21 +78,21 @@ The following programs/libraries must be available on your system:
  - The standard GNU toolchain (make, tar, autoconf, libtool)
 
 The following libraries will be automatically downloaded and installed together
-with Serenity (unless SERENITY_DOWNLOAD_DEPENDENCIES=OFF is set):  
- - libint2 (Version 2.2.0-beta3, pre-configured and hosted at: https://thclab.uni-muenster.de/serenity/libint)
- - libecpint (The Serenity version is forked to: https://github.com/qcserenity/libecpint)
+with Serenity (unless `SERENITY_DOWNLOAD_DEPENDENCIES=OFF` is set):  
+ - libint2 (Version 2.7.0-beta6, pre-configured and hosted at: https://www.uni-muenster.de/Chemie.oc/THCLAB/libint)
+ - libecpint (v1.0.7 from https://github.com/robashaw/libecpint.git)
  - libxc (v6.1.0 from https://gitlab.com/libxc/libxc)
- - xcfun (The Serenity version is forked to: https://github.com/qcserenity/xcfun)
- - GTest (Google Test and Google Mock)
+ - xcfun (the Serenity version is forked to: https://github.com/qcserenity/xcfun)
+ - GoogleTest (v1.13.0 from https://github.com/google/googletest.git)
 
 The following libraries are optional and needed for additional features:
  - Intel MKL (for SMP parallel Eigen3 eigenvalue solvers)
  - Doxygen (for the documentation)
  - Python-devel (for the python wrapper)
  - pybind11 (for the python wrapper)
- - laplace-minimax (commit: '55414f3', https://github.com/bhelmichparis/laplace-minimax.git)
+ - laplace-minimax (for Laplace-Transform MP2/ADC(2)/CC2/GW, commit: '55414f3', https://github.com/bhelmichparis/laplace-minimax.git)
 
-### Install Using CMake and Make
+### Build From Source Using CMake and Make
 Extract or pull the source code, then create a build directory:
 > cd serenity  
 > mkdir build  
@@ -97,26 +104,29 @@ Then run cmake:
 To compile Serenity for your specific CPU architecture, you can add:
 > cmake -DSERENITY_MARCH=native ..
 
+To compile the Laplace-Minimax library, activate the `SERENITY_USE_LAPLACE_MINIMAX` option.
+> cmake -DSERENITY_USE_LAPLACE_MINIMAX=ON
+
 (If the build folder is not located inside the main directory of Serenity
 please adapt the path accordingly.)
 
-Finally run make and make install to build the program:
+Finally run `make` to build the program:
 > make         
 
-Please source serenity.sh located in the main folder to set all necessary environment
+Instead of additionally running `make install`, you can source `serenity.sh` located in the main folder (if `SERENITY_USAGE_FROM_SOURCE` is set, which is the default) to set all necessary environment
 variables:
 > cd ..  
 > source serenity.sh
 
-### Install Including Python Interface
+### Build From Source Including Python Interface
 In order to activate the compilation of a Python interface to the code
 a flag can be set as follows
 > cmake -DSERENITY_PYTHON_BINDINGS=ON ..
 
-additionally this and other flags can be toggled using `ccmake`
+Additionally this and other flags can be toggled using `ccmake`
 > ccmake ..
 
-The wrapper will be build for the Python version that CMake finds first
+The wrapper will be built for the Python version that CMake finds first.
 In order to point CMake to a specific version of Python the following 
 option can be used:
 > cmake -DPYTHON_EXECUTABLE=/usr/bin/python3 ..
@@ -127,19 +137,22 @@ in the `PYTHONPATH` environment variable and the Serenity library has to be
 present in a path searched by the system for shared libraries.
 The latter is done when sourcing the `serenity.sh` script, the former requires 
 to un-comment one line in this file.
-Afterwards the interface should importable as follows:
+Afterwards the interface should be importable as follows:
 > python  
 > import serenipy as spy  
 
-### Tests
-Serenity comes with a decent set of unittests in order to run them source 
-the `serenity.sh` script and run
-> PATH_TO_BUILD_DIR/bin/serenity_tests
+Alternatively, if you have the python packages `cibuildwheel` and `scikit-build-core` as well as Docker, you can build the python wheels yourself by simply invoking `cibuildwheel` in the Serenity main folder.
 
-Please use the complete path, or else GTEST might run into problems.  
+### Tests
+Serenity comes with a decent set of unittests; in order to run them, source 
+the `serenity.sh` script and run
+> serenity_tests
   
 The Python wrapper comes with its own set of tests, these can be run using
-> python -m unittest discover PATH_TO_SERENITY/src/python/tests
+> python -m unittest discover PATH_TO_SERENITY/qcserenity/tests
+or alternatively inside a python environment
+> from qcserenity.tests import *
+> run_all_tests()
 
 ### Documentation
 After configuring the project using CMake it is possible to create the documentation 
@@ -149,7 +162,7 @@ using:
 Then you can open up the doc/html/index.html in a browser.  
 The python wrapper is not featured inside the documentation.
 Its documentation is available via pythons help() function,
-which displays the build-in doc-strings.
+which displays the built-in doc-strings.
 
 ### Troubleshooting:
 If you run into trouble during the compilation please make sure all
@@ -159,7 +172,25 @@ feel free to contact the main developers or preferably open an issue in the
 repository.
 
 ## User Manual
-The user manual resides in a seperate folder (manual) in this repository.
+The user manual resides in a separate folder (manual) in this repository.
+
+## Getting Started
+After building from source, `test.input` lies in the main directory. After sourcing `serenity.sh`, the first calculation can be performed by running
+> serenity test.input
+
+which will generate some output and also a folder called `hydrogen` in the directory from which `serenity` is executed.
+
+In case `qcserenity` was installed via `pip`, the first calculation can be run like this:
+> python3  
+> from qcserenity.serenipy import *  
+> settings = Settings()  
+> settings.geometry = "data/xyzfiles/h2.xyz"  
+> settings.method = DFT  
+> settings.dft.functional = PBE  
+> 
+> sys = System(settings)  
+> scf = ScfTask_R(sys)  
+> scf.run()
 
 ## How to Cite Serenity
 Serenity is published as:  
@@ -220,9 +251,9 @@ Also, please include the scientific citations for the basis sets and density fun
 ## Contact
 
 ### Bugs and Feature Requests
-For both bugs and feature requests please use the issue tracker on [GitHub](https://github.com/qcserenity/serenity).
+For both bugs and feature requests please use the issue tracker on [GitHub](https://github.com/qcserenity/serenity/issues).
 
 ### Other
-For other question, requests or simply to give some feedback feel free to send an e-mail
+For other questions, requests or simply to give some feedback feel free to send an e-mail
 to: 
 serenity@uni-muenster.de

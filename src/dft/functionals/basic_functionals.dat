@@ -23,9 +23,9 @@
 #  The functionals are listed with the following data:
 #  1. Their class (LDA, GGA M(ETA-)GGA, MOD(ELL), NONE)
 #  2. Their purpose (N(ONE), X, C, XC, K)
-#  3. Their name in Serenity (unique, will be made to be enum
+#  3. Their available implementations (XCFUN, LIBXC, BOTH)
+#  4. Their name in Serenity (unique, will be made to be enum
 #       class member)
-#  4. Their available implementations (XCFUN, LIBXC, BOTH)
 #  5. Their LibXC name, if available
 #  6. Their XCFun alias, if available
 #
@@ -107,10 +107,11 @@ GGA  X  LIBXC X_AIRY             XC_GGA_X_AIRY                  -
 GGA  X  LIBXC X_AK13             XC_GGA_X_AK13                  -
 GGA  X  LIBXC X_AM05             XC_GGA_X_AM05                  -
 GGA  X  BOTH  X_APBE             XC_GGA_X_APBE                  apbex
-GGA  X  BOTH  X_B86              XC_GGA_X_B86                   beckex
+GGA  X  LIBXC X_B86              XC_GGA_X_B86                   -
 GGA  X  LIBXC X_B86_MGC          XC_GGA_X_B86_MGC               -
 GGA  X  LIBXC X_B86_R            XC_GGA_X_B86_R                 -
-GGA  X  BOTH  X_B88              XC_GGA_X_B88                   beckecorrx
+GGA  X  BOTH  X_B88              XC_GGA_X_B88                   beckex
+GGA  X  XCFUN X_B88_CORR         -                              beckecorrx
 GGA  X  XCFUN X_B88_CAM          -                              beckecamx
 GGA  X  XCFUN X_B88_SR           -                              beckesrx
 GGA  X  LIBXC X_B88_6311G        XC_GGA_X_B88_6311G             -
@@ -354,6 +355,7 @@ GGA  XC LIBXC XC_B1LYP           XC_HYB_GGA_XC_B1LYP            -
 GGA  XC LIBXC XC_B1PW91          XC_HYB_GGA_XC_B1PW91           -
 GGA  XC LIBXC XC_B1WC            XC_HYB_GGA_XC_B1WC             -
 GGA  XC LIBXC XC_B3LYP           XC_HYB_GGA_XC_B3LYP            -
+GGA  XC LIBXC XC_B3LYP3          XC_HYB_GGA_XC_B3LYP3           -
 GGA  XC LIBXC XC_B3LYP5          XC_HYB_GGA_XC_B3LYP5           -
 GGA  XC LIBXC XC_B3LYP_MCM1      XC_HYB_GGA_XC_B3LYP_MCM1       -
 GGA  XC LIBXC XC_B3LYP_MCM2      XC_HYB_GGA_XC_B3LYP_MCM2       -

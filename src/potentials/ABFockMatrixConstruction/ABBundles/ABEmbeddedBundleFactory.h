@@ -40,7 +40,7 @@ class Geometry;
 /**
  * @class ABEmbeddedBundleFactory ABEmbeddedBundleFactory.h
  * @brief A factory that constructs embedded AB potential bundles.\n
- *        This class is a singelton that is constructed on the first call of the
+ *        This class is a singleton that is constructed on the first call of the
  *        underlying produce function.
  */
 template<Options::SCF_MODES SCFMode>
@@ -114,8 +114,8 @@ class ABEmbeddedBundleFactory
 /**
  * @brief The factories.
  */
-static std::unique_ptr<ABEmbeddedBundleFactory<RESTRICTED>> _resrictedFactory;
-static std::unique_ptr<ABEmbeddedBundleFactory<UNRESTRICTED>> _unresrictedFactory;
+static std::unique_ptr<ABEmbeddedBundleFactory<RESTRICTED>> _restrictedFactory;
+static std::unique_ptr<ABEmbeddedBundleFactory<UNRESTRICTED>> _unrestrictedFactory;
 
 } /* namespace Serenity */
 

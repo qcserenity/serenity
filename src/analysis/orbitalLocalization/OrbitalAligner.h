@@ -32,7 +32,7 @@
 namespace Serenity {
 
 /* Forward declarations */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
 class SystemController;
 

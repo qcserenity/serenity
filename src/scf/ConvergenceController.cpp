@@ -106,6 +106,10 @@ bool ConvergenceController<SCFMode>::checkConvergence() {
   _levelShiftInLastIteration = currentLevelshift[0] > 1e-9 || std::abs(currentLevelshift[1] - 1) > 1e-9;
   // Update old energy.
   _oldEnergy = _energyComponentController->getTotalEnergy();
+  if (_oldEnergy > 1e+2) {
+    throw SerenityError("Positive energy encountered during SCF procedure. The SCF is unlikely to converge!");
+  }
+
   return converged;
 }
 
@@ -119,6 +123,7 @@ void ConvergenceController<SCFMode>::printCycleInfo() {
         "    Cycle %4s E/a.u. %7s abs(dE)/a.u. %3s rmsd(P)/a.u. %5s [F,P]/a.u. %4s time/min   Mode\n", "", "", "", "", "");
     OutputControl::m.printf("    %4d %16.10f %16.2e %16.2e %16.2e %6i:%02u \n", _cycle, energy, inf, inf,
                             _diisConvMeasure, 0, 0);
+    OutputControl::mOut.flush();
   }
   else {
     timespec now;
@@ -127,6 +132,7 @@ void ConvergenceController<SCFMode>::printCycleInfo() {
     int ms = (int)(sec * 1000) - 1000 * (int)sec;
     std::printf("    %4d %16.10f %16.2e %16.2e %16.2e %6i:%02i:%03i    %3s\n", _cycle, energy, deltaE_abs,
                 _rmsdOfDensity, _diisConvMeasure, (int)(sec / 60), (int)(sec) % 60, ms, _mode.c_str());
+    OutputControl::mOut.flush();
   }
 }
 
@@ -191,21 +197,43 @@ MatrixInBasis<SCFMode> ConvergenceController<SCFMode>::calcFPSminusSPF(FockMatri
   takeTime("Optimizer 1");
   MatrixInBasis<SCFMode> result(F.getBasisController());
   const auto& S = _oneIntController->getOverlapIntegrals();
-  auto P = _dmatContr->getDensityMatrix();
-  for_spin(result, F, P) {
-    result_spin = (F_spin * P_spin * S);
-    result_spin -= (S * P_spin * F_spin);
-  };
+  if (_orbitalController->getCustomOverlap() && _orbitalController->getCustomTransformMatrix()) {
+    // Make sure to not construct density from the inverse of the MO overlap
+    _dmatContr->setALMO(nullptr);
+    _dmatContr->updateDensityMatrix();
+    auto P = _dmatContr->getDensityMatrix();
+    _dmatContr->setALMO(_oneIntController);
+    auto customS = (*_orbitalController->getCustomOverlap());
+    for_spin(result, F, P, customS) {
+      result_spin = (F_spin * P_spin * customS_spin);
+      result_spin -= (customS_spin * P_spin * F_spin);
+    };
+  }
+  else {
+    auto P = _dmatContr->getDensityMatrix();
+    for_spin(result, F, P) {
+      result_spin = (F_spin * P_spin * S);
+      result_spin -= (S * P_spin * F_spin);
+    };
+  }
   timeTaken(3, "Optimizer 1");
   /*
    * Transform the new error vector to orthogonal basis.
    */
   takeTime("Optimizer 2");
-  if (!_orthoS)
-    _orthoS = std::make_unique<Eigen::MatrixXd>(S.householderQr().householderQ());
-  for_spin(result) {
-    result_spin = (*_orthoS) * result_spin * (*_orthoS).transpose();
-  };
+  if (_orbitalController->getCustomOverlap() && _orbitalController->getCustomTransformMatrix()) {
+    auto X = (*_orbitalController->getCustomTransformMatrix());
+    for_spin(result, X) {
+      result_spin = X_spin.transpose() * result_spin * X_spin;
+    };
+  }
+  else {
+    if (!_orthoS)
+      _orthoS = std::make_unique<Eigen::MatrixXd>(S.householderQr().householderQ());
+    for_spin(result) {
+      result_spin = (*_orthoS) * result_spin * (*_orthoS).transpose();
+    };
+  }
   timeTaken(3, "Optimizer 2");
   return result;
 }

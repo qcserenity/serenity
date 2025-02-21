@@ -45,6 +45,7 @@ MP2Task<SCFMode>::MP2Task(std::shared_ptr<SystemController> systemController,
 
 template<Options::SCF_MODES SCFMode>
 void MP2Task<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _systemController);
   Eigen::VectorXd mp2EnergyCorrections(1);
   if (settings.sss != 1.0 || settings.oss != 1.0) {
     OutputControl::nOut << "Custom spin-component scaling:" << std::endl;

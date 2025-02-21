@@ -19,8 +19,8 @@
  */
 /* Include Class Header*/
 #include "data/PAOController.h"
-#include "basis/BasisFunctionMapper.h"
 /* Include Serenity Internal Headers */
+#include "basis/BasisFunctionMapper.h"
 #include "io/FormattedOutputStream.h" //Filtered output streams.
 
 namespace Serenity {

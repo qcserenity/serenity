@@ -1,0 +1,71 @@
+\subsection{Task: Localization}\label{task:localization}
+This task performs an orbital localization for the given active system. If the orbitals of
+the active system are supposed to be aligned to the orbitals of a template system, the latter
+has to be given as an environment system.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task LOC
+   system water
+   locType IBO
+   splitValenceAndCore true
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+   Aliases for this task are \ttt{LocalizationTask}, \ttt{Localization} and \ttt{LOC}.
+ \item [\texttt{activeSystems}]\hfill \\
+   Accepts a single active system which will be used in the orbital localization
+   (the orbitals are changed in place).
+ \item [\texttt{environmentSystems}]\hfill \\
+   Accepts a single environment systems that may be used as a template system for an orbital alignment.
+   This is only relevant for \ttt{locType=ALIGN}.
+ \item [\texttt{locType}]\hfill \\
+   The orbital localization scheme to be used. The default is the intrinsic bond orbital scheme \ttt{IBO}.
+   Other options are the  Pipek-Mezey (\ttt{PM}) scheme, the Foster--Boys (\ttt{FB}) scheme, the localization
+   by Edminston and Ruedenberg (\ttt{ER}), a localization that does not retain orbital orthogonality
+   (\ttt{NO}) and an orbital alignment procedure that aligns the orbitals to a given template system \ttt{ALIGN}\cite{Bensberg2020}.
+ \item [\texttt{splitValenceAndCore}]\hfill \\
+   If \ttt{true}, the valence and core orbitals are localized independently (no mixing). This is useful
+   for local correlation methods. Furthermore, core like orbitals will resemble e.g. their $1s$ character
+   more closely. The default is \ttt{false}. If set to true and \texttt{useEnergyCutOff = false}, core
+   orbitals will be determined using tabulated  numbers of core orbitals for each element, selecting always
+   the lowest orbitals according to their energy eigenvalue. If desired an energy cut-off
+   (see \texttt{useEnergyCutOff}) can be used instead or a number of core orbitals may be specified manually.
+   Note that the information about core orbitals is kept between tasks.
+ \item [\texttt{localizeVirtuals}]\hfill \\
+   If true, the virtual orbitals are localized as well. By default \ttt{false}. This is only supported for the IBO and ALIGN schemes.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+ \item [\texttt{maxSweeps}]\hfill \\
+   Most orbital localization schemes are iterative, this is the maximum number of cycles allowed.
+   The default is $100$.
+ \item [\texttt{useEnergyCutOff}]\hfill \\
+   If true, core orbitals are determined using an energy cut-off. By default \ttt{true}.
+   Needs \texttt{splitValenceAndCore = true}.
+ \item [\texttt{energyCutOff}]\hfill \\
+    The energy cut-off used for the core orbital selection. The default is $-5.0$ au.
+ \item [\texttt{nCoreOrbitals}]\hfill \\
+    Use a predefined number of core orbitals. Needs \texttt{useEnergyCutOff = false} and \texttt{splitValenceAndCore = true}.
+    By default this is not used, \emph{i.e.}, the number of orbitals is set to \ttt{infinity}.
+ \item [\texttt{useKineticAlign}]\hfill \\
+   If \ttt{true}, the orbital kinetic energy is used as an additional criterion in the orbital alignment.
+   The default is \ttt{false}.
+ \item [\texttt{alignExponent}]\hfill \\
+   The exponent for the penalty function used in the orbital alignment. This has to be an even integer
+   larger or equal to $2$. The default is $4$. Exponents of $8$ or larger are not recommended since they
+   may lead to numerical instabilities.
+ \item [\texttt{splitVirtuals}]\hfill \\
+   If true, the valence virtuals and diffuse virtuals are localized separately. By default \ttt{true}.
+ \item [\texttt{virtualEnergyCutOff}]\hfill \\
+   Orbital eigenvalue threshold to select diffuse virtual orbitals. By default $1.0$.
+ \item [\texttt{nRydbergOrbitals}]\hfill \\
+   Use a predefined number of diffuse virtual orbitals. Not used by default.
+ \item [\texttt{replaceVirtuals}]\hfill \\
+   Reconstruct the virtual orbitals before localization by projecting all occupied orbitals
+   and cleanly separating valence virtuals from diffuse virtuals. This should be used if the
+   \ttt{IBO} or \ttt{ALIGN} approaches are chosen and the same orbital set was not already reconstructed
+   in this manner before. By default \ttt{false}.
+\end{description}

@@ -84,10 +84,12 @@ class QuasiRestrictedOrbitalsTask : public Task {
   void visit(QuasiRestrictedOrbitalsTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in QuasiRestrictedOrbitalsTaskSettings: " + blockname);
-    }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in QuasiRestrictedOrbitalsTaskSettings: " + blockname);
   }
   /**
    * @brief Settings.

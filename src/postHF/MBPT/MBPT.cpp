@@ -29,9 +29,9 @@
 #include "math/diis/DIIS.h"
 #include "math/linearAlgebra/MatrixFunctions.h" //Matrix sqrt
 #include "misc/HelperFunctions.h"               //Sparse prjections from sparse maps.
+#include "parameters/Constants.h"
 #include "postHF/LRSCF/Tools/RIIntegrals.h"
 #include "system/SystemController.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <iomanip>

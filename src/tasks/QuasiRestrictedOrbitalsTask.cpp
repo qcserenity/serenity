@@ -211,6 +211,7 @@ void QuasiRestrictedOrbitalsTask<SCFMode>::canonicalizeOrbitals(unsigned int nDO
     eigenvalues.alpha.tail(nVirt) = eVirt.eigenvalues();
     eigenvalues.beta.tail(nVirt) = eVirt.eigenvalues();
   }
+
   orbitalController->updateOrbitals(newCoefficients, eigenvalues);
 }
 

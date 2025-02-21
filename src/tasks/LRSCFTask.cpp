@@ -21,11 +21,11 @@
 /* Include Class Header*/
 #include "tasks/LRSCFTask.h"
 /* Include Serenity Internal Headers */
-#include "data/ElectronicStructure.h"
-#include "geometry/Geometry.h"
+#include "geometry/gradients/TDDFTGradientCalculator.h"
 #include "integrals/OneElectronIntegralController.h"
 #include "integrals/wrappers/Libint.h" //keep engines alive.
 #include "io/FormattedOutputStream.h"
+#include "parameters/Constants.h" // EV_TO_HARTREE
 #include "postHF/LRSCF/Analysis/DeltaSpinSquared.h"
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
 #include "postHF/LRSCF/Analysis/ExcitationSpectrum.h"
@@ -50,6 +50,34 @@
 
 namespace Serenity {
 
+void LRSCFTaskSettings::printSettings(std::basic_string<char> filename) {
+  std::string field;
+  std::string value;
+  std::ofstream ofs;
+  ofs.open(filename, std::ofstream::out | std::ofstream::trunc);
+  ofs << "#=======================================================" << std::endl;
+  ofs << "# NOTE:" << std::endl;
+  ofs << "# This file contains the list of LRSCFTaskSettings " << std::endl;
+  ofs << "#  that were at some point used for this system." << std::endl;
+  ofs << "# To reuse this in an input, note that the active and " << std::endl;
+  ofs << "#  passive systems need to be added to this manually." << std::endl;
+  ofs << "#=======================================================" << std::endl;
+  ofs << "+task lrscf" << std::endl;
+  print_visitor visitor(field, value, ofs);
+  visit_each((*this), visitor);
+  ofs << "+emb" << std::endl;
+  visit_each(this->embedding, visitor);
+  ofs << "-emb" << std::endl;
+  ofs << "+grid" << std::endl;
+  visit_each(this->grid, visitor);
+  ofs << "-grid" << std::endl;
+  ofs << "+customFunc" << std::endl;
+  visit_each(this->customFunc, visitor);
+  ofs << "-customFunc" << std::endl;
+  ofs << "-task" << std::endl;
+  ofs.close();
+}
+
 template<Options::SCF_MODES SCFMode>
 LRSCFTask<SCFMode>::LRSCFTask(const std::vector<std::shared_ptr<SystemController>>& activeSystems,
                               const std::vector<std::shared_ptr<SystemController>>& passiveSystems)
@@ -58,6 +86,7 @@ LRSCFTask<SCFMode>::LRSCFTask(const std::vector<std::shared_ptr<SystemController
 
 template<Options::SCF_MODES SCFMode>
 void LRSCFTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _act);
   printSectionTitle("LRSCF");
 
   // Save settings.
@@ -404,6 +433,10 @@ void LRSCFTask<SCFMode>::run() {
         }
       }
     }
+    // AR: the transitiondensities-vector contains three matrices: first the right transition density, then the left
+    // transition density, and as the third element the state densities. in each matrix, the columns represent the
+    // different states (CC2 case: zeroth column of the third matrix is the ground state density), and there are (n_MO *
+    // n_MO) rows (see prepareVectors function of CC2HelperFunctions)
 
     // Response Solver.
     if (!settings.frequencies.empty()) {
@@ -450,7 +483,7 @@ void LRSCFTask<SCFMode>::run() {
       CC2HelperFunctions<SCFMode>::calculatePerturbedDensities(_lrscf, settings, solutionvectors, perturbeddensities,
                                                                frequencies, dips, Fdipdip, Fdipmag);
 
-      // Do not assume that something useful can be found under the eigevectors pointer.
+      // Do not assume that something useful can be found under the eigenvectors pointer.
       if (settings.nEigen == 0) {
         eigenvectors = nullptr;
       }
@@ -463,6 +496,21 @@ void LRSCFTask<SCFMode>::run() {
   if (solutionvectors && isNotCC2) {
     restart.storeConvergedResponse(solutionvectors,
                                    Eigen::Map<Eigen::VectorXd>(settings.frequencies.data(), settings.frequencies.size()));
+  }
+
+  if (settings.excGradList.size()) {
+    if (!((settings.method == Options::LR_METHOD::TDA) || (settings.method == Options::LR_METHOD::TDDFT)) ||
+        (type != Options::LRSCF_TYPE::ISOLATED)) {
+      throw SerenityError(
+          "Excited-state gradients are only implemented for isolated TDA/TDDFT/CIS/TDHF calculations so far!");
+    }
+    for (unsigned iExc : settings.excGradList) {
+      if (!iExc)
+        throw SerenityError(
+            "Excgradlist in the LRSCFTask is 1-based, i.e. the lowest-lying excited-state is number 1, not 0.");
+    }
+    TDDFTGradientCalculator<SCFMode> tddftgrads(_lrscf[0], settings.hypthresh);
+    tddftgrads.calculateGradients();
   }
 
   libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
@@ -494,6 +542,11 @@ void LRSCFTask<SCFMode>::run() {
         if (isNotCC2 || (!isNotCC2 && settings.cctrdens) || settings.method == Options::LR_METHOD::CISD) {
           ExcitationSpectrum<SCFMode>::printTransitionMoments(settings.method, dipoles, (*transitiondensities),
                                                               eigenvalues, _excitations, name);
+          // _lrscf only contains more than one LRSCFController in the coupled case
+          if (isNotCC2 && (type == Options::LRSCF_TYPE::ISOLATED))
+            ExcitationSpectrum<SCFMode>::printStateMoments(settings.method, dipoles, *_lrscf[0]->getUnrelaxedDiffDensities(),
+                                                           *_lrscf[0]->getRelaxedDiffDensities(), eigenvalues,
+                                                           nucDipoleMoment, _lrscf[0]->getNOccupied());
         }
         if (!isNotCC2 && settings.ccexdens && settings.method != Options::LR_METHOD::CISD) {
           ExcitationSpectrum<SCFMode>::printStateMoments(settings.method, dipoles, (*transitiondensities), eigenvalues,

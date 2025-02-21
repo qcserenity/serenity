@@ -13,8 +13,7 @@ IDENTIFIER 1485440789330045632
 PATH ./
 CHARGE 0
 SPIN 0
-GEOMETRY /ssdtmp/j_unsl01/workspace/serenity/data/testresources/TestSystem_H2_6_31Gs_BP86/TestSystem_H2_6_31Gs_BP86.xyz
-LOAD /ssdtmp/j_unsl01/workspace/serenity/data/testresources/TestSystem_H2_6_31Gs_BP86/
+GEOMETRY TestSystem_H2_6_31Gs_BP86/TestSystem_H2_6_31Gs_BP86.xyz
 SCFMODE RESTRICTED
 METHOD DFT
 +dft

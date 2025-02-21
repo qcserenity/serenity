@@ -24,8 +24,6 @@
 #include "io/HDF5.h"
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h" //k-sets.
 #include "postHF/LocalCorrelation/KLOrbitalSet.h"       //kl-sets.
-#include "system/SystemController.h"                    //Test systems.
-#include "testsupply/SystemController__TEST_SUPPLY.h"   //Test systems.
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 #include <memory> //smrt_ptr

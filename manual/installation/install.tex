@@ -1,0 +1,132 @@
+\chapter{Install}
+Please read the following instructions carefully, these instructions can also be found in the \texttt{README.md} distributed with
+the source code.
+
+\section{Prerequisites}
+The code has been tested and compiled on Linux with GCC/G++
+(Versions 7 and newer) and Clang (Versions 8 and newer).
+Compilation with other compilers such as ICC should be
+possible on Linux.\\
+\\
+Furthermore, the code has been compiled on macOS using Clang
+but may experience problems depending on the CPU architecture.
+Compilation with GCC on macOS should most likely also be possible.\\
+\\
+Compilation on and for Windows is not supported at the moment.
+\\
+The following programs/libraries must be available on your system:
+\begin{itemize}
+ \item CMake (Version $>=$ 3.15)
+ \item Boost (for package managers: including boost-devel)
+ \item OpenMP
+ \item Eigen3
+ \item HDF5 (Version $>=$ 1.10.1; including header files and cmake files)
+ \item A recent GMP version, including C++ support (for libint2)
+ \item The standard GNU tool chain (make, tar, autoconf, libtool)
+\end{itemize}
+The following libraries will be automatically downloaded and installed together
+with \serenity (unless \texttt{SERENITY\_DOWNLOAD\_DEPENDENCIES=OFF} is set):
+\begin{itemize}
+ \item libint2 (Version 2.7.0-beta6, pre-configured and hosted at: \url{https://www.uni-muenster.de/Chemie.oc/THCLAB/libint})
+ \item libecpint (v1.0.7 from \url{https://github.com/robashaw/libecpint.git})
+ \item libxc (v6.1.0 from \url{https://gitlab.com/libxc/libxc})
+ \item xcfun (the Serenity version is forked to: \url{https://github.com/qcserenity/xcfun})
+ \item GTest (Google Test and Google Mock, v1.13.0 from \url{https://github.com/google/googletest.git})
+\end{itemize}
+The following libraries are optional and needed for additional features:
+\begin{itemize}
+ \item Intel MKL (for SMP parallel Eigen3 eigenvalue solvers)
+ \item Doxygen (for the documentation)
+ \item Python-devel (for the Python wrapper)
+ \item pybind11 (for the Python wrapper)
+ \item laplace-minimax (for Laplace-Transform MP2/ADC(2)/CC2, commit: '55414f3', \url{https://github.com/bhelmichparis/laplace-minimax.git})
+\end{itemize}
+
+\section{Install Using CMake and Make}
+
+Extract or pull the source code, then create a build directory:
+\begin{lstlisting}
+cd serenity
+mkdir build
+cd build
+\end{lstlisting}
+Then run \texttt{cmake}:
+\begin{lstlisting}
+cmake ..
+\end{lstlisting}
+To compile Serenity for your specific CPU architecture, you can add:
+\begin{lstlisting}
+cmake -DSERENITY_MARCH=native ..
+\end{lstlisting}
+(If the build folder is not located inside the main directory of \textsc{Serenity}
+please adapt the path accordingly.)
+
+Finally run \texttt{make} to build the program:
+\begin{lstlisting}
+make
+\end{lstlisting}
+Instead of additionally running \texttt{make install}, you can source \texttt{serenity.sh} located in the main folder (if \texttt{SERENITY\_USAGE\_FROM\_SOURCE} is set, which is the default) to set all necessary environment variables:
+\begin{lstlisting}
+cd ..
+source serenity.sh
+\end{lstlisting}
+\section{Install Including Python Interface}
+In order to activate the compilation of a Python interface to the code
+a flag can be set as follows
+\begin{lstlisting}
+cmake -DSERENITY_PYTHON_BINDINGS=ON ..
+\end{lstlisting}
+Additionally this and other flags can be toggled using `ccmake`
+\begin{lstlisting}
+ccmake ..
+\end{lstlisting}
+The wrapper will be built for the Python version that CMake finds first.
+In order to point CMake to a specific version of Python the following
+option can be used:
+\begin{lstlisting}
+cmake -DPYTHON_EXECUTABLE=/usr/bin/python3 ..
+\end{lstlisting}
+The wrapper is shipped in form of a shared library (serenipy.so).
+In order for Python to find this package the library folder has to be present
+in the \texttt{PYTHONPATH} environment variable and the Serenity library has to be
+present in a path searched by the system for shared libraries.
+The latter is done when sourcing the \texttt{serenity.sh} script, the former requires
+to un-comment one line in this file.
+Afterwards the interface should importable as follows:
+\begin{lstlisting}
+python3
+import serenipy as spy
+\end{lstlisting}
+
+\section{Installing Precompiled Binaries of the Python Interface}
+  For CPython versions 3.7 - 3.13, binary wheels are available via \href{https://pypi.org/project/qcserenity/}{PyPI}. Just run
+  \begin{lstlisting}
+  pip install qcserenity
+  \end{lstlisting}
+  
+  which installs the \texttt{qcserenity} Python package. Directly in this package are some Python utility functions. The pybind11 wrapper to the C++ code resides in a submodule of \texttt{qcserenity} called \texttt{serenipy}. Also see section \ref{sec:python}.
+
+\section{Tests}
+Serenity comes with a decent set of unittests; in order to run them, source
+the \texttt{serenity.sh} script and run
+\begin{lstlisting}
+PATH_TO_BUILD_DIR/bin/serenity_tests
+\end{lstlisting}
+Please use the complete path, or else GTEST might run into problems.
+
+The Python wrapper comes with its own set of tests, these can be run using
+\begin{lstlisting}
+python -m unittest discover PATH_TO_SERENITY/src/python/tests
+\end{lstlisting}
+\section{Documentation}
+After configuring the project using CMake it is possible to create the documentation
+using:
+\begin{lstlisting}
+make doc
+\end{lstlisting}
+Then you can open up the doc/html/index.html in a browser.
+The Python wrapper is not featured inside the documentation.
+Its documentation is available via Pythons help() function,
+which displays the built-in doc-strings.
+
+\clearpage

@@ -24,7 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
 /* Include Std and External Headers */
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/range_c.hpp>
 #include <boost/preprocessor.hpp>
@@ -34,7 +34,7 @@
 #include <typeinfo>
 
 /*
- * In this program reflection is the ability of the code to examine it's classes, interfaces, fields
+ * In this program, reflection is the ability of the code to examine its classes, interfaces, fields
  *   and methods at runtime without knowing the names of them at compile time. Reflection is not a native C++ ability,
  *   since the compiler is resolving this information into machine code. Therefore, the names of the variables are
  *   unknown by the class at runtime.
@@ -133,10 +133,10 @@ void visit_each(C& c, Visitor v) {
 
 /**
  * @brief The set_visitor function checks if the variable and
- *          it's value exists and set the corresponding field
+ *          its value exist and sets the corresponding field.
  * @param n name of the field
  * @param v value of the field
- * @param c check if the field exist
+ * @param c check if the field exists
  */
 struct set_visitor {
   set_visitor(std::string n, std::string v, bool& c) : name(n), value(v), check(c){};
@@ -145,12 +145,16 @@ struct set_visitor {
   bool& check;
   template<class FieldData>
   void operator()(FieldData f) {
+    // f.name() gives the variable name of the field - e.g. gridType
     std::string fname = f.name();
     for (auto& c : fname)
       c = std::toupper(c);
     for (auto& c : name)
       c = std::toupper(c);
     if (name.compare(fname) == 0) {
+      // f.get() gives a reference to the field - with a data type of e.g. Options::GRID_TYPES
+      // here, value contains the correct data as a string, but we want to store it with the correct type in the field
+      // (f.get())
       Options::resolve(value, f.get());
       check = true;
     }
@@ -158,11 +162,11 @@ struct set_visitor {
 };
 
 /**
- * @brief The print_visitor function prints the field and it's value
+ * @brief The print_visitor function prints the field and its value
  *          to a given stream
  * @param f the field
  * @param v value of the field
- * @param ofs the stream where the field and it's value are printed to
+ * @param ofs the stream where the field and its value are printed to
  */
 struct print_visitor {
   print_visitor(std::string& f, std::string& v, std::ofstream& ofs) : field(f), value(v), ofs(ofs){};
@@ -175,6 +179,8 @@ struct print_visitor {
     for (auto& c : field)
       c = std::toupper(c);
     try {
+      // here, value is empty, but f.get() has the data, possibly as some enum class. resolve converts it to a string
+      // and fills value
       Options::resolve(value, f.get());
       if (!value.empty()) {
         ofs << field << " " << value << std::endl;

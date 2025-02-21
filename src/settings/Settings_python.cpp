@@ -22,6 +22,7 @@
 #include "settings/Settings.h"
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace Serenity;
@@ -29,11 +30,22 @@ using namespace Serenity;
 // Settings deepcopySettings(const Settings settings){return Settings(settings);};
 
 void export_Settings(py::module& spy) {
-  py::class_<DFT>(spy, "DFTSettings", "DFT settings all set to their default values.")
+  py::class_<DFT>(spy, "DFTSettings", "DFT settings, all set to their default values.")
       .def_readwrite("functional", &DFT::functional)
       .def_readwrite("dispersion", &DFT::dispersion);
 
-  py::class_<SCF>(spy, "SCFSettings", "SCF settings all set to their default values.")
+  py::class_<CUSTOMFUNCTIONAL>(spy, "CustomFunctionalSettings", "Custom functional settings, all set to their default values.")
+      .def_readwrite("impl", &CUSTOMFUNCTIONAL::impl)
+      .def_readwrite("basicFunctionals", &CUSTOMFUNCTIONAL::basicFunctionals)
+      .def_readwrite("mixingFactors", &CUSTOMFUNCTIONAL::mixingFactors)
+      .def_readwrite("hfExchangeRatio", &CUSTOMFUNCTIONAL::hfExchangeRatio)
+      .def_readwrite("hfCorrelRatio", &CUSTOMFUNCTIONAL::hfCorrelRatio)
+      .def_readwrite("lrExchangeRatio", &CUSTOMFUNCTIONAL::lrExchangeRatio)
+      .def_readwrite("mu", &CUSTOMFUNCTIONAL::mu)
+      .def_readwrite("ssScaling", &CUSTOMFUNCTIONAL::ssScaling)
+      .def_readwrite("osScaling", &CUSTOMFUNCTIONAL::osScaling);
+
+  py::class_<SCF>(spy, "SCFSettings", "SCF settings, all set to their default values.")
       .def_readwrite("initialguess", &SCF::initialguess)
       .def_readwrite("maxCycles", &SCF::maxCycles)
       .def_readwrite("writeRestart", &SCF::writeRestart)
@@ -60,7 +72,7 @@ void export_Settings(py::module& spy) {
       .def_readwrite("suhfLambda", &SCF::suhfLambda)
       .def_readwrite("degeneracyThreshold", &SCF::degeneracyThreshold);
 
-  py::class_<BASIS>(spy, "BasisSettings", "Basis settings all set to their default values.")
+  py::class_<BASIS>(spy, "BasisSettings", "Basis settings, all set to their default values.")
       .def_readwrite("label", &BASIS::label)
       .def_readwrite("auxJLabel", &BASIS::auxJLabel)
       .def_readwrite("auxJKLabel", &BASIS::auxJKLabel)
@@ -82,7 +94,7 @@ void export_Settings(py::module& spy) {
       .def_readwrite("secondCD", &BASIS::secondCD)
       .def_readwrite("cdOffset", &BASIS::cdOffset);
 
-  py::class_<GRID>(spy, "GridSettings", "Grid settings all set to their default values.")
+  py::class_<GRID>(spy, "GridSettings", "Grid settings, all set to their default values.")
       .def_readwrite("gridType", &GRID::gridType)
       .def_readwrite("radialGridType", &GRID::radialGridType)
       .def_readwrite("sphericalGridType", &GRID::sphericalGridType)
@@ -95,7 +107,7 @@ void export_Settings(py::module& spy) {
       .def_readwrite("smoothing", &GRID::smoothing)
       .def_readwrite("gridPointSorting", &GRID::gridPointSorting);
 
-  py::class_<EFIELD>(spy, "EFIELD", "EField settings all set to their default values.")
+  py::class_<EFIELD>(spy, "EFIELD", "Electric Field settings, all set to their default values.")
       .def_readwrite("use", &EFIELD::use)
       .def_readwrite("analytical", &EFIELD::analytical)
       .def_readwrite("pos1", &EFIELD::pos1)
@@ -124,5 +136,6 @@ void export_Settings(py::module& spy) {
       .def_readwrite("grid", &Settings::grid)
       .def_readwrite("efield", &Settings::efield)
       .def_readwrite("pcm", &Settings::pcm)
-      .def_readwrite("extCharges", &Settings::extCharges);
+      .def_readwrite("extCharges", &Settings::extCharges)
+      .def_readwrite("customFunc", &Settings::customFunc);
 }

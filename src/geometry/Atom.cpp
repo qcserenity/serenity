@@ -190,7 +190,7 @@ void Atom::addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> 
   // TODO it may look logical to execute the notifyObjects() here, however,
   // this is currently not possible, since this would happen during basis
   // construction. At the current moment Serenity expects that the basis
-  // set is build in one go without any notifys deleting it mid construction.
+  // set is built in one go without any notifys deleting it mid construction.
   // notifyObjects();
 }
 

@@ -71,12 +71,14 @@ class Ao2MoExchangeIntegralTransformer {
    * @param orbitalPairs The orbital pairs.
    * @param calcSigmaVectorInts Calculate the integrals necessary for the sigma vector construction.
    * @param lowMemory A flag for low memory usage. 3-Center integrals are recalculated more often.
-   * @param memoryDemandForSet The memory demand for storing all four center integrals of the orbtial pair set.
+   * @param memoryDemandForSet The memory demand for storing all four center integrals of the orbital pair set.
+   * @param ignoreMemoryHandling If true, Serenity assumes that it always has enough memory.
    */
   static void transformAllIntegrals(std::shared_ptr<BasisController> auxBasisController,
                                     std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
                                     std::vector<std::shared_ptr<OrbitalPair>>& orbitalPairs, bool calcSigmaVectorInts,
-                                    bool lowMemory = false, double memoryDemandForSet = 0.0);
+                                    bool lowMemory = false, double memoryDemandForSet = 0.0,
+                                    bool ignoreMemoryHandling = false);
 
   /**
    * @brief Calculates all integrals needed for DLPNO-CCSD [except (ia|jb)].
@@ -87,11 +89,13 @@ class Ao2MoExchangeIntegralTransformer {
    * @param dumpIntegrals If true the integrals for each pair are written to disk.
    * @param calcSigmaVectorInts Calculate the integrals necessary for the sigma vector construction.
    * @param lowMemory A flag for low memory usage. 3-Center integrals are recalculated more often.
+   * @param ignoreMemoryHandling If true, Serenity assumes that it always has enough memory.
    */
   static void transformAllIntegrals(std::shared_ptr<BasisController> auxBasisController,
                                     std::shared_ptr<MO3CenterIntegralController> mo3CenterIntegralController,
                                     std::vector<std::shared_ptr<OrbitalPairSet>> orbitalPairSets, bool dumpIntegrals,
-                                    std::string pairIntegralFileName, bool calcSigmaVectorInts, bool lowMemory = false);
+                                    std::string pairIntegralFileName, bool calcSigmaVectorInts, bool lowMemory = false,
+                                    bool ignoreMemoryHandling = false);
 
   /**
    * @brief Calculates the two center integrals (K|Q).

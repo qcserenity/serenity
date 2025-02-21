@@ -19,7 +19,6 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/LRSCFAnalysis.h"
-
 /* Include Serenity Internal Headers */
 #include "parameters/Constants.h"
 #include "postHF/LRSCF/LRSCFController.h"

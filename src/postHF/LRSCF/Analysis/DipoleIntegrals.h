@@ -99,6 +99,16 @@ class DipoleIntegrals {
    */
   Point getGaugeOrigin();
 
+  void setFullSpace(bool fullSpace) {
+    // Reset the integrals.
+    if (_fullSpace != fullSpace) {
+      _lengths = nullptr;
+      _velocities = nullptr;
+      _magnetics = nullptr;
+    }
+    _fullSpace = fullSpace;
+  }
+
  private:
   ///@brief Contains all LRSCF controller.
   std::vector<std::shared_ptr<LRSCFController<SCFMode>>> _lrscf;
@@ -120,6 +130,8 @@ class DipoleIntegrals {
 
   ///@brief Stores the magnetic integrals computed analytically.
   std::shared_ptr<const Eigen::MatrixXd> _magnetics;
+
+  bool _fullSpace = false;
 };
 
 } /* namespace Serenity */

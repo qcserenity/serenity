@@ -23,8 +23,7 @@
 #include "data/SpinPolarizedData.h"
 #include "data/matrices/DensityMatrix.h"
 #include "settings/Options.h"
-
-/* Include External Headers */
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 

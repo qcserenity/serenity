@@ -37,9 +37,11 @@ namespace Serenity {
 template<Options::SCF_MODES SCFMode>
 void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
                            std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged,
-                           std::shared_ptr<SPMatrix<SCFMode>> momMatrix, unsigned int momCycles) {
+                           std::shared_ptr<SPMatrix<SCFMode>> momMatrix, unsigned int momCycles, bool useALMO) {
   allowNotConverged = (allowNotConverged || settings.scf.allowNotConverged);
   es->setDiskMode(false, "", "");
+  if (useALMO)
+    es->getDensityMatrixController()->setALMO(es->getOneElectronIntegralController());
   auto energyComponentController = es->getEnergyComponentController();
   auto orbitalController = es->getMolecularOrbitals();
   orbitalController->setCanOrthTh(settings.scf.canOrthThreshold);
@@ -48,7 +50,8 @@ void Scf<SCFMode>::perform(const Settings& settings, std::shared_ptr<ElectronicS
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 3);
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 4);
   // Check if range seperate hybrid is used; then it is more efficient to keep those libint engines as well
-  auto functional = resolveFunctional(settings.dft.functional);
+  auto functional = settings.customFunc.basicFunctionals.size() ? Functional(settings.customFunc)
+                                                                : resolveFunctional(settings.dft.functional);
   if (functional.isRSHybrid()) {
     libint.keepEngines(LIBINT_OPERATOR::erf_coulomb, 0, 2);
     libint.keepEngines(LIBINT_OPERATOR::erf_coulomb, 0, 3);

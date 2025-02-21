@@ -20,15 +20,16 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/RICC2/CC2HelperFunctions.h"
-
 /* Include Serenity Internal Headers */
 #include "io/FormattedOutputStream.h"
+#include "io/HDF5.h"
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "postHF/LRSCF/RICC2/CC2Controller.h"
 #include "postHF/LRSCF/Tools/EigenvalueSolver.h"
 #include "postHF/LRSCF/Tools/NonlinearEigenvalueSolver.h"
 #include "postHF/LRSCF/Tools/NonlinearResponseSolver.h"
+#include "system/SystemController.h"
 
 namespace Serenity {
 
@@ -259,6 +260,18 @@ void CC2HelperFunctions<SCFMode>::calculateStateDensities(const std::vector<std:
     ilrscf->getCC2Controller()->calculateExcitedStateDensities(eigenvectorsI, eigenvalues, transitiondensitiesI);
     (*transitiondensities)[2].middleRows(moStart, momo) = transitiondensitiesI[2];
 
+    std::string fileName = ilrscf->getSys()->getSystemPath() + ilrscf->getSys()->getSystemName() + "_cc2_dens.";
+    if (lrscf.size() > 1)
+      fileName += "fdec.";
+    fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
+    fileName += "h5";
+
+    // H5F_ACC_TRUNC means create a new file or overwrite an existing file
+    HDF5::H5File file(fileName, H5F_ACC_TRUNC);
+    HDF5::save_scalar_attribute(file, "ID", ilrscf->getSys()->getSystemIdentifier());
+    HDF5::save(file, "State Densities", transitiondensitiesI[2]);
+    file.close();
+
     moStart += momo;
     voStart += nvno;
   }
@@ -334,6 +347,18 @@ void CC2HelperFunctions<SCFMode>::calculateTransitionDensities(const std::vector
 
     (*transitiondensities)[0].middleRows(moStart, momo) = transitiondensitiesI[0];
     (*transitiondensities)[1].middleRows(moStart, momo) = transitiondensitiesI[1];
+
+    std::string fileName = ilrscf->getSys()->getSystemPath() + ilrscf->getSys()->getSystemName() + "_cc2_dens.";
+    if (lrscf.size() > 1)
+      fileName += "fdec.";
+    fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
+    fileName += "h5";
+
+    // H5F_ACC_RDWR means opening an existing file with read-write access
+    HDF5::H5File file(fileName, H5F_ACC_RDWR);
+    HDF5::save(file, "Right Transition Densities", transitiondensitiesI[0]);
+    HDF5::save(file, "Left Transition Densities", transitiondensitiesI[1]);
+    file.close();
 
     moStart += momo;
     voStart += nvno;

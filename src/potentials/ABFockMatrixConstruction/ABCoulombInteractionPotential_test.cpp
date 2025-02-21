@@ -24,8 +24,8 @@
 #include "data/matrices/DensityMatrixController.h"
 #include "geometry/Geometry.h"
 #include "integrals/RI_J_IntegralControllerFactory.h"
-#include "potentials/CoulombPotential.h"
 #include "potentials/ERIPotential.h"
+#include "potentials/RICoulombPotential.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
@@ -128,7 +128,7 @@ TEST_F(ABCoulombInteractionPotentialTest, H2_dimer_NORI_rFockMatrixAAB) {
 /**
  * @test
  * @brief Tests the unrestricted construction of the f_AA matrix for the density of A.
- *        Identical to the CoulombPotential.
+ *        Identical to the HFPotential without exchange.
  */
 TEST_F(ABCoulombInteractionPotentialTest, H2_dimer_NORI_rFockMatrixCCC) {
   auto basisC = systemControllerC->getBasisController();
@@ -151,7 +151,7 @@ TEST_F(ABCoulombInteractionPotentialTest, H2_dimer_NORI_rFockMatrixCCC) {
 /**
  * @test
  * @brief Tests the unrestricted construction of the f_AA matrix for the density of A.
- *        Identical to the CoulombPotential.
+ *        Identical to the RICoulombPotential.
  */
 TEST_F(ABCoulombInteractionPotentialTest, H2_dimer_RI_rFockMatrixCCC) {
   auto basisC = systemControllerC->getBasisController();
@@ -165,7 +165,7 @@ TEST_F(ABCoulombInteractionPotentialTest, H2_dimer_RI_rFockMatrixCCC) {
 
   ABCoulombInteractionPotential<Options::SCF_MODES::RESTRICTED> abCoulIntPot(systemControllerC, basisC, basisC, envDmat);
 
-  CoulombPotential<Options::SCF_MODES::RESTRICTED> cccCoulPot(
+  RICoulombPotential<Options::SCF_MODES::RESTRICTED> cccCoulPot(
       systemControllerC, envDmat[0],
       RI_J_IntegralControllerFactory::getInstance().produce(
           systemControllerC->getBasisController(Options::BASIS_PURPOSES::DEFAULT),

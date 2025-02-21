@@ -30,6 +30,8 @@ namespace Serenity {
 extern Options::GLOBAL_PRINT_LEVELS GLOBAL_PRINT_LEVEL;
 extern IOOptions iOOptions;
 
+class SystemController;
+
 using namespace Serenity::Reflection;
 struct GeneralTaskSettings {
   GeneralTaskSettings() : printLevel(Options::GLOBAL_PRINT_LEVELS::NORMAL), timingsPrintLevel(1){};
@@ -62,6 +64,7 @@ class Task {
     GLOBAL_PRINT_LEVEL = generalSettings.printLevel;
     iOOptions.timingsPrintLevel = generalSettings.timingsPrintLevel;
   }
+
   /**
    * @brief Settings in common by every task.
    *
@@ -69,7 +72,9 @@ class Task {
    *   timingsPrintLevel:  Timings print level used during task execution.
    *
    */
+
   GeneralTaskSettings generalSettings;
+
   /**
    * @brief Parses the settings to the task. Can be over defined by a new implementation
    *        in the respective task.
@@ -82,6 +87,28 @@ class Task {
     (void)blockname;
     visit_each(c, v);
   }
+
+  /**
+   * @brief Determines which SCFMode a task should be run in and changes the SCFMode of all active systems and
+   * supersystems to this new SCFMode.
+   * @return The new SCFMode.
+   */
+  void avoidMixedSCFModes(Options::SCF_MODES runMode, std::vector<std::shared_ptr<SystemController>> activeSystems,
+                          std::vector<std::shared_ptr<SystemController>> superSystems);
+
+  /**
+   * @brief Determines which SCFMode a task should be run in and changes the SCFMode of all active systems and
+   * supersystems to this new SCFMode.
+   * @return The new SCFMode.
+   */
+  void avoidMixedSCFModes(Options::SCF_MODES runMode, std::vector<std::shared_ptr<SystemController>> activeSystems);
+
+  /**
+   * @brief Determines which SCFMode a task should be run in and changes the SCFMode of all active systems and
+   * supersystems to this new SCFMode.
+   * @return The new SCFMode.
+   */
+  void avoidMixedSCFModes(Options::SCF_MODES runMode, std::shared_ptr<SystemController> activeSystem);
 };
 
 } /* namespace Serenity */

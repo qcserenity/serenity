@@ -24,8 +24,7 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 #include "settings/ElectronicStructureOptions.h"
-
-/* Include External Headers */
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>
@@ -96,7 +95,7 @@ class SimplifiedTDDFT {
   /**
    * @brief Get the Gamma J object.
    *
-   * @return Gamma K object for (ab|ji) integrals.
+   * @return Gamma J object for (ab|ji) integrals.
    */
   std::vector<std::vector<Eigen::MatrixXd>>& getGammaJ();
 

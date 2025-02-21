@@ -19,7 +19,7 @@
  */
 /* Include Class Header*/
 #include "postHF/MPn/OrbitalPairSelector.h"
-/* Include Std and External Headers */
+/* Include Serenity Internal Headers */
 #include "basis/BasisController.h"                           //Basis function values on the grid
 #include "data/OrbitalController.h"                          //Coefficient matrix
 #include "data/OrbitalPair.h"                                //Orbital pair definition

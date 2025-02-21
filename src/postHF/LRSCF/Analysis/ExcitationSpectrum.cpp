@@ -19,12 +19,10 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/ExcitationSpectrum.h"
-
 /* Include Serenity Internal Headers */
 #include "parameters/Constants.h"
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
-
-/* Include External Headers */
+/* Include Std and External Headers */
 #include <fstream>
 #include <iomanip>
 
@@ -112,7 +110,9 @@ void ExcitationSpectrum<SCFMode>::printTransitionMoments(Options::LR_METHOD meth
     S_vm[iEigen] = 0.5 * ((vel_R.col(iEigen) * mag_L.row(iEigen)) + (mag_R.col(iEigen) * vel_L.row(iEigen)).adjoint()).real();
 
     // Calculate modified electric dipole--magnetic dipole transition strength
-    Eigen::JacobiSVD<Eigen::Matrix3d> svd(S_lv[iEigen], Eigen::ComputeThinU | Eigen::ComputeThinV);
+    // AR: changed this from a Matrix3d to a MatrixXd since Eigen debug says that thin U and V are only available for
+    // dynamic-sized matrices
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(S_lv[iEigen], Eigen::ComputeThinU | Eigen::ComputeThinV);
     S_lm_mod[iEigen] = svd.matrixU().transpose() * S_lm[iEigen] * svd.matrixV();
   }
 
@@ -195,19 +195,15 @@ void ExcitationSpectrum<SCFMode>::printStateMoments(Options::LR_METHOD, const st
                                                     const std::vector<Eigen::MatrixXd>& densityMatrices,
                                                     const Eigen::VectorXd& eigenvalues, Eigen::MatrixXd& results,
                                                     Eigen::Vector3d nuclearPart) {
-  // Get dipole integrals.
+  // Get dipole integrals (in MO basis, dip_l has nocc * nvirt rows and 3 columns)
   Eigen::MatrixXcd dip_l = std::complex<double>(1, 0) * (*dipoles->getLengths());
-
   // Note: The first column in densityMatrices corresponds to the ground state density.
   unsigned nEigenExcitedStateDensities = densityMatrices[2].cols() - 1;
-
   Eigen::MatrixXd dipoleMoments = (dip_l.transpose() * densityMatrices[2]).real();
   dipoleMoments.colwise() += nuclearPart;
-
   // dipoleMoments also contains a column for the ground state, don't want to put that in the results matrix.
   results.conservativeResize(Eigen::NoChange, 7);
   results.col(6) = dipoleMoments.colwise().norm().tail(nEigenExcitedStateDensities);
-
   printf("                          State Dipole Moments (dipole-length)                         \n");
   printf("---------------------------------------------------------------------------------------\n");
   printf(" state       energy      wavelength        |mu|           x          y          z      \n");
@@ -222,6 +218,76 @@ void ExcitationSpectrum<SCFMode>::printStateMoments(Options::LR_METHOD, const st
     printf(" %3i %15.5f %12.1f %15.6f %12.6f %10.6f %10.6f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
            HARTREE_TO_NM / eigenvalues(iEigen), dipoleMoments.col(iEigen + 1).norm(), dipoleMoments(0, iEigen + 1),
            dipoleMoments(1, iEigen + 1), dipoleMoments(2, iEigen + 1));
+  }
+  printf("---------------------------------------------------------------------------------------\n");
+}
+
+template<Options::SCF_MODES SCFMode>
+void ExcitationSpectrum<SCFMode>::printStateMoments(Options::LR_METHOD, const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
+                                                    const std::vector<MatrixInBasis<SCFMode>>& unrelaxedDensities,
+                                                    const std::vector<MatrixInBasis<SCFMode>>& relaxedDensities,
+                                                    const Eigen::VectorXd& eigenvalues, Eigen::Vector3d nuclearPart,
+                                                    SpinPolarizedData<SCFMode, unsigned int> nOcc) {
+  // Get dipole integrals (in MO basis, dip_l has nbasis * nbasis rows and 3 columns).
+  dipoles->setFullSpace(true);
+  Eigen::MatrixXcd dip_l = std::complex<double>(1, 0) * (*dipoles->getLengths());
+  // reset dipole integrals size
+  dipoles->setFullSpace(false);
+  Eigen::MatrixXd dipoleMoments, relaxedDipoleMoments;
+  unsigned nBasis = unrelaxedDensities[0].rows();
+  Eigen::VectorXd groundStateVector((1 + (int)SCFMode) * nBasis * nBasis);
+  unsigned nStart = 0;
+  for_spin(nOcc) {
+    Eigen::MatrixXd id(Eigen::MatrixXd::Zero(nBasis, nBasis));
+    id.topLeftCorner(nOcc_spin, nOcc_spin) =
+        ((SCFMode == Options::SCF_MODES::RESTRICTED) ? 2.0 : 1.0) * Eigen::MatrixXd::Identity(nOcc_spin, nOcc_spin);
+    groundStateVector.segment(nStart, nBasis * nBasis) = Eigen::Map<const Eigen::VectorXd>(id.data(), nBasis * nBasis);
+    nStart += nBasis * nBasis;
+  };
+  Eigen::VectorXd groundStateDipoleMoment = (dip_l.transpose() * groundStateVector).real();
+  groundStateDipoleMoment += nuclearPart;
+  dipoleMoments.resize(3, unrelaxedDensities.size());
+  for (unsigned iEigen = 0; iEigen < unrelaxedDensities.size(); ++iEigen) {
+    Eigen::VectorXd unrolledDens(groundStateVector.size());
+    const MatrixInBasis<SCFMode>& temp = unrelaxedDensities[iEigen];
+    nStart = 0;
+    for_spin(temp) {
+      unrolledDens.segment(nStart, nBasis * nBasis) = Eigen::Map<const Eigen::VectorXd>(temp_spin.data(), nBasis * nBasis);
+      nStart += nBasis * nBasis;
+    };
+    dipoleMoments.col(iEigen) = (dip_l.transpose() * unrolledDens).real();
+  }
+  dipoleMoments.colwise() += groundStateDipoleMoment;
+  relaxedDipoleMoments.resize(3, relaxedDensities.size());
+  for (unsigned iEigen = 0; iEigen < relaxedDensities.size(); ++iEigen) {
+    Eigen::VectorXd unrolledDens(groundStateVector.size());
+    const MatrixInBasis<SCFMode>& temp = relaxedDensities[iEigen];
+    nStart = 0;
+    for_spin(temp) {
+      unrolledDens.segment(nStart, nBasis * nBasis) = Eigen::Map<const Eigen::VectorXd>(temp_spin.data(), nBasis * nBasis);
+      nStart += nBasis * nBasis;
+    };
+    relaxedDipoleMoments.col(iEigen) = (dip_l.transpose() * unrolledDens).real();
+  }
+  relaxedDipoleMoments.colwise() += groundStateDipoleMoment;
+  printf("                         TDDFT State Dipole Moments (dipole-length)                    \n");
+  printf("---------------------------------------------------------------------------------------\n");
+  printf(" state           energy     wavelength     |mu|           x          y          z      \n");
+  printf("                  (eV)        (nm)         (au)                    (au)                \n");
+  printf("---------------------------------------------------------------------------------------\n");
+  printf(" Nuclear part      :  %27.6f %12.6f %10.6f %10.6f\n", nuclearPart.norm(), nuclearPart(0), nuclearPart(1),
+         nuclearPart(2));
+  printf(" Ground-state part :  %27.6f %12.6f %10.6f %10.6f\n", groundStateDipoleMoment.col(0).norm(),
+         groundStateDipoleMoment(0, 0), groundStateDipoleMoment(1, 0), groundStateDipoleMoment(2, 0));
+  printf("---------------------------------------------------------------------------------------\n");
+  for (unsigned iEigen = 0; iEigen < unrelaxedDensities.size(); ++iEigen) {
+    printf(" %3i unrlx: %11.5f %10.1f %15.6f %12.6f %10.6f %10.6f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+           HARTREE_TO_NM / eigenvalues(iEigen), dipoleMoments.col(iEigen).norm(), dipoleMoments(0, iEigen),
+           dipoleMoments(1, iEigen), dipoleMoments(2, iEigen));
+    if (iEigen < relaxedDensities.size())
+      printf(" %3i rlx  : %11.5f %10.1f %15.6f %12.6f %10.6f %10.6f\n", iEigen + 1, eigenvalues(iEigen) * HARTREE_TO_EV,
+             HARTREE_TO_NM / eigenvalues(iEigen), relaxedDipoleMoments.col(iEigen).norm(),
+             relaxedDipoleMoments(0, iEigen), relaxedDipoleMoments(1, iEigen), relaxedDipoleMoments(2, iEigen));
   }
   printf("---------------------------------------------------------------------------------------\n");
 }

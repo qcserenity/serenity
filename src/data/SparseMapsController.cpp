@@ -42,7 +42,7 @@ SparseMapsController::SparseMapsController(
     Eigen::VectorXd orbitalToShellThresholds, double strongTripletMullikenScaling, double weakTripletMullikenScaling,
     bool klListExtension, std::vector<std::shared_ptr<OrbitalTriple>> triples)
   : _system(system),
-    _paoController(paoController),
+    _virtualCoefficients(std::make_shared<Eigen::MatrixXd>(paoController->getAllPAOs())),
     _occupiedToPAOOrbitalMap(occupiedToPAOOrbitalMap),
     _closeOrbitalPairs(closeOrbitalPairs),
     _distantOrbitalPairs(distantOrbitalPairs),
@@ -54,17 +54,41 @@ SparseMapsController::SparseMapsController(
     _triples(triples) {
   _orbitalPairs = _closeOrbitalPairs;
   _orbitalPairs.insert(_orbitalPairs.end(), _distantOrbitalPairs.begin(), _distantOrbitalPairs.end());
-  assert(_system);
-  assert(_system->getLastSCFMode() == Options::SCF_MODES::RESTRICTED &&
-         "Sparse maps are only implemented for RESTRICTED.");
-  assert(_occupiedToPAOOrbitalMap);
-  assert(_paoController);
+  if (system->getLastSCFMode() != RESTRICTED) {
+    throw SerenityError("This sparse map controller constructor is implemented for RESTRICTED orbitals."
+                        " If you are using UNRESTRICTED orbitals, please use a different constructor");
+  }
+  unsigned int nOcc = _system->getNOccupiedOrbitals<RESTRICTED>();
+  const Eigen::MatrixXd coefficients = _system->getActiveOrbitalController<RESTRICTED>()->getCoefficients().leftCols(nOcc);
+  _occupiedCoefficients = std::make_shared<Eigen::MatrixXd>(coefficients);
+}
+
+SparseMapsController::SparseMapsController(
+    std::shared_ptr<SystemController> system, std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients,
+    std::shared_ptr<Eigen::MatrixXd> virtualCoefficients, std::shared_ptr<SparseMap> occupiedToPAOOrbitalMap,
+    std::vector<std::shared_ptr<OrbitalPair>> closeOrbitalPairs,
+    std::vector<std::shared_ptr<OrbitalPair>> distantOrbitalPairs, Eigen::VectorXd orbitalWiseMullikenThresholds,
+    Eigen::VectorXd orbitalToShellThresholds, double strongTripletMullikenScaling, double weakTripletMullikenScaling,
+    bool klListExtension, std::vector<std::shared_ptr<OrbitalTriple>> triples)
+  : _system(system),
+    _occupiedCoefficients(occupiedCoefficients),
+    _virtualCoefficients(virtualCoefficients),
+    _occupiedToPAOOrbitalMap(occupiedToPAOOrbitalMap),
+    _closeOrbitalPairs(closeOrbitalPairs),
+    _distantOrbitalPairs(distantOrbitalPairs),
+    _orbitalWiseMullikenThresholds(orbitalWiseMullikenThresholds),
+    _orbitalToShellThresholds(orbitalToShellThresholds),
+    _strongTripletMullikenScaling(strongTripletMullikenScaling),
+    _weakTripletMullikenScaling(weakTripletMullikenScaling),
+    _klListExtension(klListExtension),
+    _triples(triples) {
+  _orbitalPairs = _closeOrbitalPairs;
+  _orbitalPairs.insert(_orbitalPairs.end(), _distantOrbitalPairs.begin(), _distantOrbitalPairs.end());
 }
 
 const Eigen::MatrixXd& SparseMapsController::getOrbitalWiseMullikenPopulations() {
   if (!_orbitalWiseMullikenPopulations) {
-    unsigned int nOcc = _system->getNOccupiedOrbitals<RESTRICTED>();
-    const Eigen::MatrixXd coefficients = _system->getActiveOrbitalController<RESTRICTED>()->getCoefficients().leftCols(nOcc);
+    const Eigen::MatrixXd& coefficients = *_occupiedCoefficients;
     auto occupiedMullikenPops = MullikenPopulationCalculator<RESTRICTED>::calculateAtomwiseOrbitalPopulations(
         coefficients, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
         _system->getAtomCenteredBasisController()->getBasisIndices());
@@ -75,8 +99,7 @@ const Eigen::MatrixXd& SparseMapsController::getOrbitalWiseMullikenPopulations()
 
 SparseMap SparseMapsController::buildOccToAtomMap(Eigen::VectorXd thresholds) {
   unsigned int nAtoms = _system->getGeometry()->getNAtoms();
-  auto nOcc = _system->getNOccupiedOrbitals<RESTRICTED>();
-  auto coefficients = _system->getActiveOrbitalController<RESTRICTED>()->getCoefficients();
+  auto nOcc = _occupiedCoefficients->cols();
   const auto& occupiedMullikenPops = getOrbitalWiseMullikenPopulations();
   SparseMap toReturn(nAtoms, nOcc);
   std::vector<Eigen::Triplet<int>> tripletList;
@@ -84,14 +107,13 @@ SparseMap SparseMapsController::buildOccToAtomMap(Eigen::VectorXd thresholds) {
     unsigned int nAtomsAssigned = 0;
     // Use the Mulliken charges to assign atom indices to the orbitals for integral prescreening.
     for (unsigned int atomIndex = 0; atomIndex < occupiedMullikenPops.rows(); ++atomIndex) {
-      // TMP!!!!
       if (std::fabs(occupiedMullikenPops(atomIndex, iOcc)) > thresholds(iOcc)) {
         tripletList.push_back(Eigen::Triplet<int>(atomIndex, iOcc, 1));
         ++nAtomsAssigned;
       } // if mulliken
     }   // for atomIndex
     if (nAtomsAssigned == 0) {
-      // Assign atom with largest contribution.
+      // Assign atom with the largest contribution.
       unsigned int maxAtom;
       occupiedMullikenPops.col(iOcc).array().abs().maxCoeff(&maxAtom);
       tripletList.push_back(Eigen::Triplet<int>(maxAtom, iOcc, 1));
@@ -111,11 +133,11 @@ const SparseMap& SparseMapsController::getOccToAtomMap() {
 
 const SparseMap& SparseMapsController::getAtomToPAOMap() {
   if (!_atomToPAOMap) {
-    unsigned int nPAOs = _paoController->getNPAOs();
+    unsigned int nPAOs = _virtualCoefficients->cols();
     unsigned int nAtoms = _system->getGeometry()->getNAtoms();
     Eigen::VectorXd atomWiseMullikenThresholds = convertToAtomWiseThresholds(_orbitalWiseMullikenThresholds);
     auto restMullikenGrossPops = MullikenPopulationCalculator<RESTRICTED>::calculateAtomwiseOrbitalPopulations(
-        _paoController->getAllPAOs(), _system->getOneElectronIntegralController()->getOverlapIntegrals(),
+        *_virtualCoefficients, _system->getOneElectronIntegralController()->getOverlapIntegrals(),
         _system->getAtomCenteredBasisController()->getBasisIndices());
     _atomToPAOMap = std::make_shared<SparseMap>(nPAOs, nAtoms);
     std::vector<Eigen::Triplet<int>> tripletList;
@@ -138,8 +160,7 @@ const SparseMap& SparseMapsController::getOccToPAOMap() {
 
 const SparseMap& SparseMapsController::getShellToOccMap() {
   if (!_shellToOccMap) {
-    auto nOcc = _system->getNOccupiedOrbitals<RESTRICTED>();
-    Eigen::MatrixXd coefficients = _system->getActiveOrbitalController<RESTRICTED>()->getCoefficients().leftCols(nOcc).eval();
+    const Eigen::MatrixXd& coefficients = *_occupiedCoefficients;
     _shellToOccMap = constructShellToOrbitalMap(coefficients, _orbitalToShellThresholds);
   }
   return *_shellToOccMap;
@@ -158,7 +179,7 @@ const SparseMap& SparseMapsController::getShellToPAOMap() {
       }
       paoWiseThresholds(iPAO) = minThreshold;
     }
-    _shellToPAOMap = constructShellToOrbitalMap(_paoController->getAllPAOs(), paoWiseThresholds);
+    _shellToPAOMap = constructShellToOrbitalMap(*_virtualCoefficients, paoWiseThresholds);
   }
   return *_shellToPAOMap;
 }
@@ -312,13 +333,14 @@ std::shared_ptr<SparseMap> SparseMapsController::constructShellToOrbitalMap(cons
   std::vector<Eigen::Triplet<int>> tripletList;
   auto idx = basisController->getBasisIndices();
   auto idxRed = basisController->getBasisIndicesRed();
+
   for (unsigned int i = 0; i < squaredC.cols(); ++i) {
     for (unsigned int iAtom = 0; iAtom < idx.size(); ++iAtom) {
       unsigned int nFunc = idx[iAtom].second - idx[iAtom].first;
       int nImportant = (squaredC.block(idx[iAtom].first, i, nFunc, 1).array() > thresholds(i)).count();
       if (nImportant > 0) {
         for (unsigned int iShell = idxRed[iAtom].first; iShell < idxRed[iAtom].second; ++iShell) {
-          tripletList.push_back(Eigen::Triplet<int>(i, iShell, 1));
+          tripletList.emplace_back(i, iShell, 1);
         } // for iShell
       }   // if nImportant > 0
     }     // for iAtom
@@ -331,7 +353,6 @@ std::shared_ptr<SparseMap> SparseMapsController::constructShellToOrbitalMap(cons
 std::shared_ptr<SparseMap> SparseMapsController::buildCloseExtendedMap(const Eigen::SparseMatrix<int>& initialMap) {
   auto newMap = std::make_shared<SparseMap>(initialMap.rows(), initialMap.cols());
   *newMap += initialMap;
-  assert(initialMap.cols() == _system->getNOccupiedOrbitals<RESTRICTED>());
   for (const auto& pair : _closeOrbitalPairs) {
     Eigen::SparseVector<int> sumVector = (initialMap.col(pair->i) + initialMap.col(pair->j)).eval();
     for (auto kSet : pair->coupledPairs)
@@ -346,7 +367,6 @@ std::shared_ptr<SparseMap> SparseMapsController::buildCloseExtendedMap(const Eig
 std::shared_ptr<SparseMap> SparseMapsController::buildExtendedMap(const SparseMap& initialMap) {
   auto newMap = std::make_shared<SparseMap>(initialMap.rows(), initialMap.cols());
   *newMap += initialMap;
-  assert(initialMap.cols() == _system->getNOccupiedOrbitals<RESTRICTED>());
   for (const auto& pair : _orbitalPairs) {
     Eigen::SparseVector<int> sumVector = (initialMap.col(pair->i) + initialMap.col(pair->j)).eval();
     if (_klListExtension) {

@@ -21,7 +21,11 @@
 /* Include Class Header*/
 #include "dft/dispersionCorrection/DispersionData.h"
 /* Include Serenity Internal Headers */
+#include "dft/functionals/CompositeFunctionals.h"
 #include "misc/SerenityError.h"
+#include "settings/DFTOptions.h"
+/* Include Std and External Headers */
+#include <string>
 
 namespace Serenity {
 

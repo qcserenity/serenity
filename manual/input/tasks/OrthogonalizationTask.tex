@@ -1,0 +1,29 @@
+\subsection{Task: Orthogonalization}\label{task: ortho}
+This task orthogonalizes orbitals.
+\subsubsection{Example Input}
+\begin{lstlisting}
+	+task Ortho
+	act water
+	orthogonalizationScheme Loewdin
+	-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{OrthogonalizationTask} and \ttt{Ortho}.
+	\item [\texttt{Supersystems}]\hfill \\
+	The first Supersystem is the system holding the orbitals resulting from the orthogonalization, if not specified the orthogonal orbitals are stored in a system
+	called by the name of the first active system + "Ortho".
+	\item [\texttt{activeSystem}]\hfill \\
+	The active systems listed here are combined to a supersystem (see \ref{task: addition}) and the orbitals
+	of this supersystem are orthogonalized and stored in the super system.
+	\item [\texttt{orthogonalizationScheme}]\hfill \\
+	The orthogonalization scheme used. Possible options are:\\
+	\ttt{NONE}: No orthogonalization is performed.\\
+	\ttt{LOEWDIN}: L\"owdin's symmetric orthogonalization\cite{lowdin1950, lowdin1970}.\\
+	\ttt{PIPEK}: Pipek's iterative orthogonalization scheme\cite{pipek1985}.\\
+	\ttt{BROER}: Broer's orthogonalization scheme based on corresponding orbitals\cite{broer1993}.\\
+	\item [\texttt{maxIterations}]\hfill \\
+	Maximum number of iterations performed in the Pipek scheme.
+\end{description}

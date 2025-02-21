@@ -39,7 +39,6 @@
 #include "io/PlaneFileWriter.h"                //PlaneFileWriter
 #include "misc/WarningTracker.h"               //WarningTracker
 #include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
-#include "postHF/LRSCF/Analysis/ExcitedStatesAnalysis.h"
 #include "postHF/LRSCF/Analysis/NROCalculator.h"
 #include "postHF/LRSCF/Analysis/NTOCalculator.h" //NTO
 #include "postHF/LRSCF/LRSCFController.h"
@@ -66,6 +65,7 @@ PlotTask<UNRESTRICTED>::PlotTask(const std::vector<std::shared_ptr<SystemControl
 
 template<Options::SCF_MODES SCFMode>
 void PlotTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _systems);
   std::vector<double> defaultCubeSpacing = {0.12, 0.12, 0.12};
   std::vector<double> defaultPlaneSpacing = {0.08, 0.08, 0.0};
 
@@ -93,7 +93,7 @@ void PlotTask<SCFMode>::run() {
   }
 
   std::shared_ptr<SystemController> supersystem = nullptr;
-  if (_systems.size() > 1 && settings.ntos == false) {
+  if (_systems.size() > 1) {
     Settings superSettings = _systems[0]->getSettings();
     superSettings.name = (_systems[0]->getSettings()).name + "+" + (_systems[1]->getSettings()).name;
     superSettings.path = "./";
@@ -306,21 +306,20 @@ void PlotTask<SCFMode>::run() {
   }
   if (settings.ntos) {
     NTOCalculator<SCFMode> ntoCalculator(_systems, _environmentSystems, settings.ntoPlotThreshold);
-    std::vector<int> indices;
-    if (settings.orbitals.size() > 0) {
-      for (auto i : settings.orbitals) {
-        indices.push_back(i - 1);
-      }
-    }
-    else {
-      unsigned int nStates = ntoCalculator.getNumberOfStates();
-      for (unsigned int i = 0; i < nStates; i++) {
-        indices.push_back(i);
-      }
-    }
-    for (auto i : indices) {
+    for (unsigned i : settings.excitations) {
+      if (!i)
+        // this error also catches the case of the input not specifying any excitations, since the default is {0}
+        throw SerenityError("You need to specify the desired excitations in the PlotTask's input (with 1 denoting the "
+                            "lowest-lying excited state)");
+      if (ntoCalculator.getNumberOfStates() < i)
+        throw SerenityError("You need to run an LRSCFTask with neigen greater or equal to the PlotTask's highest "
+                            "excitationnumber! The requested excitation " +
+                            std::to_string(i) + " does not fall within the calculated " +
+                            std::to_string(ntoCalculator.getNumberOfStates()));
+      i--;
+      // From here on, excitations are (internally) indexed starting from 0, directly referring to LRSCF
+      // excitationvector columns
       for (unsigned int iSys = 0; iSys < _systems.size(); iSys++) {
-        // System data
         geom = _systems[iSys]->getGeometry();
         std::shared_ptr<BasisController> basisController = _systems[iSys]->getBasisController();
         // NTO data
@@ -366,89 +365,141 @@ void PlotTask<SCFMode>::run() {
           }
           plotWriter->writeVectorSetToGrid(fileNames, geom, basisController, ntoToPlot);
         };
+
+        // Transition density
+        const MatrixInBasis<SCFMode>& transitionDensity = ntoCalculator.getTransitionDensity(i, iSys);
+        for_spin(transitionDensity, _fnameSuffix) {
+          std::string filename = _systems[iSys]->getSystemPath() + _systems[iSys]->getSystemName() +
+                                 ((_systems.size() > 1) ? "_FDEc" : "") + "_TransitionDensity" + _fnameSuffix_spin +
+                                 std::to_string(i + 1);
+          OutputControl::nOut << "\n  Printing transition density to file: " + filename + ".cube" << std::endl;
+          plotWriter->writeMatrixToGrid(filename, geom, basisController, transitionDensity_spin);
+        };
+
+        // Hole- and particle-densities
+        const MatrixInBasis<SCFMode>& holeDensity = ntoCalculator.getHoleDensity(i, iSys);
+        const MatrixInBasis<SCFMode>& particleDensity = ntoCalculator.getParticleDensity(i, iSys);
+        const MatrixInBasis<SCFMode>& holeDensityCorr = ntoCalculator.getHoleDensityCorrection(i, iSys);
+        for_spin(holeDensity, particleDensity, holeDensityCorr, _fnameSuffix) {
+          std::string holename = _systems[iSys]->getSystemPath() + _systems[iSys]->getSystemName() + "_HoleDensity" +
+                                 ((_systems.size() > 1) ? "_FDEc" : "") + _fnameSuffix_spin + std::to_string(i + 1);
+          std::string particlename = _systems[iSys]->getSystemPath() + _systems[iSys]->getSystemName() + "_ParticleDensity" +
+                                     ((_systems.size() > 1) ? "_FDEc" : "") + _fnameSuffix_spin + std::to_string(i + 1);
+          OutputControl::nOut << "  Printing hole density to file: " + holename + ".cube" << std::endl;
+          plotWriter->writeMatrixToGrid(holename, geom, basisController, holeDensity_spin);
+          OutputControl::nOut << "  Printing particle density to file: " + particlename + ".cube" << std::endl;
+          plotWriter->writeMatrixToGrid(particlename, geom, basisController, particleDensity_spin);
+          if (_systems.size() > 1) {
+            OutputControl::nOut << "  Printing hole density correction to file: " + holename + "corr.cube" << std::endl;
+            plotWriter->writeMatrixToGrid(holename + "corr", geom, basisController, holeDensityCorr_spin);
+          }
+        };
       }
     }
+  }
+  if (settings.cctrdens || settings.ccexdens) {
+    printBigCaption("CC2 Densities");
+    for (auto sys : _systems) {
+      auto basis = sys->getBasisController();
+      std::string fileName = sys->getSystemPath() + sys->getSystemName() + "_cc2_dens.";
+      if (_systems.size() > 1)
+        fileName += "fdec.";
+      fileName += (SCFMode == RESTRICTED) ? "res." : "unres.";
+      fileName += "h5";
+
+      const auto& coeffMat = sys->getActiveOrbitalController<SCFMode>()->getCoefficients();
+
+      HDF5::H5File file(fileName.c_str(), H5F_ACC_RDONLY);
+
+      Eigen::MatrixXd stateDens, leftTransDens, rightTransDens;
+
+      HDF5::dataset_exists(file, "State Densities");
+      HDF5::load(file, "State Densities", stateDens);
+      // coeffMat.size() is used deliberately here, since the number of rows should be nMO * nMO
+      if (stateDens.rows() != coeffMat.size())
+        throw SerenityError("The dimension of your loaded state densities (" + std::to_string(stateDens.rows()) +
+                            ") does not match with the size of the coefficient matrix (" +
+                            std::to_string(coeffMat.size()) + ").");
+      fileName = fileName.substr(0, fileName.size() - 3);
+      unsigned moStart = 0;
+      for_spin(coeffMat, _fnameSuffix) {
+        Eigen::MatrixXd stateDensToPlot =
+            (Eigen::MatrixXd)coeffMat_spin *
+            Eigen::Map<Eigen::MatrixXd>(stateDens.col(0).data() + moStart, coeffMat_spin.rows(), coeffMat_spin.cols()) *
+            coeffMat_spin.transpose();
+        OutputControl::nOut << "  Printing ground state CC2 density to file: " + fileName + _fnameSuffix_spin + "gs.cube\n"
+                            << std::endl;
+        plotWriter->writeMatrixToGrid(fileName + _fnameSuffix_spin + "gs", geom, basis, stateDensToPlot);
+        moStart += coeffMat_spin.size();
+      };
+      if (settings.cctrdens) {
+        HDF5::load(file, "Right Transition Densities", rightTransDens);
+        if (rightTransDens.rows() != coeffMat.size())
+          throw SerenityError(
+              "The dimension of your loaded right transition densities (" + std::to_string(rightTransDens.rows()) +
+              ") does not match with the size of the coefficient matrix (" + std::to_string(coeffMat.size()) + ").");
+        HDF5::load(file, "Left Transition Densities", leftTransDens);
+        if (leftTransDens.rows() != coeffMat.size())
+          throw SerenityError(
+              "The dimension of your loaded left transition densities (" + std::to_string(leftTransDens.rows()) +
+              ") does not match with the size of the coefficient matrix (" + std::to_string(coeffMat.size()) + ").");
+        file.close();
+        for (unsigned iExc : settings.excitations) {
+          if (!iExc)
+            throw SerenityError(
+                "You need to specify the desired excitations in the PlotTask's input (with 1 denoting the "
+                "lowest-lying excited state)");
+          iExc--;
+          moStart = 0;
+          for_spin(coeffMat, _fnameSuffix) {
+            Eigen::MatrixXd rightTransDensToPlot = (Eigen::MatrixXd)coeffMat_spin *
+                                                   Eigen::Map<Eigen::MatrixXd>(rightTransDens.col(iExc).data() + moStart,
+                                                                               coeffMat_spin.rows(), coeffMat_spin.cols()) *
+                                                   coeffMat_spin.transpose();
+            OutputControl::nOut << "  Printing right CC2 transition density to file: " + fileName + _fnameSuffix_spin +
+                                       "rightTrans_" + std::to_string(iExc + 1) + ".cube\n"
+                                << std::endl;
+            plotWriter->writeMatrixToGrid(fileName + _fnameSuffix_spin + "rightTrans_" + std::to_string(iExc + 1), geom,
+                                          basis, rightTransDensToPlot);
+            Eigen::MatrixXd leftTransDensToPlot = (Eigen::MatrixXd)coeffMat_spin *
+                                                  Eigen::Map<Eigen::MatrixXd>(leftTransDens.col(iExc).data() + moStart,
+                                                                              coeffMat_spin.rows(), coeffMat_spin.cols()) *
+                                                  coeffMat_spin.transpose();
+            OutputControl::nOut << "  Printing left CC2 transition density to file: " + fileName + _fnameSuffix_spin +
+                                       "leftTrans_" + std::to_string(iExc + 1) + ".cube\n"
+                                << std::endl;
+            plotWriter->writeMatrixToGrid(fileName + _fnameSuffix_spin + "leftTrans_" + std::to_string(iExc + 1), geom,
+                                          basis, leftTransDensToPlot);
+            moStart += coeffMat_spin.size();
+          };
+        } /* for excitations */
+      }
+      if (settings.ccexdens) {
+        for (unsigned iExc : settings.excitations) {
+          if (!iExc)
+            throw SerenityError(
+                "You need to specify the desired excitations in the PlotTask's input (with 1 denoting the "
+                "lowest-lying excited state)");
+          iExc--;
+          moStart = 0;
+          for_spin(coeffMat, _fnameSuffix) {
+            Eigen::MatrixXd stateDensToPlot = (Eigen::MatrixXd)coeffMat_spin *
+                                              Eigen::Map<Eigen::MatrixXd>(stateDens.col(iExc + 1).data() + moStart,
+                                                                          coeffMat_spin.rows(), coeffMat_spin.cols()) *
+                                              coeffMat_spin.transpose();
+            OutputControl::nOut << "  Printing excited state CC2 density to file: " + fileName + _fnameSuffix_spin +
+                                       std::to_string(iExc + 1) + ".cube\n"
+                                << std::endl;
+            plotWriter->writeMatrixToGrid(fileName + _fnameSuffix_spin + std::to_string(iExc + 1), geom, basis, stateDensToPlot);
+            moStart += coeffMat_spin.size();
+          };
+        }
+      }
+    } /* for systems */
   }
   if (settings.gridCoordinates) {
     auto lambda = [&](std::shared_ptr<GridController> gridController) { return gridController->getWeights(); };
     plotWriter->writeFile(supersystem->getSystemPath() + _filename + "_coords", geom, lambda);
-  }
-  if (settings.transitionDensity) {
-    if (!settings.excitations[0])
-      throw SerenityError("You need to specify the desired excitations in the plot task's input");
-    for (auto system : _systems) {
-      printBigCaption("Excitation State Analysis for the system called " + system->getSystemName());
-      LRSCFTaskSettings lrscfSettings;
-      lrscfSettings.loadType = Options::LRSCF_TYPE::ISOLATED;
-      auto lrscfcontroller = std::make_shared<LRSCFController<SCFMode>>(system, lrscfSettings);
-      try {
-        lrscfcontroller->getExcitationEnergies(lrscfSettings.loadType);
-      }
-      catch (...) {
-        throw SerenityError("You need to perform an LRSCFTask before you can plot transition densities.");
-      }
-      ExcitedStatesAnalysis<SCFMode> excAna(settings.excitations, lrscfcontroller);
-      settings.gridSpacing = defaultCubeSpacing;
-      CubeFileWriter writer = CubeFileWriter(_systems[0]->getSettings(), settings);
-      for (unsigned n = 0; n < settings.excitations.size(); n++) {
-        std::string filename = system->getSystemPath() + system->getSystemName() + "_transitiondensity_";
-        const auto& density = *(excAna.getTransitionDensityMatrix(n));
-        auto geom = system->getGeometry();
-        filename += std::to_string(settings.excitations[n]);
-        for_spin(density, _fnameSuffix) {
-          OutputControl::nOut << "Printing electron density to file: " + filename + _fnameSuffix_spin + ".cube" << std::endl;
-          writer.writeMatrixToGrid(filename + _fnameSuffix_spin, geom, lrscfcontroller->getBasisController(), density_spin);
-        };
-        if (SCFMode == UNRESTRICTED) {
-          OutputControl::nOut << "Printing total electron density to file: " + filename + "_TotalDensity" + ".cube"
-                              << std::endl;
-          writer.writeMatrixToGrid(filename + "_TotalDensity", geom, density.total());
-          OutputControl::nOut << "Printing spin difference density to file: " + filename + "_SpinDensity" + ".cube"
-                              << std::endl;
-          writer.writeMatrixToGrid(filename + "_SpinDensity", geom, density.difference());
-        }
-      }
-    }
-  }
-
-  if (settings.holeparticleDensity) {
-    for (auto system : _systems) {
-      printBigCaption("Hole- and particle-densities during electronic transitions for " + system->getSystemName());
-      LRSCFTaskSettings lrscfSettings;
-      lrscfSettings.loadType = Options::LRSCF_TYPE::ISOLATED;
-      auto lrscfcontroller = std::make_shared<LRSCFController<SCFMode>>(system, lrscfSettings);
-      try {
-        lrscfcontroller->getExcitationEnergies(lrscfSettings.loadType);
-      }
-      catch (...) {
-        throw SerenityError("You need to perform an LRSCFTask before you can plot hole and particle densities.");
-      }
-      ExcitedStatesAnalysis<SCFMode> excAna(settings.excitations, lrscfcontroller);
-      settings.gridSpacing = defaultCubeSpacing;
-      CubeFileWriter writer = CubeFileWriter(system->getSettings(), settings);
-      auto geom = system->getGeometry();
-      for (unsigned n = 0; n < settings.excitations.size(); n++) {
-        for (unsigned holeparticle = 0; holeparticle < 2; holeparticle++) {
-          MatrixInBasis<SCFMode> density =
-              (holeparticle == 0) ? *(excAna.getHoleDensityMatrix(n)) : *(excAna.getParticleDensityMatrix(n));
-          std::string filename = system->getSystemPath() + system->getSystemName();
-          filename += (holeparticle == 0) ? "_holedensity_" : "_particledensity_";
-          filename += std::to_string(settings.excitations[n]);
-          for_spin(density, _fnameSuffix) {
-            OutputControl::nOut << "Printing electron density to file: " + filename + _fnameSuffix_spin + ".cube" << std::endl;
-            writer.writeMatrixToGrid(filename + _fnameSuffix_spin, geom, lrscfcontroller->getBasisController(), density_spin);
-          };
-          if (SCFMode == UNRESTRICTED) {
-            OutputControl::nOut << "Printing total electron density to file: " + filename + "_TotalDensity" + ".cube"
-                                << std::endl;
-            writer.writeMatrixToGrid(filename + "_TotalDensity", geom, density.total());
-            OutputControl::nOut << "Printing spin difference density to file: " + filename + "_SpinDensity" + ".cube"
-                                << std::endl;
-            writer.writeMatrixToGrid(filename + "_SpinDensity", geom, density.difference());
-          }
-        }
-      }
-    }
   }
 
   if (settings.nros) {

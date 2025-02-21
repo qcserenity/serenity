@@ -22,8 +22,12 @@
 /* Include Serenity Internal Headers */
 #include "misc/WarningTracker.h"
 #include "parameters/AtomicParameters.h"
+#include "parameters/Constants.h"
+#include "settings/ElectronicStructureOptions.h"
 /* Include Std and External Headers */
-#include <stdexcept>
+#include <array>
+#include <type_traits>
+#include <utility>
 
 namespace Serenity {
 

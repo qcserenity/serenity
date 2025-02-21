@@ -28,8 +28,9 @@
 #include "geometry/Geometry.h"
 #include "io/CubeFileWriter.h"
 #include "io/Filesystem.h"
-#include "io/FormattedOutputStream.h" // formatted output
+#include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/PlotTask.h"
@@ -38,24 +39,26 @@ namespace Serenity {
 
 FDEDiabController::FDEDiabController(const std::vector<std::vector<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>>& transDensMats,
                                      const Eigen::MatrixXd& linCoeffs, const Eigen::MatrixXd& determinants,
-                                     std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple)
+                                     std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple, unsigned nStatesAdiab)
   : _transDensMats(transDensMats),
     _linCoeffs(linCoeffs),
     _determinants(determinants),
     _superSystem(superSystem),
-    _nStates(nStatesCouple) {
+    _nStates(nStatesCouple),
+    _nAdiab(nStatesAdiab) {
   if (_superSystem->hasElectronicStructure<UNRESTRICTED>())
     throw SerenityError("The supersystem should not posses an electronic structure!");
 }
 
 FDEDiabController::FDEDiabController(std::shared_ptr<std::vector<std::string>> densityMatrixFiles,
                                      const Eigen::MatrixXd& linCoeffs, const Eigen::MatrixXd& determinants,
-                                     std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple)
+                                     std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple, unsigned nStatesAdiab)
   : _transDensMats({}),
     _linCoeffs(linCoeffs),
     _determinants(determinants),
     _superSystem(superSystem),
     _nStates(nStatesCouple),
+    _nAdiab(nStatesAdiab),
     _densityMatrixFiles(densityMatrixFiles) {
   if (_superSystem->hasElectronicStructure<UNRESTRICTED>())
     throw SerenityError("The supersystem should not posses an electronic structure!");
@@ -74,10 +77,9 @@ void FDEDiabController::setAdiabDensities(std::vector<std::shared_ptr<DensityMat
 
 void FDEDiabController::calcAdiabDensities() {
   auto adiabDensities = std::vector<std::shared_ptr<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>>(
-      _nStates, std::make_shared<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>(_superSystem->getBasisController()));
+      _nAdiab, std::make_shared<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>(_superSystem->getBasisController()));
   for (unsigned adiaState = 0; adiaState < adiabDensities.size(); ++adiaState) {
     auto adiaDens = std::make_shared<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>(_superSystem->getBasisController());
-    double prefactor = 0.0;
     unsigned ij = 0;
     for (unsigned iState = 0; iState < _nStates; ++iState) {
       for (unsigned jState = 0; jState < _nStates; ++jState) {
@@ -104,16 +106,12 @@ void FDEDiabController::calcAdiabDensities() {
             ++iSpin;
           };
         }
-        prefactor += _linCoeffs(iState, adiaState) * _linCoeffs(jState, adiaState) * _determinants(iState, jState);
         (*adiaDens).alpha +=
             _linCoeffs(iState, adiaState) * _linCoeffs(jState, adiaState) * _determinants(iState, jState) * diabDens.alpha;
         (*adiaDens).beta +=
             _linCoeffs(iState, adiaState) * _linCoeffs(jState, adiaState) * _determinants(iState, jState) * diabDens.beta;
       }
     }
-    prefactor = 1.0 / prefactor;
-    (*adiaDens).alpha = prefactor * (*adiaDens).alpha;
-    (*adiaDens).beta = prefactor * (*adiaDens).beta;
     adiabDensities[adiaState] = adiaDens;
   }
   this->setAdiabDensities(adiabDensities);

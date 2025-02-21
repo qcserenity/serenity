@@ -18,7 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Class Header*/
+/* Include Serenity Internal Headers */
 #include "math/linearAlgebra/PadeApproximation.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

@@ -20,7 +20,6 @@
  */
 /* Include Class Header*/
 #include "postHF/LRSCF/Analysis/LRSCFPopulationAnalysis.h"
-
 /* Include Serenity Internal Headers */
 #include "analysis/populationAnalysis/LoewdinPopulationCalculator.h"
 #include "basis/AtomCenteredBasisController.h"
@@ -31,8 +30,7 @@
 #include "postHF/LRSCF/LRSCFController.h"
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
-
-/* Include External Headers */
+/* Include Std and External Headers */
 #include <iomanip>
 
 namespace Serenity {
@@ -85,9 +83,9 @@ void LRSCFPopulationAnalysis<SCFMode>::calculateTransitionCharges(
         densityAO += P_spin.middleCols(cc2 ? 0 : nh, np) * xpy * H_spin.leftCols(nh).transpose();
         // Hole density.
         holeAO -=
-            0.5 * H_spin.leftCols(nh) * (xpy.transpose() * xmy + xmy.transpose() * xpy) * H_spin.leftCols(nh).transpose();
+            0.5 * H_spin.leftCols(nh) * (xpy.transpose() * xpy + xmy.transpose() * xmy) * H_spin.leftCols(nh).transpose();
         // Particle density.
-        particleAO += 0.5 * P_spin.middleCols(cc2 ? 0 : nh, np) * (xmy * xpy.transpose() + xpy * xmy.transpose()) *
+        particleAO += 0.5 * P_spin.middleCols(cc2 ? 0 : nh, np) * (xpy * xpy.transpose() + xmy * xmy.transpose()) *
                       P_spin.middleCols(cc2 ? 0 : nh, np).transpose();
         iStartSpin += np * nh;
       };

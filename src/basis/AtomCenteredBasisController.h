@@ -90,16 +90,27 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
   }
   /**
    * @brief Getter for the mapping of basis function to atom index.
-   * @return
+   * @return A std vector of size nBasis containing the atom index that the basis function belongs to.
    */
   inline const std::vector<unsigned int>& getAtomIndicesOfBasis() {
     if (!_basis)
       produceBasis();
     return _atomIndicesOfBasisFunctions;
   }
+
+  /**
+   * @brief Getter for the mapping of basis function to atom index, but as a projection matrix (nAtoms x nBasis). It
+   * contains a single 1 in each column (with the row indicating the atom on which the basis function is centered).
+   * @return The (nAtoms x nBasis) projection matrix.
+   */
+  inline const Eigen::MatrixXd& getAtomBasisProjection() {
+    if (!_basis)
+      produceBasis();
+    return _atomBasisProjection;
+  }
   /**
    * @brief Getter for the mapping of basis shell to atom index.
-   * @return
+   * @return A std vector of size nShells containing the atom index that the shell belongs to.
    */
   inline const std::vector<unsigned int>& getAtomIndicesOfBasisShells() {
     if (!_basis)
@@ -114,6 +125,9 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
     return _basisLabel;
   }
 
+  /**
+   * @return The geometry with respect to which the AtomCenteredBasisController is defined.
+   */
   inline const Geometry& getGeometry() {
     return *_geometry;
   }
@@ -155,6 +169,7 @@ class AtomCenteredBasisController : public BasisController, public ObjectSensiti
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesOfAtom;
   std::vector<std::pair<unsigned int, unsigned int>> _basisIndicesRedOfAtom;
   std::vector<unsigned int> _atomIndicesOfBasisFunctions;
+  Eigen::MatrixXd _atomBasisProjection;
   std::vector<unsigned int> _atomIndicesOfShells;
 
   void resetBasisLoadingData(const std::vector<Eigen::VectorXi>& importantShells = {});

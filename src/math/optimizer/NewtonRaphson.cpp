@@ -45,7 +45,9 @@ void NewtonRaphson::minimize2D(std::function<bool(const Eigen::VectorXd&, double
 }
 
 void NewtonRaphson::optimize(
-    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
+    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+    std::shared_ptr<unsigned int> nRejected) {
+  (void)nRejected;
   double value = std::numeric_limits<double>::infinity();
   bool converged = true;
   unsigned nParams = this->_parameters.size();

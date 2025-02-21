@@ -18,11 +18,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
-/* Include Class Header*/
-#include "tasks/GWTask.h"
 /* Include Serenity Internal Headers */
+#include "tasks/GWTask.h"
 #include "data/ElectronicStructure.h"
 #include "io/HDF5.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"

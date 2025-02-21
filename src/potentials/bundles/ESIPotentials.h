@@ -28,6 +28,7 @@
 #include "geometry/Geometry.h"
 #include "potentials/Potential.h"
 #include "potentials/bundles/PotentialBundle.h"
+#include "settings/LocalizationOptions.h"
 #include "settings/Options.h"
 
 namespace Serenity {
@@ -66,7 +67,6 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
    *
    * This constructor allows for the coupling of the active system to the environment
    * using a HF-like exchange interaction contribution.
-   * The excFac argument specifies the amount of this exchange to be added.
    * IMPORTANT: the implementation assumes pairwise orthogonal orbitals between the active
    *            and all environment orbitals. The implementation does NOT solve Loewdin's
    *            general formula for non-orthogonal molecular orbitals.
@@ -77,14 +77,15 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
    * @param activeGeom              The Geometry of the active system.
    * @param envDMats                The DensityMatrices of the environment systems.
    * @param envGeoms                The geometries of the environment systems.
-   * @param excFac                  A factor to add some exact exchange interaction.
    * @param firstPassiveSystemIndex First index of a passive environment systems that will not be changed during
    *                                freeze-and-thaw iterations. Used for caching.
    */
   ESIPotentials(std::shared_ptr<SystemController> actSystem, std::vector<std::shared_ptr<SystemController>> envSystems,
                 std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat, std::shared_ptr<const Geometry> activeGeom,
                 std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
-                std::vector<std::shared_ptr<const Geometry>> envGeoms, unsigned int firstPassiveSystemIndex = 99999);
+                std::vector<std::shared_ptr<const Geometry>> envGeoms, unsigned int firstPassiveSystemIndex = 99999,
+                bool useCharges = false,
+                Options::POPULATION_ANALYSIS_ALGORITHMS chargeModel = Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN);
 
   /**
    * @brief Constructor
@@ -111,7 +112,9 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
                 std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat, std::shared_ptr<const Geometry> activeGeom,
                 std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
                 std::vector<std::shared_ptr<const Geometry>> envGeoms, const std::shared_ptr<BasisController> actAuxBasis,
-                std::vector<std::shared_ptr<BasisController>> envAuxBasis, unsigned int firstPassiveSystemIndex = 99999);
+                std::vector<std::shared_ptr<BasisController>> envAuxBasis, unsigned int firstPassiveSystemIndex = 99999,
+                bool useCharges = false,
+                Options::POPULATION_ANALYSIS_ALGORITHMS chargeModel = Options::POPULATION_ANALYSIS_ALGORITHMS::MULLIKEN);
 
   /// @brief Default destructor.
   virtual ~ESIPotentials() = default;
@@ -120,8 +123,8 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
    * @brief A function to get the entire Fock matrix.
    * @param P The density matrix.
    * @param energies The controller to add all the energy contributions to.
-   * @return Returns the current Fock matrix (rebuild on every call).
-   *         (Note that this does not imply that each Potential is rebuild, they
+   * @return Returns the current Fock matrix (rebuilt on every call).
+   *         (Note that this does not imply that each Potential is rebuilt, they
    *          may very well be cached. But all potentials contributing are added
    *          together in every call)
    */
@@ -152,6 +155,7 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDMats;
   std::vector<std::shared_ptr<const Geometry>> _envGeoms;
   std::shared_ptr<Potential<SCFMode>> _nePot;
+  std::shared_ptr<Potential<SCFMode>> _cePot;
   std::shared_ptr<Potential<SCFMode>> _coulPot;
   std::shared_ptr<Potential<SCFMode>> _passiveCoulPot;
   std::unique_ptr<double> _enAttr;

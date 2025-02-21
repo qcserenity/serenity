@@ -11,7 +11,7 @@
  *  the License, or (at your option) any later version.\n\n
  *  Serenity is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  *  GNU General Public License for more details.\n\n
  *  You should have received a copy of the GNU Lesser General
  *  Public License along with Serenity.
@@ -25,7 +25,6 @@
 #include "settings/LRSCFOptions.h"
 #include "settings/Settings.h"
 #include "tasks/Task.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 
@@ -91,7 +90,9 @@ struct LRSCFTaskSettings {
       scfstab(Options::STABILITY_ANALYSIS::NONE),
       stabroot(0),
       stabscal(0.5),
-      noKernel(false) {
+      noKernel(false),
+      excGradList({}),
+      hypthresh(1e-12) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::NONE;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::NONE;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
@@ -111,10 +112,18 @@ struct LRSCFTaskSettings {
               (Options::DENS_FITS)densFitCache, (bool)transitionCharges, (bool)partialResponseConstruction,
               (bool)grimme, (bool)adaptivePrescreening, (bool)frozenCore, (double)frozenVirtual, (bool)coreOnly,
               (double)ltconv, (bool)aocache, (bool)triplet, (bool)noCoupling, (std::vector<double>)approxCoulomb,
-              (Options::STABILITY_ANALYSIS)scfstab, (unsigned)stabroot, (double)stabscal, (bool)noKernel)
- public:
+              (Options::STABILITY_ANALYSIS)scfstab, (unsigned)stabroot, (double)stabscal, (bool)noKernel,
+              (std::vector<unsigned int>)excGradList, (double)hypthresh)
+
   EmbeddingSettings embedding;
   GRID grid;
+  CUSTOMFUNCTIONAL customFunc;
+
+  /**
+   * @brief Print the LRSCFTaskSettings to file.
+   * @param filename The filename to print to.
+   */
+  void printSettings(std::basic_string<char> filename);
 };
 
 /**
@@ -151,12 +160,17 @@ class LRSCFTask : public Task {
   void visit(LRSCFTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      if (!c.grid.visitSettings(v, blockname)) {
-        throw SerenityError((std::string) "Unknown block in LRSCFTaskSettings: " + blockname);
-      }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    if (c.grid.visitAsBlockSettings(v, blockname)) {
+      return;
     }
+    if (c.customFunc.visitAsBlockSettings(v, blockname)) {
+      return;
+    }
+    throw SerenityError((std::string) "Unknown block in LRSCFTaskSettings: " + blockname);
   }
 
   /**
@@ -169,7 +183,7 @@ class LRSCFTask : public Task {
    *                     problem is stopped when the residual norm of all desired roots falls below this threshold.
    *        -maxCycles: Maximum number of iterations for the iterative eigenvalue solver.
    *        -maxSubspaceDimension: Maximum dimension of the subspace used in iterative eigenvalue solver.
-   *        -dominantThresh: Orbital transitions with squared coefficients (multiplied by a factor of 100) larger than
+   *        -dominantThresh: Orbital transitions with squared coefficients larger than
    *                         dominantThresh are considered dominant and their contribution is written into the output.
    * case -func: IF another function should be used for the Kernel than for the system during SCF -analysis: If false,
    * LRSCF analysis and excitation / CD spectra will be suppressed
@@ -182,7 +196,7 @@ class LRSCFTask : public Task {
    * this example, vectors 1 and 2 are taken from subsystem one,  and vectors 4, 8 and 10 are chosen from active
    * subsystem 2. If uncoupledSubspace is not set, all uncoupled vectors will be used to span the subspace. -fullFDEc:
    * Solve full FDEc problem using approximate solutions as initial guess -loadType: Reference states used to build
-   * unitary transformation matrix for FDEc calculations -localMO: Perform supersystem TDDFT with local orbitals
+   * unitary transformation matrix for FDEc calculations
    *        -gaugeOrigin: The gauge origin for dipole integrals (important for properties)
    *        -gauge: The gauge for response properties, i.e. length or velocity
    *        -frequencies: Frequencies for which dynamic polarizabilities and optical rotation are to be calculated
@@ -202,7 +216,7 @@ solver). Default is 50.
 CC2/ADC(2). Up to this threshold, a quasi-linear Davidson   algorithm will be used, after this a DIIS eigenvalue solver
 is turned on and converged to the parameter given by conv. The default 1e-3.
    *         -cctrdens: Calculate transition moments for CC2.
-   *         -ccexdens: Calculate excited state densities and properties for CC2.
+   *         -ccexdens: Calculate excited-state densities and properties for CC2.
    *         -sss: Scaling parameter for same-spin contributions (CC2/ADC(2)). The default is 1.0.
    *         -oss: Scaling parameter for opposite-spin contributions (CC2/ADC(2)). The default is 1.0.
    *         - nafThresh: Truncates the three-center MO integral basis using the natural auxiliary function technique.
@@ -210,8 +224,8 @@ The default is false . Treshold for truncation. The smaller, the fewer NAFs are 
    *         -samedensity: If two subsystems are used in the calculation with the same occupied but different virtual
 orbital spaces, the keyword need to be set due to the fact that the kernel needs only to be evaluated with one of the
 densities. Expects a list of arguments {Number of subsystems used for kernel evaluation}
-   *         -subsystemgrid: Only incldues the grid points associated with atoms of the specified subsystems in the
-kernel evaluation.
+   *         -subsystemgrid: Only includes the grid points associated with atoms of the specified subsystems in the
+kernel evaluation (subsystems are numbered in the input order starting from 1).
    *         -rpaScreening: Performs the exchange integral evaluation with static RPA screening.
    *                          The default is false . Note: If environmental
 subsystems are specified their screening contribution is included approximately.
@@ -223,7 +237,7 @@ folder.
    *         -densFitCache: Density fitting for RIIntegrals, e.g. for CC2/ADC(2).
    *         -transitionCharges: Calculates transition charges and stores them on disk.
    *         -partialResponseConstruction: Exploit symmetry of FDEc.
-   *         -grimme: Invokes simplified TDA/TDDFT for this task. Only works for one subsystem.
+   *         -grimme: Invokes simplified TDA/TDDFT for this task.
    *         -approxCoulomb: This keyword accepts up to two doubles which are distance thresholds. Below the first
    *          parameter, Coulomb interactions between two subsystems will be calculated either NORI or RI (using
    *          the union of the aux. bases of the two subsystems). Between the two parameters, not the union but
@@ -237,6 +251,10 @@ stabroot (usually 1, i.e. the lowest). Another SCF needs to be run.
    *         -noKernel: Can be used to explicitly turn off the numerical integration of the XC and kinetic kernels.
    *                    This keyword combined with "auxclabel MINPARKER_S/SP" in the basis block of the system
    *                    settings can be used to do TDDFT-ris calculations (10.1021/acs.jpclett.2c03698)
+   *         -excGradList: A 1-based list of excited states for which gradients are to be calculated. Excited-State
+gradients are calculated when this list is not empty.
+   *         -hypthresh: Density threshold for TDDFT gradient calculations. If the density at a point falls below this
+threshold, the third derivatives of the xc functional (sometimes called the hyperkernel) are set to zero at this point.
    */
   LRSCFTaskSettings settings;
 
@@ -248,7 +266,9 @@ stabroot (usually 1, i.e. the lowest). Another SCF needs to be run.
 
   /**
    * @brief Returns results of this task (excitation energies and transition moments).
-   * @return See above.
+   * @return A (nEigen x 6) matrix. The first column contains the excitation energies in atomic units, the second and
+   * third contain oscillator strengths and the fourth, fifth and sixth column contain rotatory strengths (see
+   * ExcitationSpectrum).
    */
   const Eigen::MatrixXd& getTransitions();
 

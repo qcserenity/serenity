@@ -1,0 +1,69 @@
+\subsection{Task: SCF}
+This task solves the Roothaan--Hall equation (Eq.~\ref{eq:roothaan-hall}) for one single system.
+\begin{equation}\label{eq:roothaan-hall}
+\textbf{F}\textbf{C} =  \textbf{S}\textbf{C}\varepsilon
+\end{equation}
+Here $\textbf{F}$ is the Fock matrix which is the matrix representation of the Fock operator $\hat{F}$:
+\begin{equation}\label{eq:fockop}
+\hat{F} = \hat{T}_{\text{e}} + \hat{V}_{\text{ne}} + \hat{J} + \hat{V}_{\text{xc}}~,
+\end{equation}
+$\textbf{S}$ is the atom orbital (AO) overlap matrix, with the elements:
+\begin{equation}
+S_{ij} = \langle \chi_i(r) | \chi_j(r) \rangle= \int \chi_i(r) \chi^*_j(r) ~\text{d}r,
+\end{equation}
+$\textbf{C}$ is the coefficient matrix containing the the linear combination of atomic orbitals (LCAO) of
+each molecular orbital (MO):
+\begin{equation}
+\phi_i(r) = \sum_j C_{ij} \cdot \chi_j(r)~,
+\end{equation}
+and $\varepsilon$ is a diagonal matrix containing the orbital energies.
+$\textbf{F}$ can be the (Hartree--)Fock matrix ($\hat{V}_{\text{xc}} = \hat{K}$) and also the Kohn--Sham Fock matrix ($V_{\text{xc}}[\rho(r),\nabla\rho(r),...]$), depending on the method chosen
+in the \ttt{system} block of the given active system.
+The iterative SCF procedure consists of three main steps:
+\begin{itemize}
+	\item Construction of $\textbf{F}$ from the electron density ($\textbf{P}$,$\rho(r)$)
+	\item Generation of new orbitals by solving of Eq.~\ref{eq:roothaan-hall} for $\textbf{C}$
+	\item The calculation of the electron density ($\textbf{D}$,$\rho(r)$) from the orbitals, using a given occupation.
+\end{itemize}
+Convergence of the SCF procedure is accelerated using DIIS\cite{pula1982} and damping by default.
+In addition to the default settings it is also possible to switch the DIIS\cite{pula1982} for the ADIIS\cite{hu2010},
+and it is possible to modify the way the damping is applied, and also its strength.
+In the case of SCF calculations that do not converge easily it usually helps to simply increase the amount of damping that is
+applied.
+The ultimately best strategy may however vary with the given system.
+For all options pertaining the convergence please see the \ttt{scf} block options of the systems, Section~\ref{sec:system:scf}.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task SCF
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{SCFTask} and \ttt{SCF}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used in the SCF calculation.
+	\item[\texttt{sub-blocks}]\hfill \\
+	The local correlation (\ttt{lc}) settings can be added in a sub-block. A common setting (with its default value) in this sub-block is \ttt{pnoSettings=TIGHT}.	
+	\item[\texttt{restart}]\hfill \\
+	Will try to restart the SCF from loaded orbitals. By default this setting is \ttt{false}.
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By default \ttt{DF} is chosen, which uses the density fitting approach specified with \ttt{densfitCorr} in the system block. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{local} to use local MP2.
+	\item[\texttt{maxResidual}]\hfill \\
+	Convergence threshold for the local MP2 calculation. The default value is \ttt{1.0e-5}.
+	\item[\texttt{maxCycles}]\hfill \\
+	Maximum number of iterations before cancelling the amplitude optimization in local MP2. The default number of cycles is \ttt{100}.
+	\item[\texttt{skipSCF}]\hfill \\
+	Skip the SCF procedure and perform an energy evaluation only. By default \ttt{false}.
+	\item[\texttt{allowNotConverged}]\hfill \\
+  If the maximum number of SCF cycles is reached Serenity will continue even with non-converged orbitals. By default \ttt{false}.
+  \item[\texttt{calculateMP2Energy}]\hfill \\
+  If the correlation energy of double-hybrid functionals is calculated. By default \ttt{true}.
+  \item[\texttt{exca}]\hfill \\
+  A vector of excitations of alpha-electrons to start a $\Delta$SCF MOM/IMOM~\cite{Gilbert2008,Barca2018} calculation. \ttt{\{0 0\}} gives a HOMO$\rightarrow$LUMO transition, \ttt{\{1 1\}} a HOMO-1$\rightarrow$LUMO+1 transition. By using \ttt{\{0\}} it is possible to do a MOM/IMOM procedure without giving a excitation. By default \ttt{\{\}}.
+  \item[\texttt{excb}]\hfill \\
+  The same as \texttt{exca} for beta electrons. By default \ttt{\{\}}.
+  \item[\texttt{momCycles}]\hfill \\
+  Number of MOM cycles before transitioning into the IMOM procedure. By default \texttt{0}.
+\end{description}

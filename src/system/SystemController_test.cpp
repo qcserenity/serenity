@@ -29,8 +29,8 @@
 
 namespace Serenity {
 /**
- * @class FDETask
- * @brief Sets everything up for the tests of ExportGridTask.h/.cpp .
+ * @class SystemControllerTest
+ * @brief Sets everything up for the tests of SystemController.h/.cpp .
  */
 class SystemControllerTest : public ::testing::Test {
  protected:
@@ -165,71 +165,6 @@ TEST_F(SystemControllerTest, addition_unres_unres) {
   std::remove("TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE/"
               "TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE.dmat.unres.h5");
   std::remove("TestSystem_H2_6_31Gs_ACTIVE_FDE+TestSystem_H2_6_31Gs_ENVIRONMENT_FDE");
-}
-/**
- * @test
- * @brief Tests SystemController.h/.cpp: Tests the presence and loadability of all test resources.
- */
-TEST_F(SystemControllerTest, AllTestResourcesPresent) {
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LARGE_DISTANCE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DISTORTED_MINBAS));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ne2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ar2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Kr2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Cl2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Br2_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::O2_MINBAS_SING));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_SV_P_PBE));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DEF2_SVP_CAMB3LYP));
-}
-/**
- * @test
- * @brief Tests SystemController.h/.cpp: Tests the presence and loadability of all test resources.
- */
-TEST_F(SystemControllerTest, AllTestResourcesPresent_clean) {
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT, true));
-  EXPECT_NE(nullptr,
-            SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LARGE_DISTANCE, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DISTORTED_MINBAS, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ne2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ar2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Kr2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Cl2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Br2_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_BP86, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ACTIVE_FDE, true));
-  EXPECT_NE(nullptr,
-            SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_31Gs_ENVIRONMENT_FDE, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::O2_MINBAS_SING, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_DEF2_SV_P_PBE, true));
-  EXPECT_NE(nullptr, SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS, true));
-  EXPECT_NE(nullptr,
-            SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WATER_DEF2_SVP_CAMB3LYP, true));
 }
 
 } /* namespace Serenity */

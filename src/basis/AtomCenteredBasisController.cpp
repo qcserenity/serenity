@@ -120,10 +120,12 @@ void AtomCenteredBasisController::postConstruction() {
     _basisIndicesRedOfAtom.push_back(std::pair<unsigned int, unsigned int>(firstIndexRed, endIndexRed));
   }
   _atomIndicesOfBasisFunctions = std::vector<unsigned int>(this->getNBasisFunctions(), _geometry->getNAtoms());
+  _atomBasisProjection = Eigen::MatrixXd::Zero(_geometry->getNAtoms(), this->getNBasisFunctions());
   _atomIndicesOfShells = std::vector<unsigned int>(this->getReducedNBasisFunctions(), _geometry->getNAtoms());
   for (unsigned int atomIndex = 0; atomIndex < _geometry->getNAtoms(); atomIndex++) {
     for (unsigned int iBas = _basisIndicesOfAtom[atomIndex].first; iBas < _basisIndicesOfAtom[atomIndex].second; ++iBas) {
       _atomIndicesOfBasisFunctions[iBas] = atomIndex;
+      _atomBasisProjection(atomIndex, iBas) = 1.0;
     } // for iBas
     for (unsigned int iShell = _basisIndicesRedOfAtom[atomIndex].first;
          iShell < _basisIndicesRedOfAtom[atomIndex].second; ++iShell) {

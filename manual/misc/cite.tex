@@ -1,0 +1,129 @@
+\chapter{Cite As}
+The main reference for Serenity is published as:\\
+\\
+J. P. Unsleber, T. Dresselhaus, K. Klahr, D. Schnieders, M. B{\"o}ckers, D. Barton and J. Neugebauer, ''Serenity: A Subsystem Quantum Chemistry Program``,
+ \textit{J. Comput. Chem.}, \textbf{39}, 788--798, (2018).\\
+\\
+The BibTeX code would thus be:
+\begin{lstlisting}
+@article{serenity_pub,
+  title = {Serenity: A Subsystem Quantum Chemistry Program},
+  author = {Jan P. Unsleber and Thomas Dresselhaus and Kevin
+            Klahr and David Schnieders and Michael B{"o}ckers
+            and Dennis Barton and Johannes Neugebauer},
+  journal = {J. Comput. Chem.},
+  volume = {39},
+  pages = {788--798},
+  year = {2018}
+}
+\end{lstlisting}
+Please also cite the second publication:\\
+\\
+N. Niemeyer, P. Eschenbach, M. Bensberg, J. T{\"o}lle, L. Hellmann, L. Lampe, A. Massolle, A. Rikus, D. Schnieders, J. P. Unsleber, and J. Neugebauer,
+''The subsystem quantum chemistry program Serenity'',
+\textit{Wiley Interdiscip. Rev. Comput. Mol. Sci.}, \textbf{13}, e1647, (2023).\\
+\\
+The BibTeX code would thus be:  
+\begin{lstlisting}
+@article{serenity_update,  
+title={{The Subsystem Quantum Chemistry Program Serenity}},  
+author={Niemeyer, Niklas and Eschenbach, Patrick and Bensberg, Moritz
+        and T{\"o}lle, Johannes and Hellmann, Lars and Lampe, Lukas 
+        and Massolle, Anja and Rikus, Anton and Schnieders, David 
+        and Unsleber, Jan P and Neugebauer, Johannes},  
+journal={Wiley Interdiscip. Rev. Comput. Mol. Sci.},  
+volume={13},  
+pages={e1647},  
+year={2023},  
+publisher={Wiley Online Library}
+}
+\end{lstlisting}
+In order to allow others to reproduce your data and to give credit to all recent developers,
+please also reference the version of Serenity used by citing the correct code reference
+generated on Zenodo. The following DOI will always link to the newest version of the code:\\
+\\ 
+\url{https://doi.org/10.5281/zenodo.4017420}\\
+\\
+For specific versions, please use the appropriate DOI.\\
+\\
+Serenity relies on a few external libraries. Please cite Libint: \cite{Libint2.7.0}\\
+\\
+Libint: A library for the evaluation of molecular integrals of many-body operators  over Gaussian functions, v2.7.0-beta6, Edward F. Valeev, http://libint.valeyev.net/ \\
+\\
+BibTeX:
+\begin{lstlisting}
+  @misc{valeev2020libint,
+  title={{Libint: A library for the evaluation of molecular integrals of 
+          many-body operators over Gaussian functions}},
+  author={Valeev, Edward F and Fermann, JT},
+  howpublished={https://github.com/evaleev/libint},
+  year={2020},
+  note={version 2.7.0-beta6}
+}
+\end{lstlisting}
+In case density functionals (for exchange-correlation or kinetic energy) are used, depending on the settings when compiling, please cite either Libxc \cite{Libxc} or XCFun \cite{XCFun2.0.2}.\\
+\\
+Libxc (6.1.0): S. Lehtola, C. Steigemann, M. J.T. Oliveira, and M. A.L. Marques. SoftwareX 7, 1-5 (2018). DOI: 10.1016/j.softx.2017.11.002\\
+\\
+BibTeX:
+\begin{lstlisting}
+  @article{lehtola2018recent,
+  title={{Recent developments in libxc - A comprehensive library of functionals
+        for density functional theory}},
+  author={Lehtola, Susi and Steigemann, Conrad and Oliveira, Micael JT
+          and Marques, Miguel AL},
+  journal={SoftwareX},
+  volume={7},
+  pages={1--5},
+  year={2018},
+  publisher={Elsevier}
+}
+\end{lstlisting}
+XCFun (v2.0.2):  Ekström, U. (2020). XCFun: A library of exchange-correlation functionals with  arbitrary-order derivatives. Zenodo. https://doi.org/10.5281/zenodo.3946698  \\
+\\
+BibTeX:
+\begin{lstlisting}
+  @software{ekstrom_2020_3946698,
+  author       = {Ekstr{\"o}m, Ulf},
+  title        = {{XCFun: A library of exchange-correlation 
+                   functionals with arbitrary-order derivatives}},
+  year         = 2020,
+  publisher    = {Zenodo},
+  version      = {v2.0.2},
+  doi          = {10.5281/zenodo.3946698},
+  url          = {https://doi.org/10.5281/zenodo.3946698}
+  note         = {DOI: 10.5281/zenodo.3946698}
+}
+\end{lstlisting}
+\newpage
+\noindent Integrals over effective core potentials are provided by Libecpint \cite{Libecpint}.\\
+Libecpint (1.0.7) :  R. A. Shaw, J. G. Hill, J. Chem. Phys. 147, 074108 (2017); doi: 10.1063/1.4986887\\
+\\
+BibTeX:
+\begin{lstlisting}
+@article{Libecpint,
+author = {Shaw, Robert A. and Hill, J. Grant},
+doi = {10.1063/1.4986887},
+journal = {J. Chem. Phys.},
+pages = {074108},
+title = {{Prescreening and efficiency in the evaluation of integrals
+ over ab initio effective core potentials}},
+url = {http://aip.scitation.org/doi/10.1063/1.4986887},
+volume = {147},
+year = {2017}
+}
+\end{lstlisting}
+
+Also, please include the scientific citations for the basis sets and density functionals you use. 
+
+\chapter{License and Warranty}
+This manual is part of \serenity. The full license file can be found in the appendix (Appendix~\ref{sec:lgpl})\\
+
+\serenity is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any later version.
+\serenity is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU Lesser General Public License along with
+\serenity. If not, see http://www.gnu.org/licenses/.

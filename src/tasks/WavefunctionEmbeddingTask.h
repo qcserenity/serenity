@@ -125,7 +125,7 @@ class WavefunctionEmbeddingTask : public Task {
     }
     std::string reducedBlockName = blockname.substr(0, 2);
     LocalCorrelationSettings& lcSettings = c.lcSettings[regionIndex];
-    if (lcSettings.visitSettings(v, reducedBlockName))
+    if (lcSettings.visitAsBlockSettings(v, reducedBlockName))
       return;
 
     // If reached, the keyword is unknown.

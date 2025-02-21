@@ -34,5 +34,5 @@ class XCFunTest : public ::testing::Test {
   virtual ~XCFunTest() = default;
 };
 
-#endif /* SERENITY_USE_XCFUN */
 } /* namespace Serenity */
+#endif /* SERENITY_USE_XCFUN */

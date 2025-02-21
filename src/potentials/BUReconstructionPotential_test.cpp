@@ -26,8 +26,8 @@
 #include "data/matrices/FockMatrix.h"
 #include "dft/functionals/CompositeFunctionals.h"
 #include "geometry/Geometry.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "grid/GridController.h"
-#include "grid/GridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
 #include "settings/DFTOptions.h"
 #include "settings/Settings.h"
@@ -72,8 +72,8 @@ TEST_F(BUReconstructionPotentialTest, H2FDE) {
   *superSystemGeometry += *(_activeSystem->getGeometry());
   *superSystemGeometry += *(_environmentSystem->getGeometry());
 
-  auto supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
-                                                        Options::GRID_PURPOSES::DEFAULT);
+  auto supersystemGrid = AtomCenteredGridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
+                                                                    Options::GRID_PURPOSES::DEFAULT);
 
   BUReconstructionPotential<Options::SCF_MODES::RESTRICTED> exactNaddKin(
       _activeSystem, _activeSystem->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getDensityMatrixController(),
@@ -128,8 +128,8 @@ TEST_F(BUReconstructionPotentialTest, H2FDEUnres) {
   *superSystemGeometry += *(_activeSystem->getGeometry());
   *superSystemGeometry += *(_environmentSystem->getGeometry());
 
-  auto supersystemGrid = GridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
-                                                        Options::GRID_PURPOSES::DEFAULT);
+  auto supersystemGrid = AtomCenteredGridControllerFactory::produce(superSystemGeometry, _activeSystem->getSettings().grid,
+                                                                    Options::GRID_PURPOSES::DEFAULT);
 
   BUReconstructionPotential<Options::SCF_MODES::UNRESTRICTED> exactNaddKin(
       _activeSystem, _activeSystem->getElectronicStructure<Options::SCF_MODES::UNRESTRICTED>()->getDensityMatrixController(),

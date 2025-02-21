@@ -91,23 +91,20 @@ struct Gradient {
     return iterator(&z + 1);
   }
 
-  inline Gradient<T>& operator+=(const Gradient<T>& rhs) {
+  inline void operator+=(const Gradient<T>& rhs) {
     this->x += rhs.x;
     this->y += rhs.y;
     this->z += rhs.z;
-    return *this;
   }
-  inline Gradient<T>& operator-=(const Gradient<T>& rhs) {
+  inline void operator-=(const Gradient<T>& rhs) {
     this->x -= rhs.x;
     this->y -= rhs.y;
     this->z -= rhs.z;
-    return *this;
   }
-  inline Gradient<T>& operator*=(const double& rhs) {
+  inline void operator*=(const double& rhs) {
     this->x *= rhs;
     this->y *= rhs;
     this->z *= rhs;
-    return *this;
   }
 };
 
@@ -208,23 +205,21 @@ struct Hessian {
     return iterator(&zz + 1);
   }
 
-  inline Hessian<T>& operator+=(const Hessian<T>& rhs) {
+  inline void operator+=(const Hessian<T>& rhs) {
     this->xx += rhs.xx;
     this->xy += rhs.xy;
     this->xz += rhs.xz;
     this->yy += rhs.yy;
     this->yz += rhs.yz;
     this->zz += rhs.zz;
-    return *this;
   }
-  inline Hessian<T>& operator-=(const Hessian<T>& rhs) {
+  inline void operator-=(const Hessian<T>& rhs) {
     this->xx -= rhs.xx;
     this->xy -= rhs.xy;
     this->xz -= rhs.xz;
     this->yy -= rhs.yy;
     this->yz -= rhs.yz;
     this->zz -= rhs.zz;
-    return *this;
   }
 };
 

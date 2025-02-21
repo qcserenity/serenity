@@ -20,6 +20,7 @@
 
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
+#include "parameters/Constants.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -28,7 +29,6 @@
 #include "tasks/GWTask.h"
 #include "tasks/LRSCFTask.h"
 #include "tasks/ScfTask.h"
-/* Include Serenity Internal Headers */
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>

@@ -71,10 +71,9 @@ FockMatrix<SCFMode>& LevelshiftPotential<SCFMode>::getMatrix() {
 
 template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd LevelshiftPotential<SCFMode>::getGeomGradients() {
-  Eigen::MatrixXd gradientContr(1, 3);
-  gradientContr.setZero();
+  throw SerenityError("Gradients from the LevelshiftPotential are not sensible!");
 
-  return gradientContr;
+  return Eigen::MatrixXd::Zero(0, 0);
 }
 
 template class LevelshiftPotential<Options::SCF_MODES::RESTRICTED>;

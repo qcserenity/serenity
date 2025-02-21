@@ -23,12 +23,12 @@
 #include "data/ElectronicStructure.h"
 #include "io/HDF5.h"
 #include "postHF/LRSCF/Analysis/NROCalculator.h"
+#include "postHF/LRSCF/LRSCFController.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
+#include "tasks/LRSCFTask.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
-#include "postHF/LRSCF/LRSCFController.h"
-#include "tasks/LRSCFTask.h"
 #include <gtest/gtest.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -385,7 +385,7 @@ TEST_F(PlotTaskTest, MOsRestricted_partsPlane) {
  * @test
  * @brief Tests PlotTask.h/.cpp: Print MOs to file.
  */
-TEST_F(PlotTaskTest, MOsRestricted_nonExisitingCube) {
+TEST_F(PlotTaskTest, MOsRestricted_nonExistentCube) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   auto task = PlotTask<RESTRICTED>({systemController}, {});
@@ -397,7 +397,7 @@ TEST_F(PlotTaskTest, MOsRestricted_nonExisitingCube) {
   EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO2.cube").c_str()));
   EXPECT_FALSE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_MO3.cube").c_str()));
 }
-TEST_F(PlotTaskTest, MOsRestricted_nonExisitingPlane) {
+TEST_F(PlotTaskTest, MOsRestricted_nonExistentPlane) {
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   systemController->getElectronicStructure<Options::SCF_MODES::RESTRICTED>();
   auto task = PlotTask<RESTRICTED>({systemController}, {});
@@ -438,58 +438,45 @@ TEST_F(PlotTaskTest, ESPPlane) {
   EXPECT_TRUE(fileExists((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
   EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "TestSystem_H2_MINBAS_ESP.dat").c_str()));
 }
+
 /**
  * @test
- * @brief Tests PlotTask.h/.cpp: Print transition density to file.
+ * @brief Tests PlotTask.h/.cpp: Print Supersystem NTOs and MOs in the restricted case, as well as transition, particle
+ * and hole densities.
  */
-TEST_F(PlotTaskTest, Transitiondensity) {
+TEST_F(PlotTaskTest, rNTOs_plusMOs) {
   auto systemController =
       SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, true);
   std::vector<std::shared_ptr<SystemController>> active = {systemController};
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf(active);
   auto task = PlotTask<RESTRICTED>({systemController}, {});
-  lrscf.settings.densFitK = Options::DENS_FITS::RI;
-  lrscf.settings.nEigen = 4;
+  lrscf.settings.nEigen = 5;
   lrscf.run();
-  task.settings.transitionDensity = true;
-  task.settings.excitations = {1, 2, 3, 4};
+  task.settings.ntos = true;
+  task.settings.excitations = {2, 3, 5};
+  task.settings.orbitals = {13, 62};
   task.run();
-  for (unsigned iExc = 0; iExc < 4; iExc++) {
-    EXPECT_TRUE(fileExists((systemController->getSystemPath() + systemController->getSystemName() +
-                            "_transitiondensity_" + std::to_string(iExc + 1) + "_.cube")
-                               .c_str()));
-    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() +
-                              "_transitiondensity_" + std::to_string(iExc + 1) + "_.cube")
-                                 .c_str()));
-  }
-}
-/**
- * @test
- * @brief Tests PlotTask.h/.cpp: Print hole and particle density to file.
- */
-TEST_F(PlotTaskTest, HoleParticledensity) {
-  auto systemController =
-      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, true);
-  std::vector<std::shared_ptr<SystemController>> active = {systemController};
-  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscf(active);
-  auto task = PlotTask<RESTRICTED>({systemController}, {});
-  lrscf.settings.densFitK = Options::DENS_FITS::RI;
-  lrscf.settings.nEigen = 4;
-  lrscf.run();
-  task.settings.holeparticleDensity = true;
-  task.settings.excitations = {1, 2, 3, 4};
-  task.run();
-  for (unsigned iExc = 0; iExc < 4; iExc++) {
-    for (unsigned holeparticle = 0; holeparticle < 2; holeparticle++) {
-      std::string filename = (holeparticle == 0) ? "_holedensity_" : "_particledensity_";
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() + "_MO13.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() + "_MO62.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO3/7_occ.cube").c_str()));
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO3/10_virt.cube").c_str()));
+  for (unsigned iExc : task.settings.excitations) {
+    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO" + std::to_string(iExc) + "/README").c_str()));
+    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO" + std::to_string(iExc) + "/8_occ.cube").c_str()));
+    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO" + std::to_string(iExc) + "/9_virt.cube").c_str()));
+    EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS/NTO" + std::to_string(iExc)).c_str()));
+    for (unsigned holeparticle = 0; holeparticle < 3; holeparticle++) {
+      std::string filename =
+          (holeparticle == 0) ? "_HoleDensity_" : (holeparticle == 1 ? "_ParticleDensity_" : "_TransitionDensity_");
       EXPECT_TRUE(fileExists((systemController->getSystemPath() + systemController->getSystemName() + filename +
-                              std::to_string(iExc + 1) + "_.cube")
+                              std::to_string(iExc) + ".cube")
                                  .c_str()));
       EXPECT_EQ(0, std::remove((systemController->getSystemPath() + systemController->getSystemName() + filename +
-                                std::to_string(iExc + 1) + "_.cube")
+                                std::to_string(iExc) + ".cube")
                                    .c_str()));
     }
   }
+  EXPECT_EQ(0, std::remove((systemController->getSystemPath() + "/NTOS").c_str()));
 }
 
 } /* namespace Serenity */

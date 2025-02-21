@@ -33,20 +33,30 @@
 #include "misc/SystemSplittingTools.h"
 #include "settings/Settings.h" //Basis label
 #include "system/SystemController.h"
+/* Include Std and External Headers */
 #include <cmath>
 
 namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
-GeneralizedDOSTask<SCFMode>::GeneralizedDOSTask(std::vector<std::shared_ptr<SystemController>> acitveSystems,
+GeneralizedDOSTask<SCFMode>::GeneralizedDOSTask(std::vector<std::shared_ptr<SystemController>> activeSystems,
                                                 std::vector<std::shared_ptr<SystemController>> environmentSystems)
-  : _supersystems(acitveSystems),
+  : _supersystems(activeSystems),
     _allFragments(environmentSystems),
     _fragments(Matrix<std::shared_ptr<SystemController>>(0, 0, nullptr)) {
 }
 
 template<Options::SCF_MODES SCFMode>
 void GeneralizedDOSTask<SCFMode>::run() {
+  for (auto& sys : _supersystems) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The active system '" + sys->getSystemName() + "' needs the same SCFMode as the other systems.");
+  }
+  for (auto& sys : _allFragments) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The environment system '" + sys->getSystemName() +
+                          "' needs the same SCFMode as the other systems.");
+  }
   printSubSectionTitle("Generalized DOS");
   checkInput();
   _fragments = assignFragmentsToSupersystem(_allFragments, _supersystems.size(), _nFragments);

@@ -33,14 +33,13 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-MP2EnergyCorrector<T>::MP2EnergyCorrector(std::shared_ptr<SystemController> systemController, const double ssScaling,
-                                          const double osScaling)
+template<Options::SCF_MODES SCFMode>
+MP2EnergyCorrector<SCFMode>::MP2EnergyCorrector(std::shared_ptr<SystemController> systemController,
+                                                const double ssScaling, const double osScaling)
   : _systemController(systemController), _ssScaling(ssScaling), _osScaling(osScaling) {
   assert(_systemController);
 }
 
-// template <Options::SCF_MODES T>
 template<>
 double MP2EnergyCorrector<Options::SCF_MODES::RESTRICTED>::calculateElectronicEnergy() {
   const auto& basisController = _systemController->getBasisController();

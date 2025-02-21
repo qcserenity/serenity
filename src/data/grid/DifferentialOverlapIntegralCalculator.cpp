@@ -23,41 +23,31 @@
 /* Include Serenity Internal Headers */
 #include "basis/BasisController.h"                   //   -- " --
 #include "data/grid/BasisFunctionOnGridController.h" //Basis function values on a grid
+#include "data/matrices/MatrixInBasis.h"             //ShellWiseAbsMax
 #include "grid/GridController.h"                     //   -- " --
-#include "misc/HelperFunctions.h"                    //Sparse map constructoin.
+#include "misc/HelperFunctions.h"                    //Sparse map construction.
 
 namespace Serenity {
 
-void DifferentialOverlapIntegralCalculator::calculateDOI(const Eigen::MatrixXd& c_x, const Eigen::MatrixXd& c_y,
+void DifferentialOverlapIntegralCalculator::calculateDOI(const Eigen::MatrixXd& cX, const Eigen::MatrixXd& cY,
                                                          const Eigen::SparseMatrix<int>& basisFunctionToXMap,
                                                          const Eigen::SparseMatrix<int>& basisFunctionToYMap,
                                                          std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController,
                                                          Eigen::MatrixXd& dois) {
   takeTime("DOI -- calculations");
-  const unsigned int nX = c_x.cols();
-  const unsigned int nY = c_y.cols();
+  const unsigned int nX = cX.cols();
+  const unsigned int nY = cY.cols();
   assert(nX == basisFunctionToXMap.cols());
   assert(nY == basisFunctionToYMap.cols());
 
   const unsigned int nBlocks = basisFuncOnGridController->getNBlocks();
   const unsigned int nGridPts = basisFuncOnGridController->getNGridPoints();
   const auto& weights = basisFuncOnGridController->getGridController()->getWeights();
-#ifdef _OPENMP
   // create a vector of matrices for each thread
-  std::vector<Eigen::MatrixXd> z_lms(omp_get_max_threads(), Eigen::MatrixXd::Zero(nX, nY));
-  unsigned int nThreads = omp_get_max_threads();
-  Eigen::setNbThreads(1);
-#else
-  // or just one
-  std::vector<Eigen::MatrixXd> z_lms(1, Eigen::MatrixXd::Zero(nX, nY));
-#endif
+  std::vector<Eigen::MatrixXd> integralsPerThread(omp_get_max_threads(), Eigen::MatrixXd::Zero(nX, nY));
 #pragma omp parallel for schedule(dynamic)
   for (unsigned int block = 0; block < nBlocks; block++) {
-#ifdef _OPENMP
     const unsigned int threadId = omp_get_thread_num();
-#else
-    const unsigned int threadId = 0;
-#endif
     // Get block size.
     unsigned int blockEnd = 0;
     unsigned int firstOfBlock = basisFuncOnGridController->getFirstIndexOfBlock(block);
@@ -103,28 +93,96 @@ void DifferentialOverlapIntegralCalculator::calculateDOI(const Eigen::MatrixXd& 
     //    nFunc x nSigFunc
     const Eigen::SparseMatrix<double> proFunc = constructProjectionMatrixFromSparse(sparseBlockToBasisFunctionMap);
     const Eigen::MatrixXd basSig = basisFuncOnGrid->functionValues * proFunc; // nBlock x nSigFunc
-    Eigen::MatrixXd x_point = basSig * proFunc.transpose() * c_x * proXBlock; // nBlock x nSigX
-    Eigen::MatrixXd y_point = basSig * proFunc.transpose() * c_y * proYBlock; // nBlock x nSigY
+    Eigen::MatrixXd xPoint = basSig * proFunc.transpose() * cX * proXBlock;   // nBlock x nSigX
+    Eigen::MatrixXd yPoint = basSig * proFunc.transpose() * cY * proYBlock;   // nBlock x nSigY
     // Square
-    x_point.array() *= x_point.array();
-    y_point.array() *= y_point.array();
+    xPoint.array() *= xPoint.array();
+    yPoint.array() *= yPoint.array();
     // Contract with weights
-    x_point.array().colwise() *= weights.segment(firstOfBlock, nBlockPoints).array();
+    xPoint.array().colwise() *= weights.segment(firstOfBlock, nBlockPoints).array();
     // Calculate |X(r)|^2*|Y(r)|^2 * w(r) and add to matrix by back mapping to the original indices.
-    z_lms[threadId] += proXBlock * x_point.transpose() * y_point * proYBlock.transpose();
+    integralsPerThread[threadId] += proXBlock * xPoint.transpose() * yPoint * proYBlock.transpose();
   } // for block
   dois = Eigen::MatrixXd::Zero(nX, nY);
-#ifdef _OPENMP
-  Eigen::setNbThreads(nThreads);
   // sum over all threads
-  for (unsigned int t = 0; t < z_lms.size(); ++t) {
-    dois += z_lms[t];
+  for (unsigned int t = 0; t < integralsPerThread.size(); ++t) {
+    dois += integralsPerThread[t];
   }
-#else
-  dois = z_lms[0];
-#endif
   dois = dois.array().sqrt();
   timeTaken(2, "DOI -- calculations");
+}
+void DifferentialOverlapIntegralCalculator::calculateDOI(std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController,
+                                                         Eigen::MatrixXd& dois) {
+  takeTime("DOI -- calculations");
+  const unsigned int nBlocks = basisFuncOnGridController->getNBlocks();
+  const unsigned int nGridPts = basisFuncOnGridController->getNGridPoints();
+  const auto& weights = basisFuncOnGridController->getGridController()->getWeights();
+  const unsigned int nX = basisFuncOnGridController->getNBasisFunctions();
+  // create a vector of matrices for each thread
+  std::vector<Eigen::MatrixXd> intergralsPerThread(omp_get_max_threads(), Eigen::MatrixXd::Zero(nX, nX));
+#pragma omp parallel for schedule(dynamic)
+  for (unsigned int block = 0; block < nBlocks; block++) {
+    const unsigned int threadId = omp_get_thread_num();
+    // Get block size.
+    unsigned int blockEnd = 0;
+    unsigned int firstOfBlock = basisFuncOnGridController->getFirstIndexOfBlock(block);
+    if (block == nBlocks - 1) {
+      blockEnd = nGridPts;
+    }
+    else {
+      blockEnd = basisFuncOnGridController->getFirstIndexOfBlock(block + 1);
+    }
+    const unsigned int nBlockPoints = blockEnd - firstOfBlock;
+    const auto& basisFuncOnGrid = basisFuncOnGridController->getBlockOnGridData(block);
+    /*
+     * The idea behind this code is as follows:
+     *   1. Extract the dens-matrix containing the significant basis function values
+     *      on this block.
+     *   2. Contract significant basis function values to get the DOIs for each basis function pair.
+     */
+
+    // Significant basis function values on this block. Invert this presceening vector 1-->0 and 0-->1
+    Eigen::VectorXi blockToBasisFunctionMap = basisFuncOnGrid->negligible;
+    blockToBasisFunctionMap -= Eigen::VectorXi::Constant(blockToBasisFunctionMap.rows(), 1);
+    blockToBasisFunctionMap = blockToBasisFunctionMap.array().abs();
+    const Eigen::SparseVector<int> sparseBlockToBasisFunctionMap = blockToBasisFunctionMap.sparseView();
+
+    // Significant basis function values on this block.
+    //    nFunc x nSigFunc
+    const Eigen::SparseMatrix<double> proFunc = constructProjectionMatrixFromSparse(sparseBlockToBasisFunctionMap);
+    Eigen::MatrixXd basSig = basisFuncOnGrid->functionValues * proFunc; // nBlock x nSigFunc
+    // Square
+    basSig.array() *= basSig.array();
+    // Contract with weights
+    Eigen::MatrixXd basSigWeighted = basSig;
+    basSigWeighted.array().colwise() *= weights.segment(firstOfBlock, nBlockPoints).array();
+    // Calculate |X(r)|^2*|Y(r)|^2 * w(r) and add to matrix by back mapping to the original indices.
+    intergralsPerThread[threadId] += proFunc * basSigWeighted.transpose() * basSig * proFunc.transpose();
+  } // for block
+  dois = Eigen::MatrixXd::Zero(nX, nX);
+  // sum over all threads
+  for (unsigned int t = 0; t < intergralsPerThread.size(); ++t) {
+    dois += intergralsPerThread[t];
+  }
+  dois = dois.array().sqrt();
+  timeTaken(0, "DOI -- calculations");
+}
+
+std::vector<ShellPairData> DifferentialOverlapIntegralCalculator::calculateDOIShellPairData(
+    std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController, double cutOff) {
+  MatrixInBasis<RESTRICTED> dois(basisFuncOnGridController->getBasisController());
+  calculateDOI(basisFuncOnGridController, dois);
+  Eigen::MatrixXd shellWiseMax = dois.shellWiseAbsMax();
+  const unsigned int nShells = basisFuncOnGridController->getBasisController()->getReducedNBasisFunctions();
+  std::vector<ShellPairData> shellPairData;
+  for (unsigned int iShell = 0; iShell < nShells; ++iShell) {
+    for (unsigned int jShell = 0; jShell <= iShell; ++jShell) {
+      if (shellWiseMax(iShell, jShell) > cutOff) {
+        shellPairData.emplace_back(iShell, jShell, shellWiseMax(iShell, jShell));
+      }
+    }
+  }
+  return shellPairData;
 }
 
 } /* namespace Serenity */

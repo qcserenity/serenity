@@ -97,20 +97,20 @@ class NAddFuncPotential : public Potential<SCFMode>,
   /**
    * @brief Constructor.
    * @param system The system needed for its config.
-   * @param activeDMat The active density (controller) and  basis this
+   * @param activeDMat The active density (controller) and basis this
    *                   potential is defined in.
    * @param envDMats The environment densities.
-   * @param grid The for the intermediate calculation on the grid.
+   * @param grid The grid for the intermediate calculation on the grid.
    * @param functional The functional to be used.
-   * @param eCon A pair of boolean an a list of EnergyComponentControllers.
+   * @param eCon A pair of a boolean and a list of EnergyComponentControllers.
    *             The boolean describes if a XC (true) or kinetic functional
    *             is tracked. The EnergyComponentControllers are used to store
    *             the respective XC or kinetic energies of each subsystem when
    *             they are evaluated via a functional on the supersystem grid.
    *             This allows for the reuse of these subtracted energies across
    *             multiple calculations in a freeze-and-thaw run.
-   *             Of this optional argument is not given, the subtracted energies
-   *             of environment systems are reevaluated in at the start of each
+   *             If this optional argument is not given, the subtracted energies
+   *             of environment systems are reevaluated at the start of each
    *             SCF run. This becomes costly for more than 50 subsystems (water),
    *             or even earlier for bigger systems.
    *             The active system controller has to be at position 0 in the vector.
@@ -125,22 +125,22 @@ class NAddFuncPotential : public Potential<SCFMode>,
   /**
    * @brief Constructor.
    * @param system The system needed for its config.
-   * @param activeDMat The active density (controller) and  basis this
+   * @param activeDMat The active density (controller) and basis this
    *                   potential is defined in.
    * @param otherExactDmats The Density matrices of other exactly treated subsystems in mixed exact/approx embedding.
    * @param BtoAProjections The projector to sort the exactly treated env density matrices
    * @param envDMats The Density matrices of approximated treated subsystems
    * @param grid The for the intermediate calculation on the grid.
    * @param functional The functional to be used.
-   * @param eCon A pair of boolean an a list of EnergyComponentControllers.
+   * @param eCon A pair of a boolean and a list of EnergyComponentControllers.
    *             The boolean describes if a XC (true) or kinetic functional
    *             is tracked. The EnergyComponentControllers are used to store
    *             the respective XC or kinetic energies of each subsystem when
    *             they are evaluated via a functional on the supersystem grid.
    *             This allows for the reuse of these subtracted energies across
    *             multiple calculations in a freeze-and-thaw run.
-   *             Of this optional argument is not given, the subtracted energies
-   *             of environment systems are reevaluated in at the start of each
+   *             If this optional argument is not given, the subtracted energies
+   *             of environment systems are reevaluated at the start of each
    *             SCF run. This becomes costly for more than 50 subsystems (water),
    *             or even earlier for bigger systems.
    *             The active system controller has to be at position 0 in the vector.

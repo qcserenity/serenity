@@ -54,7 +54,9 @@ struct FreezeAndThawTaskSettings {
       calculateUnrelaxedMP2Density({}),
       mp2Type(Options::MP2_TYPES::LOCAL),
       keepCoulombCache(false),
-      finalEnergyEvaluation(true) {
+      finalEnergyEvaluation(true),
+      printResults(true),
+      onlyFinalEnergyEvaluation(false) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
     lcSettings.pnoSettings = Options::PNO_SETTINGS::TIGHT;
@@ -62,8 +64,8 @@ struct FreezeAndThawTaskSettings {
   }
   REFLECTABLE((unsigned int)maxCycles, (double)convThresh, (double)gridCutOff, (bool)smallSupersystemGrid,
               (double)basisExtThresh, (bool)extendBasis, (bool)useConvAcceleration, (double)diisStart, (double)diisEnd,
-              (bool)calculateSolvationEnergy, (std::vector<bool>)calculateUnrelaxedMP2Density,
-              (Options::MP2_TYPES)mp2Type, (bool)keepCoulombCache, (bool)finalEnergyEvaluation)
+              (bool)calculateSolvationEnergy, (std::vector<bool>)calculateUnrelaxedMP2Density, (Options::MP2_TYPES)mp2Type,
+              (bool)keepCoulombCache, (bool)finalEnergyEvaluation, (bool)printResults, (bool)onlyFinalEnergyEvaluation)
  public:
   EmbeddingSettings embedding;
   LocalCorrelationSettings lcSettings;
@@ -101,10 +103,12 @@ class FreezeAndThawTask : public Task {
   void visit(FreezeAndThawTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
-    }
+    // If reached, the blockname is unknown.
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
   }
 
   /**
@@ -114,11 +118,11 @@ class FreezeAndThawTask : public Task {
    *        - basisExtensionThreshold: The threshold for the basis set extension (default: 5.0 e-2). See BasisExtension.h
    *        - extendBasis: A flag whether the basis should be extended (default: false). See BasisExtension.h
    *        - truncateProjector: A flag whether the projector should be truncated (default: false). See
-   * HuzinagaFDEProjectionPotential.h.
+   * HuzinagaProjectionPotential.h.
    *        - projectionTruncThreshold: The projection truncation threshold (default: 1.0e+1). See
-   * HuzinagaFDEProjectionPotential.h.
+   * HuzinagaProjectionPotential.h.
    *        - distantKinFunc: A flag whether not projected subsystems should be treated with a non additive kin. energy
-   * func. See HuzinagaFDEProjectionPotential.h.
+   * func. See HuzinagaProjectionPotential.h.
    *        - useConvAcceleration: Turn the convergence acceleration (DIIS/Damping) on (default false). See
    * FaTConvergenceAccerlerator.h.
    *        - diisStart: Density RMSD threshold for the start of the DIIS (default 5.0e-5).
@@ -128,6 +132,8 @@ class FreezeAndThawTask : public Task {
    *        - keepCoulombCache: The Fock matrix contributions of the passive systems via their Coulomb interaction
    *                            is not deleted.
    *        - embedding: The embedding settings. See settings/EmbeddingSettings.h for details.
+   *        - onlyFinalEnergyEvaluation : Run only the final energy evaluation.
+   *        - printResults : Print the final results to the std-output.
    */
   FreezeAndThawTaskSettings settings;
 
@@ -147,6 +153,10 @@ class FreezeAndThawTask : public Task {
    * @brief Clean up the passive Coulomb cache after finishing the iterations.
    */
   void cleanUp();
+  /**
+   * @brief Calculate the final energy.
+   */
+  void finalEnergyEvaluation();
 };
 
 } /* namespace Serenity */

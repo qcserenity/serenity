@@ -1,0 +1,49 @@
+\subsection{Task: MP2}\label{task: mp2}
+\label{sec:MP2}
+This task performs MP2 calculations for a given active system, probably using embedding or local correlation
+settings. Effects of an optional PCM are taken only into account on the level of the orbitals/Fock matrix.
+
+{\color{red}IMPORTANT:} The orbital localization step for local MP2 is not carried out
+within this task! Please make sure that the orbitals have been localized before using the local
+correlation version of this task (see Sec.~\ref{task:localization}).
+\subsubsection{Example Input}
+\begin{lstlisting}
++task MP2
+  system acetone
+  mp2Type RI
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{MP2} and \ttt{MP2Task}.
+	\item [\texttt{activeSystems}]\hfill \\
+	Accepts a single active system for whose orbitals an MP2 correction is calculated.
+	\item [\texttt{environmentSystems}]\hfill \\
+	Accepts mutiple environment systems that are used in embedded calculations.
+	\item [\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}), local correlation (\ttt{lc}) and PCM (\ttt{pcm}) settings are added via sub-blocks in the task settings.
+	Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+	\ttt{naddXCFunc=BP86}, \ttt{embeddingMode=LEVELSHIFT}.
+	Similarly, \ttt{pnoSettings=NORMAL} is a commonly changed default in the local correlation settings.
+	\item [\texttt{mp2Type}] \hfill \\ 
+	MP2 type used. Full four center integral MP2 (\ttt{AO}), DF-MP2, using density fitting approach specified with \ttt{densfitCorr} in the system block (\ttt{DF}), local MP2 (\ttt{LOCAL}), Laplace-transform SOS-MP2 (\ttt{LT}). By default \ttt{DF}.
+  \item[\texttt{maxResidual}]\hfill \\
+	Convergence threshold for the local MP2 calculation. By default \ttt{1.0e-5}.
+  \item[\texttt{sss}]\hfill \\
+	Scaling parameter for same-spin contributions. By default \ttt{1.0}.
+  \item[\texttt{oss}]\hfill \\
+	Scaling parameter for opposite-spin contributions. By default \ttt{1.0}.
+  \item[\texttt{ltconv}]\hfill \\
+	Convergence parameter for the Laplace transformation if LT-SOS-MP2 is used. By default \ttt{1e-5}.
+  \item[\texttt{maxCycles}]\hfill \\
+  Maximum number of iterations before cancelling the amplitude optimization in local MP2. By default \ttt{100}.
+  \item[\texttt{unrelaxedDensity}]\hfill \\
+  If true, the unrelaxed MP2 density is calculated. By default \ttt{false}. 
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{writePairEnergies}]\hfill \\
+  Write the pair energies to a file with name: systemName\_pairEnergies\_MP2.dat.
+  This only works for DLPNO-MP2.
+\end{description}

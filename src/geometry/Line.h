@@ -29,7 +29,7 @@ namespace Serenity {
 /**
  * @class Line Line.h
  * @brief A class that defines a line. A line is given by the points \f$ \pmb(l)\f$ that fulfill:\n
- *    \f$ \pmb(l) = \pmb(p} + x \pmb(d}, x\in \mathbb{R}, \f$ \n
+ *    \f$ \pmb{l} = \pmb{p} + x \pmb{d}, x\in \mathbb{R}, \f$ \n
  *   where \f$ \pmb{p} \in \mathbb{R}^3 \f$ is some point on the line and \f$ \pmb{d}\in \mathbb{R}^3 \f$
  *   is the direction of the line.
  */

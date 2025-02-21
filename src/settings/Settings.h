@@ -20,6 +20,8 @@
 #ifndef SETTINGS_H_
 #define SETTINGS_H_
 /* Include Serenity Internal Headers */
+#include "dft/functionals/BasicFunctionals.h"
+#include "dft/functionals/CompositeFunctionals.h"
 #include "io/Filesystem.h"
 #include "misc/SerenityError.h"
 #include "settings/BasisOptions.h"
@@ -52,6 +54,34 @@ struct DFT {
 
  public:
   REFLECTABLE((CompositeFunctionals::XCFUNCTIONALS)functional, (Options::DFT_DISPERSION_CORRECTIONS)dispersion)
+};
+
+struct CUSTOMFUNCTIONAL {
+  CUSTOMFUNCTIONAL()
+    : impl(CompositeFunctionals::IMPLEMENTATIONS::LIBXC),
+      // a custom functional is interpreted to be active as soon as the basicFunctionals-vector is not empty
+      basicFunctionals({}),
+      mixingFactors({1.0}),
+      hfExchangeRatio(0.0),
+      hfCorrelRatio(0.0),
+      lrExchangeRatio(0.0),
+      mu(0.0),
+      ssScaling(1.0),
+      osScaling(1.0) {
+  }
+
+ public:
+  REFLECTABLE((CompositeFunctionals::IMPLEMENTATIONS)impl, (std::vector<BasicFunctionals::BASIC_FUNCTIONALS>)basicFunctionals,
+              (std::vector<double>)mixingFactors, (double)hfExchangeRatio, (double)hfCorrelRatio,
+              (double)lrExchangeRatio, (double)mu, (double)ssScaling, (double)osScaling)
+  // This is for enabling CUSTOMFUNC blocks in tasks.
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("CUSTOMFUNC")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
+  }
 };
 
 struct SCF {
@@ -147,9 +177,12 @@ struct GRID {
               (double)weightThreshold, (unsigned int)smoothing, (bool)gridPointSorting)
 
   // This is for enabling GRID blocks in tasks.
-  bool visitSettings(set_visitor v, std::string) {
-    visit_each((*this), v);
-    return true;
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
+    if (!blockname.compare("GRID")) {
+      visit_each(*this, v);
+      return true;
+    }
+    return false;
   }
 };
 
@@ -198,6 +231,7 @@ struct Settings {
       ignoreCharge(false),
       spin(0),
       geometry(""),
+      externalGridPotential(""),
       load(""),
       scfMode(Options::SCF_MODES::RESTRICTED),
       method(Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
@@ -209,9 +243,16 @@ struct Settings {
    * Member Variables
    */
   REFLECTABLE((std::string)name, (std::string)identifier, (std::string)path, (int)charge, (bool)ignoreCharge, (int)spin,
-              (std::string)geometry, (std::string)load, (Options::SCF_MODES)scfMode,
-              (Options::ELECTRONIC_STRUCTURE_THEORIES)method, (DFT)dft, (SCF)scf, (BASIS)basis, (GRID)grid,
-              (EFIELD)efield, (PCMSettings)pcm, (EXTERNALCHARGES)extCharges)
+              (std::string)geometry, (std::string)externalGridPotential, (std::string)load, (Options::SCF_MODES)scfMode,
+              (Options::ELECTRONIC_STRUCTURE_THEORIES)method)
+  DFT dft;
+  SCF scf;
+  BASIS basis;
+  GRID grid;
+  EFIELD efield;
+  PCMSettings pcm;
+  EXTERNALCHARGES extCharges;
+  CUSTOMFUNCTIONAL customFunc;
 
   /**
    * @brief Constructor using text input.

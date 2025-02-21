@@ -63,7 +63,6 @@ class WriteIntegralsTask : public Task {
   /**
    * @brief The settings.
    *   -hCoreIntegrals     If True, the core hamiltonian integrals are written. By default, false.
-   *   -moBasis            If True, the integrals are transformed from the AO into the MO basis. By default, false.
    *   -fileFormat:        The file format for the integral files.
    */
   WriteIntegralsTaskSettings settings;

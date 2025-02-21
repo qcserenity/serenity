@@ -24,6 +24,7 @@
 #include "geometry/AtomTypeFactory.h"
 #include "geometry/Geometry.h"
 #include "io/Filesystem.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -44,7 +45,6 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
   }
 
   switch (kind) {
-    // TODO the tests assume, that the "STO-6G" and "Def2-TZVP" basis sets are available!
     case TEST_SYSTEM_CONTROLLERS::H2_MINBAS: {
       Settings settings;
       settings.basis.label = "STO-6G";
@@ -71,11 +71,63 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
         _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
       }
     } break;
+    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE_LRSCF: {
+      Settings settings;
+      settings.basis.label = "STO-3G";
+      settings.name = "TestSystem_H2_MINBAS_ACTIVE_LRSCF";
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::BP86;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+      settings.basis.incrementalSteps = 1;
+      settings.basis.integralThreshold = 1e-64;
+      settings.scf.energyThreshold = 1e-10;
+      settings.scf.rmsdThreshold = 1e-10;
+      settings.scf.diisThreshold = 1e-9;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
+      if (fromScratch) {
+        _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+      }
+      else {
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      }
+    } break;
     case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT: {
       Settings settings;
       settings.basis.label = "STO-6G";
       settings.name = "TestSystem_H2_MINBAS_ENVIRONMENT";
       settings.basis.basisLibPath = basisPath;
+      if (fromScratch) {
+        _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+      }
+      else {
+        settings.load = pathToTestsResources;
+        _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      }
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT_LRSCF: {
+      Settings settings;
+      settings.basis.label = "STO-3G";
+      settings.name = "TestSystem_H2_MINBAS_ENVIRONMENT_LRSCF";
+      settings.basis.basisLibPath = basisPath;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::BP86;
+      settings.basis.densFitJ = Options::DENS_FITS::NONE;
+      settings.basis.densFitCorr = Options::DENS_FITS::NONE;
+      settings.basis.incrementalSteps = 1;
+      settings.basis.integralThreshold = 1e-64;
+      settings.scf.energyThreshold = 1e-10;
+      settings.scf.rmsdThreshold = 1e-10;
+      settings.scf.diisThreshold = 1e-9;
+      settings.grid.accuracy = 7;
+      settings.grid.smallGridAccuracy = 7;
+      settings.grid.blockAveThreshold = 0;
+      settings.grid.basFuncRadialThreshold = 0;
       if (fromScratch) {
         _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
       }
@@ -988,6 +1040,54 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.spin = 2;
       _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
     } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP_CIS: {
+      Settings settings;
+      settings.name = "TestSystem_O2_MINBAS_TRIP_CIS";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDA: {
+      Settings settings;
+      settings.name = "TestSystem_O2_TRIP_DEF2_SVP_TDA";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDHF: {
+      Settings settings;
+      settings.name = "TestSystem_O2_TRIP_DEF2_SVP_TDHF";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDDFT: {
+      Settings settings;
+      settings.name = "TestSystem_O2_TRIP_DEF2_SVP_TDDFT";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDA: {
+      Settings settings;
+      settings.name = "TestSystem_O2_TRIP_6_31G_PBE_TDA";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDDFT: {
+      Settings settings;
+      settings.name = "TestSystem_O2_TRIP_6_31G_PBE_TDDFT";
+      settings.load = pathToTestsResources;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(settings);
+      if (fromScratch)
+        throw SerenityError("This TestSystemController is only provided from disk: " + settings.name);
+    } break;
     case TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs: {
       Settings settings;
       settings.basis.label = "6-31GS";
@@ -1525,19 +1625,96 @@ void SystemController__TEST_SUPPLY::prepare(TEST_SYSTEM_CONTROLLERS kind, bool f
       settings.grid.accuracy = 5;
       settings.basis.basisLibPath = basisPath;
       _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
-    }
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_A: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_A";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_B: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_B";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_C: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_C";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_D: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_D";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_E: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_E";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_F: {
+      Settings settings;
+      settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+      settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::PBE;
+      settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::D3BJABC;
+      settings.scfMode = Options::SCF_MODES::RESTRICTED;
+      settings.basis.label = "DEF2-SVP";
+      settings.grid.smallGridAccuracy = 4;
+      settings.grid.accuracy = 4;
+      settings.basis.integralIncrementThresholdStart = 1e-10;
+      settings.name = "TestSystem_Water_Hexamer_Monomer_F";
+      settings.basis.basisLibPath = basisPath;
+      _testSystemControllers[kind] = std::make_shared<SystemController>(getGeometry(kind), settings);
+    } break;
   } // switch
 }
 
 std::shared_ptr<SystemController>
 SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS kind, Settings& settings, int charge, int spin) {
-  std::string pathToTestsResources;
-  if (const char* env_p = std::getenv("SERENITY_RESOURCES")) {
-    pathToTestsResources = (std::string)env_p + "testresources/";
-  }
-  else {
-    throw SerenityError("ERROR: Environment variable SERENITY_RESOURCES not set.");
-  }
   if (settings.name == "default")
     settings.name = "SomeTestSystem";
   settings.charge = charge;
@@ -1547,8 +1724,8 @@ SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS kind,
 
 void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind) {
   switch (kind) {
-    // TODO the tests assume, that the "STO-6G" and "Def2-TZVP" basis sets are available!
     case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE:
+    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE_LRSCF:
     case TEST_SYSTEM_CONTROLLERS::H2_MINBAS:
     case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP:
     case TEST_SYSTEM_CONTROLLERS::H2_DEF2_TZVP_PBE:
@@ -1567,6 +1744,8 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, -0.7);
       auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 0.7);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ACTIVE_LRSCF] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_MINBAS] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
@@ -1599,10 +1778,13 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_PBE0_UNRESTRICTED] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
     } break;
-    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT: {
+    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT:
+    case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT_LRSCF: {
       auto H1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 1.7);
       auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0, 0.0, 2.4);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::H2_MINBAS_ENVIRONMENT_LRSCF] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{H1, H2});
     } break;
     case TEST_SYSTEM_CONTROLLERS::H2_MINBAS_LARGE_DISTANCE: {
@@ -2272,16 +2454,34 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
       _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_MINBAS_SING] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
     } break;
-    case TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP: {
+    case TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP:
+    case TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP_CIS:
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDA:
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDHF:
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDDFT:
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDA:
+    case TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDDFT: {
       auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0);
       auto O2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 1.21 * ANGSTROM_TO_BOHR);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_MINBAS_TRIP_CIS] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDA] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDHF] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_TRIP_DEF2_SVP_TDDFT] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDA] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
+      _testGeometries[TEST_SYSTEM_CONTROLLERS::O2_TRIP_6_31G_PBE_TDDFT] =
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, O2});
     } break;
     case TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs: {
-      auto Br1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("F"), 0.0, 0.0, 0.0);
+      auto F = std::make_shared<Atom>(AtomTypeFactory::getAtomType("F"), 0.0, 0.0, 0.0);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs] =
-          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{Br1});
+          std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{F});
     } break;
     case TEST_SYSTEM_CONTROLLERS::OH_MINBAS_PBE: {
       auto O = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 0.0, 0.0, 0.0);
@@ -2799,7 +2999,61 @@ void SystemController__TEST_SUPPLY::prepareGeometry(TEST_SYSTEM_CONTROLLERS kind
                                        1.8070000000 * ANGSTROM_TO_BOHR, 29.5750000000 * ANGSTROM_TO_BOHR);
       _testGeometries[TEST_SYSTEM_CONTROLLERS::ETHANOL_def2_SVP_HF] =
           std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{C1, C2, H1, H2, H3, O1, H4, H5, H6});
-    }
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_A: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), -0.0805817544 * ANGSTROM_TO_BOHR,
+                                       0.1064693332 * ANGSTROM_TO_BOHR, -0.2594723403 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -0.8470675945 * ANGSTROM_TO_BOHR,
+                                       -0.3167490363 * ANGSTROM_TO_BOHR, 0.1589804590 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.0989011452 * ANGSTROM_TO_BOHR,
+                                       0.9050485492 * ANGSTROM_TO_BOHR, 0.2294897437 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_B: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 1.9791350365 * ANGSTROM_TO_BOHR,
+                                       -1.5279359818 * ANGSTROM_TO_BOHR, -0.9751702547 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.3919346333 * ANGSTROM_TO_BOHR,
+                                       -0.9685682058 * ANGSTROM_TO_BOHR, -0.4298323393 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 2.5522203445 * ANGSTROM_TO_BOHR,
+                                       -0.9256451130 * ANGSTROM_TO_BOHR, -1.4651178122 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_C: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), -0.0301359408 * ANGSTROM_TO_BOHR,
+                                       -3.2548441887 * ANGSTROM_TO_BOHR, -1.6486920118 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -0.7035520673 * ANGSTROM_TO_BOHR,
+                                       -2.9378089905 * ANGSTROM_TO_BOHR, -1.0363643169 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 0.6157692075 * ANGSTROM_TO_BOHR,
+                                       -2.5322492123 * ANGSTROM_TO_BOHR, -1.7363814116 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_D: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), -1.9208998680 * ANGSTROM_TO_BOHR,
+                                       -1.3940520287 * ANGSTROM_TO_BOHR, -1.0889282227 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -2.7490198612 * ANGSTROM_TO_BOHR,
+                                       -1.7880773544 * ANGSTROM_TO_BOHR, -1.3621145487 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), -1.5633729696 * ANGSTROM_TO_BOHR,
+                                       -0.9304729700 * ANGSTROM_TO_BOHR, -1.8521807194 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_E: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 2.4306445122 * ANGSTROM_TO_BOHR,
+                                       -4.1413455009 * ANGSTROM_TO_BOHR, -0.4261322320 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 1.5151513815 * ANGSTROM_TO_BOHR,
+                                       -4.2161335945 * ANGSTROM_TO_BOHR, -0.7462365031 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 2.8192429543 * ANGSTROM_TO_BOHR,
+                                       -3.4299900532 * ANGSTROM_TO_BOHR, -0.9407634139 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
+    case TEST_SYSTEM_CONTROLLERS::Water_Hexamer_Monomer_F: {
+      auto O1 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("O"), 4.3837327957 * ANGSTROM_TO_BOHR,
+                                       -1.5445500612 * ANGSTROM_TO_BOHR, -0.4985653758 * ANGSTROM_TO_BOHR);
+      auto H2 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 3.7054352760 * ANGSTROM_TO_BOHR,
+                                       -2.0726823807 * ANGSTROM_TO_BOHR, -0.0492937751 * ANGSTROM_TO_BOHR);
+      auto H3 = std::make_shared<Atom>(AtomTypeFactory::getAtomType("H"), 5.2253069878 * ANGSTROM_TO_BOHR,
+                                       -1.8059456348 * ANGSTROM_TO_BOHR, -0.1414732039 * ANGSTROM_TO_BOHR);
+      _testGeometries[kind] = std::make_shared<Geometry>(std::vector<std::shared_ptr<Atom>>{O1, H2, H3});
+    } break;
   }
 }
 void SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS kind) {

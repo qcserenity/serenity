@@ -57,6 +57,10 @@ TEST_F(DifferentialOverlapIntegralCalculatorTest, dois_BasisFunctionVSBasisFunct
   DifferentialOverlapIntegralCalculator::calculateDOI(c_x, c_y, basisFunctionToXMap, basisFunctionToXMap,
                                                       basFuncOnGridController, dois);
   EXPECT_NEAR(dois(0, 0), 2.6930610457882125, 1e-5);
+
+  Eigen::MatrixXd dois2;
+  DifferentialOverlapIntegralCalculator::calculateDOI(basFuncOnGridController, dois2);
+  EXPECT_NEAR(dois(0, 0), dois2(0, 0), 1e-9);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

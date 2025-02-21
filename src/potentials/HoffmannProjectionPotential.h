@@ -123,13 +123,12 @@ class HoffmannProjectionPotential : public Potential<SCFMode>,
                                   std::shared_ptr<DensityMatrixController<SCFMode>> activeDensityMatrixController,
                                   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> environmentDensityMatrixController);
 
-  /**
-   * @brief Check if the given functional is a range separated functional.
-   *        TODO: Fix the long range part!
-   * @param functional The functional.
-   * @return true if range separated.
+  /*
+   * @brief Split the construction of this potential so that the FDEPotentialBundleFactory can be a RememberingFactory.
+   * Since getOrProduce() is locked when this Potential is built, its own calls to the Factory are now done in this
+   * function after construction. It is invoked the first time getMatrix() is called.
    */
-  bool checkFunctionalForLRXC(CompositeFunctionals::XCFUNCTIONALS functional);
+  void finishSetup();
 
   /**
    * @brief The Huzinaga projection part.
@@ -155,6 +154,14 @@ class HoffmannProjectionPotential : public Potential<SCFMode>,
   std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> _envDensityCont;
   /// @brief The potential in matrix representation.
   std::unique_ptr<FockMatrix<SCFMode>> _potential;
+  /// @brief The EmbeddingSettings after the adjustSettings() function has been applied.
+  std::shared_ptr<EmbeddingSettings> _adjustedSettings_ptr;
+  /// @brief Bool whether the calculation is top-down or bottom-up.
+  bool _topDown;
+  /// @brief A GridController for the Supersystem integration grid, if it is employed. Otherwise this is a nullptr.
+  std::shared_ptr<GridController> _supersystemGrid;
+  /// @brief Bool to make sure the post-construction function finishSetup() is only called once.
+  bool _finishedSetup = false;
 };
 
 } /* namespace Serenity */

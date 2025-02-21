@@ -27,6 +27,7 @@
 #include "settings/EmbeddingSettings.h"
 #include "settings/OrthogonalizationOptions.h"
 #include "settings/Reflection.h"
+#include "settings/Settings.h"
 #include "tasks/Task.h"
 /* Include Std and External Headers */
 #include <memory>
@@ -58,6 +59,7 @@ struct EvaluateEnergyTaskSettings {
  public:
   LocalCorrelationSettings lcSettings;
   EmbeddingSettings embedding;
+  CUSTOMFUNCTIONAL customFunc;
 };
 /**
  * @class EvaluateEnergyTask EvaluateEnergyTask.h
@@ -106,12 +108,18 @@ class EvaluateEnergyTask : public Task {
   void visit(EvaluateEnergyTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      if (!c.lcSettings.visitSettings(v, blockname)) {
-        throw SerenityError((std::string) "Unknown block in EvaluateEnergyTaskSettings: " + blockname);
-      }
+    if (c.customFunc.visitAsBlockSettings(v, blockname)) {
+      return;
     }
+    if (c.embedding.visitAsBlockSettings(v, blockname)) {
+      return;
+    }
+    if (c.lcSettings.visitAsBlockSettings(v, blockname)) {
+      return;
+    }
+    throw SerenityError((std::string) "Unknown block in EvaluateEnergyTaskSettings: " + blockname);
   }
 
  private:

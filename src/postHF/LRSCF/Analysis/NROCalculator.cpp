@@ -22,7 +22,6 @@
 #include "postHF/LRSCF/Analysis/NROCalculator.h"
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
-#include "postHF/LRSCF/Analysis/DipoleIntegrals.h"
 #include "postHF/LRSCF/LRSCFController.h"
 #include "system/SystemController.h"
 

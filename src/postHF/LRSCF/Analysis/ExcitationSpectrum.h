@@ -22,9 +22,9 @@
 #define LRSCF_EXCITATIONSPECTRUM
 
 /* Include Serenity Internal Headers */
+#include "data/matrices/MatrixInBasis.h"
 #include "settings/ElectronicStructureOptions.h"
 #include "settings/LRSCFOptions.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
@@ -58,7 +58,7 @@ class ExcitationSpectrum {
                                      const Eigen::VectorXd& eigenvalues, Eigen::MatrixXd& results, std::string fileName);
 
   /**
-   * @brief Calculates excited state densities and dipole moments (currently only implemented for CC2).
+   * @brief Calculates excited-state densities and dipole moments (currently only implemented for CC2).
    * @param method The linear-response method in use.
    * @param dipoles All property integrals needed (electric length/velocity and magnetic).
    * @param eigenvectors Eigenvectors of the response problem.
@@ -69,6 +69,11 @@ class ExcitationSpectrum {
   static void printStateMoments(Options::LR_METHOD method, const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
                                 const std::vector<Eigen::MatrixXd>& eigenvectors, const Eigen::VectorXd& eigenvalues,
                                 Eigen::MatrixXd& results, Eigen::Vector3d nuclearPart);
+
+  static void printStateMoments(Options::LR_METHOD method, const std::shared_ptr<DipoleIntegrals<SCFMode>> dipoles,
+                                const std::vector<MatrixInBasis<SCFMode>>& unrelaxedDensities,
+                                const std::vector<MatrixInBasis<SCFMode>>& relaxedDensities, const Eigen::VectorXd& eigenvalues,
+                                Eigen::Vector3d nuclearPart, SpinPolarizedData<SCFMode, unsigned int> nOcc);
 };
 
 } /* namespace Serenity */

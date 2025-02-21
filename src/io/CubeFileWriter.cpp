@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "geometry/Geometry.h"   //Geometry
 #include "grid/GridController.h" //GridController
+#include "parameters/Constants.h"
 
 namespace Serenity {
 

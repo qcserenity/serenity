@@ -34,7 +34,7 @@ ExchangePotential<SCFMode>::ExchangePotential(std::shared_ptr<SystemController> 
                                               std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
                                               const double exchangeRatio, const double prescreeningThreshold,
                                               double prescreeningIncrementStart, double prescreeningIncrementEnd,
-                                              unsigned int incrementSteps, bool clear4CenterCache)
+                                              unsigned int incrementSteps, bool clear4CenterCache, bool transitionDensity)
   : Potential<SCFMode>(dMat->getDensityMatrix().getBasisController()),
     _systemController(systemController),
     _exc(exchangeRatio),
@@ -44,7 +44,8 @@ ExchangePotential<SCFMode>::ExchangePotential(std::shared_ptr<SystemController> 
     _incrementHelper(std::make_shared<IncrementalFockMatrix<SCFMode>>(
         dMat, (prescreeningThreshold != 0) ? prescreeningThreshold : this->_basis->getPrescreeningThreshold(),
         prescreeningIncrementStart, prescreeningIncrementEnd, incrementSteps, "Exact Exchange")),
-    _clear4CenterCache(clear4CenterCache) {
+    _clear4CenterCache(clear4CenterCache),
+    _transitionDensity(transitionDensity) {
   this->_basis->addSensitiveObject(ObjectSensitiveClass<Basis>::_self);
   this->_dMatController->addSensitiveObject(ObjectSensitiveClass<DensityMatrix<SCFMode>>::_self);
 
@@ -63,7 +64,10 @@ FockMatrix<SCFMode>& ExchangePotential<SCFMode>::getMatrix() {
     DensityMatrix<SCFMode> densityMatrix(this->_basis);
     std::vector<std::shared_ptr<FockMatrix<SCFMode>>> matrices = {_fullpotential};
     _incrementHelper->updateDensityAndThreshold(densityMatrix, _screening, matrices);
-    this->addToMatrix(*_fullpotential, densityMatrix);
+    if (_transitionDensity)
+      this->addToMatrixForTransitionDensity(*_fullpotential, densityMatrix);
+    else
+      this->addToMatrix(*_fullpotential, densityMatrix);
     _outOfDate = false;
   }
   Timings::timeTaken("Active System -   Exchange Pot.");
@@ -200,6 +204,147 @@ void ExchangePotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrix(
   fx[0].beta *= _exc;
   F.beta += fx[0].beta;
   F.beta += fx[0].beta.transpose();
+}
+
+template<>
+void ExchangePotential<Options::SCF_MODES::RESTRICTED>::addToMatrixForTransitionDensity(
+    FockMatrix<Options::SCF_MODES::RESTRICTED>& F, const DensityMatrix<Options::SCF_MODES::RESTRICTED>& densityMatrix) {
+  unsigned nb = _basis->getNBasisFunctions();
+  unsigned ns = _basis->getReducedNBasisFunctions();
+  unsigned nThreads = omp_get_max_threads();
+  std::vector<FockMatrix<Options::SCF_MODES::RESTRICTED>> fx(nThreads, _basis);
+
+  auto D = densityMatrix.data();
+
+  auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned iThread) {
+    unsigned ik = i * nb + k;
+    unsigned il = i * nb + l;
+    unsigned jl = j * nb + l;
+    unsigned jk = j * nb + k;
+    unsigned ki = k * nb + i;
+    unsigned li = l * nb + i;
+    unsigned lj = l * nb + j;
+    unsigned kj = k * nb + j;
+
+    auto Fx = fx[iThread].data();
+
+    Fx[ik] -= D[jl] * integral;
+    Fx[il] -= D[jk] * integral;
+    Fx[jk] -= D[il] * integral;
+    Fx[jl] -= D[ik] * integral;
+    Fx[ki] -= D[lj] * integral;
+    Fx[li] -= D[kj] * integral;
+    Fx[kj] -= D[li] * integral;
+    Fx[lj] -= D[ki] * integral;
+  };
+
+  auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  auto maxDensPtr = maxDensMat.data();
+  auto maxDens = maxDensMat.maxCoeff();
+
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = 0.5 * _exc * schwarz;
+    if (maxDens * xschwarz < _screening) {
+      return true;
+    }
+    double t1 = maxDensPtr[i * ns + k];
+    double t2 = maxDensPtr[i * ns + l];
+    double t3 = maxDensPtr[j * ns + k];
+    double t4 = maxDensPtr[j * ns + l];
+    double t5 = maxDensPtr[k * ns + i];
+    double t6 = maxDensPtr[l * ns + i];
+    double t7 = maxDensPtr[k * ns + j];
+    double t8 = maxDensPtr[l * ns + j];
+    double maxDBlock = std::max({t1, t2, t3, t4, t5, t6, t7, t8});
+    return (maxDBlock * xschwarz < _screening);
+  };
+
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
+  looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+
+  for (unsigned iThread = 1; iThread < nThreads; ++iThread) {
+    fx[0] += fx[iThread];
+  }
+
+  fx[0] *= 0.5 * _exc;
+  F += fx[0];
+}
+
+template<>
+void ExchangePotential<Options::SCF_MODES::UNRESTRICTED>::addToMatrixForTransitionDensity(
+    FockMatrix<Options::SCF_MODES::UNRESTRICTED>& F, const DensityMatrix<Options::SCF_MODES::UNRESTRICTED>& densityMatrix) {
+  unsigned nb = _basis->getNBasisFunctions();
+  unsigned ns = _basis->getReducedNBasisFunctions();
+  unsigned nThreads = omp_get_max_threads();
+  std::vector<FockMatrix<Options::SCF_MODES::UNRESTRICTED>> fx(nThreads, _basis);
+
+  auto Da = densityMatrix.alpha.data();
+  auto Db = densityMatrix.beta.data();
+
+  auto distribute = [&](unsigned i, unsigned j, unsigned k, unsigned l, double integral, unsigned threadId) {
+    unsigned ik = i * nb + k;
+    unsigned il = i * nb + l;
+    unsigned jl = j * nb + l;
+    unsigned jk = j * nb + k;
+    unsigned ki = k * nb + i;
+    unsigned li = l * nb + i;
+    unsigned lj = l * nb + j;
+    unsigned kj = k * nb + j;
+
+    auto Fxa = fx[threadId].alpha.data();
+    Fxa[ik] -= Da[jl] * integral;
+    Fxa[il] -= Da[jk] * integral;
+    Fxa[jk] -= Da[il] * integral;
+    Fxa[jl] -= Da[ik] * integral;
+    Fxa[ki] -= Da[lj] * integral;
+    Fxa[li] -= Da[kj] * integral;
+    Fxa[kj] -= Da[li] * integral;
+    Fxa[lj] -= Da[ki] * integral;
+
+    auto Fxb = fx[threadId].beta.data();
+    Fxb[ik] -= Db[jl] * integral;
+    Fxb[il] -= Db[jk] * integral;
+    Fxb[jk] -= Db[il] * integral;
+    Fxb[jl] -= Db[ik] * integral;
+    Fxb[ki] -= Db[lj] * integral;
+    Fxb[li] -= Db[kj] * integral;
+    Fxb[kj] -= Db[li] * integral;
+    Fxb[lj] -= Db[ki] * integral;
+  };
+
+  auto maxDensMat = densityMatrix.shellWiseAbsMax().total();
+  auto maxDensPtr = maxDensMat.data();
+  auto maxDens = maxDensMat.maxCoeff();
+
+  auto prescreen = [&](unsigned i, unsigned j, unsigned k, unsigned l, double schwarz) {
+    double xschwarz = _exc * schwarz;
+    if (maxDens * xschwarz < _screening) {
+      return true;
+    }
+    double t1 = maxDensPtr[i * ns + k];
+    double t2 = maxDensPtr[i * ns + l];
+    double t3 = maxDensPtr[j * ns + k];
+    double t4 = maxDensPtr[j * ns + l];
+    double t5 = maxDensPtr[k * ns + i];
+    double t6 = maxDensPtr[l * ns + i];
+    double t7 = maxDensPtr[k * ns + j];
+    double t8 = maxDensPtr[l * ns + j];
+    double maxDBlock = std::max({t1, t2, t3, t4, t5, t6, t7, t8});
+    return (maxDBlock * xschwarz < _screening);
+  };
+
+  TwoElecFourCenterIntLooper looper(LIBINT_OPERATOR::coulomb, 0, _basis, _incrementHelper->getPrescreeningThreshold());
+  looper.loopNoDerivative(distribute, prescreen, maxDens, _systemController.lock()->getIntegralCachingController(), true);
+
+  for (unsigned iThread = 1; iThread < nThreads; ++iThread) {
+    fx[0].alpha += fx[iThread].alpha;
+    fx[0].beta += fx[iThread].beta;
+  }
+
+  fx[0].alpha *= _exc;
+  F.alpha += fx[0].alpha;
+  fx[0].beta *= _exc;
+  F.beta += fx[0].beta;
 }
 
 template<>

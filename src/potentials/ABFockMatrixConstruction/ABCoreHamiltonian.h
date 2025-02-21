@@ -34,7 +34,7 @@ class Libint;
 
 /**
  * @class ABCoreHamiltonian ABCoreHamiltonian.h
- * @brief Calcualtes the outer diagonal block of the core hamiltonian for two basis sets A and B.
+ * @brief Calculates the outer diagonal block of the core hamiltonian for two basis sets A and B.
  *
  * The matrix entries will have the form\n
  * \f$ h^{AB}_{\nu\mu}=\langle \chi^A_\nu|-\frac{\nabla ^2}{2}-\sum_I \frac{Z_I}{|R_I-r|}| \chi^B_\mu \rangle \f$ ,\n

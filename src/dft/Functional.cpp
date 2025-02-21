@@ -20,9 +20,14 @@
 /* Include Class Header*/
 #include "dft/Functional.h"
 /* Include Serenity Internal Headers */
+#include "dft/functionals/BasicFunctionals.h"
+#include "dft/functionals/CompositeFunctionals.h"
+#include "io/FormattedOutputStream.h"
 #include "misc/SerenityError.h"
+#include "settings/Settings.h"
 /* Include Std and External Headers */
-#include <stdexcept>
+#include <array>
+#include <string>
 
 namespace Serenity {
 Functional::Functional(CompositeFunctionals::IMPLEMENTATIONS impl,
@@ -66,6 +71,66 @@ Functional::Functional(CompositeFunctionals::IMPLEMENTATIONS impl,
         break;
     }
   }
+}
+
+Functional::Functional(CUSTOMFUNCTIONAL cf)
+  : _impl(cf.impl),
+    _basicFunctionals(cf.basicFunctionals),
+    _mixingFactors(cf.mixingFactors),
+    _functionalClass(CompositeFunctionals::CLASSES::NONE),
+    _hfExchangeRatio(cf.hfExchangeRatio),
+    _hfCorrelRatio(cf.hfCorrelRatio),
+    _lrExchangeRatio(cf.lrExchangeRatio),
+    _mu(cf.mu),
+    _ssScaling(cf.ssScaling),
+    _osScaling(cf.osScaling) {
+  for (const auto& func : _basicFunctionals) {
+    switch (BasicFunctionals::getClass[(int)func]) {
+      case BasicFunctionals::CLASSES::NONE:
+        // nothing to be done here, NONE is default
+        break;
+      case BasicFunctionals::CLASSES::LDA:
+        if (_functionalClass == CompositeFunctionals::CLASSES::NONE)
+          _functionalClass = CompositeFunctionals::CLASSES::LDA;
+        break;
+      case BasicFunctionals::CLASSES::GGA:
+        if (_functionalClass == CompositeFunctionals::CLASSES::NONE || _functionalClass == CompositeFunctionals::CLASSES::LDA)
+          _functionalClass = CompositeFunctionals::CLASSES::GGA;
+        break;
+      case BasicFunctionals::CLASSES::META_GGA:
+        if (_functionalClass == CompositeFunctionals::CLASSES::NONE ||
+            _functionalClass == CompositeFunctionals::CLASSES::LDA || _functionalClass == CompositeFunctionals::CLASSES::GGA)
+          _functionalClass = CompositeFunctionals::CLASSES::META_GGA;
+        break;
+      case BasicFunctionals::CLASSES::MODELL:
+        _functionalClass = CompositeFunctionals::CLASSES::MODELL;
+        break;
+      default:
+        // Should not be reached. The BASIC_FUNCTIONALS should only work with the density and derivatives.
+        throw SerenityError("A BASIC_FUNCTIONAL with class that is not LDA, GGA or META_GGA is created.");
+        break;
+    }
+  }
+}
+
+void Functional::print() {
+  std::string outputString;
+  Options::resolve<std::vector<BasicFunctionals::BASIC_FUNCTIONALS>>(outputString, _basicFunctionals);
+  outputString = outputString.substr(1, outputString.size() - 2);
+  OutputControl::n.printf("%6s Basic functionals: %s \n", "", outputString.c_str());
+  OutputControl::n.printf("%6s Weights:%8s", "", "");
+  for (const double& factor : _mixingFactors) {
+    OutputControl::n.printf("%8.2f ", factor);
+  }
+  OutputControl::n.printf("\n%6s HF Exchange:           %13.3f\n", "", _hfExchangeRatio);
+  OutputControl::n.printf("%6s MP2 Correlation Ratio: %13.3f\n", "", _hfCorrelRatio);
+  OutputControl::n.printf("%6s LR Exchange:           %13.3f\n", "", _lrExchangeRatio);
+  OutputControl::n.printf("%6s Range-Separation Mu:   %13.3f\n", "", _mu);
+  OutputControl::n.printf("%6s Same-Spin Scaling:     %13.3f\n", "", _ssScaling);
+  OutputControl::n.printf("%6s Opposite-Spin Scaling: %13.3f\n", "", _osScaling);
+  std::string impl;
+  Options::resolve<CompositeFunctionals::IMPLEMENTATIONS>(impl, _impl);
+  OutputControl::n.printf("%6s Functional Library:    %13s\n", "", impl.c_str());
 }
 
 } /* namespace Serenity */

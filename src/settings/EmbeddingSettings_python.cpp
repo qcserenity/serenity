@@ -22,6 +22,7 @@
 #include "settings/EmbeddingSettings.h"
 /* Include Std and External Headers */
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace Serenity;
@@ -46,5 +47,13 @@ void export_EmbeddingSettings(py::module& spy) {
       .def_readwrite("truncateProjector", &EmbeddingSettings::truncateProjector)
       .def_readwrite("projecTruncThresh", &EmbeddingSettings::projecTruncThresh)
       .def_readwrite("fermiShift", &EmbeddingSettings::fermiShift)
-      .def_readwrite("calculateMP2Correction", &EmbeddingSettings::calculateMP2Correction);
+      .def_readwrite("calculateMP2Correction", &EmbeddingSettings::calculateMP2Correction)
+      .def_readwrite("customNaddXCFunc", &EmbeddingSettings::customNaddXCFunc)
+      .def_readwrite("customNaddKinFunc", &EmbeddingSettings::customNaddKinFunc)
+      .def_readwrite("customLongRangeNaddKinFunc", &EmbeddingSettings::customLongRangeNaddKinFunc)
+      .def_readwrite("loewdinOrder", &EmbeddingSettings::loewdinOrder)
+      .def_readwrite("loewdinWeights", &EmbeddingSettings::loewdinWeights)
+      .def_readwrite("embeddingModeList", &EmbeddingSettings::embeddingModeList)
+      .def_readwrite("naddXCFuncList", &EmbeddingSettings::naddXCFuncList)
+      .def_readwrite("naddKinFuncList", &EmbeddingSettings::naddKinFuncList);
 }

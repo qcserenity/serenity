@@ -33,18 +33,19 @@ namespace Serenity {
 /* Forward declarations */
 class AtomCenteredBasisController;
 class BasisController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectronicStructure;
 class Geometry;
 class GridController;
 class OneElectronIntegralController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
 class SystemController;
 enum class MOLECULAR_SURFACE_TYPES;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class ElectrostaticPotentialOnGridController;
 class MolecularSurfaceController;
+class ExternalChargeController;
 /**
  * @class System System.h
  * @brief Some kind of system on which can be worked, e.g. a molecule
@@ -75,6 +76,7 @@ class System {
  private:
   std::shared_ptr<Geometry> _geometry;
   std::unique_ptr<Eigen::MatrixXd> _pointChargeGradients;
+  std::shared_ptr<ExternalChargeController> _externalChargeController;
   Settings _settings;
   std::map<Options::BASIS_PURPOSES, std::shared_ptr<AtomCenteredBasisController>> _basisControllers;
   std::map<Options::GRID_PURPOSES, std::shared_ptr<GridController>> _gridControllers;

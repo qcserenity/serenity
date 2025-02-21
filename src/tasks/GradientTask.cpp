@@ -45,7 +45,6 @@ template<Options::SCF_MODES SCFMode>
 GradientTask<SCFMode>::GradientTask(const std::vector<std::shared_ptr<SystemController>>& activeSystems,
                                     const std::vector<std::shared_ptr<SystemController>>& passiveSystems)
   : _activeSystems(activeSystems), _passiveSystems(passiveSystems) {
-  assert(_activeSystems[0]);
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -53,6 +52,7 @@ GradientTask<SCFMode>::~GradientTask() = default;
 
 template<Options::SCF_MODES SCFMode>
 void GradientTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _activeSystems);
   takeTime("Gradient Calculation");
   bool info(iOOptions.printSCFCycleInfo);
   bool results(iOOptions.printSCFResults);
@@ -118,8 +118,6 @@ void GradientTask<SCFMode>::run() {
     /*
      * Initial FaT
      */
-    const auto oldPrintLevel = GLOBAL_PRINT_LEVEL;
-    GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
     FreezeAndThawTask<SCFMode> task(_activeSystems, _passiveSystems);
     task.settings.embedding = settings.embedding;
     if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
@@ -128,8 +126,9 @@ void GradientTask<SCFMode>::run() {
     task.settings.gridCutOff = settings.FDEgridCutOff;
     task.settings.maxCycles = settings.FaTmaxCycles;
     task.settings.convThresh = settings.FaTenergyConvThresh;
+    task.generalSettings.printLevel = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
+    task.settings.printResults = false;
     task.run();
-    GLOBAL_PRINT_LEVEL = oldPrintLevel;
     if (settings.gradType == Options::GRADIENT_TYPES::NUMERICAL) {
       NumericalGeomGradCalc<SCFMode> numGradCalc(settings.numGradStepSize);
       if (settings.print)

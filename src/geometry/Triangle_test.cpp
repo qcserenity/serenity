@@ -16,18 +16,13 @@
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-#include "Triangle.h"
-#include "gtest/gtest.h"
-/* Further includes */
-#include "Point.h"
+/* Include Serenity Internal Headers */
+#include "geometry/Triangle.h"
+#include "geometry/Point.h"
+/* Include Std and External Headers */
+#include <gtest/gtest.h>
 
 namespace Serenity {
-
-class TriangleTest : public ::testing::Test {
- protected:
-  static void TearDownTestCase() {
-  }
-};
 
 TEST(TriangleTest, simple) {
   Point p1(0, 0, 0);

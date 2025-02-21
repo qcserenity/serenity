@@ -36,9 +36,9 @@ ECPInteractionPotential<SCFMode>::ECPInteractionPotential(std::shared_ptr<System
                                                           std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensities,
                                                           std::shared_ptr<BasisController> basis)
   : Potential<SCFMode>(basis), _actSystem(actSystem), _actAtoms(actAtoms), _envAtoms(envAtoms), _envDensities(envDensities) {
-  // Build potential for interaction between active denstiy and env ECPs.
+  // Build potential for interaction between active density and env ECPs.
   _envActDensECP = std::make_shared<EffectiveCorePotential<SCFMode>>(actSystem, _envAtoms, this->_basis);
-  // Build potential for interaction between env denstiy and act ECPs.
+  // Build potential for interaction between env density and act ECPs.
   for (const auto& envDensity : _envDensities) {
     auto newECP = std::make_shared<EffectiveCorePotential<SCFMode>>(actSystem, _actAtoms,
                                                                     envDensity->getDensityMatrix().getBasisController());

@@ -93,8 +93,14 @@ void TSTask::run() {
     std::string hessianpath(_ts->getSystemPath() + _ts->getSystemName() + ".hess.h5");
     struct stat buffer;
     if (stat(hessianpath.c_str(), &buffer) != 0) {
-      HessianTask hessianTask({_ts});
-      hessianTask.run();
+      if (_ts->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
+        HessianTask<Options::SCF_MODES::RESTRICTED> hessianTask({_ts});
+        hessianTask.run();
+      }
+      else {
+        HessianTask<Options::SCF_MODES::UNRESTRICTED> hessianTask({_ts});
+        hessianTask.run();
+      }
       HDF5::Filepath path(hessianpath);
     }
 

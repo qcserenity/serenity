@@ -63,6 +63,7 @@ Eigen::MatrixXd AtomicDensityGuessCalculator::performAtomInitialGuess(Settings s
   settings.scf.allowNotConverged = true;
   settings.scf.degeneracyThreshold = 0.1;
   settings.dft.dispersion = Options::DFT_DISPERSION_CORRECTIONS::NONE;
+  settings.extCharges.externalChargesFile = "";
 
   std::vector<std::shared_ptr<Atom>> atomVec = {atom};
   auto atomGeom = std::make_shared<Geometry>(atomVec);

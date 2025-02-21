@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/NonlinearEigenvalueSolver.h"
-
 /* Include Serenity Internal Headers */
 #include "misc/WarningTracker.h"
 #include "parameters/Constants.h"

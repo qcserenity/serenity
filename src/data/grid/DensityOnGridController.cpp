@@ -26,9 +26,9 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-DensityOnGridController<T>::DensityOnGridController(std::shared_ptr<GridController> gridController,
-                                                    const unsigned int highestDerivative)
+template<Options::SCF_MODES SCFMode>
+DensityOnGridController<SCFMode>::DensityOnGridController(std::shared_ptr<GridController> gridController,
+                                                          const unsigned int highestDerivative)
   : _gridController(gridController),
     _highestDerivative(highestDerivative),
     _nGridPoints(gridController->getNGridPoints()),
@@ -37,8 +37,8 @@ DensityOnGridController<T>::DensityOnGridController(std::shared_ptr<GridControll
   _gridController->addSensitiveObject(this->_self);
 }
 
-template<Options::SCF_MODES T>
-unsigned int DensityOnGridController<T>::getNGridPoints() const {
+template<Options::SCF_MODES SCFMode>
+unsigned int DensityOnGridController<SCFMode>::getNGridPoints() const {
   return _gridController->getNGridPoints();
 }
 

@@ -43,15 +43,13 @@ struct HessianTaskSettings {
       printToFile(true),
       FaTmaxCycles(50),
       FaTenergyConvThresh(1.0e-6),
-      FaTexactNaddKin(false),
       FaTgridCutOff(-1.0) {
     embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
     embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
   }
   REFLECTABLE((Options::GRADIENT_TYPES)gradType, (Options::HESSIAN_TYPES)hessType, (double)numHessStepSize,
-              (double)numGradStepSize, (bool)printToFile, (int)FaTmaxCycles, (double)FaTenergyConvThresh,
-              (bool)FaTexactNaddKin, (double)FaTgridCutOff)
+              (double)numGradStepSize, (bool)printToFile, (int)FaTmaxCycles, (double)FaTenergyConvThresh, (double)FaTgridCutOff)
  public:
   EmbeddingSettings embedding;
 };
@@ -59,6 +57,7 @@ struct HessianTaskSettings {
  * @class  HessianTask HessianTask.h
  * @brief  Task to calculate cartesian Hessian of the system
  */
+template<Options::SCF_MODES SCFMode>
 class HessianTask : public Task {
  public:
   /**
@@ -69,7 +68,7 @@ class HessianTask : public Task {
   /**
    * @brief Default destructor.
    */
-  virtual ~HessianTask();
+  virtual ~HessianTask() = default;
   /**
    * @see Task
    */
@@ -83,10 +82,12 @@ class HessianTask : public Task {
   void visit(HessianTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.embedding.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
-    }
+    if (c.embedding.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in FreezeAndThawTaskSettings: " + blockname);
   }
   /**
    * @brief The settings/keywords for HessianTask:

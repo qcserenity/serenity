@@ -19,8 +19,7 @@
  */
 /* Include Class Header*/
 #include "integrals/wrappers/Libecpint.h"
-
-// Serenity includes
+/* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
 #include "basis/Basis.h" //Loop shells.
 #include "basis/BasisController.h"
@@ -32,7 +31,7 @@
 #include "integrals/Normalization.h"
 #include "misc/WarningTracker.h"
 #include "parameters/Constants.h"
-// External includes
+/* Include Std and External Headers */
 #include <array>
 #include <iostream>
 #include <libecpint/ecp.hpp>

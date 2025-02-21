@@ -51,7 +51,7 @@ enum class SCF_MODES;
  *
  * Ref.: P. de Silva, C. Corminboeuf,  J. Chem. Theory Comput. 2014, 10, 3745-3756
  */
-template<Options::SCF_MODES SPIN>
+template<Options::SCF_MODES SCFMode>
 class SEDD {
  public:
   /**

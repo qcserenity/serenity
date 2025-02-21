@@ -20,7 +20,9 @@
 
 /* Include Serenity Internal Headers */
 
+/* Include Serenity Internal Headers */
 #include "geometry/AtomTypeFactory.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/FDETask.h"
@@ -191,6 +193,7 @@ TEST_F(LRSCFTaskCC2Test, NAF_CC2) {
 TEST_F(LRSCFTaskCC2Test, uCC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::CC2;
   task.settings.cctrdens = true;
@@ -236,6 +239,7 @@ TEST_F(LRSCFTaskCC2Test, uCC2) {
 TEST_F(LRSCFTaskCC2Test, SCS_uCC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::CC2;
   task.settings.cctrdens = true;
@@ -390,6 +394,7 @@ TEST_F(LRSCFTaskCC2Test, SCS_CISDINF) {
 TEST_F(LRSCFTaskCC2Test, uCISDINF) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::CISDINF;
   task.settings.cctrdens = true;
@@ -423,6 +428,7 @@ TEST_F(LRSCFTaskCC2Test, uCISDINF) {
 TEST_F(LRSCFTaskCC2Test, SCS_uCISDINF) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::CISDINF;
   task.settings.cctrdens = true;
@@ -589,6 +595,7 @@ TEST_F(LRSCFTaskCC2Test, SCS_ADC2) {
 TEST_F(LRSCFTaskCC2Test, uADC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::ADC2;
   task.settings.cctrdens = true;
@@ -634,6 +641,7 @@ TEST_F(LRSCFTaskCC2Test, uADC2) {
 TEST_F(LRSCFTaskCC2Test, SCS_uADC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
   LRSCFTask<Options::SCF_MODES::UNRESTRICTED> task({sys});
   task.settings.method = Options::LR_METHOD::ADC2;
   task.settings.cctrdens = true;
@@ -763,28 +771,25 @@ TEST_F(LRSCFTaskCC2Test, CD_ADC2) {
   // Serenity Oct 2021
   auto compare = [&]() {
     // excitation energies
-    EXPECT_NEAR(results(0, 0), 0.145392634417, accuracy);
-    EXPECT_NEAR(results(1, 0), 0.231148508583, accuracy);
-    EXPECT_NEAR(results(2, 0), 0.267311190271, accuracy);
-    EXPECT_NEAR(results(3, 0), 0.271244311426, accuracy);
+    EXPECT_NEAR(results(0, 0), 0.145392596984, accuracy);
+    EXPECT_NEAR(results(1, 0), 0.231148491513, accuracy);
+    EXPECT_NEAR(results(2, 0), 0.267311180261, accuracy);
+    EXPECT_NEAR(results(3, 0), 0.271244285999, accuracy);
 
     // oscillator strengths length
     EXPECT_NEAR(results(0, 1), 0.000000000028, accuracy);
     EXPECT_NEAR(results(1, 1), 0.016385152217, accuracy);
     EXPECT_NEAR(results(2, 1), 0.045497875605, accuracy);
-    EXPECT_NEAR(results(3, 1), 0.027898270639, accuracy);
+    EXPECT_NEAR(results(3, 1), 0.027898292568, accuracy);
 
     // oscillator strengths velocity
     EXPECT_NEAR(results(0, 2), 0.000000000018, accuracy);
-    EXPECT_NEAR(results(1, 2), 0.017751993602, accuracy);
-    EXPECT_NEAR(results(2, 2), 0.061060653569, accuracy);
-    EXPECT_NEAR(results(3, 2), 0.041156043775, accuracy);
+    EXPECT_NEAR(results(1, 2), 0.017752006296, accuracy);
+    EXPECT_NEAR(results(2, 2), 0.061060664733, accuracy);
+    EXPECT_NEAR(results(3, 2), 0.041156098824, accuracy);
   };
 
   compare();
-
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
-  SystemController__TEST_SUPPLY::cleanUp();
 } /* ADC2 */
 
 /**
@@ -869,7 +874,7 @@ TEST_F(LRSCFTaskCC2Test, FDEc_CC2) {
 
 /**
  * @test
- * @brief Tests LRSCFTask: LT-ADC2 (exact embedding, full FDEc, triplet)
+ * @brief Tests LRSCFTask: ADC2 (exact embedding, full FDEc, triplet)
  */
 TEST_F(LRSCFTaskCC2Test, FDEc_ADC2) {
   // Just use the def2-SVP correlation basis as there is none for Pople bases.
@@ -982,6 +987,7 @@ TEST_F(LRSCFTaskCC2Test, LT_CC2) {
 TEST_F(LRSCFTaskCC2Test, LT_uCC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
 
   double accuracy = 1e-7;
 
@@ -1061,6 +1067,7 @@ TEST_F(LRSCFTaskCC2Test, LT_ADC2) {
 TEST_F(LRSCFTaskCC2Test, LT_uADC2) {
   sys->setSpin(1);
   sys->setCharge(1);
+  sys->setSCFMode(Options::SCF_MODES::UNRESTRICTED);
 
   double accuracy = 1e-7;
 
@@ -1096,6 +1103,7 @@ TEST_F(LRSCFTaskCC2Test, LT_uADC2) {
 } /* LT-uCC2 */
 
 TEST_F(LRSCFTaskCC2Test, Response_Properties_CC2) {
+  GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Diaziridine_HF_AUG_CC_PVDZ);
   auto settings = sys->getSettings();
 
@@ -1191,8 +1199,13 @@ TEST_F(LRSCFTaskCC2Test, Response_Properties_CC2) {
 
   // Compare excitation energies and oscillator/rotator strengths.
   EXPECT_LE((excitations_restricted - lrscf1.getTransitions()).cwiseAbs().maxCoeff(), 1e-6);
+  std::cout << "unrestricted reference is\n" << excitations_unrestricted << std::endl;
+  std::cout << "unres result in length gauge is\n" << lrscf2.getTransitions() << std::endl;
+  std::cout << "their difference is\n" << (excitations_unrestricted - lrscf4.getTransitions()).cwiseAbs() << std::endl;
   EXPECT_LE((excitations_unrestricted - lrscf2.getTransitions()).cwiseAbs().maxCoeff(), 1e-6);
   EXPECT_LE((excitations_restricted - lrscf3.getTransitions()).cwiseAbs().maxCoeff(), 1e-6);
+  std::cout << "unres result in velocity gauge is\n" << lrscf4.getTransitions() << std::endl;
+  std::cout << "their difference is\n" << (excitations_unrestricted - lrscf4.getTransitions()).cwiseAbs() << std::endl;
   EXPECT_LE((excitations_unrestricted - lrscf4.getTransitions()).cwiseAbs().maxCoeff(), 1e-6);
 
   // Compare undamped properties.
@@ -1274,7 +1287,7 @@ TEST_F(LRSCFTaskCC2Test, FDEc_CC2_Prop) {
   lrscfAB.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::PW91;
   lrscfAB.settings.embedding.naddKinFunc = CompositeFunctionals::KINFUNCTIONALS::PW91K;
   lrscfAB.run();
-  EXPECT_NEAR(1.0 / 3.0 * std::get<1>(lrscfAB.getProperties()[0]).trace(), 9.9702837943182132, 1e-8);
+  EXPECT_NEAR(1.0 / 3.0 * std::get<1>(lrscfAB.getProperties()[0]).trace(), 9.970283807714, 1e-8);
 
   // Sanity Check: Two times the same subsystem without any coupling
   // should yield two times the isolated polarizability
@@ -1286,7 +1299,7 @@ TEST_F(LRSCFTaskCC2Test, FDEc_CC2_Prop) {
   lrscfA.settings.frequencies = {0};
   lrscfA.settings.nEigen = 0;
   lrscfA.run();
-  EXPECT_NEAR(1.0 / 3.0 * std::get<1>(lrscfA.getProperties()[0]).trace(), 4.9764029420187654, 1e-8);
+  EXPECT_NEAR(1.0 / 3.0 * std::get<1>(lrscfA.getProperties()[0]).trace(), 4.976402942018, 1e-8);
 
   LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAA({act, act}, {});
   lrscfAA.settings.method = Options::LR_METHOD::CC2;

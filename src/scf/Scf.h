@@ -66,7 +66,8 @@ class Scf {
    */
   static void perform(const Settings& settings, std::shared_ptr<ElectronicStructure<SCFMode>> es,
                       std::shared_ptr<PotentialBundle<SCFMode>> potentials, bool allowNotConverged = false,
-                      std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr, unsigned int momCycles = 0);
+                      std::shared_ptr<SPMatrix<SCFMode>> momMatrix = nullptr, unsigned int momCycles = 0,
+                      bool useALMO = false);
 };
 
 } /* namespace Serenity */

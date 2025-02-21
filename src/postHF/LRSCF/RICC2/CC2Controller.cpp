@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/RICC2/CC2Controller.h"
-
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "energies/EnergyContributions.h"

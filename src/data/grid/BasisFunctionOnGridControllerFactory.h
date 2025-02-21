@@ -25,8 +25,6 @@
 
 namespace Serenity {
 /* Forward declarations */
-class Geometry;
-class GridControllerFactory;
 struct Settings;
 /**
  * @class BasisFunctionOnGridControllerFactory BasisFunctionOnGridControllerFactory.h

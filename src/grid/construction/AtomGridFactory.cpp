@@ -213,8 +213,8 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, std::vecto
   switch (radType) {
     case Options::RADIAL_GRID_TYPES::BECKE:
       /*
-       * BECKE gird with Chebyshev quadrature of the second kind according to
-       *     ref.: J. Comp. Chem. (2003) 24 p732-740
+       * BECKE grid with Chebyshev quadrature of the second kind according to
+       *     ref.: J. Comput. Chem. (2003) 24 p732-740
        *
        */
       for (unsigned int i = 1; i <= nRadial; i++) {
@@ -227,8 +227,8 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, std::vecto
 
     case Options::RADIAL_GRID_TYPES::HANDY:
       /*
-       *  HANDY grid accordning to
-       *     ref.: J. Comp. Chem. (2003) 24 p732-740
+       *  HANDY grid according to
+       *     ref.: J. Comput. Chem. (2003) 24 p732-740
        */
       for (unsigned int i = 1; i <= nRadial; i++) {
         double xi = i / (nRadial + 1.0);
@@ -239,7 +239,7 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, std::vecto
 
     case Options::RADIAL_GRID_TYPES::AHLRICHS:
       /*
-       * AHLRICHS gird with Chebyshev quadrature of the second kind according to
+       * AHLRICHS grid with Chebyshev quadrature of the second kind according to
        *     ref.: J. Chem. Phys. (1998) 108, 3226
        *
        *     Original paper:
@@ -262,8 +262,8 @@ void AtomGridFactory::_radialGrid(double alpha, unsigned int nRadial, std::vecto
 
     case Options::RADIAL_GRID_TYPES::KNOWLES:
       /*
-       * KNOWLES gird according to
-       *     ref.: J. Comp. Chem. (2003) 24 p732-740
+       * KNOWLES grid according to
+       *     ref.: J. Comput. Chem. (2003) 24 p732-740
        */
       for (unsigned int i = 1; i <= nRadial; i++) {
         double xi = i / (nRadial + 1.0);

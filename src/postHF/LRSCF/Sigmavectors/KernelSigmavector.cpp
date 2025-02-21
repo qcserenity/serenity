@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/KernelSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
@@ -45,6 +44,15 @@ KernelSigmavector<SCFMode>::KernelSigmavector(std::vector<std::shared_ptr<LRSCFC
     _blockAveThreshold(lrscf[0]->getLRSCFSettings().grid.blockAveThreshold),
     _isGGA(_kernel->isGGA()) {
   this->contractSupersystemDensity(lrscf);
+}
+
+template<Options::SCF_MODES SCFMode>
+KernelSigmavector<SCFMode>::KernelSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf,
+                                              std::shared_ptr<Kernel<SCFMode>> kernel)
+  : Sigmavector<SCFMode>(lrscf),
+    _kernel(kernel),
+    _blockAveThreshold(lrscf[0]->getLRSCFSettings().grid.blockAveThreshold),
+    _isGGA(_kernel->isGGA()) {
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -122,7 +130,7 @@ KernelSigmavector<SCFMode>::calcF(unsigned I, unsigned J,
 
   // This is needed for coupling pattern where the same system is with coupled
   // and uncoupled vectors. The Kernel has only system information while I and J are
-  // related to the lrscf Controller, but the systems behind I and J could be indentical
+  // related to the lrscf Controller, but the systems behind I and J could be identical
   for (unsigned int ilrscf = 0; ilrscf < this->_lrscf.size(); ilrscf++) {
     if (this->_lrscf[ilrscf]->getSys() == this->_lrscf[I]->getSys()) {
       I = ilrscf;

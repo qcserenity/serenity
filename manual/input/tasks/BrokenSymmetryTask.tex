@@ -1,0 +1,103 @@
+\subsection{Task: Broken--Symmetry\label{task:brokensymmetry}}
+The Broken--Symmetry task performs broken--symmetry (BS) calculations using KS-DFT
+or sDFT. During a BS calculation, the phenomenological parameter $J_\text{AB}$ is calculated
+which describes the magnetic interaction between two spin sites. The corresponding 
+Heisenberg-Dirac-van Vleck (HDvV) Hamiltonian is:
+\begin{equation}
+	\mathcal{H}_\text{HDvV} = -2J_\text{AB} \hat{S}_\text{A} \hat{S}_\text{B}.
+\end{equation}
+Here, $\hat{S}$ is the spin localized on spin site A or B. A positive value of $J_{AB}$ describes
+a ferromagnetically coupled system while a negative value specifies an antiferromagnetic coupling.
+The BS state in a regular BS (KS)-DFT calculation is constructed from the high spin (HS) 
+state via the Localized Natural Orbitals (LNO) approach\cite{shoji2014}. In case of sDFT
+calculations the BS state is constructed directly from the subsystems, see also Ref. \cite{massolle2020}.
+
+Several formalisms for the calculation of $J_{AB}$ were proposed and are implemented. In the
+following they will be called $J(1)_{AB}$\cite{ginsberg1980, noodleman1981, noodleman1986},
+$J(2)_{AB}$\cite{bencini1986}, $J(3)_{AB}$\cite{yamaguchi1986, soda2000} and $J(4)_{AB}$\cite{noodleman1981}. The corresponding equations are:
+\begin{align}
+	J(1)_{AB} &= \frac{E_\text{BS}-E_\text{HS}}{S_\text{max}^2}\\
+	J(2)_{AB} &= \frac{E_\text{BS}-E_\text{HS}}{S_\text{max} (S_\text{max} +1)}\\
+	J(3)_{AB} &= \frac{E_\text{BS}-E_\text{HS}}{\langle \hat{S}^2\rangle_\text{HS} - \langle \hat{S}^2\rangle_\text{BS}}\\
+	J(4)_{AB} &= \frac{E_\text{BS}-E_\text{HS}}{1 + S_\text{AB}^2},
+\end{align}
+with $E_\text{BS}$ and $E_\text{HS}$ as the energy of the BS or HS state, $S_\text{max}$
+the spin of the HS state, $\langle \hat{S}^2\rangle$ the $S^2$ expectation value and $S_\text{AB}$ the overlap
+of the magnetic orbitals. $J(1)_{AB}$ describes the weak and $J(2)_{AB}$ the
+strong interaction limit. $J(3)_{AB}$ and $J(4)_{AB}$ describe the whole interaction range.
+
+\subsubsection{Example BS-DFT Input}
+\begin{lstlisting}
++task BS
+  act TTTAdimer
+  nA 1
+  nB 1
+-task
+\end{lstlisting}
+
+\subsubsection{Example BS-sDFT Input}
+\begin{lstlisting}
++task BS
+  act TTTAmon1
+  act TTTAmon2
+  embeddingScheme FDE
+-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item [\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{BrokenSymmetryTask} and \ttt{BS}.
+	\item [\texttt{activeSystems}]\hfill \\
+	The active system is the high spin systems of the broken--symmetry calculation. It can
+	be defined as one super system or two subsystems can be provided which resemble the two
+	spin sites.
+	\item [\texttt{environmentSystems}]\hfill \\
+	If specified, the environment system is the broken--symmetry system which is loaded
+	from disk. This can be used to try a different energy evaluation without performing a 
+	new scf.
+	\item[\texttt{sub-blocks}]\hfill \\
+	The embedding (\ttt{emb}) and PCM (\ttt{pcm}) settings are added via sub-block 
+	in the task settings. Prominent
+	settings in the embedding block that are relevant for this task, and their defaults are
+	:\ttt{naddXCFunc=PW91}, \ttt{embeddingMode=NADD\_FUNC}.
+\subsubsection{BS-DFT Keywords}
+	\item [\texttt{nA}]\hfill \\
+	Number of unpaired electrons on the first spin site. By default (\ttt{1}).
+	\item [\texttt{nB}]\hfill \\
+	Number of unpaired electrons on the second spin site. By default (\ttt{1}).
+\subsubsection{Advanced BS-DFT Keywords}
+	\item [\texttt{noThreshold}]\hfill \\
+	Threshold for the assignment of the NO orbitals as SONO, UONO and DONO. By default (\ttt{0.2}).
+	\item [\texttt{locType}]\hfill \\
+	The localization algorithm applied for localizing the SONOs. By default the
+	Pipek--Mezey algorithm is taken (\ttt{PIPEK\_MEZEY}).
+\subsubsection{BS-sDFT Keywords}
+	\item [\texttt{embeddingScheme}]\hfill \\
+	The embedding scheme used for the sDFT calculation. Possible options are: \\
+    \ttt{NONE}: A standard BS-DFT calculation is performed where the two subsystems 
+    represent one spin site.\\
+	\ttt{ISOLATED}. The isolated (spin) densities (without any spin polarization!) of the 
+	subsystems are used for an FDE like energy evaluation.\\ 
+	\ttt{FDE}. A parallel FDE task is performed for the high spin and broken--symmetry
+	system.\\ 
+	\ttt{FAT} A FaT task is performed for the high spin and broken--symmetry
+	system.\\
+	By default: \ttt{NONE}.
+	\item [\texttt{evalTsOrtho}]\hfill \\
+	If enabled, the non-additive kinetic energy is evaluated from orthogonalized subsystem 
+	orbitals. If \ttt{orthogonalizationScheme = NONE} the density matrix is corrected for
+	the non-orthogonality of the MOs, use \ttt{evalAllOrtho} with \ttt{orthogonalizationScheme = NONE} 
+	if $T_s^\text{nadd}=0$ should be calculated. By default: \ttt{False}.
+	\item [\texttt{evalAllOrtho}]\hfill \\
+	If enabled, all energy contributions are evaluated from orthogonalized subsystem orbitals.
+	By default: \ttt{False}.
+	\item [\texttt{orthogonalizationScheme}]\hfill \\ The orthogonalization scheme used
+	for the construction of orthogonal supersystem orbitals if \ttt{evalTsOrtho} or \ttt{evalAllOrtho} are enabled.
+	By default: \ttt{LOEWDIN}.
+	\item [\texttt{maxCycles}]\hfill \\ The maximum number of FaT iterations.
+	By default: \ttt{50}.
+	\item [\texttt{convThresh}]\hfill \\ Convergence criterion for the absolute change
+	of the density matrices w.r.t FaT cycles.
+	By default: \ttt{1.0e-6}.
+\end{description}

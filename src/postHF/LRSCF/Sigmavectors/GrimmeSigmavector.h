@@ -24,7 +24,6 @@
 /* Include Serenity Internal Headers */
 #include "postHF/LRSCF/Sigmavectors/Sigmavector.h"
 #include "settings/ElectronicStructureOptions.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>

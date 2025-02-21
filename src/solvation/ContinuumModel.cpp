@@ -24,14 +24,14 @@
 #include "data/grid/CoulombPotentialOnGridCalculator.h"       //calculateElectronNuclei(), calculateElectronElectron()
 #include "data/grid/ElectrostaticPotentialOnGridController.h" //getPotential().
 #include "data/matrices/DensityMatrixController.h"            //getDensityMatrix()
-#include "geometry/Geometry.h"                                //getAtoms()
 #include "geometry/MolecularSurfaceController.h"              //Cavity information.
 #include "io/FormattedOutputStream.h"                         //Check print level.
 #include "io/FormattedOutputStream.h"                         //Filtered output streams.
-#include "math/Matrix.h"                                      //Needed for getCoordinates of geometry.
-#include "misc/Timing.h"                                      //Timings.
-#include "settings/PCMSettings.h"                             //PCMSettings
-#include "solvation/Solvents.h"                               //Tabulated solvent data.
+#include "io/HDF5.h"
+#include "math/Matrix.h"          //Needed for getCoordinates of geometry.
+#include "misc/Timing.h"          //Timings.
+#include "settings/PCMSettings.h" //PCMSettings
+#include "solvation/Solvents.h"   //Tabulated solvent data.
 /* Include Std and External Headers */
 #include <Eigen/Dense> //VectorXd
 #include <cmath>       //M_PI
@@ -81,7 +81,6 @@ double ContinuumModel<SCFMode>::getTotalPCMEnergy() {
 template<Options::SCF_MODES SCFMode>
 double ContinuumModel<SCFMode>::calculateEnergy(const GridPotential<RESTRICTED>& pcmCharges,
                                                 const GridPotential<RESTRICTED>& potential) {
-  auto gridController = pcmCharges.getGridController();
   double energy = 0.5 * (pcmCharges.array() * potential.array()).sum();
   return energy;
 }
@@ -91,24 +90,43 @@ const GridPotential<RESTRICTED>& ContinuumModel<SCFMode>::getPCMCharges() {
   Timings::takeTime("Implicit Solvation (PCM)       ");
   Timings::takeTime(" Tech. -    PCM Surface Charges");
   if (!_pcmCharges) {
-    if (!_K)
-      decomposeCavityMatrix();
     _pcmCharges = std::make_shared<GridPotential<RESTRICTED>>(_molecularSurface);
-    if (_environmentPotentials.size() > 0) {
-      GridPotential<RESTRICTED> totalElectrostaticPotential = _activePotential->getPotential();
-      for (auto envElecPot : _environmentPotentials)
-        totalElectrostaticPotential += envElecPot->getPotential();
-      Eigen::setNbThreads(0);
-      *_pcmCharges += Eigen::VectorXd(-*_K * totalElectrostaticPotential);
+    if (_molecularSurface->isLoaded()) {
+      Eigen::VectorXd loadedPCMCharges;
+      std::string filename = _molecularSurface->getChargesPath() + "/PCMChargesData.h5";
+      HDF5::H5File file(filename, H5F_ACC_RDONLY);
+      HDF5::dataset_exists(file, "pcmcharges");
+      HDF5::load(file, "pcmcharges", loadedPCMCharges);
+      file.close();
+      *_pcmCharges += loadedPCMCharges;
     }
     else {
-      Eigen::setNbThreads(0);
-      *_pcmCharges += Eigen::VectorXd(-*_K * _activePotential->getPotential());
+      if (!_K)
+        decomposeCavityMatrix();
+      if (_environmentPotentials.size() > 0) {
+        GridPotential<RESTRICTED> totalElectrostaticPotential = _activePotential->getPotential();
+        for (auto envElecPot : _environmentPotentials)
+          totalElectrostaticPotential += envElecPot->getPotential();
+        Eigen::setNbThreads(0);
+        *_pcmCharges += Eigen::VectorXd(-*_K * totalElectrostaticPotential);
+      }
+      else {
+        Eigen::setNbThreads(0);
+        *_pcmCharges += Eigen::VectorXd(-*_K * _activePotential->getPotential());
+      }
+      // Scaling for CPCM(COSMO)
+      if (_settings.solverType == Options::PCM_SOLVER_TYPES::CPCM) {
+        double scaling = this->getCPCMScaling();
+        *_pcmCharges *= scaling;
+      }
     }
-    // Scaling for CPCM(COSMO)
-    if (_settings.solverType == Options::PCM_SOLVER_TYPES::CPCM) {
-      double scaling = this->getCPCMScaling();
-      *_pcmCharges *= scaling;
+    // optionally saving charges to file. This happens every scf cycle for now.
+    //  TODO: only output this quantity once the scf is converged
+    if (_settings.saveCharges == true) {
+      std::string filename = _molecularSurface->getChargesPath() + "/PCMChargesData.h5";
+      HDF5::H5File file(filename, H5F_ACC_TRUNC);
+      HDF5::save(file, "pcmcharges", *_pcmCharges);
+      file.close();
     }
   }
   Timings::timeTaken(" Tech. -    PCM Surface Charges");
@@ -118,7 +136,7 @@ const GridPotential<RESTRICTED>& ContinuumModel<SCFMode>::getPCMCharges() {
 
 template<Options::SCF_MODES SCFMode>
 void ContinuumModel<SCFMode>::decomposeCavityMatrix() {
-  Timings::takeTime(" Tech. -      PCM Cavity Matirx");
+  Timings::takeTime(" Tech. -      PCM Cavity Matrix");
   if (_settings.solverType == Options::PCM_SOLVER_TYPES::CPCM) {
     _K = std::make_shared<Eigen::MatrixXd>(_molecularSurface->getMatrixSinv());
   }
@@ -143,7 +161,7 @@ void ContinuumModel<SCFMode>::decomposeCavityMatrix() {
   else {
     throw SerenityError("The PCM Solver chosen is not implemented yet. Please use CPCM or IEFPCM.");
   }
-  Timings::timeTaken(" Tech. -      PCM Cavity Matirx");
+  Timings::timeTaken(" Tech. -      PCM Cavity Matrix");
 }
 
 template<Options::SCF_MODES SCFMode>

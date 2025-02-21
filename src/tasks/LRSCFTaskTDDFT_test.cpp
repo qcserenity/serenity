@@ -567,6 +567,60 @@ TEST_F(LRSCFTaskTDDFTTest, DoubleHybridTDDFT) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+TEST_F(LRSCFTaskTDDFTTest, DoubleHybridTDDFT_CustomFunctional) {
+  auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
+  Settings settings = sys->getSettings();
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                          BasicFunctionals::BASIC_FUNCTIONALS::C_LYP};
+  settings.customFunc.mixingFactors = {0.47, 0.73};
+  settings.customFunc.hfExchangeRatio = 0.53;
+  settings.customFunc.hfCorrelRatio = 0.27;
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  settings.basis.label = "DEF2-SVP";
+  sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ, settings);
+
+  // TDDFT
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDDFT({sys});
+  lrscfTDDFT.settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                     BasicFunctionals::BASIC_FUNCTIONALS::C_LYP};
+  lrscfTDDFT.settings.customFunc.mixingFactors = {0.47, 0.73};
+  lrscfTDDFT.settings.customFunc.hfExchangeRatio = 0.53;
+  lrscfTDDFT.settings.customFunc.hfCorrelRatio = 0.27;
+  lrscfTDDFT.settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfTDDFT.run();
+
+  auto tddft = lrscfTDDFT.getTransitions();
+
+  Eigen::MatrixXd refTDDFT(4, 6);
+  refTDDFT.row(0) << 0.147861075, 0.000000000, 0.000000002, 0.000000169, 0.000000259, 0.000000093;
+  refTDDFT.row(1) << 0.338190095, 0.001289817, 0.004528878, 0.000001611, 0.000001609, 0.000000859;
+  refTDDFT.row(2) << 0.303410187, 0.149607420, 0.176382875, -0.000001683, -0.000001913, -0.000001762;
+  refTDDFT.row(3) << 0.361563767, 0.076219956, 0.053208231, -0.000000174, -0.000000146, -0.000000174;
+  EXPECT_LE((refTDDFT - tddft).cwiseAbs().maxCoeff(), 1e-6);
+
+  // TDA
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfTDA({sys});
+  lrscfTDA.settings.method = Options::LR_METHOD::TDA;
+  lrscfTDA.settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                   BasicFunctionals::BASIC_FUNCTIONALS::C_LYP};
+  lrscfTDA.settings.customFunc.mixingFactors = {0.47, 0.73};
+  lrscfTDA.settings.customFunc.hfExchangeRatio = 0.53;
+  lrscfTDA.settings.customFunc.hfCorrelRatio = 0.27;
+  lrscfTDA.settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfTDA.run();
+  auto tda = lrscfTDA.getTransitions();
+
+  Eigen::MatrixXd refTDA(4, 6);
+  refTDA.row(0) << 0.149730729, 0.000000000, 0.000000002, 0.000000185, 0.000000049, 0.000000022;
+  refTDA.row(1) << 0.303456079, 0.163986142, 0.133651532, 0.000000665, 0.000000537, 0.000000595;
+  refTDA.row(2) << 0.342005361, 0.001887603, 0.000000380, -0.000000723, -0.000000556, -0.000039189;
+  refTDA.row(3) << 0.369321362, 0.044015294, 0.008240868, -0.000000159, 0.000000069, 0.000000159;
+  EXPECT_LE((refTDA - tda).cwiseAbs().maxCoeff(), 1e-6);
+
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(sys);
+}
+
 TEST_F(LRSCFTaskTDDFTTest, TDDFT_SmallLargeGrid) {
   auto sys = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Formaldehyde_HF_AUG_CC_PVDZ);
   Settings settings = sys->getSettings();

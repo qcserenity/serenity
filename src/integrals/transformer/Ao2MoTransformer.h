@@ -32,7 +32,7 @@ class BasisController;
 /**
  * @class Ao2MoTransformer Ao2MoTransformer.h
  * @brief In quantum chemistry, in order to perform calculations, we usually expand the
- *        molecular orbtials (MOs) \f$ \left\{ \phi \right\} \f$ in a finite set of atomic orbitals (AOs)
+ *        molecular orbitals (MOs) \f$ \left\{ \phi \right\} \f$ in a finite set of atomic orbitals (AOs)
  *        \f$ \left\{ \chi \right\} \f$
  *        \f[
  *          \phi_i = \sum_\mu c_{i\mu} \chi_\mu \;.

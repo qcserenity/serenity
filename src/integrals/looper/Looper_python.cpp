@@ -74,7 +74,7 @@ void export_Looper(py::module& spy) {
   py::class_<TwoElecFourCenterIntLooper>(spy, "TwoElecFourCenterIntLooper",
                                          R"(A looper for all 2e-4c integrals of a given basis, uses symmetry.
    Due to problems with the GIL this class does not run in parallel,
-   instead it automiatically runs on a single core, no further user input needed.
+   instead it automatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
       .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, double, double>(),
            R"(The constructor.
@@ -109,7 +109,7 @@ void export_Looper(py::module& spy) {
   py::class_<ExchangeInteractionIntLooper>(spy, "ExchangeInteractionIntLooper",
                                            R"(A looper for all 2e-4c exchange-like ordered integrals (i_A j_B|k_A l_B) of two given bases (A,B).
    Due to problems with the GIL this class does not run in parallel,
-   instead it automiatically runs on a single core, no further user input needed.
+   instead it automatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
       .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
            R"(The constructor.
@@ -146,7 +146,7 @@ void export_Looper(py::module& spy) {
                                           R"(A looper for all 2e-4c Coulomb-like ordered integrals (i_A j_A|k_B l_B) of two given bases (A,B), 
    this looper uses the underlying symmetry.
    Due to problems with the GIL this class does not run in parallel,
-   instead it automiatically runs on a single core, no further user input needed.
+   instead it automatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
       .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>, std::shared_ptr<BasisController>, double>(),
            R"(The constructor.
@@ -183,7 +183,7 @@ void export_Looper(py::module& spy) {
                                           R"(A looper for all 2e-4c Coulomb-like ordered integrals (i_A j_A|k_B) of two given bases (A,B), 
    this looper uses the underlying symmetry.
    Due to problems with the GIL this class does not run in parallel,
-   instead it automiatically runs on a single core, no further user input needed.
+   instead it automatically runs on a single core, no further user input needed.
    In the future this issue should, however, be resolved.)")
       .def(py::init<LIBINT_OPERATOR, const unsigned int, std::shared_ptr<BasisController>,
                     std::shared_ptr<BasisController>, double, std::pair<unsigned int, unsigned int>>(),

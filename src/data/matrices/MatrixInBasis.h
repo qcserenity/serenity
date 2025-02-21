@@ -131,7 +131,7 @@ class MatrixInBasis<Options::SCF_MODES::RESTRICTED> : public SPMatrix<Options::S
   std::shared_ptr<BasisController> _basisController;
 
   /*
-   * Operators explicitly needed in order not to loose
+   * Operators explicitly needed in order not to lose
    * the BasisController while doing basic operations
    * with the underlying Eigen3 matrices.
    *
@@ -200,13 +200,20 @@ class MatrixInBasis<Options::SCF_MODES::RESTRICTED> : public SPMatrix<Options::S
     result.Base::operator=(this->Base::operator*(y));
     return result;
   }
+  inline MatrixInBasis<RESTRICTED> operator*(const double& y) const {
+    MatrixInBasis<RESTRICTED> result(_basisController);
+    result.Base::operator=(this->Base::operator*(y));
+    return result;
+  }
 
-  inline Eigen::MatrixXd operator+(const Eigen::MatrixXd& y) const {
+  template<typename OtherDerived>
+  inline Eigen::MatrixXd operator+(const Eigen::MatrixBase<OtherDerived>& y) const {
     Eigen::MatrixXd result((Eigen::MatrixXd)(*this));
     result += y;
     return result;
   }
-  inline Eigen::MatrixXd operator-(const Eigen::MatrixXd& y) const {
+  template<typename OtherDerived>
+  inline Eigen::MatrixXd operator-(const Eigen::MatrixBase<OtherDerived>& y) const {
     Eigen::MatrixXd result((Eigen::MatrixXd)(*this));
     result -= y;
     return result;
@@ -245,7 +252,7 @@ class MatrixInBasis<Options::SCF_MODES::RESTRICTED> : public SPMatrix<Options::S
     stream << Eigen::MatrixXd(matrix);
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
   /// @brief The type
   typedef MatrixInBasis<Options::SCF_MODES::RESTRICTED> type;
@@ -454,7 +461,7 @@ class MatrixInBasis<Options::SCF_MODES::UNRESTRICTED> : public SPMatrix<Options:
     stream << matrix.alpha << "\n \n" << matrix.beta;
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::UNRESTRICTED;
   /// @brief The type
   typedef MatrixInBasis<Options::SCF_MODES::UNRESTRICTED> type;

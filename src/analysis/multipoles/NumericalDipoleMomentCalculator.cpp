@@ -27,7 +27,6 @@
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
 #include "geometry/Point.h"
-#include "grid/GridControllerFactory.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -43,7 +42,6 @@ Eigen::Vector3d NumericalDipoleMomentCalculator::calculateDipoleMoment(std::shar
   auto geometry = system->getGeometry();
 
   // density on grid
-  // TODO make an electron density on the integration grid available from a systemController
   auto basisFunctionOnGridController = BasisFunctionOnGridControllerFactory::produce(
       system->getSettings(), system->getBasisController(), system->getGridController());
   auto densityOnGridCalculator = std::make_shared<DensityOnGridCalculator<SCFMode>>(

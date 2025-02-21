@@ -30,7 +30,9 @@ LBFGS::LBFGS(Eigen::VectorXd& parameters) : Optimizer(parameters) {
 }
 
 void LBFGS::optimize(
-    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
+    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+    std::shared_ptr<unsigned int> nRejected) {
+  (void)nRejected;
   /* maxm might need some tweaking */
   constexpr unsigned int maxm = 50;
 

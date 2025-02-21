@@ -23,6 +23,7 @@
 
 /* Include Std and External Headers */
 #include <memory>
+#include <string>
 
 namespace Serenity {
 

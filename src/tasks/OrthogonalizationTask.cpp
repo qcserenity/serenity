@@ -61,6 +61,7 @@ OrthogonalizationTask<SCFMode>::OrthogonalizationTask(std::vector<std::shared_pt
 
 template<Options::SCF_MODES SCFMode>
 void OrthogonalizationTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _systemController, {_superSystem});
   printSectionTitle("Orthogonalize Orbitals");
   auto coeff = _superSystem->getActiveOrbitalController<SCFMode>()->getCoefficients();
   auto nOcc = _superSystem->getNOccupiedOrbitals<SCFMode>();

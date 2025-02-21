@@ -21,6 +21,7 @@
 #include "tasks/ScfTask.h"                       //To be tested.
 #include "data/ElectronicStructure.h"            //GetEnergy.
 #include "geometry/MolecularSurfaceController.h" //Cavity energy.
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h" //GetElectronicStructure.
 #include "testsupply/SystemController__TEST_SUPPLY.h"
@@ -304,6 +305,50 @@ TEST_F(ScfTaskTest, rohf) {
   ScfTask<UNRESTRICTED> suhf(sys);
   suhf.run();
   EXPECT_NEAR(-113.6843639808, sys->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-6);
+}
+
+TEST_F(ScfTaskTest, CompositeVsCustomFunctional) {
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_311G_3A, true);
+
+  ScfTask<Options::SCF_MODES::UNRESTRICTED> scf(systemController);
+  scf.run();
+
+  Settings settings;
+  settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
+  settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::B3LYP;
+  settings.scfMode = Options::SCF_MODES::UNRESTRICTED;
+  settings.basis.label = "6-311G";
+#if defined SERENITY_PREFER_XCFUN && defined SERENITY_USE_XCFUN && defined SERENITY_USE_LIBXC
+  settings.customFunc.basicFunctionals = {
+      BasicFunctionals::BASIC_FUNCTIONALS::X_SLATER, BasicFunctionals::BASIC_FUNCTIONALS::X_B88_CORR,
+      BasicFunctionals::BASIC_FUNCTIONALS::C_LYP, BasicFunctionals::BASIC_FUNCTIONALS::C_VWN};
+  settings.customFunc.mixingFactors = {0.80, 0.72, 0.81, 0.19};
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::XCFUN;
+#elif defined SERENITY_USE_XCFUN && defined SERENITY_USE_LIBXC
+  settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::XC_B3LYP5};
+  settings.customFunc.mixingFactors = {1.0};
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::LIBXC;
+#elif defined SERENITY_USE_XCFUN
+  settings.customFunc.basicFunctionals = {
+      BasicFunctionals::BASIC_FUNCTIONALS::X_SLATER, BasicFunctionals::BASIC_FUNCTIONALS::X_B88_CORR,
+      BasicFunctionals::BASIC_FUNCTIONALS::C_LYP, BasicFunctionals::BASIC_FUNCTIONALS::C_VWN};
+  settings.customFunc.mixingFactors = {0.80, 0.72, 0.81, 0.19};
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::XCFUN;
+#else
+  settings.customFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::XC_B3LYP5};
+  settings.customFunc.mixingFactors = {1.0};
+  settings.customFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::LIBXC;
+#endif
+  settings.customFunc.hfExchangeRatio = 0.2;
+  auto systemController2 =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_311G_3A, settings, 0, 2);
+
+  ScfTask<Options::SCF_MODES::UNRESTRICTED> scf2(systemController2);
+  scf2.run();
+
+  EXPECT_NEAR(systemController->getElectronicStructure<UNRESTRICTED>()->getEnergy(),
+              systemController2->getElectronicStructure<UNRESTRICTED>()->getEnergy(), 1e-8);
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systemController2);
 }
 
 } /*namespace Serenity*/

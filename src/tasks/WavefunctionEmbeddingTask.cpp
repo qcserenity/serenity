@@ -17,8 +17,9 @@
  *  Public License along with Serenity.
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
-/* Include Serenity Internal Headers */
+/* Include Class Header*/
 #include "tasks/WavefunctionEmbeddingTask.h"
+/* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/OrbitalPair.h"

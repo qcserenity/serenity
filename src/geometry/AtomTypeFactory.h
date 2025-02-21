@@ -55,7 +55,7 @@ class AtomTypeFactory {
  private:
   /*
    * A map of all atom types created in the past, to ensure that none
-   *   of them is build twice.
+   *   of them are built twice.
    */
   typedef std::map<std::string, std::shared_ptr<const AtomType>> AtomTypeMap;
   static AtomTypeMap _atomTypes;

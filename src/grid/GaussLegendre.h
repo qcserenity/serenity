@@ -20,6 +20,7 @@
 #ifndef GAUSSLEGENDRE_H
 #define GAUSSLEGENDRE_H
 
+/* Include Serenity Internal Headers */
 #include "misc/Timing.h"
 /* Include Std and External Headers */
 #include <Eigen/Dense>

@@ -1,0 +1,19 @@
+\subsection{Task: Export Grid}\label{sec:tasks:ExportGridTask}
+This task creates and exports a grid of a given system with weights in text form.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task EXPORTGRIDTASK
+  act water
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{EXPORTGRIDTASK}, \ttt{GRIDTASK}, and \ttt{GRID}.
+\item [\texttt{activeSystems}]\hfill \\
+  The system whose grid is to be exported.
+\item [\texttt{withAtomInfo}]\hfill \\
+  Switch to print an additional column referencing the
+atom each point belongs to (Beck/Voronoi Cell). \ttt{false} by default.
+\end{description}

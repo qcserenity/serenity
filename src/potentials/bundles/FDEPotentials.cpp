@@ -92,6 +92,36 @@ Eigen::MatrixXd FDEPotentials<SCFMode>::getGradients() {
 }
 
 template<Options::SCF_MODES SCFMode>
+std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentials<SCFMode>::getActiveSystemPotentials() {
+  return _activeSystemPot;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentials<SCFMode>::getESIPotentials() {
+  return _esiPot;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<std::shared_ptr<NAddFuncPotential<SCFMode>>> FDEPotentials<SCFMode>::getNaddXCPotentials() {
+  return _naddXC;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::vector<std::shared_ptr<Potential<SCFMode>>> FDEPotentials<SCFMode>::getNaddKinPotentials() {
+  return _naddKin;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Potential<SCFMode>> FDEPotentials<SCFMode>::getECPInteractionPotential() {
+  return _ecp;
+}
+
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<Potential<SCFMode>> FDEPotentials<SCFMode>::getPCMPotential() {
+  return _pcm;
+}
+
+template<Options::SCF_MODES SCFMode>
 Eigen::MatrixXd FDEPotentials<SCFMode>::getPointChargeGradients() {
   return _activeSystemPot->getPointChargeGradients();
 }

@@ -58,7 +58,7 @@ class BasisFunctionMapper {
    *                  B   0  0  0  0  0\n
    *                  A4  0  0  0  1  0\n\n
    * This matrix has the property that multiplying it to a matrix of type basisA x something
-   * extracts the rows mapped to the basis B. For an example application @see HuzinagaFDEProjectionPotential.cpp
+   * extracts the rows mapped to the basis B. For an example application @see HuzinagaProjectionPotential.cpp
    * @param basisControllerB The basis controller to which A is compared to.
    * @return
    */

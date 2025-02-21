@@ -18,12 +18,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "integrals/MO3CenterIntegralController.h"              //To be tested.
 #include "basis/BasisController.h"                              //Number of aux. basis functions.
 #include "postHF/LocalCorrelation/LocalCorrelationController.h" //Easy construction of the MO3CenterIntegralController.
 #include "system/SystemController.h"                            //Test systems.
 #include "testsupply/SystemController__TEST_SUPPLY.h"           //Test systems.
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Test framework.
 namespace Serenity {

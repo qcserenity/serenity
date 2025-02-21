@@ -76,7 +76,7 @@ class InitialGuessCalculator<Options::SCF_MODES::UNRESTRICTED> {
 
  protected:
   /**
-   * @brief Introduces an asymetry between the alpha and beta orbitals.
+   * @brief Introduces an asymmetry between the alpha and beta orbitals.
    *
    * In unrestricted calculations one can quickly end up with the same result as in a restricted
    * calculation in case the number of alpha and beta electrons is the same. If the alpha and beta

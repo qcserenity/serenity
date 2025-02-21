@@ -22,6 +22,9 @@
 #include "settings/BasisOptions.h"
 /* Include Serenity Internal Headers */
 #include "settings/Options.h"
+/* Include Std and External Headers */
+#include <map>
+#include <utility>
 
 namespace Serenity {
 namespace Options {

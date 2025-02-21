@@ -31,36 +31,72 @@
 #include "misc/WarningTracker.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-
 /* Fock matrix construction */
 #include "potentials/BUReconstructionPotential.h"
 #include "potentials/ECPInteractionPotential.h"
 #include "potentials/HoffmannProjectionPotential.h"
-#include "potentials/HuzinagaFDEProjectionPotential.h"
+#include "potentials/HuzinagaProjectionPotential.h"
 #include "potentials/LevelshiftHybridPotential.h"
+#include "potentials/LoewdinFDEProjectionPotential.h"
 #include "potentials/NAddFuncPotential.h"
 #include "potentials/PCMPotential.h"
 #include "potentials/TDReconstructionPotential.h"
 #include "potentials/ZeroPotential.h"
+#include "potentials/bundles/ALMOPotentials.h"
 #include "potentials/bundles/ESIPotentials.h"
 #include "potentials/bundles/FDEPotentials.h"
 #include "potentials/bundles/PBEPotentials.h"
 namespace Serenity {
 
-template<Options::SCF_MODES SCFMode>
-std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::produce(
-    std::shared_ptr<SystemController> activeSystem, std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
+template<>
+std::shared_ptr<PotentialBundle<RESTRICTED>> FDEPotentialBundleFactory<RESTRICTED>::produce(
+    std::shared_ptr<SystemController> activeSystem, std::shared_ptr<DensityMatrixController<RESTRICTED>> activeDensMatController,
     std::vector<std::shared_ptr<SystemController>> environmentSystems,
-    std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
+    std::vector<std::shared_ptr<DensityMatrixController<RESTRICTED>>> envDensMatController,
     const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
     std::shared_ptr<SystemController> supersystem, bool topDown, bool noSuperRecon, double gridCutOff,
     std::vector<std::shared_ptr<EnergyComponentController>> eConts, unsigned int firstPassiveSystemIndex) {
-  return produceNew(activeSystem, activeDensMatController, environmentSystems, envDensMatController, settings, grid,
-                    supersystem, topDown, noSuperRecon, gridCutOff, eConts, firstPassiveSystemIndex);
+  if (!_restrictedFDEFactory)
+    _restrictedFDEFactory.reset(new FDEPotentialBundleFactory<RESTRICTED>);
+  if (environmentSystems.size() == 0) {
+    if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+      return activeSystem->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+    }
+    else if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+      return activeSystem->getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+    }
+  }
+  return _restrictedFDEFactory->getOrProduce(activeSystem, activeDensMatController, environmentSystems,
+                                             envDensMatController, settings, grid, supersystem, topDown, noSuperRecon,
+                                             gridCutOff, eConts, firstPassiveSystemIndex);
+}
+
+template<>
+std::shared_ptr<PotentialBundle<UNRESTRICTED>> FDEPotentialBundleFactory<UNRESTRICTED>::produce(
+    std::shared_ptr<SystemController> activeSystem,
+    std::shared_ptr<DensityMatrixController<UNRESTRICTED>> activeDensMatController,
+    std::vector<std::shared_ptr<SystemController>> environmentSystems,
+    std::vector<std::shared_ptr<DensityMatrixController<UNRESTRICTED>>> envDensMatController,
+    const std::shared_ptr<EmbeddingSettings> settings, std::shared_ptr<GridController> grid,
+    std::shared_ptr<SystemController> supersystem, bool topDown, bool noSuperRecon, double gridCutOff,
+    std::vector<std::shared_ptr<EnergyComponentController>> eConts, unsigned int firstPassiveSystemIndex) {
+  if (!_unrestrictedFDEFactory)
+    _unrestrictedFDEFactory.reset(new FDEPotentialBundleFactory<UNRESTRICTED>);
+  if (environmentSystems.size() == 0) {
+    if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
+      return activeSystem->getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::DFT>();
+    }
+    else if (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::HF) {
+      return activeSystem->getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
+    }
+  }
+  return _unrestrictedFDEFactory->getOrProduce(activeSystem, activeDensMatController, environmentSystems,
+                                               envDensMatController, settings, grid, supersystem, topDown, noSuperRecon,
+                                               gridCutOff, eConts, firstPassiveSystemIndex);
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::produceNew(
+std::unique_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::produceNew(
     std::shared_ptr<SystemController> activeSystem, std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
     std::vector<std::shared_ptr<SystemController>> environmentSystems,
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
@@ -78,14 +114,12 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
     potBundle = activeSystem->getPotentials<SCFMode, Options::ELECTRONIC_STRUCTURE_THEORIES::HF>();
   }
   else {
-    throw SerenityError("None existing electronicStructureTheory requested. Options are HF and DFT.");
+    throw SerenityError("Nonexistent electronicStructureTheory requested. Options are HF and DFT.");
   }
-  if (environmentSystems.size() == 0)
-    return potBundle;
   auto densFitJ = activeSystem->getSettings().basis.densFitJ;
   // The collected atoms and geometries will be needed further down for ECPs and Coulomb interaction.
   std::vector<std::shared_ptr<const Geometry>> environmentGeometries;
-  std::vector<std::shared_ptr<BasisController>> environmentAuxilliaryBasisSets;
+  std::vector<std::shared_ptr<BasisController>> environmentAuxiliaryBasisSets;
   std::vector<std::shared_ptr<Atom>> environmentAtoms;
   for (auto env : environmentSystems) {
     environmentGeometries.push_back(env->getGeometry());
@@ -95,17 +129,17 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
   std::shared_ptr<PotentialBundle<SCFMode>> esiPot;
   if (densFitJ != Options::DENS_FITS::NONE) {
     for (auto env : environmentSystems) {
-      environmentAuxilliaryBasisSets.push_back(env->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, densFitJ));
+      environmentAuxiliaryBasisSets.push_back(env->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, densFitJ));
     }
     esiPot = std::make_shared<ESIPotentials<SCFMode>>(
         activeSystem, environmentSystems, activeDensMatController, activeSystem->getGeometry(), envDensMatController,
         environmentGeometries, activeSystem->getAuxBasisController(Options::AUX_BASIS_PURPOSES::COULOMB, densFitJ),
-        environmentAuxilliaryBasisSets, firstPassiveSystemIndex);
+        environmentAuxiliaryBasisSets, firstPassiveSystemIndex, settings->partialChargesForCoulombInt, settings->chargeModel);
   }
   else {
-    esiPot = std::make_shared<ESIPotentials<SCFMode>>(activeSystem, environmentSystems, activeDensMatController,
-                                                      activeSystem->getGeometry(), envDensMatController,
-                                                      environmentGeometries, firstPassiveSystemIndex);
+    esiPot = std::make_shared<ESIPotentials<SCFMode>>(
+        activeSystem, environmentSystems, activeDensMatController, activeSystem->getGeometry(), envDensMatController,
+        environmentGeometries, firstPassiveSystemIndex, settings->partialChargesForCoulombInt, settings->chargeModel);
   }
   auto ecpInt_total =
       std::make_shared<ECPInteractionPotential<SCFMode>>(activeSystem, activeSystem->getGeometry()->getAtoms(), environmentAtoms,
@@ -138,7 +172,8 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
                                settings, grid, topDown, gridCutOff, eConts, potBundle, esiPot, pcm, ecpInt_total);
   }
   else {
-    auto naddXCfunc = resolveFunctional(settings->naddXCFunc);
+    auto naddXCfunc = settings->customNaddXCFunc.basicFunctionals.size() ? Functional(settings->customNaddXCFunc)
+                                                                         : resolveFunctional(settings->naddXCFunc);
     // Issue a warning if exact exchange should be evaluated with non-orthogonal orbitals
     // without any correction respecting this.
     if (naddXCfunc.isHybrid() and (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::NADD_FUNC ||
@@ -149,21 +184,25 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
     auto nonAddExchange = std::make_shared<NAddFuncPotential<SCFMode>>(
         activeSystem, activeDensMatController, envDensMatController, grid, naddXCfunc,
         std::make_pair(true, (gridCutOff < 0) ? eConts : std::vector<std::shared_ptr<EnergyComponentController>>(0)),
-        (topDown || gridCutOff < 0.0) ? true : false,
-        (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0) ? true : false);
+        (topDown || gridCutOff < 0.0),
+        (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0));
 
     std::shared_ptr<Potential<SCFMode>> kin;
     if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
       kin = std::make_shared<NAddFuncPotential<SCFMode>>(
-          activeSystem, activeDensMatController, envDensMatController, grid, resolveFunctional(settings->naddKinFunc),
+          activeSystem, activeDensMatController, envDensMatController, grid,
+          settings->customNaddKinFunc.basicFunctionals.size() ? Functional(settings->customNaddKinFunc)
+                                                              : resolveFunctional(settings->naddKinFunc),
           std::make_pair(false, (gridCutOff < 0) ? eConts : std::vector<std::shared_ptr<EnergyComponentController>>(0)),
-          (gridCutOff < 0.0) ? true : false);
+          (gridCutOff < 0.0));
     }
     else if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
       kin = std::make_shared<LevelshiftHybridPotential<SCFMode>>(
-          activeSystem, environmentSystems, settings->levelShiftParameter,
-          (settings->basisFunctionRatio == 0.0) ? false : true, settings->basisFunctionRatio,
-          settings->borderAtomThreshold, grid, resolveFunctional(settings->longRangeNaddKinFunc), topDown,
+          activeSystem, environmentSystems, settings->levelShiftParameter, (settings->basisFunctionRatio == 0.0) ? false : true,
+          settings->basisFunctionRatio, settings->borderAtomThreshold, grid,
+          settings->customLongRangeNaddKinFunc.basicFunctionals.size() ? Functional(settings->customLongRangeNaddKinFunc)
+                                                                       : resolveFunctional(settings->longRangeNaddKinFunc),
+          topDown,
           std::make_pair(false, (gridCutOff < 0 && !topDown) ? eConts
                                                              : std::vector<std::shared_ptr<EnergyComponentController>>(0)));
     }
@@ -172,8 +211,13 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
           potBundle, esiPot, {nonAddExchange},
           {std::shared_ptr<Potential<SCFMode>>(new ZeroPotential<SCFMode>(activeSystem->getBasisController()))},
           ecpInt_total, pcm));
-      kin = std::make_shared<HuzinagaFDEProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings,
-                                                                      superPot_AA, topDown, grid, gridCutOff, eConts);
+      kin = std::make_shared<HuzinagaProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings,
+                                                                   superPot_AA, topDown, grid, gridCutOff, eConts);
+    }
+    else if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::LOEWDIN) {
+      if (topDown)
+        throw SerenityError("The Loewdin algorithm is not intended to be used in the top-down scenario!");
+      kin = std::make_shared<LoewdinFDEProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings);
     }
     else if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::HOFFMANN) {
       auto superPot_AA = std::shared_ptr<PotentialBundle<SCFMode>>(new FDEPotentials<SCFMode>(
@@ -182,6 +226,16 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
           ecpInt_total, pcm));
       kin = std::make_shared<HoffmannProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings,
                                                                    superPot_AA, topDown, grid, gridCutOff, eConts);
+    }
+    else if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::ALMO) {
+      for (auto envSys : environmentSystems) {
+        if (activeSystem->getSettings().dft.functional != envSys->getSettings().dft.functional)
+          throw SerenityError("The same exchange-correlation functional is required for all subsystems using ALMOs.");
+      }
+      if (settings->naddXCFunc != activeSystem->getSettings().dft.functional)
+        WarningTracker::printWarning("Warning: The non-additive exchange-correlation functional is ignored for ALMOs.",
+                                     iOOptions.printSCFCycleInfo);
+      return std::unique_ptr<PotentialBundle<SCFMode>>(new ALMOPotentials<SCFMode>(activeSystem, environmentSystems));
     }
     else if (settings->embeddingMode == Options::KIN_EMBEDDING_MODES::RECONSTRUCTION) {
       if (topDown) {
@@ -204,23 +258,22 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::pr
           potBundle, esiPot, {nonAddExchange},
           {std::shared_ptr<Potential<SCFMode>>(new ZeroPotential<SCFMode>(activeSystem->getBasisController()))},
           ecpInt_total, pcm));
-      std::cout << "  Applying a fermi-shifted Huzinaga operator with an fermi level of " << settings->fermiShift
-                << " Hartree." << std::endl;
-      kin = std::make_shared<HuzinagaFDEProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings,
-                                                                      superPot_AA, topDown, grid, gridCutOff, eConts,
-                                                                      settings->fermiShift);
+      OutputControl::nOut << "  Applying a fermi-shifted Huzinaga operator with a fermi level of "
+                          << settings->fermiShift << " Hartree." << std::endl;
+      kin = std::make_shared<HuzinagaProjectionPotential<SCFMode>>(activeSystem, environmentSystems, *settings, superPot_AA,
+                                                                   topDown, grid, gridCutOff, eConts, settings->fermiShift);
     }
     else {
       kin = std::shared_ptr<Potential<SCFMode>>(new ZeroPotential<SCFMode>(activeSystem->getBasisController()));
     }
-    return std::shared_ptr<PotentialBundle<SCFMode>>(
+    return std::unique_ptr<PotentialBundle<SCFMode>>(
         new FDEPotentials<SCFMode>(potBundle, esiPot, {nonAddExchange}, {kin}, ecpInt_total, pcm));
     assert(false);
   }
 }
 
 template<Options::SCF_MODES SCFMode>
-std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::buildMixedEmbedding(
+std::unique_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::buildMixedEmbedding(
     std::shared_ptr<SystemController> activeSystem, std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
     std::vector<std::shared_ptr<SystemController>> environmentSystems,
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDensMatController,
@@ -235,6 +288,8 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
   for (auto embMode : settings->embeddingModeList) {
     if (embMode == Options::KIN_EMBEDDING_MODES::RECONSTRUCTION)
       throw SerenityError("Potential Reconstruction in combined Approximate/Exact embedding not supported");
+    if (embMode == Options::KIN_EMBEDDING_MODES::ALMO)
+      throw SerenityError("ALMOs in combined Approximate/Exact embedding not supported");
   }
   if (envDensMatController.size() != environmentSystems.size()) {
     throw SerenityError("Different number of environment systems and density matrices!");
@@ -269,7 +324,7 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
         embeddingModes[iEnv + 1] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
       exactlyTreatedSystems.push_back(environmentSystems[iEnv]);
       exactlyTreatedenvDensMatController.push_back(envDensMatController[iEnv]);
-      if (eConts_Sub_Exact.size() != 0)
+      if (!eConts_Sub_Exact.empty())
         eConts_Sub_Exact.push_back(eConts[iEnv + 1]);
       auto basisControllerB = environmentSystems[iEnv]->getBasisController();
       _BtoAProjections.push_back(basisFunctionMapper.getSparseProjection(basisControllerB));
@@ -277,7 +332,7 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
     else {
       otherSystems.push_back(environmentSystems[iEnv]);
       otherDensMatController.push_back(envDensMatController[iEnv]);
-      if (eConts_Sub_Approx.size() != 0)
+      if (!eConts_Sub_Approx.empty())
         eConts_Sub_Approx.push_back(eConts[iEnv + 1]);
     }
   }
@@ -290,8 +345,8 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
   nonAddXCVector.push_back(std::make_shared<NAddFuncPotential<SCFMode>>(
       activeSystem, activeDensMatController, exactlyTreatedenvDensMatController, grid, naddXCfunc,
       std::make_pair(true, (gridCutOff < 0) ? eConts_Sub_Exact : std::vector<std::shared_ptr<EnergyComponentController>>(0)),
-      (topDown || gridCutOff < 0.0) ? true : false,
-      (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0) ? true : false));
+      (topDown || gridCutOff < 0.0),
+      (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0)));
 
   // NaddXCPotential for not exactly treated subsystems
   naddXCfunc = resolveFunctional(naddXCFuncs[1]);
@@ -299,15 +354,16 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
       activeSystem, activeDensMatController, exactlyTreatedenvDensMatController, _BtoAProjections,
       otherDensMatController, grid, naddXCfunc,
       std::make_pair(true, (gridCutOff < 0) ? eConts_Sub_Approx : std::vector<std::shared_ptr<EnergyComponentController>>(0)),
-      (topDown || gridCutOff < 0.0) ? true : false,
-      (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0) ? true : false));
+      (topDown || gridCutOff < 0.0),
+      (settings->embeddingMode != Options::KIN_EMBEDDING_MODES::RECONSTRUCTION && gridCutOff < 0.0)));
   // NaddKin
-  auto naddKinfunc = resolveFunctional(settings->naddKinFunc);
+  auto naddKinfunc = settings->customNaddKinFunc.basicFunctionals.size() ? Functional(settings->customNaddKinFunc)
+                                                                         : resolveFunctional(settings->naddKinFunc);
   nonAddKinVector.push_back(std::make_shared<NAddFuncPotential<SCFMode>>(
       activeSystem, activeDensMatController, exactlyTreatedenvDensMatController, _BtoAProjections,
       otherDensMatController, grid, naddKinfunc,
       std::make_pair(false, (gridCutOff < 0) ? eConts_Sub_Approx : std::vector<std::shared_ptr<EnergyComponentController>>(0)),
-      (gridCutOff < 0.0) ? true : false));
+      (gridCutOff < 0.0)));
 
   // Projector for exactly treated systems
   if (embeddingModes[0] == Options::KIN_EMBEDDING_MODES::HUZINAGA) {
@@ -322,25 +378,27 @@ std::shared_ptr<PotentialBundle<SCFMode>> FDEPotentialBundleFactory<SCFMode>::bu
     auto superPot_AA = std::shared_ptr<PotentialBundle<SCFMode>>(
         new FDEPotentials<SCFMode>(potBundle, esiPot, nonAddXCVector, nonAddKinVector, ecpInt_total, pcm));
     settings->naddXCFunc = naddXCFuncs[0];
-    nonAddKinVector.push_back(std::make_shared<HuzinagaFDEProjectionPotential<SCFMode>>(
+    nonAddKinVector.push_back(std::make_shared<HuzinagaProjectionPotential<SCFMode>>(
         activeSystem, exactlyTreatedSystems, *settings, superPot_AA, topDown, grid, gridCutOff, eConts_Sub_Exact));
   }
   else if (embeddingModes[0] == Options::KIN_EMBEDDING_MODES::LEVELSHIFT) {
     nonAddKinVector.push_back(std::make_shared<LevelshiftHybridPotential<SCFMode>>(
         activeSystem, exactlyTreatedSystems, settings->levelShiftParameter,
-        (settings->basisFunctionRatio == 0.0) ? false : true, settings->basisFunctionRatio,
-        settings->borderAtomThreshold, grid, resolveFunctional(settings->longRangeNaddKinFunc), topDown,
+        (settings->basisFunctionRatio == 0.0) ? false : true, settings->basisFunctionRatio, settings->borderAtomThreshold, grid,
+        settings->customLongRangeNaddKinFunc.basicFunctionals.size() ? Functional(settings->customLongRangeNaddKinFunc)
+                                                                     : resolveFunctional(settings->longRangeNaddKinFunc),
+        topDown,
         std::make_pair(false, (gridCutOff < 0 && !topDown) ? eConts_Sub_Exact
                                                            : std::vector<std::shared_ptr<EnergyComponentController>>(0))));
   }
   else {
-    throw SerenityError("Projector not suppported for combined (exact/approx.) embedding strategy!");
+    throw SerenityError("Projector not supported for combined (exact/approx.) embedding strategy!");
   }
 
   OutputControl::dOut << "Number of non-additive kinetic interactions - " << nonAddKinVector.size() << std::endl;
   OutputControl::dOut << "Number of non-additive exchange-correlation interactions - " << nonAddXCVector.size() << std::endl;
 
-  return std::shared_ptr<PotentialBundle<SCFMode>>(
+  return std::unique_ptr<PotentialBundle<SCFMode>>(
       new FDEPotentials<SCFMode>(potBundle, esiPot, nonAddXCVector, nonAddKinVector, ecpInt_total, pcm));
 }
 

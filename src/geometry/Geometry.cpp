@@ -143,7 +143,7 @@ bool Geometry::hasAtomsWithECPs() const {
   return atomsWithECPs;
 }
 
-Geometry& Geometry::operator+=(const Geometry& rhs) {
+void Geometry::operator+=(const Geometry& rhs) {
   for (auto atom : rhs.getAtoms()) {
     this->_atoms.push_back(atom);
     atom->addSensitiveObject(this->_self);
@@ -166,7 +166,6 @@ Geometry& Geometry::operator+=(const Geometry& rhs) {
       this->_maxZ = atom->getZ();
     }
   }
-  return *this;
 }
 
 bool Geometry::operator==(const Geometry& rhs) {

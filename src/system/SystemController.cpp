@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisControllerFactory.h"
 #include "data/ElectronicStructure.h"
+#include "data/ExternalChargeController.h"
 #include "data/OrbitalController.h"
 #include "data/grid/ElectrostaticPotentialOnGridController.h" //Potential on grid construction.
 #include "dft/functionals/CompositeFunctionals.h"
@@ -29,7 +30,7 @@
 #include "geometry/MolecularSurfaceController.h" //Cavity generation.
 #include "geometry/XyzFileToGeometryConverter.h"
 #include "grid/AtomCenteredGridController.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "integrals/CDIntegralController.h"
 #include "integrals/IntegralCachingController.h" //Four center selective integral caching
 #include "integrals/OneIntControllerFactory.h"   //One electron integral controller construction.
@@ -316,9 +317,9 @@ SystemController::getElectrostaticPotentialOnMolecularSurfaceController<UNRESTRI
   return _system->_unrestrictedElectrostaticPotentialsOnGridControllers[surfaceType];
 }
 
-template<Options::SCF_MODES T>
-std::shared_ptr<OrbitalController<T>> SystemController::getActiveOrbitalController() {
-  return this->getElectronicStructure<T>()->getMolecularOrbitals();
+template<Options::SCF_MODES SCFMode>
+std::shared_ptr<OrbitalController<SCFMode>> SystemController::getActiveOrbitalController() {
+  return this->getElectronicStructure<SCFMode>()->getMolecularOrbitals();
 };
 template std::shared_ptr<OrbitalController<RESTRICTED>> SystemController::getActiveOrbitalController<RESTRICTED>();
 template std::shared_ptr<OrbitalController<UNRESTRICTED>> SystemController::getActiveOrbitalController<UNRESTRICTED>();
@@ -401,7 +402,7 @@ SpinPolarizedData<UNRESTRICTED, unsigned int> SystemController::getNVirtualOrbit
   return nVirt;
 }
 /**
- * @brief Forworded getter for _settings.pcm.use.
+ * @brief Forwarded getter for _settings.pcm.use.
  */
 bool SystemController::getSystemContinuumModelMode() {
   return _system->_settings.pcm.use;
@@ -494,6 +495,10 @@ void SystemController::setElectricField(std::vector<double> position, double fSt
 void SystemController::setXCfunctional(CompositeFunctionals::XCFUNCTIONALS XCfunc) {
   _system->_settings.dft.functional = XCfunc;
 }
+void SystemController::setXCfunctional(CUSTOMFUNCTIONAL customfunc) {
+  _system->_settings.customFunc = customfunc;
+}
+
 void SystemController::setElectronicStructureMethod(Options::ELECTRONIC_STRUCTURE_THEORIES method) {
   _system->_settings.method = method;
 }
@@ -517,6 +522,7 @@ void SystemController::setDiskMode(bool diskmode) {
     //    ptr2->notify();
     // Delete 1e Ints
     this->getOneElectronIntegralController()->notify();
+    this->getExternalChargeController()->clear();
   }
   // Switch modes for electronic structures
   if (_system->_restrictedElectronicStructure) {
@@ -590,7 +596,9 @@ SystemController::getPotentials<RESTRICTED, Options::ELECTRONIC_STRUCTURE_THEORI
   auto hcore = std::make_shared<HCorePotential<RESTRICTED>>(this->getSharedPtr());
 
   // XC Func
-  auto functional = resolveFunctional(this->getSettings().dft.functional);
+  auto functional = this->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(this->getSettings().customFunc)
+                        : resolveFunctional(this->getSettings().dft.functional);
   auto Vxc = std::make_shared<FuncPotential<RESTRICTED>>(
       this->getSharedPtr(), _system->_restrictedElectronicStructure->getDensityMatrixController(),
       this->getGridController(grid), functional);
@@ -624,7 +632,9 @@ SystemController::getPotentials<UNRESTRICTED, Options::ELECTRONIC_STRUCTURE_THEO
   // Hcore
   auto hcore = std::make_shared<HCorePotential<UNRESTRICTED>>(this->getSharedPtr());
   // XC Func
-  auto functional = resolveFunctional(this->getSettings().dft.functional);
+  auto functional = this->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(this->getSettings().customFunc)
+                        : resolveFunctional(this->getSettings().dft.functional);
   auto Vxc = std::make_shared<FuncPotential<UNRESTRICTED>>(
       this->getSharedPtr(), _system->_unrestrictedElectronicStructure->getDensityMatrixController(),
       this->getGridController(grid), functional);
@@ -658,13 +668,15 @@ void SystemController::fromHDF5(std::string loadPath) {
   }
   try {
     setElectronicStructure(std::make_shared<ElectronicStructure<UNRESTRICTED>>(
-        loadPath, this->getBasisController(), this->getGeometry(), _system->_settings.identifier));
+        loadPath, this->getBasisController(), this->getGeometry(), this->getExternalChargeController(),
+        _system->_settings.identifier));
   }
   catch (...) {
   }
   try {
     setElectronicStructure(std::make_shared<ElectronicStructure<RESTRICTED>>(
-        loadPath, this->getBasisController(), this->getGeometry(), _system->_settings.identifier));
+        loadPath, this->getBasisController(), this->getGeometry(), this->getExternalChargeController(),
+        _system->_settings.identifier));
   }
   catch (...) {
   }
@@ -711,10 +723,17 @@ void SystemController::print() {
   Options::resolve<Options::ELECTRONIC_STRUCTURE_THEORIES>(method, m);
   printf("%4s Method:                %15s\n", "", method.c_str());
   if (getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
-    std::string functional;
-    auto func = getSettings().dft.functional;
-    Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
-    printf("%4s Functional:            %15s\n", "", functional.c_str());
+    if (getSettings().customFunc.basicFunctionals.size()) {
+      printf("%4s Functional:            %15s\n", "", "Custom");
+      Functional func(this->getSettings().customFunc);
+      func.print();
+    }
+    else {
+      std::string functional;
+      auto func = getSettings().dft.functional;
+      Options::resolve<CompositeFunctionals::XCFUNCTIONALS>(functional, func);
+      printf("%4s Functional:            %15s\n", "", functional.c_str());
+    }
     std::string fitting;
   }
   printf("%4s Basis Set:             %15s\n", "", getSettings().basis.label.c_str());
@@ -749,6 +768,8 @@ std::shared_ptr<MolecularSurfaceController> SystemController::getMolecularSurfac
 /* Private functions */
 /*********************/
 void SystemController::produceMolecularSurface() {
+  if (_system->_settings.pcm.saveCharges)
+    _system->_settings.pcm.cavityPath = getSystemPath();
   _system->_molecularSurfaces[MOLECULAR_SURFACE_TYPES::ACTIVE] =
       std::make_shared<MolecularSurfaceController>(this->getGeometry(), _system->_settings.pcm);
 }
@@ -840,7 +861,7 @@ void SystemController::produceBasisController(const Options::BASIS_PURPOSES basi
 void SystemController::produceGridController(const Options::GRID_PURPOSES gridPurpose) const {
   _system->_geometry->deleteIdenticalAtoms();
   _system->_gridControllers[gridPurpose] =
-      GridControllerFactory::produce(_system->_geometry, _system->_settings.grid, gridPurpose);
+      AtomCenteredGridControllerFactory::produce(_system->_geometry, _system->_settings.grid, gridPurpose);
 }
 
 void SystemController::setSCFMode(Options::SCF_MODES mode) {
@@ -911,7 +932,7 @@ SystemController::getAtomCenteredBasisController(Options::BASIS_PURPOSES basisPu
 std::shared_ptr<OneElectronIntegralController>
 SystemController::getOneElectronIntegralController(Options::BASIS_PURPOSES basisPurpose) const {
   auto& factory = OneIntControllerFactory::getInstance();
-  return factory.produce(this->getBasisController(basisPurpose), this->getGeometry());
+  return factory.produce(this->getBasisController(basisPurpose), this->getGeometry(), this->getExternalChargeController());
 }
 
 std::shared_ptr<Geometry> SystemController::getGeometry() const {
@@ -961,7 +982,7 @@ void SystemController::clear4CenterCache() {
     _integralCachingController->clearCache();
   _integralCachingController = nullptr;
 }
-bool SystemController::hasExternalCharges() {
+bool SystemController::hasExternalCharges() const {
   return !this->getSettings().extCharges.externalChargesFile.empty();
 }
 void SystemController::setPointChargeGradients(const Eigen::MatrixXd& pointChargeGradients) {
@@ -972,6 +993,12 @@ const Eigen::MatrixXd& SystemController::getPointChargeGradients() {
     throw SerenityError("Point charge gradients were requested but are not available!");
   }
   return *_system->_pointChargeGradients;
+}
+std::shared_ptr<ExternalChargeController> SystemController::getExternalChargeController() const {
+  if (!_system->_externalChargeController) {
+    _system->_externalChargeController = std::make_shared<ExternalChargeController>(this->getSettings());
+  }
+  return _system->_externalChargeController;
 }
 
 } /* namespace Serenity */

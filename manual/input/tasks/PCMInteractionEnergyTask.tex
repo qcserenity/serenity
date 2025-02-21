@@ -1,0 +1,18 @@
+\subsection{Task: PCM Interaction Energy}
+A task that allows the calculation of the dielectric energy correction from PCM for a given system (with associated density). Note that the apparent surface charges are not updated self-consistently!
+\subsubsection{Example Input}
+\begin{lstlisting}
++task PCM
+  system water
+-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{PCMInteractionEnergyTask} and \ttt{PCM}.
+    \item [\texttt{activeSystem}]\hfill \\
+    This task accepts a single active system for which the dielectric energy correction from PCM will be calculated.
+    \item [\texttt{sub-blocks}]\hfill \\
+    PCM (\ttt{\hyperref[sec:system:pcm]{pcm}}) settings are added via a sub-block in the task settings.    
+\end{description}

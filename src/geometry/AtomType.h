@@ -21,7 +21,6 @@
 #define ATOMTYPE_H_
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
-#include "parameters/Constants.h"
 /* Include Std and External Headers */
 #include <cassert>
 #include <map>
@@ -29,6 +28,11 @@
 #include <vector>
 
 namespace Serenity {
+/* Forward Declarations */
+enum class ANGULAR_QUANTUM_NUMBER;
+namespace Options {
+enum class SCF_MODES;
+}
 
 /**
  * @class AtomType AtomType.h
@@ -155,8 +159,8 @@ class AtomType {
  * @returns for each spin a vector indicating how orbitals are filled in the neutral atom
  *          resulting in a spherical distribution of electrons. Spins are according to Hund's rule.
  */
-template<Options::SCF_MODES T>
-SpinPolarizedData<T, std::vector<double>> getOccupationFactors(const AtomType& atomType);
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, std::vector<double>> getOccupationFactors(const AtomType& atomType);
 /**
  * @param   atomType
  * @returns the spin of an atom of atomType in its ground state electronic configuration, based on

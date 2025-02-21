@@ -27,7 +27,6 @@
 #include "misc/RememberingFactory.h"
 #include "potentials/bundles/PotentialBundle.h"
 #include "tasks/FDETask.h"
-
 /* Include Std and External Headers */
 #include <memory>
 #include <vector>
@@ -48,20 +47,13 @@ template<Options::SCF_MODES SCFMode>
  * @class FDEPotentialBundleFactory FDEPotentialBundleFactory.h
  * @brief Constructs an embedding potential bundle based on a set of EmbeddingSettings and optional
  *        settings.
- *
- *        TODO: Remembering Factory:
- *          I tried to implement this as a RememberingFactory. However, while the
- *          getOrProduce method of the factory is running, the factory is locked/
- *          another call to getOrProduce will only execute if the first call is done.
- *          Thus, it is not possible to use this factory in the construction of the
- *          HoffmannProjectionPotential, since it is constructed by the same factory.
- *          The program will just stop and never continue. I have decided to make this
- *          a static helper class until someone comes up with an idea to circumvent this.
- *          Currently, this should not make any difference anyway.\n\n
- *
- *            MB
  */
-class FDEPotentialBundleFactory {
+class FDEPotentialBundleFactory
+  : public RememberingFactory<
+        PotentialBundle<SCFMode>, std::shared_ptr<SystemController>, std::shared_ptr<DensityMatrixController<SCFMode>>,
+        std::vector<std::shared_ptr<SystemController>>, std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>>,
+        const std::shared_ptr<EmbeddingSettings>, std::shared_ptr<GridController>, std::shared_ptr<SystemController>,
+        bool, bool, double, std::vector<std::shared_ptr<EnergyComponentController>>, unsigned int> {
  private:
   /**
    * @brief Default constructor.
@@ -107,7 +99,7 @@ class FDEPotentialBundleFactory {
 
  private:
   // The actual worker function. For documentaion see produce(..)
-  static std::shared_ptr<PotentialBundle<SCFMode>>
+  std::unique_ptr<PotentialBundle<SCFMode>>
   produceNew(std::shared_ptr<SystemController> activeSystem,
              std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
              std::vector<std::shared_ptr<SystemController>> environmentSystems,
@@ -116,7 +108,7 @@ class FDEPotentialBundleFactory {
              std::shared_ptr<SystemController> supersystem, bool topDown, bool noSuperRecon, double gridCutOff,
              std::vector<std::shared_ptr<EnergyComponentController>> eConts, unsigned int firstPassiveSystemIndex);
   // Building the mixed embedding potential for exact/approx embedding
-  static std::shared_ptr<PotentialBundle<SCFMode>>
+  static std::unique_ptr<PotentialBundle<SCFMode>>
   buildMixedEmbedding(std::shared_ptr<SystemController> activeSystem,
                       std::shared_ptr<DensityMatrixController<SCFMode>> activeDensMatController,
                       std::vector<std::shared_ptr<SystemController>> environmentSystems,
@@ -127,6 +119,9 @@ class FDEPotentialBundleFactory {
                       std::shared_ptr<PotentialBundle<SCFMode>> esiPot, std::shared_ptr<PCMPotential<SCFMode>> pcm,
                       std::shared_ptr<ECPInteractionPotential<SCFMode>> ecpInt_total);
 };
+
+static std::unique_ptr<FDEPotentialBundleFactory<RESTRICTED>> _restrictedFDEFactory;
+static std::unique_ptr<FDEPotentialBundleFactory<UNRESTRICTED>> _unrestrictedFDEFactory;
 
 } /* namespace Serenity */
 

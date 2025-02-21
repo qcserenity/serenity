@@ -20,6 +20,7 @@
 
 /* Include Class Header*/
 #include "tasks/BasisSetTruncationTask.h"
+/* Include Serenity Internal Headers */
 #include "basis/Basis.h" //Shell-wise truncation.
 #include "basis/CustomBasisController.h"
 #include "data/ElectronicStructure.h"
@@ -83,7 +84,7 @@ void BasisSetTruncationTask<SCFMode>::run() {
           _system->getOneElectronIntegralController()->getOverlapIntegrals()));
 
   // set new electronic structure
-  auto newES = std::make_shared<ElectronicStructure<SCFMode>>(_system->getBasisController(), _system->getGeometry(),
+  auto newES = std::make_shared<ElectronicStructure<SCFMode>>(_system->getOneElectronIntegralController(),
                                                               _system->getNOccupiedOrbitals<SCFMode>(), nCoreOrbitals);
   newES->getDensityMatrixController()->setDensityMatrix(projectedDens);
   _system->setElectronicStructure<SCFMode>(newES);

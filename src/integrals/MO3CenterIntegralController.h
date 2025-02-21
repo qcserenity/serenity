@@ -58,19 +58,37 @@ class MO3CenterIntegralController {
  public:
   /**
    * @brief Constructor.
-   * @param auxilliaryBasisController The auxiliary basis controller.
+   * @param auxiliaryBasisController The auxiliary basis controller.
    * @param basisController The AO basis controller.
    * @param sparseMaps Sparse maps controller that holds all prescreening information.
    * @param paoController The PAO controller.
    * @param occupiedCoefficients The occupied coefficients.
    * @param fBaseName The base name of the associated system.
    * @param id The id of the system.
+   * @param triplesMode If true, the controller will use functions dedicated to calculating integrals for the triples.
    */
-  MO3CenterIntegralController(std::shared_ptr<BasisController> auxilliaryBasisController,
+  MO3CenterIntegralController(std::shared_ptr<BasisController> auxiliaryBasisController,
                               std::shared_ptr<BasisController> basisController,
                               const std::shared_ptr<SparseMapsController> sparseMaps,
                               std::shared_ptr<PAOController> paoController, std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients,
                               std::string fBaseName, std::string id, bool triplesMode = false);
+  /**
+   * @brief Constructor.
+   * @param auxiliaryBasisController The auxiliary basis controller.
+   * @param basisController The AO basis controller.
+   * @param sparseMaps Sparse maps controller that holds all prescreening information.
+   * @param virtualCoefficients The virtual orbitals coefficients.
+   * @param occupiedCoefficients The occupied coefficients.
+   * @param fBaseName The base name of the associated system.
+   * @param id The id of the system.
+   * @param triplesMode If true, the controller will use functions dedicated to calculating integrals for the triples.
+   */
+  MO3CenterIntegralController(std::shared_ptr<BasisController> auxiliaryBasisController,
+                              std::shared_ptr<BasisController> basisController,
+                              const std::shared_ptr<SparseMapsController> sparseMaps,
+                              std::shared_ptr<Eigen::MatrixXd> virtualCoefficients,
+                              std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients, std::string fBaseName,
+                              std::string id, bool triplesMode = false);
   /**
    * @brief Non-default destructor.
    *
@@ -91,7 +109,7 @@ class MO3CenterIntegralController {
    * TODO: Add functionality to only load a part of the integral sets.
    *
    * @param mo3CenterType The integral type.
-   * @param kDomain The domain of auxiliary functions which should at least be available.
+   * @param kDomain The domain of auxiliary functions which should at least be available (over shells of aux. functions).
    * @return The MO 3 center integrals.
    */
   const MO3CenterIntegrals& getMO3CenterInts(MO3CENTER_INTS mo3CenterType, const Eigen::SparseVector<int>& kDomain,
@@ -178,7 +196,7 @@ class MO3CenterIntegralController {
    */
   static double getMemoryRequirement(MO3CENTER_INTS type, std::shared_ptr<SparseMapsController> sparseMaps,
                                      std::shared_ptr<BasisController> auxBasisController,
-                                     const Eigen::SparseVector<int> kDomain, bool triplesMode = false);
+                                     const Eigen::SparseVector<int>& kDomain, bool triplesMode = false);
   /**
    * @brief Getter for the memory requirement of all three integral types. Assuming triplesMode = false.
    * @param sparseMaps The sparse map controller encoding which integrals need to be calculated.
@@ -188,7 +206,7 @@ class MO3CenterIntegralController {
    */
   static double getTotalMemoryRequirement(std::shared_ptr<SparseMapsController> sparseMaps,
                                           std::shared_ptr<BasisController> auxBasisController,
-                                          const Eigen::SparseVector<int> kDomain);
+                                          const Eigen::SparseVector<int>& kDomain);
 
  private:
   /**
@@ -280,7 +298,7 @@ class MO3CenterIntegralController {
 
   Eigen::SparseVector<int> getUnusedDomain(const Eigen::SparseVector<int>& kDomain);
   ///@brief Auxiliary basis controller.
-  std::shared_ptr<BasisController> _auxilliaryBasisController;
+  std::shared_ptr<BasisController> _auxiliaryBasisController;
   ///@brief Basis controller.
   std::shared_ptr<BasisController> _basisController;
   ///@brief Sparse maps controller.
@@ -292,7 +310,7 @@ class MO3CenterIntegralController {
   ///       a virtual orbital.
   std::shared_ptr<SparseMap> _kToSigmaMap = nullptr;
   ///@brief The PAO controller.
-  std::shared_ptr<PAOController> _paoController;
+  std::shared_ptr<Eigen::MatrixXd> _virtualCoefficients;
   ///@brief The coefficients of the occupied orbitals.
   std::shared_ptr<Eigen::MatrixXd> _occupiedCoefficients;
   ///@brief The base name of the system (Needed to write files).

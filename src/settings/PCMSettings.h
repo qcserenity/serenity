@@ -45,6 +45,7 @@ using namespace Serenity::Reflection;
  *   --eps                Static dielectric permittivity of the medium.
  *   --patchLevel         Wavelet cavity mesh patch level (GEPOL only).
  *   --overlapFactor      Maximum ratio of a new sphere to be allowed to be covered within the already present ones.
+ *   --cacheSize          Maximum number of two center integrals to be stored in memory.
  *   --minDistance        Minimal distance between sampling points.
  *   --lLarge             Angular momentum used for the spherical grid construction for non-hydrogen atoms (DELLEY
  * only).
@@ -57,7 +58,8 @@ using namespace Serenity::Reflection;
  *   --numberDensity      The number density of the solvent (number of particles per volume)
  *   --temperature        The temperature of the ensemble.
  *   --cavityFormation    Calculate the cavity formation energy using the scaled particle theory.
- *   --cavityProbeRadius  The solvent probe radius to be used in the calculation of the cavity y formation.
+ *   --cavityProbeRadius  The solvent probe radius to be used in the calculation of the cavity formation.
+ *   --saveCharges        Switch to determine whether we want to save the PCM charges.
  *
  */
 struct PCMSettings {
@@ -85,14 +87,16 @@ struct PCMSettings {
       numberDensity(1.0),
       temperature(298.15),
       cavityFormation(false),
-      cavityProbeRadius(5.0) {
+      cavityProbeRadius(5.0),
+      saveCharges(false) {
   }
   REFLECTABLE((bool)use, (Options::PCM_CAVITY_TYPES)cavity, (bool)scaling, (Options::PCM_ATOMIC_RADII_TYPES)radiiType,
               (double)minRadius, (Options::PCM_SOLVER_TYPES)solverType, (Options::PCM_SOLVENTS)solvent,
               (double)correction, (double)probeRadius, (double)eps, (int)patchLevel, (double)minDistance,
               (double)overlapFactor, (unsigned int)cacheSize, (unsigned int)lLarge, (unsigned int)lSmall, (double)alpha,
               (double)projectionCutOff, (bool)oneCavity, (double)connectivityFactor, (double)numberDensity,
-              (double)temperature, (bool)cavityFormation, (double)cavityProbeRadius)
+              (double)temperature, (bool)cavityFormation, (double)cavityProbeRadius, (bool)saveCharges);
+
  public:
   /**
    * @brief Parse the settings from the visitor to this object.
@@ -100,13 +104,17 @@ struct PCMSettings {
    * @param blockname The block name.
    * @return True if the block name corresponds to this block. Otherwise false.
    */
-  bool visitSettings(set_visitor v, std::string blockname) {
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
     if (!blockname.compare("PCM")) {
       visit_each(*this, v);
       return true;
     }
     return false;
   }
+  // Switch to determine whether we are dealing with a PCM loaded from another calculation.
+  bool loadedPCM = false;
+  // The file path of the PCM to be loaded from another calculation.
+  std::string cavityPath = "";
 };
 
 } /* namespace Serenity */

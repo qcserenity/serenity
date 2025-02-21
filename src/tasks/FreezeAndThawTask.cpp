@@ -35,9 +35,10 @@
 #include "geometry/Geometry.h"
 #include "geometry/MolecularSurfaceController.h"
 #include "geometry/gradients/GeometryGradientCalculator.h"
-#include "grid/GridControllerFactory.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "integrals/wrappers/Libint.h"
 #include "io/FormattedOutput.h"
+#include "io/FormattedOutputStream.h"
 #include "io/IOOptions.h"
 #include "math/optimizer/BFGS.h"
 #include "math/optimizer/Optimizer.h"
@@ -61,6 +62,7 @@ FreezeAndThawTask<SCFMode>::FreezeAndThawTask(const std::vector<std::shared_ptr<
 
 template<Options::SCF_MODES SCFMode>
 void FreezeAndThawTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _activeSystems);
   if (settings.extendBasis) {
     // increase the basis for all active systems
     BasisExtension basisExtender;
@@ -131,15 +133,18 @@ void FreezeAndThawTask<SCFMode>::run() {
 
   // Supersystem grid
   std::shared_ptr<GridController> supersystemgrid(nullptr);
-  // Supersystem molecular surface
-  std::shared_ptr<MolecularSurfaceController> molecularSurface(nullptr);
   std::vector<std::shared_ptr<DensityOnGridController<SCFMode>>> densOnGridControllers(
       _activeSystems.size() + _passiveSystems.size(), nullptr);
 
   std::shared_ptr<FaTConvergenceAccelerator<SCFMode>> fatConvAcc = nullptr;
-  if (settings.useConvAcceleration)
-    fatConvAcc = std::make_shared<FaTConvergenceAccelerator<SCFMode>>(_activeSystems[0]->getSettings().scf.diisMaxStore,
-                                                                      settings, _activeSystems, _passiveSystems);
+  if (settings.useConvAcceleration) {
+    if (settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::ALMO)
+      WarningTracker::printWarning("Warning: Use of convergence acceleration is not supported for ALMOs.",
+                                   iOOptions.printSCFCycleInfo);
+    else
+      fatConvAcc = std::make_shared<FaTConvergenceAccelerator<SCFMode>>(_activeSystems[0]->getSettings().scf.diisMaxStore,
+                                                                        settings, _activeSystems, _passiveSystems);
+  }
 
   bool molecularSurfaceIsInitialized = false;
   // Freeze and thaw cycles
@@ -199,6 +204,7 @@ void FreezeAndThawTask<SCFMode>::run() {
         task.settings.firstPassiveSystemIndex = _activeSystems.size() - 1;
         task.settings.embedding.dispersion = Options::DFT_DISPERSION_CORRECTIONS::NONE;
         task.settings.mp2Type = settings.mp2Type;
+        task.settings.skipSCF = settings.onlyFinalEnergyEvaluation;
         if (settings.gridCutOff < 0)
           task.setSuperSystemGrid(supersystemgrid);
         if (molecularSurfaceIsInitialized)
@@ -219,6 +225,7 @@ void FreezeAndThawTask<SCFMode>::run() {
         task.settings.calculateSolvationEnergy = settings.calculateSolvationEnergy;
         task.settings.firstPassiveSystemIndex = _activeSystems.size() - 1;
         task.settings.embedding.dispersion = Options::DFT_DISPERSION_CORRECTIONS::NONE;
+        task.settings.skipSCF = settings.onlyFinalEnergyEvaluation;
         if (settings.gridCutOff < 0)
           task.setSuperSystemGrid(supersystemgrid);
         if (molecularSurfaceIsInitialized)
@@ -264,6 +271,10 @@ void FreezeAndThawTask<SCFMode>::run() {
       auto energyContribution = (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT)
                                     ? ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT
                                     : ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_WF_DFT;
+      if (settings.embedding.embeddingMode == Options::KIN_EMBEDDING_MODES::ALMO)
+        energyContribution = (activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT)
+                                 ? ENERGY_CONTRIBUTIONS::KS_DFT_ENERGY
+                                 : ENERGY_CONTRIBUTIONS::HF_ENERGY;
       if (activeSystem->getSCFMode() == Options::SCF_MODES::RESTRICTED) {
         superSysE =
             activeSystem->template getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(energyContribution);
@@ -294,7 +305,9 @@ void FreezeAndThawTask<SCFMode>::run() {
 
     // Convergence check.
     if (std::find(convergedSubsystems.begin(), convergedSubsystems.end(), false) == convergedSubsystems.end()) {
-      printSubSectionTitle((std::string) "Converged after " + (cycle + 1) + " freeze-and-thaw cycles!");
+      if (settings.printResults) {
+        printSubSectionTitle((std::string) "Converged after " + (cycle + 1) + " freeze-and-thaw cycles!");
+      }
       break;
     }
     // Accelerate convergence
@@ -302,12 +315,29 @@ void FreezeAndThawTask<SCFMode>::run() {
       fatConvAcc->accelerateConvergence();
   }
 
-  /* =======================================
-   *   Final Energy Evaluation (if needed)
-   * ======================================= */
-  calculateNonAdditiveDispersionCorrection();
+  this->finalEnergyEvaluation();
 
-  if (settings.gridCutOff >= 0.0 and settings.finalEnergyEvaluation) {
+  // allow for freeing of Libint engines
+  libint.freeEngines(LIBINT_OPERATOR::kinetic, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::nuclear, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::overlap, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
+  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
+
+  // reset print options
+  iOOptions.printSCFCycleInfo = info;
+  iOOptions.printSCFResults = results;
+  iOOptions.gridAccuracyCheck = gridAcc;
+
+  // Clean up cache.
+  cleanUp();
+}
+
+template<Options::SCF_MODES SCFMode>
+void FreezeAndThawTask<SCFMode>::finalEnergyEvaluation() {
+  calculateNonAdditiveDispersionCorrection();
+  if ((settings.gridCutOff >= 0.0 and settings.finalEnergyEvaluation) or settings.onlyFinalEnergyEvaluation) {
     printSmallCaption("Creating final grid for energy evaluation");
     // atoms of all subsystems
     auto finalGridGeometry = std::make_shared<Geometry>();
@@ -323,10 +353,15 @@ void FreezeAndThawTask<SCFMode>::run() {
 
     Options::GRID_PURPOSES finalGridacc =
         (settings.smallSupersystemGrid) ? Options::GRID_PURPOSES::SMALL : Options::GRID_PURPOSES::DEFAULT;
-    auto finalGrid = GridControllerFactory::produce(finalGridGeometry, _activeSystems[0]->getSettings().grid, finalGridacc);
+    auto finalGrid =
+        AtomCenteredGridControllerFactory::produce(finalGridGeometry, _activeSystems[0]->getSettings().grid, finalGridacc);
 
-    auto xcfunc = resolveFunctional(settings.embedding.naddXCFunc);
-    auto kinefunc = resolveFunctional(settings.embedding.naddKinFunc);
+    auto xcfunc = settings.embedding.customNaddXCFunc.basicFunctionals.size()
+                      ? Functional(settings.embedding.customNaddXCFunc)
+                      : resolveFunctional(settings.embedding.naddXCFunc);
+    auto kinefunc = settings.embedding.customNaddKinFunc.basicFunctionals.size()
+                        ? Functional(settings.embedding.customNaddKinFunc)
+                        : resolveFunctional(settings.embedding.naddKinFunc);
     bool gga(kinefunc.getFunctionalClass() != CompositeFunctionals::CLASSES::LDA or
              xcfunc.getFunctionalClass() != CompositeFunctionals::CLASSES::LDA);
 
@@ -381,38 +416,17 @@ void FreezeAndThawTask<SCFMode>::run() {
       eCont->addOrReplaceComponent(ENERGY_CONTRIBUTIONS::FDE_NAD_KINETIC, naddKinEnergy);
     }
   }
-  std::cout << std::endl;
-  printSubSectionTitle("Final Freeze-and-Thaw Energies");
-  for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
-    printBigCaption((std::string) "Active System: " + _activeSystems[nSystem]->getSystemName());
-    auto eCont = _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
-    eCont->printAllComponents();
+  OutputControl::nOut << std::endl;
+  if (settings.printResults) {
+    printSubSectionTitle("Final Freeze-and-Thaw Energies");
+    for (unsigned int nSystem = 0; nSystem < _activeSystems.size(); nSystem++) {
+      printBigCaption((std::string) "Active System: " + _activeSystems[nSystem]->getSystemName());
+      auto eCont = _activeSystems[nSystem]->template getElectronicStructure<SCFMode>()->getEnergyComponentController();
+      eCont->printAllComponents();
+    }
   }
-
-  std::vector<std::shared_ptr<SystemController>> Systems;
-  for (auto& sys : _activeSystems) {
-    Systems.push_back(sys);
-  }
-  for (auto& sys : _passiveSystems) {
-    Systems.push_back(sys);
-  }
-
-  // allow for freeing of Libint engines
-  libint.freeEngines(LIBINT_OPERATOR::kinetic, 0, 2);
-  libint.freeEngines(LIBINT_OPERATOR::nuclear, 0, 2);
-  libint.freeEngines(LIBINT_OPERATOR::overlap, 0, 2);
-  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 2);
-  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 3);
-  libint.freeEngines(LIBINT_OPERATOR::coulomb, 0, 4);
-
-  // reset print options
-  iOOptions.printSCFCycleInfo = info;
-  iOOptions.printSCFResults = results;
-  iOOptions.gridAccuracyCheck = gridAcc;
-
-  // Clean up cache.
-  cleanUp();
 }
+
 template<Options::SCF_MODES SCFMode>
 void FreezeAndThawTask<SCFMode>::cleanUp() {
   for (auto sys : _activeSystems) {

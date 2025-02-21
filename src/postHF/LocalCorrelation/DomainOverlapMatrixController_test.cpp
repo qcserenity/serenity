@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "postHF/LocalCorrelation/DomainOverlapMatrixController.h" //To be tested.
 #include "postHF/LocalCorrelation/CouplingOrbitalSet.h"            //Access to the overlap integrals
 #include "postHF/LocalCorrelation/LocalCorrelationController.h"    //Easy access to local correlation quantities

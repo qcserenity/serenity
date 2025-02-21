@@ -18,19 +18,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
-#include "Sphere.h"
-#include "Point.h"
-#include "Triangle.h"
+#include "geometry/Sphere.h"
+#include "geometry/Point.h"
+#include "geometry/Triangle.h"
 /* Include Std and External Headers */
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 namespace Serenity {
-
-class SphereTest : public ::testing::Test {
- protected:
-  static void TearDownTestCase() {
-  }
-};
 
 TEST(SphereTest, simple) {
   Point p1(1, 1, 1);

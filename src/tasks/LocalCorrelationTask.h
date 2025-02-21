@@ -77,7 +77,7 @@ class LocalCorrelationTask : public Task {
       visit_each(c, v);
       return;
     }
-    if (c.lcSettings.visitSettings(v, blockname))
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
       return;
     if (c.loc.visitAsBlockSettings(v, blockname))
       return;
@@ -97,6 +97,14 @@ class LocalCorrelationTask : public Task {
    * @see Task
    */
   void run();
+
+  /**
+   * @brief Getter for the correlation energy.
+   * @param activeSystemController The system controller.
+   * @param pnoMethod The local correlation method to get the energy for.
+   * @return The energy.
+   */
+  static double getCorrelationEnergy(std::shared_ptr<SystemController> activeSystemController, Options::PNO_METHOD pnoMethod);
 
  private:
   // The system controller.

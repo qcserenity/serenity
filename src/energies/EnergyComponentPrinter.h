@@ -22,6 +22,7 @@
 /* Include Std and External Headers */
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Serenity {

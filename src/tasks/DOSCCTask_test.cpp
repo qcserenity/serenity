@@ -40,12 +40,23 @@ class DOSCCTaskTest : public ::testing::Test {
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
   }
-  void cleanUp(std::shared_ptr<SystemController> system) {
+  void cleanUpA(std::shared_ptr<SystemController> system) {
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "a0/", "a0");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "a1/", "a1");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "a2/", "a2");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "a3/", "a3");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system);
+  }
+  void cleanUpB(std::shared_ptr<SystemController> system) {
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "b0/", "b0");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "b1/", "b1");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "b2/", "b2");
+    SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "b3/", "b3");
     SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system);
   }
 };
 
-TEST_F(DOSCCTaskTest, ethane_bond_streching) {
+TEST_F(DOSCCTaskTest, ethane_bond_stretching) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   Settings aSettings = a->getSettings();
@@ -83,13 +94,12 @@ TEST_F(DOSCCTaskTest, ethane_bond_streching) {
   EXPECT_NEAR(totalEnergiesFromPairSelected(0), -79.521960798079562, NORMAL_D);
   EXPECT_NEAR(totalEnergiesFromPairSelected(1), -79.45841346071019, NORMAL_D);
 
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
-  SystemController__TEST_SUPPLY::cleanUp();
+  cleanUpA(a);
+  cleanUpB(b);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
-TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected) {
+TEST_F(DOSCCTaskTest, ethane_bond_stretching_vsFullCC_pairSelected) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   Settings aSettings = a->getSettings();
@@ -143,13 +153,12 @@ TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected) {
   EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
   EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
 
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
-  SystemController__TEST_SUPPLY::cleanUp();
+  cleanUpA(a);
+  cleanUpB(b);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
-TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_lmp2) {
+TEST_F(DOSCCTaskTest, ethane_bond_stretching_vsFullCC_pairSelected_lmp2) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   Settings aSettings = a->getSettings();
@@ -207,13 +216,12 @@ TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_lmp2) {
   EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
   EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
 
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
-  SystemController__TEST_SUPPLY::cleanUp();
+  cleanUpA(a);
+  cleanUpB(b);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 
-TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_scmp2) {
+TEST_F(DOSCCTaskTest, ethane_bond_stretching_vsFullCC_pairSelected_scmp2) {
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::DEBUGGING;
   auto a = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::EthaneA_Def2_SVP_BP86);
   Settings aSettings = a->getSettings();
@@ -272,9 +280,8 @@ TEST_F(DOSCCTaskTest, ethane_bond_streching_vsFullCC_pairSelected_scmp2) {
   EXPECT_NEAR(totalEnergiesFromPairSelected(0), energyA, 1e-8);
   EXPECT_NEAR(totalEnergiesFromPairSelected(1), energyB, 1e-8);
 
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(a);
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(b);
-  SystemController__TEST_SUPPLY::cleanUp();
+  cleanUpA(a);
+  cleanUpB(b);
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::NORMAL;
 }
 

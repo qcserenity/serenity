@@ -81,8 +81,8 @@ class EDAPotentials : public PotentialBundle<SCFMode> {
    * @brief A function to get the entire fock matrix.
    * @param P The density matrix.
    * @param energies The controller to add all the energy contributions to.
-   * @return The current fock matrix (rebuild on every call).
-   *         (Note that this does not imply that each Potential is rebuild, they
+   * @return The current fock matrix (rebuilt on every call).
+   *         (Note that this does not imply that each Potential is rebuilt, they
    *          may very well be cached. But all potentials contributing are added
    *          together in every call)
    */

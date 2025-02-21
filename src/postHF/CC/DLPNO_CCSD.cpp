@@ -915,7 +915,8 @@ inline void DLPNO_CCSD::calculateCCSDIntegrals() {
       _localCorrelationController->getMO3CenterIntegralController(true), closePairSets,
       _localCorrelationController->getSettings().dumpIntegrals || closePairSets.size() > 1,
       _localCorrelationController->getPairIntegralFileName(), _linearScalingSigmaVector,
-      _localCorrelationController->getSettings().lowMemory);
+      _localCorrelationController->getSettings().lowMemory,
+      _localCorrelationController->getSettings().ignoreMemoryConstraints);
   if (!dlpnoCCSDSettings.keepMO3CenterIntegrals)
     _localCorrelationController->removeMO3CenterIntegralController();
 }

@@ -70,6 +70,30 @@ class SparseMapsController {
                        double strongTripletMullikenScaling = 10, double weakTripletMullikenScaling = 100,
                        bool klListExtension = false, std::vector<std::shared_ptr<OrbitalTriple>> triples = {});
   /**
+   * @brief Constructor.
+   * @param system The system controller.
+   * @param occupiedCoefficients The orbital coefficients of the occupied orbitals.
+   * @param virtualCoefficients The virtual orbital coefficients.
+   * @param occupiedToPAOOrbitalMap The PAO selection for the occupied orbitals.
+   * @param closeOrbitalPairs The set of close orbital pairs.
+   * @param distantOrbitalPairs The set of distant orbital pairs.
+   * @param orbitalWiseMullikenThresholdss The Mulliken population thresholds which are used to truncate
+   *                                        the auxiliary basis.
+   * @param orbitalToShellThresholds The Mulliken population threshold which are used to truncate
+   *                                 the AO basis for each occupied orbital.
+   * @param strongTripletMullikenScaling Mulliken population scaling for strong triplets.
+   * @param weakTripletMullikenScaling   Mulliken population scaling for weak triplets.
+   * @param klListExtension Extend the extended pair-lists using the kl-sets.
+   * @param triples The triples list for the extended map construction.
+   */
+  SparseMapsController(std::shared_ptr<SystemController> system, std::shared_ptr<Eigen::MatrixXd> occupiedCoefficients,
+                       std::shared_ptr<Eigen::MatrixXd> virtualCoefficients, std::shared_ptr<SparseMap> occupiedToPAOOrbitalMap,
+                       std::vector<std::shared_ptr<OrbitalPair>> closeOrbitalPairs,
+                       std::vector<std::shared_ptr<OrbitalPair>> distantOrbitalPairs,
+                       Eigen::VectorXd orbitalWiseMullikenThresholds, Eigen::VectorXd orbitalToShellThresholds,
+                       double strongTripletMullikenScaling = 10, double weakTripletMullikenScaling = 100,
+                       bool klListExtension = false, std::vector<std::shared_ptr<OrbitalTriple>> triples = {});
+  /**
    * @brief Default destructor.
    */
   ~SparseMapsController() = default;
@@ -175,8 +199,10 @@ class SparseMapsController {
  private:
   // The system controller.
   std::shared_ptr<SystemController> _system;
-  // The PAO controller.
-  std::shared_ptr<PAOController> _paoController;
+  // The orbital coefficients of the occupied orbitals.
+  std::shared_ptr<Eigen::MatrixXd> _occupiedCoefficients;
+  // The virtual orbital coefficients, e.g., PAO coefficients.
+  std::shared_ptr<Eigen::MatrixXd> _virtualCoefficients;
   /*
    * Example: xToYMap --> x-->columns, y-->rows
    */

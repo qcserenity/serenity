@@ -98,7 +98,7 @@ void printRunStartInfo() {
    * FIXME works only for Linux
    */
   printSmallCaption("Program Info");
-  std::cout << "    Version           :   1.6.1" << std::endl;
+  std::cout << "    Version           :   1.6.2" << std::endl;
 
 #ifndef GIT_BRANCH
 #define GIT_BRANCH "UNKNOWN"

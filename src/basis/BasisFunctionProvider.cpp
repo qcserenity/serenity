@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <fstream>
 #include <libecpint/ecp.hpp>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -60,20 +61,39 @@ void BasisFunctionProvider::provideAtomWithBasisFunction(Atom& atom, const std::
   if (element.length() == 1)
     element = "\n" + element;
   transform(element.begin(), element.end(), element.begin(), ::tolower);
-  const std::string searchString = element + "   " + basisType;
+  // Escape special characters + and * in basisType
+  const std::regex specialChars("[+*]");
+  std::string escapedBasisType = std::regex_replace(basisType, specialChars, R"(\$&)");
+  const std::string searchString = element + R"(\s+)" + escapedBasisType;
+  std::regex regexPattern(searchString, std::regex_constants::icase);
 
   const std::string errorMessage = (std::string) "Error while parsing basis set file " + basisPath + " for element " +
                                    element + ". (Basis type: " + basisType + ")\n";
 
   /* Searching for entry. */
-  std::string::size_type startPosition = loadedBasisFile.find(searchString);
-  if (startPosition == loadedBasisFile.npos) {
+  std::smatch match;
+  unsigned matchsize = 0;
+  if (std::regex_search(loadedBasisFile, match, regexPattern)) {
+    std::string matches = match[0];
+    matchsize = matches.size();
+  }
+  else {
     throw SerenityError(errorMessage + "The used basis (file) is not defined for this element.");
   }
-  std::string::size_type endPosition = loadedBasisFile.find("*", startPosition + searchString.length() + 3);
+  std::string::size_type startPosition = match.position() + matchsize;
+  /* Turbomole-format basis files sometimes have a comment along the lines of # o     (7s4p1d) / [3s2p1d]     {511/31/1}
+  If the next line begins with a hash, skip it */
+  if (loadedBasisFile[startPosition + 1] == '#') {
+    startPosition += loadedBasisFile.find("\n", startPosition + 1);
+  }
+  /* The basis information for one element is terminated by a star */
+  std::string::size_type endPosition = loadedBasisFile.find("*", startPosition + 3);
 
   /* Extract the basis data for this element */
-  std::stringstream workStream(loadedBasisFile.substr(startPosition + searchString.length() + 3, endPosition - startPosition));
+  std::string substring = loadedBasisFile.substr(startPosition + 3, endPosition - startPosition - 3);
+  /* Replace D+ and D- by E+ and E-, respectively */
+  std::string modifiedstring = std::regex_replace(substring, std::regex(R"(D(\+|-))"), "E$1");
+  std::stringstream workStream(modifiedstring);
 
   std::vector<std::shared_ptr<Shell>> basisFunctions;
   int nPrimitives;
@@ -91,13 +111,11 @@ void BasisFunctionProvider::provideAtomWithBasisFunction(Atom& atom, const std::
       double exponent;
       double contraction;
       if (!(workStream >> exponent))
-        throw SerenityError(errorMessage + "A possible source of error is usage of a 'D' to denote an "
-                                           "exponent. It should be an 'E', e.g.: '1.23E-04' instead of "
-                                           "'1.23D-04'.");
+        throw SerenityError(errorMessage + "A possible source of error is a mismatch between the number of primitives "
+                                           "and the number of exponent-contraction entries.");
       if (!(workStream >> contraction))
-        throw SerenityError(errorMessage + "A possible source of error is usage of a 'D' to denote an "
-                                           "exponent. It should be an 'E', e.g.: '1.23E-04' instead of "
-                                           "'1.23D-04'.");
+        throw SerenityError(errorMessage + "A possible source of error is a mismatch between the number of primitives "
+                                           "and the number of exponent-contraction entries.");
 
       exponents.emplace_back(exponent);
       contractions.emplace_back(contraction);

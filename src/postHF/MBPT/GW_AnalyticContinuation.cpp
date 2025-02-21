@@ -20,10 +20,12 @@
 
 /* Include Class Header*/
 #include "postHF/MBPT/GW_AnalyticContinuation.h"
+/* Include Serenity Internal Headers */
 #include "grid/GaussLegendre.h"
 #include "math/diis/DIIS.h"
 #include "math/linearAlgebra/PadeApproximation.h"
 #include "parameters/Constants.h"
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 namespace Serenity {
 

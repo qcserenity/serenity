@@ -1,0 +1,419 @@
+\clearpage
+\section{Tasks}
+\label{sec:tasks}
+The task block accepts different options depending on the task to be run.
+These task specific options, as well as the options common to all tasks will be listed and explained
+in the following section.\\
+\\
+The general form of a task block is the following.
+Each task block is opened by a \ttt{+task} statement followed by the name of the
+task to be run and is ended by a \ttt{-task} statement.\\
+Furthermore, each task block accepts three types of systems. Supersystem (keywords: \ttt{super}),
+active  systems (keywords: \ttt{system}, \ttt{active}, \ttt{act}) and environment systems
+(\ttt{environment}, \ttt{env}) their meaning changes depending
+on the task type. Additionally, a print level (keywords: \ttt{printLevel}) and timings
+print level (keyword: \ttt{timingsPrintLevel}) are available
+for every task. The effect of the print levels will depend on the task. More information
+is given in Section~\ref{sec:tasksPrintLevels}.
+The exact meaning of active versus environment system in the context of each task will be 
+given in its respective section specifically.
+A minimal task block for a SCF calculation could look like this:
+\begin{lstlisting}
++task scf
+  system water
+-task
+\end{lstlisting}
+Note that some tasks may use a block structure similar to the system settings.
+The blocks are opened and closed in the same way as before. The input for an
+FDE calculation for two water molecules with the Huzinaga operator and the
+PBE functional for the exchange--correlation interaction may look like this:
+\begin{lstlisting}
++task FDE
+  act waterA
+  env waterB
+  +emb
+    naddXCFunc PBE
+    embeddingMode HUZINAGA
+  -emb
+-task
+\end{lstlisting}
+Possible blocks are listed in the respective task documentation and their
+structure shown in the following sections starting with~\ref{sec:scb:emb}.
+
+\subsection{General Keywords}
+\label{sec:tasksPrintLevels}
+The following keywords are present, and can be changed in all tasks, regardless
+of the other keywords present.
+\begin{description}
+  \item [\texttt{printLevel}]\hfill \\
+Changing the print level may result in additional output which is indented by
+a set of characters in order to allow for easy searches. Furthermore, the number
+of eigenvalues printed to the output after converging a SCF calculation depends
+on the print level.
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|>{\ttfamily}c|l|}\hline
+  \multicolumn{1}{|c|}{Numerical value} & & \multicolumn{1}{c|}{Indent}&\multicolumn{1}{c|}{Number of printed eigenvalues}\\\hline
+  0 & \texttt{MINIMUM}          &       & HOMO-LUMO gap    \\\hline
+  1 & \texttt{NORMAL }[Default] &       & HOMO-9 to LUMO+9 \\\hline
+  2 & \texttt{VERBOSE}          & ==V== & 0 to LUMO+9      \\\hline
+  3 & \texttt{DEBUGGING}        & ==D== & ALL              \\\hline
+\end{tabular}
+\end{table}
+\item [\texttt{timingsPrintLevel}]\hfill \\
+   The amount of timings that will be printed to the output. This setting is closer to a
+   debug/developer setting, yet it may also be interesting for an experienced user.
+   The default value is $1$, a value of $0$ will remove many timings, higher
+   values than $1$ may add additional timings.
+\end{description}
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task SCF
+    actsystem water
+    printLevel debugging
+    timingsPrintLevel 0
+  -task
+\end{lstlisting}
+
+
+\subsection{Common Sub-Block: Embedding Settings}
+\label{sec:scb:emb}
+The \texttt{EMB} block contains all settings for embedding calculations. Be aware: some defaults may vary between the tasks.
+\subsubsection{Example Inputs}
+\begin{lstlisting}
+  +task fat
+    system ammonia1
+    system ammonia2
+    +emb
+      naddXcFunc PW91
+      embeddingmode NADDFUNC
+    -emb
+  -task
+\end{lstlisting}
+\begin{lstlisting}
+  +task fat
+    system ammonia1
+    system ammonia2
+    +emb
+      embeddingmode NADDFUNC
+    -emb
+    +customnaddxc
+      basicFunctionals {x_slater}
+      mixingFactors {0.8}
+      hfExchangeRatio 0.2
+    -customnaddxc
+  -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{embeddingMode}]\hfill \\
+    The type of embedding to be done. Possible options are:
+    \ttt{NONE}, no treatment of Pauli-repulsion.
+    \ttt{NADD\_FUNC}, the standard subsystem DFT formalism, employing two non-additive density functionals.
+    This option is the default in most cases.
+    \ttt{LEVELSHIFT}, a projector based embedding using only one non-additive density functional for exchange
+    and correlation. This method was introduced by Manby and Miller.
+    \ttt{RECONSTRUCTION}, embedding using potential reconstruction techniques.
+    Furthermore, there are three more projector based embedding techniques that use only one non-additive
+    density functional for exchange and correlation. These can be used with the keywords \ttt{HUZINAGA} and
+    \ttt{FERMI\_SHIFTED\_HUZINAGA} or \ttt{FERMI}, as well as \ttt{HOFFMANN}.
+    Related to projector based embedding techniques, absolutely localized molecular orbitals can be used with
+    the keyword \ttt{ALMO}.
+    Note that depending on the actual task, the selection of embedding modes can be limited. As an example,
+    the calculation of nuclear gradients is only possible for \ttt{NADD\_FUNC} type calculations. Finally, \ttt{LOEWDIN} employs evaluations of the non-additive kinetic energy from non-orthogonal molecular orbitals of subsystems and making use of the Neumann expansion of the inverse overlap matrix. The latter option is in experimental stage and, therefore, is not recommended.
+  \item [\texttt{naddXCFunc}]\hfill \\
+    The exchange--correlation functional to be used in the evaluation of the non-additive term arising in the
+    subsystem DFT formalism. The list of available functionals can be found in Section~\ref{sec:system:dft}.
+    Note that double hybrid functionals are not fully supported yet. This can also be customized by invoking the \ttt{+customnaddxc} block (wich is a \ttt{customfunc}-type block, see Sec.~\ref{sec:system:customfunc}) in addition to the \ttt{emb} block, which will be prioritized over \ttt{naddXCFunc}.
+  \item [\texttt{naddKinFunc}]\hfill \\
+    The kinetic energy functional to be used in the evaluation of the non-additive term arising in the
+    subsystem DFT formalism. The list of available functionals can be found in Section~\ref{sec:system:dft}. This can also be customized by invoking the \ttt{+customnaddkin} block (wich is a \ttt{customfunc}-type block, see Sec.~\ref{sec:system:customfunc}) in addition to the \ttt{emb} block, which will be prioritized over \ttt{naddKinFunc}.
+  \item [\texttt{levelShiftParameter}]\hfill \\
+    When using \ttt{embeddingMode LEVELSHIFT} this parameter determines the magnitude by which the environment
+    orbitals are shifted. The default value is \ttt{1.0e+6}.
+  \item [\texttt{dispersion}]\hfill \\
+    The type of dispersion interaction correction to employ for the calculation of interactions between the
+    embedded systems. For the different options, see Sec.~\ref{sec:system:dft}. By default \ttt{None}.
+  \item [\texttt{partialChargesForCoulombInt}]\hfill \\
+    Approximate Coulomb interactions between subsystems by representing a subsystem using partial charges.
+  \item [\texttt{chargeModel}]\hfill \\
+    Model of partial charges to be used for representing a subsystem (see Sec.~\ref{sec:PopAnalysisTask}).
+  \item [\texttt{loewdinOrder}]\hfill \\
+    An integer value setting up the truncation order of the Neumann series in the \ttt{LOEWDIN} embedding. Note that only terms up to and including the third order are implemented.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{calculateMP2Correction}]\hfill \\
+    A flag to turn off the evaluation of the MP2 correction for double hybrid functionals. By default \ttt{True}.
+  \item [\texttt{fullMP2Coupling}]\hfill \\
+    If true, the MP2 contribution of the non--additive exchange-correlation energy for double hybrids captures
+    the effect of environment orbital pairs on the active-pair amplitudes. By default \ttt{False}.
+  \item [\texttt{longRangeNaddKinFunc}]\hfill \\
+    Long-range non--additive kinetic energy for hybrid methods. Only used if \ttt{embeddingMode} is one of
+    the projection based methods. This option is intended to mainly be used in conjunction with
+    \ttt{embeddingMode LEVELSHIFT}. By default, this option is disabled\\ (\ttt{longRangeNaddKinFunc NONE}).
+    For a list of possible functionals see the kinetic energy functionals in Section~\ref{sec:system:dft}. This can also be customized by invoking the \ttt{+customlongrangenaddkin} block (wich is a \ttt{customfunc}-type block, see Sec.~\ref{sec:system:customfunc}) in addition to the \ttt{emb} block, which will be prioritized over\\ \ttt{longRangeNaddKinFunc}.
+  \item [\texttt{borderAtomThreshold}]\hfill \\
+    The Mulliken population threshold used to determine if an orbital is considered ``distant'' or not.
+    Only used in hybrid functional/projection schemes. By default \ttt{0.02}.
+  \item [\texttt{basisFunctionRatio}]\hfill \\
+    The minimum ratio of retained basis function shells needed in order to consider an atom to be not
+    ``distant''. Only used in hybrid functional/projection schemes. By default \ttt{0.0}.
+  \item [\texttt{truncateProjector}]\hfill \\
+    A flag to truncate the projection operator in bottom-up calculations. Only used if any kind of projection
+    technique is used. By default \ttt{False}.
+  \item [\texttt{projecTruncThresh}]\hfill \\
+    Total overlap threshold for the truncation of the projection operator. Only used if \\
+    \ttt{truncateProjector true} and hence only useful in any kind of projection technique.
+    By default \ttt{1.0e+1}.
+  \item [\texttt{fermiShift}]\hfill \\
+    An optional shift for the Huzinaga operator. Only used if\\ \ttt{embeddingMode FERMI\_SHIFTED\_HUZINAGA} is
+    used. By default \ttt{1.0}.
+  \item [\texttt{carterCycles}]\hfill \\
+    Number of update cycles for the Zhang-Carter potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{potentialBasis}]\hfill \\
+    The label of the basis set used for the potential reconstruction. Only relevant if\\
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{singValThreshold}]\hfill \\
+    Threshold for the singular value decomposition in potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{lbDamping}]\hfill \\
+    Damping for the density update in the van Leeuwen--Barends potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{lbCycles}]\hfill \\
+    Number of update cycles for the van Leeuwen--Barends potential reconstruction. Only relevant if
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{smoothFactor}]\hfill \\
+    The smoothing factor for the potential reconstruction. Only relevant if\\
+    \ttt{embeddingMode RECONSTRUCTION} is used.
+  \item [\texttt{naddXCFuncList}]\hfill \\
+    A list of non-additive exchange--correlation functionals used for mixed embedding, where some subsystems are embedded two non-additive density functionals and others via projection. By default empty. Two elements are expected, with the first being the functional for the exactly embedded subsystems and the second entry as the functional for the approximately embedded subsystems.
+  \item [\texttt{naddKinFuncList}]\hfill \\
+    A list of non-additive kinetic energy functionals. By default empty.
+  \item [\texttt{embeddingModeList}]\hfill \\
+    A list of embeddingModes, allowing each subsystem to use a different embeddingMode in a mixed embedding scheme. By default empty. This list is expected to contain as many elements as there are systems for a specific tasks.
+  \item [\texttt{loewdinWeights}]\hfill \\
+    A vector of scaling factors used for Loewdin-based kinetic energy correction terms. The first value corresponds to the first-order term, the second value is related with the second term, etc.
+\end{description}
+
+\subsection{Common Sub-Block: Local Correlation Settings}
+\label{sec:scb:lc}
+The \texttt{LC} block contains all settings for calculations based on local-correlation schemes.
+Some defaults may vary between the tasks and the pair natural orbital-(PNO-)macro flag
+(\ttt{pnoSettings}) used (\ttt{TIGHT}, \ttt{NORMAL} or \ttt{LOOSE}).
+All defaults set by the PNO-macro flag \ttt{pnoSettings} can be overwritten.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
+  +task MP2
+    system water  
+    mp2Type local
+    +lc 
+      pnoSettings TIGHT    #the PNO-macro flag
+      pnoThreshold 3.3e-8  #overrides the value given by the macro
+      useFrozenCore true
+    -lc 
+  -task
+ \end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{pnoSettings}]\hfill \\
+  The PNO-macro flag. This flag can be used to manipulate several settings at once. The default value is
+  \ttt{NORMAL}. The other options are \ttt{LOOSE} and \ttt{TIGHT} with looser and tighter thresholds
+  respectively. The actual values associated with this setting are given below and are different for
+  coupled-cluster and MP2.
+ \item [\texttt{useFrozenCore}]\hfill \\
+ If true, the frozen core approximation is used. Frozen core orbitals are determined by the orbital energy
+ threshold \texttt{energyCutOff}. By default, no frozen-core approximation (\ttt{false}) is used. Note
+ that using a frozen-core approximation requires that the core and valence orbitals have been localized
+ independently.
+ \item [\texttt{linearScalingSigmaVector}]\hfill \\
+ If true, the integrals required for the sigma vector construction in DLPNO-CCSD are calculated directly from
+ integrals calculated during the main integral transformation. This requires slightly more memory, however,
+ the amplitude optimization is accelerated by more than one order of magnitude. Note that this scheme is an
+ additional approximation. It is sensible to set this to true for larger systems. Default is \ttt{true}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{projectedEnvironment}]\hfill \\
+    Apply an additional energy shift (1e+6 Hartree) for environment orbitals.
+    This is turned off by default (\ttt{false}).
+    \item [\texttt{useBPAlgorithm}]\hfill \\
+    If true, the Boughton--Pulay algorithm is used for the selection of projected atomic orbitals. The size of the
+    virtual domains is controlled by the threshold (\ttt{completenessThreshold}). This is turned off by default
+    (\ttt{false}) in favor of a differential-overlap-integral based selection. The latter is argued to be more robust.
+    \item [\texttt{completenessThreshold}]\hfill \\
+    The Boughton--Pulay completeness threshold. The default is $0.02$. Lowering this threshold will lead to
+    increased virtual domains if the Boughton--Pulay algorithm is used.
+    \item [\texttt{doiPairThreshold}]\hfill \\
+    Differential-overlap-integral pair-prescreening threshold. In combination with the pair energy threshold
+    (\ttt{ccsdPairThreshold}), this threshold controls the number of orbital pairs.
+    The default is 1e-5.
+    \item [\texttt{doiPAOThreshold}]\hfill \\
+    The differential-overlap-integral threshold for the projected atomic orbital (PAO) selection. Lowering this
+    threshold leads to larger virtual PAO domains. The default depends on the PNO macro flag,
+    \ttt{pnoSetting}. Setting this manually overrides the value given by the macro setting.
+    \item [\texttt{collinearDipoleScaling}]\hfill \\
+    The scaling factor of \ttt{ccsdPairThreshold} for the very-distant pair selection.
+    The default is $0.01$.
+    \item [\texttt{ccsdPairThreshold}]\hfill \\
+    Pair energy threshold for close-pairs. The default depends on the PNO macro flag, \ttt{pnoSetting}.
+    Setting this manually overrides the value given by the macro setting.
+    \item [\texttt{triplesSCMP2Scaling}]\hfill \\
+    The scaling factor of \ttt{ccsdPairThreshold} for the pair selection which are used for the triples
+    selection in coupled cluster. The default is $0.1$.
+    \item [\texttt{pnoThreshold}]\hfill \\
+    Pair natural orbital occupation number selection threshold. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually overrides the value given by the macro setting.
+    \item [\texttt{tnoThreshold}]\hfill \\
+    Triples natural orbital occupation number selection threshold. The default is 1e-9.
+    \item [\texttt{singlesPNOFactor}]\hfill \\
+    The scaling factor for \ttt{pnoThreshold} for the singles virtual domain construction. The default
+    is $0.03$. This recovers the singles contributions nearly completely.
+    \item [\texttt{pnoCoreScaling}]\hfill \\
+    The scaling factor for the \ttt{pnoThreshold} for orbital pairs containing core orbitals. The
+    default is $0.01$. Calculating the electron correlation correctly for core-like orbitals requires
+    significantly stricter thresholds.
+    \item [\texttt{orbitalToShellThreshold}]\hfill \\
+    The orbital coefficients are prescreened based on their absolute value. If they are smaller than this
+    threshold, integrals associated with them are neglected. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually overrides the value given by the macro setting.
+    \item [\texttt{mullikenThreshold}]\hfill \\
+    The Mulliken population threshold which is used to determine the pair-wise fitting domains. Lowering this
+    threshold leads to increased accuracy of the integral transformation but will increase the computational
+    cost significantly. The default depends on the PNO macro flag,
+    \ttt{pnoSettings}. Setting this manually overrides the value given by the macro setting.
+    \item [\texttt{crudeDomainFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the initial,
+    crude fitting domains which are used for orbital pair prescreening. The default is $10.0$.
+    \item [\texttt{crudeStrongTripFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the strong triples
+    fitting domains. The default is $10.0$. A strong triple is an orbital triple constructed from
+    close orbital pairs only.
+    \item [\texttt{crudeWeakTripFactor}]\hfill \\
+    The scaling factor for \ttt{mullikenThreshold} for the construction of the weak triples
+    fitting domains. The default is $100.0$.
+    \item [\texttt{fockMatrixPrescreeningThreshold}]\hfill \\
+    The Fock matrix prescreening threshold for local MP2. The default is 1e-5.
+    \item [\texttt{doiNetThreshold}]\hfill \\
+    Orbital coefficient prescreening threshold for differential-overlap-integral calculation. The default
+    is 1e-7.
+    \item [\texttt{paoOrthogonalizationThreshold}]\hfill \\
+    The canonical orthogonalization threshold for non-redundant projected atomic orbital (PAO) construction.
+    The initial PAO domains often contain linear dependencies. This is resolved by canonical orthogonalization of
+    the PAO--PAO overlap matrix. The default for the smallest tolerated overlap matrix eigenvalues is
+    1e-6.
+    \item [\texttt{paoNormalizationThreshold}]\hfill \\
+    Renormalization threshold for PAOs. By default 1e-6.
+    \item [\texttt{maximumMemoryRatio}]\hfill \\
+    Maximum ratio of the available memory used for integral storage. The default is $0.8$.
+    \item [\texttt{dumpIntegrals}]\hfill \\
+    If true, all pair-wise integrals are written to file. Warning: this may take a lot of disk space.
+    The default is \ttt{false}.
+    \item [\texttt{diisStartResidual}]\hfill \\
+    Starting residual threshold for the DIIS. The default is $1.0$.
+    \item [\texttt{dampingFactor}]\hfill \\
+    The initial damping factor for amplitude update. The default is $0.4$.
+    \item [\texttt{dampingChange}]\hfill \\
+    The damping factor is lowered by this value in each iteration. The default is $0.1$.
+    \item [\texttt{finalDamping}]\hfill \\
+    The final damping factor for the amplitude update. The default is $0.0$.
+    \item [\texttt{diisMaxStore}]\hfill \\
+    The maximum number of DIIS vectors stored during amplitude optimization. The default is $10$.
+    \item [\texttt{setFaiZero}]\hfill \\
+    Force the $F_{ai}$ (occupied--virtual) block of the Fock matrix to be zero. The default is \ttt{true}.
+    \item [\texttt{useTriplesCoreScaling}]\hfill \\
+    If true, the \texttt{pnoCoreScaling} factor is used for the triples natural orbital truncation for
+    triples containing core orbitals. The default is \ttt{false}.
+    \item [\texttt{method}]\hfill \\
+    Specify the local-correlation method (\ttt{DLPNO-CCSD/DLPNO-CCSD(T0)/DLPNO-MP2} or \ttt{NONE}). This is only used if the method
+    is not specified via a task-keyword. By default \ttt{DLPNO-CCSD}.
+    \item [\texttt{topDownReconstruction}]\hfill \\
+    Enforce top-down \textit{ansatz} for potential reconstruction.
+    \item [\texttt{extendedDomainScaling}]\hfill \\
+    You may include additional pairs as close pairs in the sparse map / extended
+    domain construction. By default turned off/default $\ttt{1.0}$.
+    \item [\texttt{enforeceHFFockian}]\hfill \\
+    Enforce the use of the HF Fock operator. By default \ttt{false}.
+    \item [\texttt{reuseFockMatrix}]\hfill \\
+    If true, \textsc{Serenity} will try to read the Fock matrix from disk or from memory.
+    This avoids an additional Fock matrix construction. By default \ttt{true}.
+    \item [\texttt{lowMemory}]\hfill \\
+    If true, \textsc{Serenity} will limit the number of 3-center integrals stored in memory
+    and recalculate integrals more often. By default \ttt{false}.
+    \item [\texttt{useProjectedOccupiedOrbitals}]\hfill \\
+    If false, projected orbitals that are occupied by the environment are removed from the virtual orbital space. By default \ttt{false}.
+ \end{description}
+
+The settings used in local correlation methods based on the PNO-approximation can
+be adjusted using the macro-flags \ttt{LOOSE}, \ttt{NORMAL} or \ttt{TIGHT}.
+These flags affect multiple parameters. The values set by the flags will vary between
+local coupled cluster and MP2 calculations. The affected parameters and values for
+MP2/coupled cluster are given below.
+
+\begin{table}[H]\small \centering \begin{tabular}{|>{\ttfamily}c|>{\ttfamily}c|>{\ttfamily}c|l|}\hline
+   & \multicolumn{1}{c|}{\texttt{LOOSE}}& \multicolumn{1}{c|}{\texttt{NORMAL}}& \multicolumn{1}{c|}{\texttt{TIGHT}}\\\hline
+   \multicolumn{4}{|c|}{\texttt{Local Coupled Cluster}}  \\\hline
+  \texttt{ccsdPairThreshold}       &  1e-3  & 1e-4     & 1e-5    \\\hline
+  \texttt{pnoThreshold}            &  1e-6  & 3.33e-7  & 1e-7    \\\hline
+  \texttt{orbitalToShellThreshold} &  1e-3  & 1e-3     & 1e-3    \\\hline
+  \texttt{mullikenThreshold}       &  1e-3  & 1e-3     & 1e-4    \\\hline
+  \texttt{doiPAOThreshold}         &  1e-2  & 1e-2     & 1e-3    \\\hline
+  \multicolumn{4}{|c|}{\texttt{Local MP2}}  \\\hline
+  \texttt{ccsdPairThreshold}       &  1e-3     &  1e-4 & 1e-5    \\\hline
+  \texttt{pnoThreshold}            &  3.33e-7  &  1e-8 & 1e-9    \\\hline
+  \texttt{orbitalToShellThreshold} &  1e-3     &  1e-3 & 1e-4    \\\hline
+  \texttt{mullikenThreshold}       &  1e-4     &  1e-4 & 1e-5    \\\hline
+  \texttt{doiPAOThreshold}         &  1e-2     &  1e-3 & 1e-3    \\\hline
+\end{tabular}
+\end{table}
+
+%###############################%
+%             Tasks             %
+%###############################%
+
+% in alphabetical order, insert new tasks in the correct location
+% please use the format given in template.tex when adding a new task
+\input{input/tasks/ActiveSpaceSelectionTask.tex}
+\input{input/tasks/BasisSetTruncationTask.tex}
+\input{input/tasks/BrokenSymmetryTask.tex}
+\input{input/tasks/CoupledClusterTask.tex}
+\input{input/tasks/DFTEmbeddedLocalCorrelationTask.tex}
+\input{input/tasks/DispersionCorrectionTask.tex}
+\input{input/tasks/DOSCCTask.tex}
+\input{input/tasks/EDATask.tex}
+\input{input/tasks/ElectronicStructureCopyTask.tex}
+\input{input/tasks/ElectronTransferTask.tex}
+\input{input/tasks/EvalutateEnergyTask.tex}
+\input{input/tasks/ExportCavityTask.tex}
+\input{input/tasks/ExportGridTask.tex}
+\input{input/tasks/FCIDumpFileWriterTask}
+\input{input/tasks/FDETask.tex}
+\input{input/tasks/FiniteFieldTask.tex}
+\input{input/tasks/FreezeAndThawTask.tex}
+\input{input/tasks/FXDTask.tex}
+\input{input/tasks/GeneralizedDOSTask.tex}
+\input{input/tasks/GeometryOptimizationTask.tex}
+\input{input/tasks/GradientTask.tex}
+\input{input/tasks/GWTask.tex}
+\input{input/tasks/HessianTask.tex}
+\input{input/tasks/ImportCavityTask.tex}
+\input{input/tasks/LocalCorrelationTask.tex}
+\input{input/tasks/LocalizationTask.tex}
+\input{input/tasks/LRSCFTask.tex}
+\input{input/tasks/MP2Task.tex}
+\input{input/tasks/MultipoleMomentTask.tex}
+\input{input/tasks/OrbitalsIOTask.tex}
+\input{input/tasks/OrthogonalizationTask.tex}
+\input{input/tasks/PCMInteractionEnergyTask.tex}
+\input{input/tasks/PlotTask.tex}
+\input{input/tasks/PopAnalysisTask.tex}
+\input{input/tasks/QuasiRestrictedOrbitalsTask.tex}
+\input{input/tasks/SCFTask.tex}
+\input{input/tasks/SystemAdditionTask.tex}
+\input{input/tasks/SystemSplittingTask.tex}
+\input{input/tasks/TDEmbeddingTask.tex}
+\input{input/tasks/TopDownStaticEmbeddingTask.tex}
+\input{input/tasks/TSTask.tex}
+\input{input/tasks/VirtualOrbitalSpaceSelectionTask.tex}
+\input{input/tasks/WavefunctionEmbeddingTask.tex}
+\input{input/tasks/WriteIntegralsTask.tex}

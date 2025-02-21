@@ -54,7 +54,8 @@ class BFGS : public Optimizer {
    */
   void optimize(std::function<bool(const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
                                    std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
-                    updateFunction) override final;
+                    updateFunction,
+                std::shared_ptr<unsigned int> nRejected = nullptr) override final;
 
  private:
   // The initial step length.

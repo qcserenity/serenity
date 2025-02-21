@@ -38,8 +38,9 @@
 
 namespace Serenity {
 
-FiniteFieldTask::FiniteFieldTask(const std::shared_ptr<SystemController>& activeSystem,
-                                 const std::vector<std::shared_ptr<SystemController>>& environmentSystems)
+template<Options::SCF_MODES SCFMode>
+FiniteFieldTask<SCFMode>::FiniteFieldTask(const std::shared_ptr<SystemController>& activeSystem,
+                                          const std::vector<std::shared_ptr<SystemController>>& environmentSystems)
   : _activeSystem(activeSystem),
     _environmentSystems(environmentSystems),
     _polarizability(Eigen::Matrix3d::Zero(3, 3)),
@@ -48,41 +49,9 @@ FiniteFieldTask::FiniteFieldTask(const std::shared_ptr<SystemController>& active
   _embeddingScheme = Options::EMBEDDING_SCHEME::ISOLATED;
 }
 
-void FiniteFieldTask::run() {
-  Options::SCF_MODES runMode = RESTRICTED;
-  if (_activeSystem->getSCFMode() == UNRESTRICTED)
-    runMode = UNRESTRICTED;
-  for (auto system : _environmentSystems) {
-    if (system->getSCFMode() == UNRESTRICTED)
-      runMode = UNRESTRICTED;
-  }
-  // ToDo ::: This implementation already prepares the mixed restricted-unrestricted merge request.
-  // switch (this->generalSettings.scfModeChoice) {
-  //   case (Options::TASK_SCFMODE_CHOICE::RESTRICTED): {
-  //     runMode = RESTRICTED;
-  //     break;
-  //   }
-  //   case (Options::TASK_SCFMODE_CHOICE::UNRESTRICTED): {
-  //     runMode = UNRESTRICTED;
-  //     break;
-  //   }
-  //   case (Options::TASK_SCFMODE_CHOICE::DYNAMIC): {
-  //     for (auto system : _activeSystem) {
-  //       if (system->getSCFMode() == UNRESTRICTED)
-  //         runMode = UNRESTRICTED;
-  //     }
-  //     break;
-  //   }
-  // }
-  if (runMode == RESTRICTED)
-    this->runImpl<RESTRICTED>();
-  else {
-    this->runImpl<UNRESTRICTED>();
-  }
-}
-
 template<Options::SCF_MODES SCFMode>
-void FiniteFieldTask::runImpl() {
+void FiniteFieldTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _activeSystem);
   // run the task
   printSubSectionTitle("Finite Field Task");
   printBigCaption("Calculation for " + _activeSystem->getSystemName());
@@ -90,12 +59,14 @@ void FiniteFieldTask::runImpl() {
     _embeddingScheme = Options::EMBEDDING_SCHEME::FDE;
   }
   bool rsHybrid = false;
-  auto func = resolveFunctional(_activeSystem->getSettings().dft.functional);
+  auto func = _activeSystem->getSettings().customFunc.basicFunctionals.size()
+                  ? Functional(_activeSystem->getSettings().customFunc)
+                  : resolveFunctional(_activeSystem->getSettings().dft.functional);
   if (func.isRSHybrid() && _activeSystem->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT) {
     rsHybrid = true;
   }
   /* calculate dipolmoments for unperturbed active system */
-  Eigen::MatrixXd unperturbedDipMoment = this->perturbedSCF<SCFMode>(0, 0, BASE_PROPERTY::DIPOLE_MOMENT, 0.0);
+  Eigen::MatrixXd unperturbedDipMoment = this->perturbedSCF(0, 0, BASE_PROPERTY::DIPOLE_MOMENT, 0.0);
 
   auto& libint = Libint::getInstance();
   libint.keepEngines(LIBINT_OPERATOR::coulomb, 0, 2);
@@ -112,14 +83,14 @@ void FiniteFieldTask::runImpl() {
   if (settings.frequency == 0.0) {
     /* calculate dipole moments for all finite fields */
     for (unsigned iCoord = 0; iCoord < 3; ++iCoord) {
-      baseProperty(iCoord, 0) = this->perturbedSCF<SCFMode>(iCoord, +1.0 * settings.finiteFieldStrength,
-                                                            BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
-      baseProperty(iCoord, 1) = this->perturbedSCF<SCFMode>(iCoord, -1.0 * settings.finiteFieldStrength,
-                                                            BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
-      baseProperty(iCoord, 2) = this->perturbedSCF<SCFMode>(iCoord, +2.0 * settings.finiteFieldStrength,
-                                                            BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
-      baseProperty(iCoord, 3) = this->perturbedSCF<SCFMode>(iCoord, -2.0 * settings.finiteFieldStrength,
-                                                            BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
+      baseProperty(iCoord, 0) =
+          this->perturbedSCF(iCoord, +1.0 * settings.finiteFieldStrength, BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
+      baseProperty(iCoord, 1) =
+          this->perturbedSCF(iCoord, -1.0 * settings.finiteFieldStrength, BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
+      baseProperty(iCoord, 2) =
+          this->perturbedSCF(iCoord, +2.0 * settings.finiteFieldStrength, BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
+      baseProperty(iCoord, 3) =
+          this->perturbedSCF(iCoord, -2.0 * settings.finiteFieldStrength, BASE_PROPERTY::DIPOLE_MOMENT, settings.frequency);
     }
     /* Polarizability */
     for (unsigned i = 0; i < 3; ++i) {
@@ -152,15 +123,15 @@ void FiniteFieldTask::runImpl() {
   /* analytical calculation for dynamic frequency via the LRSCFTask */
   else {
     /* calculate polarizabilities for all finite fields */
-    _polarizability = this->perturbedSCF<SCFMode>(0, 0, BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
+    _polarizability = this->perturbedSCF(0, 0, BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
     _isotropicPolarizability = (1.0 / 3.0) * _polarizability.trace();
     baseProperty.resize(3, 2);
     if (settings.hyperPolarizability) {
       for (unsigned iCoord = 0; iCoord < 3; ++iCoord) {
-        baseProperty(iCoord, 0) = this->perturbedSCF<SCFMode>(iCoord, +1.0 * settings.finiteFieldStrength,
-                                                              BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
-        baseProperty(iCoord, 1) = this->perturbedSCF<SCFMode>(iCoord, -1.0 * settings.finiteFieldStrength,
-                                                              BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
+        baseProperty(iCoord, 0) = this->perturbedSCF(iCoord, +1.0 * settings.finiteFieldStrength,
+                                                     BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
+        baseProperty(iCoord, 1) = this->perturbedSCF(iCoord, -1.0 * settings.finiteFieldStrength,
+                                                     BASE_PROPERTY::DYNAMIC_POLARIZABILITY, settings.frequency);
       }
       for (unsigned i = 0; i < 3; ++i) {
         for (unsigned j = 0; j < 3; ++j) {
@@ -233,7 +204,8 @@ void FiniteFieldTask::runImpl() {
 } /* enf of run function */
 
 template<Options::SCF_MODES SCFMode>
-Eigen::MatrixXd FiniteFieldTask::perturbedSCF(unsigned direction, double fStrength, BASE_PROPERTY propertyType, double frequency) {
+Eigen::MatrixXd FiniteFieldTask<SCFMode>::perturbedSCF(unsigned direction, double fStrength, BASE_PROPERTY propertyType,
+                                                       double frequency) {
   if (direction > 2) {
     throw SerenityError("You are trying to manipulate a vector element that does not exist!");
   }
@@ -309,25 +281,34 @@ Eigen::MatrixXd FiniteFieldTask::perturbedSCF(unsigned direction, double fStreng
   return property;
 }
 
-void FiniteFieldTask::visit(FiniteFieldTaskSettings& c, set_visitor v, std::string blockname) {
+template<Options::SCF_MODES SCFMode>
+void FiniteFieldTask<SCFMode>::visit(FiniteFieldTaskSettings& c, set_visitor v, std::string blockname) {
   if (!blockname.compare("")) {
     visit_each(c, v);
+    return;
   }
-  else if (!c.embedding.visitSettings(v, blockname)) {
-    throw SerenityError((std::string) "Unknown block in FiniteFieldTaskSettings: " + blockname);
-  }
+  // If reached, the blockname is unknown.
+  if (c.embedding.visitAsBlockSettings(v, blockname))
+    return;
+  throw SerenityError((std::string) "Unknown block in FiniteFieldTaskSettings: " + blockname);
 }
 
-Eigen::Matrix3d FiniteFieldTask::getPolarizability() {
+template<Options::SCF_MODES SCFMode>
+Eigen::Matrix3d FiniteFieldTask<SCFMode>::getPolarizability() {
   return _polarizability;
 }
 
-std::vector<Eigen::Matrix3d> FiniteFieldTask::getHyperPolarizability() {
+template<Options::SCF_MODES SCFMode>
+std::vector<Eigen::Matrix3d> FiniteFieldTask<SCFMode>::getHyperPolarizability() {
   return _hyperPolarizability;
 }
 
-double FiniteFieldTask::getIsotropicPolarizability() {
+template<Options::SCF_MODES SCFMode>
+double FiniteFieldTask<SCFMode>::getIsotropicPolarizability() {
   return _isotropicPolarizability;
 }
+
+template class FiniteFieldTask<Options::SCF_MODES::RESTRICTED>;
+template class FiniteFieldTask<Options::SCF_MODES::UNRESTRICTED>;
 
 } /* namespace Serenity */

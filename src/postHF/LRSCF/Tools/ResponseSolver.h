@@ -40,6 +40,9 @@ enum class GAUGE;
  *
  * For damped response problems (frequency is complex) it utilizes a modified OJJ-Algorithm adapted\n
  * for this purpose (see Niklas' Master Thesis for further reference).
+ *
+ * AR: Caution! This class respects only the first three columns of the right-hand side matrix ppmq. See the seed()
+ * function
  */
 class ResponseSolver : public IterativeSolver {
  public:
@@ -53,7 +56,7 @@ class ResponseSolver : public IterativeSolver {
    *        exceeds this threshold.
    * @param frequencies The frequencies to be solved for.
    * @param damping The implicitly imaginary damping factor (in eV).
-   * @param rhs The right-hand side of the linear system.
+   * @param ppmq The right-hand side of the linear system.
    * @param sigmaCalculator A lambda to conveniently form response matrix -- guess vector products.\n
    *        Takes a set of guessvectors as an argument and returns a pointer to the sigmavectors.
    * @param initialGuess The initial guess space might also be passed to the response solver.

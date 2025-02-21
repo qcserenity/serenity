@@ -24,7 +24,6 @@
 #include "misc/SerenityError.h"
 /* Include Std and External Headers */
 #include <stdio.h>
-#include <iostream>
 
 namespace Serenity {
 

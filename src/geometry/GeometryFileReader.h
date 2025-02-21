@@ -19,8 +19,6 @@
  */
 #ifndef GEOMETRYFILEREADER_H_
 #define GEOMETRYFILEREADER_H_
-/* Include Serenity Internal Headers */
-#include "geometry/GeometryFactory.h"
 /* Include Std and External Headers */
 #include <fstream>
 #include <iostream>
@@ -30,11 +28,12 @@
 
 namespace Serenity {
 /* Forward declarations */
+class Geometry;
 /**
  * @class GeometryFileReader GeometryFileReader.h
- * @brief Abstract file reading kind of GeometryFactory.
+ * @brief Abstract file reading.
  */
-class GeometryFileReader : public GeometryFactory {
+class GeometryFileReader {
  public:
   GeometryFileReader() = default;
   /**

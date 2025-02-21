@@ -22,21 +22,21 @@
 /* Include Serenity Internal Headers */
 #include "data/SpinPolarizedData.h"
 /* Include Std and External Headers */
-#include <vector> //std::vector.
+#include <vector>
 
 namespace Serenity {
 /* Forward declarations */
 namespace Options {
 enum class SCF_MODES;
 }
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
 
 /**
  * @class  Localization Localization.h
  * @brief  Interface for orbital localization routines
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class Localization {
  public:
   Localization() = default;
@@ -53,8 +53,8 @@ class Localization {
    * @param maxSweeps Maximum number of localization iterations.
    * @param orbitalRange Indices of the orbitals to be localized.
    */
-  virtual void localizeOrbitals(OrbitalController<T>& orbitals, unsigned int maxSweeps,
-                                SpinPolarizedData<T, std::vector<unsigned int>> orbitalRange) = 0;
+  virtual void localizeOrbitals(OrbitalController<SCFMode>& orbitals, unsigned int maxSweeps,
+                                SpinPolarizedData<SCFMode, std::vector<unsigned int>> orbitalRange) = 0;
 };
 
 } /* namespace Serenity */

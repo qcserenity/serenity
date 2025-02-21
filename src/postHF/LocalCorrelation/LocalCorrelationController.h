@@ -45,6 +45,7 @@ class SparseMapsController;
 class OrbitalPairSet;
 class OrbitalTripleSet;
 
+// clang-format off
 /**
  * @class LocalCorrelationSettings LocalCorrelationController.h
  * @brief The settings for the local correlation calculation.\n
@@ -57,7 +58,7 @@ class OrbitalTripleSet;
  *   TightPNO        10-5           10-7            10-4(10-3)\n\n\n
  *
  *   Default is Normal-PNO
- *
+ *   Some of the settings refer directly to JCTC 11, 1525-1539 (2015) and J. Chem. Phys. 143, 034108 (2015).
  *
  * Settings:\n
  *   projectedEnvironment                    --- Levelshift occ. environment orbitals.\n
@@ -90,19 +91,24 @@ class OrbitalTripleSet;
  *   pnoCoreScaling                          --- Scaling factor for pairs/singles that include core-like orbitals.
  *   useFrozenCore                           --- Use the frozen-core approximation.
  *   energyCutOff                            --- Orbital energy cut-off to determine core-like orbitals.
- *   useTriplesCoreScaling                   --- Use the pnoCoreScaling for triples that contain core-like orbtials.
+ *   useTriplesCoreScaling                   --- Use the pnoCoreScaling for triples that contain core-like orbitals.
  *   pnoSettings                             --- PNO macro setting (LOOSE,NORMAL,TIGHT)
  *   method                                  --- Local-correlation method used.
  *   topDownReconstruction                   --- Enforce top-down ansatz for potential reconstruction.
  *   linearScalingSigmaVector                --- Build the sigma vector in DLPNO-CCSD directly from PNO-based integrals.
  *   extendedDomainScaling                   --- include additional pairs as close pairs in the sparse map / extended
  *                                               domain construction.
- *   enforceHFFockian                        ---  Enforce the use of the HF Fock operator..
+ *   enforceHFFockian                        ---  Enforce the use of the HF Fock operator.
  *   reuseFockMatrix                         --- If true, we will try to read the Fock matrix form disk.
  *   lowMemory                               --- Limit the number of 3-center integrals stored in memory and recalculate
- * integrals more often. Some of the settings refer directly to JCTC 11, 1525-1539 (2015) and J. Chem. Phys. 143, 034108
- * (2015).
+ *                                               integrals more often.
+ *   useProjectedOccupiedOrbitals            --- Add a projection operator to the Fock matrix to remove
+ *                                               environment orbitals. This is only recommended if the environment
+ *                                               orbitals are not orthogonal to the active system orbitals.
+ *   ignoreMemoryConstraints                 --- If true, Serenity will assume that there is always enough memory for
+ *                                               everything it tries to do.
  */
+// clang-format on
 struct LocalCorrelationSettings {
   LocalCorrelationSettings()
     : projectedEnvironment(false),
@@ -144,7 +150,8 @@ struct LocalCorrelationSettings {
       enforceHFFockian(false),
       reuseFockMatrix(true),
       lowMemory(false),
-      useProjectedOccupiedOrbitals(false) {
+      useProjectedOccupiedOrbitals(false),
+      ignoreMemoryConstraints(false) {
   }
 
  public:
@@ -192,23 +199,23 @@ struct LocalCorrelationSettings {
               (bool)reuseFockMatrix,          // If true, we will try to read the Fock matrix form disk.
               (bool)lowMemory, // Limit the number of 3-center integrals stored in memory and recalculate integrals more
                                // often.
-              (bool)useProjectedOccupiedOrbitals // Use virtual orbitals that are occupied environment orbitals.
+              (bool)useProjectedOccupiedOrbitals, // Use virtual orbitals that are occupied environment orbitals.
+              (bool)ignoreMemoryConstraints // If true, Serenity assumes that it has enough memory to handle all orbital
+                                            // pairs.
   )
   /** ==== FOCK MATRIX  CONSTRUCTION ==== **/
   EmbeddingSettings embeddingSettings;
   /**
-   * @brief Parse the settings from the input an instance of this class.
-   * @param c The settings.
+   * @brief Parse the settings from the input to an instance of this class.
    * @param v The visitor which contains the settings strings.
    * @param blockname A potential block name.
    */
-  bool visitSettings(set_visitor v, std::string blockname) {
+  bool visitAsBlockSettings(set_visitor v, std::string blockname) {
     if (!blockname.compare("LC")) {
       visit_each(*this, v);
       return true;
     }
-    else if (!blockname.compare("EMB")) {
-      visit_each(this->embeddingSettings, v);
+    else if (this->embeddingSettings.visitAsBlockSettings(v, blockname)) {
       return true;
     }
     return false;

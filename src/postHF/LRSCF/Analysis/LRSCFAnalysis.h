@@ -23,7 +23,6 @@
 
 /* Include Serenity Internal Headers */
 #include "settings/ElectronicStructureOptions.h"
-
 /* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>

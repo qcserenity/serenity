@@ -23,7 +23,6 @@
 #include "data/ElectronicStructure.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 

@@ -33,8 +33,6 @@
 #include "tasks/SystemSplittingTask.h"
 #include "tasks/TDEmbeddingTask.h"
 #include "tasks/VirtualOrbitalSpaceSelectionTask.h" //To be tested.
-/* Include Serenity Internal Headers */
-#include "io/HDF5.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -139,10 +137,120 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
   EXPECT_LE(maxDiffCoupled, 1e-6);
   EXPECT_LE(maxDiffPartialConstructionVSregular, 1e-8);
 
-  std::string name = act->getSystemName() + "+" + env->getSystemName();
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
+  std::remove((act->getSystemName() + "_" + env->getSystemName() + "_FDEcMatrix.txt").c_str());
+  std::remove((act->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
+  std::remove((env->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env);
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
+TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91_customFunctional) {
+  auto act = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86, true);
+  auto env =
+      SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86, true);
+
+  auto task = FreezeAndThawTask<RESTRICTED>({act, env});
+  task.settings.embedding.customNaddXCFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                               BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  task.settings.embedding.customNaddXCFunc.mixingFactors = {1.0, 1.0};
+  task.settings.embedding.customNaddXCFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  task.settings.embedding.customNaddKinFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::K_LLP};
+  task.settings.embedding.customNaddKinFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  task.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  task.settings.maxCycles = 3;
+  task.run();
+
+  // Uncoupled Subsystem A.
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfA({act}, {env});
+  lrscfA.settings.method = Options::LR_METHOD::TDA;
+  lrscfA.settings.nEigen = 3;
+  lrscfA.settings.embedding.customNaddXCFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                                 BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  lrscfA.settings.embedding.customNaddXCFunc.mixingFactors = {1.0, 1.0};
+  lrscfA.settings.embedding.customNaddXCFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfA.settings.embedding.customNaddKinFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::K_LLP};
+  lrscfA.settings.embedding.customNaddKinFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfA.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  lrscfA.settings.grid.smallGridAccuracy = 7;
+  lrscfA.settings.grid.accuracy = 7;
+  lrscfA.run();
+
+  // Uncoupled Subsystem B.
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfB({env}, {act});
+  lrscfB.settings.method = Options::LR_METHOD::TDA;
+  lrscfB.settings.nEigen = 3;
+  lrscfB.settings.embedding.customNaddXCFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                                 BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  lrscfB.settings.embedding.customNaddXCFunc.mixingFactors = {1.0, 1.0};
+  lrscfB.settings.embedding.customNaddXCFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfB.settings.embedding.customNaddKinFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::K_LLP};
+  lrscfB.settings.embedding.customNaddKinFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  lrscfB.settings.grid.smallGridAccuracy = 7;
+  lrscfB.settings.grid.accuracy = 7;
+  lrscfB.run();
+
+  // Coupled Subsystems A and B.
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfAB({act, env}, {});
+  lrscfAB.settings.method = Options::LR_METHOD::TDA;
+  lrscfAB.settings.embedding.customNaddXCFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                                  BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  lrscfAB.settings.embedding.customNaddXCFunc.mixingFactors = {1.0, 1.0};
+  lrscfAB.settings.embedding.customNaddXCFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfAB.settings.embedding.customNaddKinFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::K_LLP};
+  lrscfAB.settings.embedding.customNaddKinFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfAB.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  lrscfAB.settings.grid.smallGridAccuracy = 7;
+  lrscfAB.settings.grid.accuracy = 7;
+  // Test partial response construction along ..
+  lrscfAB.settings.partialResponseConstruction = true;
+  lrscfAB.run();
+
+  LRSCFTask<Options::SCF_MODES::RESTRICTED> lrscfBA({act, env}, {});
+  lrscfBA.settings.method = Options::LR_METHOD::TDA;
+  lrscfBA.settings.embedding.customNaddXCFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::X_B88,
+                                                                  BasicFunctionals::BASIC_FUNCTIONALS::C_P86};
+  lrscfBA.settings.embedding.customNaddXCFunc.mixingFactors = {1.0, 1.0};
+  lrscfBA.settings.embedding.customNaddXCFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfBA.settings.embedding.customNaddKinFunc.basicFunctionals = {BasicFunctionals::BASIC_FUNCTIONALS::K_LLP};
+  lrscfBA.settings.embedding.customNaddKinFunc.impl = CompositeFunctionals::IMPLEMENTATIONS::EITHER_OR;
+  lrscfBA.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NADD_FUNC;
+  lrscfBA.settings.grid.smallGridAccuracy = 7;
+  lrscfBA.settings.grid.accuracy = 7;
+  // Test partial response construction along ..
+  lrscfBA.settings.partialResponseConstruction = false;
+  lrscfBA.run();
+
+  // Serenity Feb 2021.
+  Eigen::VectorXd excActUncoupled(3);
+  excActUncoupled << 0.4946720, 0.7543262, 1.1714099;
+  Eigen::VectorXd excEnvUncoupled(3);
+  excEnvUncoupled << 0.7162539, 0.8659201, 1.6219693;
+  Eigen::VectorXd excCoupled(6);
+  excCoupled << 0.4730031, 0.6331291, 0.8006612, 0.8541067, 1.1184357, 1.7452153;
+
+  // Compare ground-state energies.
+  EXPECT_NEAR(-1.8095641208, act->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+  EXPECT_NEAR(-1.8031312281, env->getElectronicStructure<Options::SCF_MODES::RESTRICTED>()->getEnergy(), 1e-6);
+
+  // Compare excitation energies.
+  double maxDiffActUncoupled = (excActUncoupled - lrscfA.getTransitions().col(0)).cwiseAbs().maxCoeff();
+  double maxDiffEnvUncoupled = (excEnvUncoupled - lrscfB.getTransitions().col(0)).cwiseAbs().maxCoeff();
+  double maxDiffCoupled = (excCoupled - lrscfAB.getTransitions().col(0)).cwiseAbs().maxCoeff();
+  double maxDiffPartialConstructionVSregular =
+      (lrscfBA.getTransitions().col(0) - lrscfAB.getTransitions().col(0)).cwiseAbs().maxCoeff();
+
+  EXPECT_LE(maxDiffActUncoupled, 1e-6);
+  EXPECT_LE(maxDiffEnvUncoupled, 1e-6);
+  EXPECT_LE(maxDiffCoupled, 1e-6);
+  EXPECT_LE(maxDiffPartialConstructionVSregular, 1e-8);
+
+  std::remove((act->getSystemName() + "_" + env->getSystemName() + "_FDEcMatrix.txt").c_str());
+  std::remove((act->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
+  std::remove((env->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86);
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86);
   SystemController__TEST_SUPPLY::cleanUp();
 }
 

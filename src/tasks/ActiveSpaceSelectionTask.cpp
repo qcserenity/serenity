@@ -20,9 +20,9 @@
 /* Include Class Header*/
 #include "tasks/ActiveSpaceSelectionTask.h"
 /* Include Serenity Internal Headers */
-#include "geometry/Geometry.h"        //Subsystem contrution.
-#include "settings/Settings.h"        //Subsystem contrution.
-#include "system/SystemController.h"  //Subsystem contrution.
+#include "geometry/Geometry.h"        //Subsystem construction.
+#include "settings/Settings.h"        //Subsystem construction.
+#include "system/SystemController.h"  //Subsystem construction.
 #include "tasks/GeneralizedDOSTask.h" //DOS procedure.
 #include "tasks/ScfTask.h"            //Initial SCF.
 
@@ -30,9 +30,9 @@ namespace Serenity {
 
 template<Options::SCF_MODES SCFMode>
 ActiveSpaceSelectionTask<SCFMode>::ActiveSpaceSelectionTask(std::vector<std::shared_ptr<SystemController>> supersystems,
-                                                            std::vector<std::shared_ptr<SystemController>> acitveSystems,
+                                                            std::vector<std::shared_ptr<SystemController>> activeSystems,
                                                             std::vector<std::shared_ptr<SystemController>> environmentSystems)
-  : _supersystems(supersystems), _activeSystems(acitveSystems), _environmentSystems(environmentSystems) {
+  : _supersystems(supersystems), _activeSystems(activeSystems), _environmentSystems(environmentSystems) {
   if (_supersystems.size() <= 1)
     throw SerenityError("ERROR: Comparison between systems is only sensible if there are more than one!");
 }
@@ -78,6 +78,19 @@ std::vector<std::shared_ptr<SystemController>> ActiveSpaceSelectionTask<SCFMode>
 
 template<Options::SCF_MODES SCFMode>
 void ActiveSpaceSelectionTask<SCFMode>::run() {
+  for (auto& sys : _supersystems) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The supersystem '" + sys->getSystemName() + "' needs the same SCFMode as the other systems.");
+  }
+  for (auto& sys : _activeSystems) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The active system '" + sys->getSystemName() + "' needs the same SCFMode as the other systems.");
+  }
+  for (auto& sys : _environmentSystems) {
+    if (sys->getSCFMode() != SCFMode)
+      throw SerenityError("ERROR: The environment system '" + sys->getSystemName() +
+                          "' needs the same SCFMode as the other systems.");
+  }
   // Run SCF, alignment and orbital localization.
   if (!settings.skipLocalization)
     prepareOrbitals();

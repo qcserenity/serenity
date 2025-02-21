@@ -1,0 +1,34 @@
+\subsection{Task: Multipole Moment}
+This task calculates the multipole moments of a given system, analytically or numerically.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task MULTIPOLEMOMENTTASK
+  act water
+  highestOrder 1
+  origin COM
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{MULTIPOLEMOMENTTASK} and \ttt{MULTI}.
+\item [\texttt{activeSystems}]\hfill \\
+  The systems whose multipole moments are to be calculated.
+\item [\texttt{highestOrder}]\hfill \\
+Calculate multipole moments up to this order (1=dipole, 2=quadrupole). 2 by default.
+\item [\texttt{numerical}]\hfill \\
+Multipole moments are calculated analytically using basis functions
+and integrals per default (corresponding to \ttt{false}). If this is switched on,
+they are calculated numerically using the density on an integration grid (corresponding to \ttt{true}).
+\item [\texttt{origin}]\hfill \\
+The spatial origin for the multipole calculation.
+The origin of the Cartesian coordinates (\ttt{ORIGIN}, default) or the center
+of mass of the given system (\ttt{COM}).
+\item [\texttt{printTotal}]\hfill \\
+Calculate and print the total multipole moment of all systems. The default is \ttt{false}.
+Set this to \ttt{true} for \textsc{SNF}\cite{SNF2002} calculations.
+\item [\texttt{printFragments}]\hfill \\
+If set to \ttt{false} this suppresses the output of the multipole moment the individual subsystems.
+The default is \ttt{true}.
+\end{description}

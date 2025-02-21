@@ -61,7 +61,7 @@ std::unique_ptr<AtomCenteredGrid> GridFactory::produce(std::shared_ptr<const Geo
 
   takeTime("Setup Grid");
   if (iOOptions.printGridInfo)
-    printSmallCaption("Constructing an integration grid");
+    printSmallCaption("Constructing an integration grid (accuracy: " + std::to_string(_accuracyLevel) + ")");
 
   /* ===================================
    *   Tabulate Inter Atomic Distances

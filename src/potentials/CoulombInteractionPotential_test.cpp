@@ -21,7 +21,8 @@
 /* Include Serenity Internal Headers */
 #include "potentials/CoulombInteractionPotential.h" //To be tested.
 #include "basis/BasisController.h"
-#include "data/ElectronicStructure.h"                 //getDensityMatrixController.
+#include "data/ElectronicStructure.h" //getDensityMatrixController.
+#include "data/matrices/DensityMatrixController.h"
 #include "system/SystemController.h"                  //Test systems/getElectronicStructure.
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Test systems.
 /* Include Std and External Headers */
@@ -29,10 +30,6 @@
 #include <vector>        //std::vector
 
 namespace Serenity {
-
-/* Forward Declarations */
-template<Options::SCF_MODES T>
-class DensityMatrixController;
 
 class CoulombInteractionPotentialTest : public ::testing::Test {
  protected:

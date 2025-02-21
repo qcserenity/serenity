@@ -1,0 +1,25 @@
+\subsection{Task: System-Addition}\label{task: addition}
+The System-Addition Task constructs a supersystem from subsystems. The supersystem can be constructed only from the atoms of the subsystems or from atoms and occupied orbitals. Basis-set changes are allowed. Charge, spin and geometry of the supersystem may be changed.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task add
+  act super
+  env A
+  env B
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{ADDITIONTASK} and \ttt{ADD}
+	\item[\texttt{activeSystems}]\hfill \\
+	Accepts a single active system that will be used as the supersystem.
+	\item[\texttt{environmentSystems}]\hfill \\
+	A list of the environment systems used as the subsystems added together.
+	\item[\texttt{checkSuperGeom}]\hfill \\
+	Perform a cross-check to ensure that the supersystem geometry is not changed. By default \ttt{false}.
+	\item[\texttt{checkSuperCharge}]\hfill \\
+	Perform a cross-check to ensure that supersystem charge and spin are not changed. By default \ttt{false}.
+	\item[\texttt{addOccupiedOrbitals}]\hfill \\
+	Construct the supersystem occupied orbitals from the union of the subsystem orbitals. The orbital set may not be orthonormal! By default \ttt{false}.
+\end{description}

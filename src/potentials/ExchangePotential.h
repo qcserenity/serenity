@@ -50,9 +50,10 @@ class ExchangePotential : public Potential<SCFMode>,
    * @param clear4CenterCache          If true, the 4-center integral cache is deleted upon destruction of the
    *                                   potential.
    */
-  ExchangePotential(std::shared_ptr<SystemController> systemController, std::shared_ptr<DensityMatrixController<SCFMode>> dMat,
-                    const double exchangeRatio, const double prescreeningThreshold, double prescreeningIncrementStart,
-                    double prescreeningIncrementEnd, unsigned int incrementSteps, bool clear4CenterCache = true);
+  ExchangePotential(std::shared_ptr<SystemController> systemController,
+                    std::shared_ptr<DensityMatrixController<SCFMode>> dMat, const double exchangeRatio,
+                    const double prescreeningThreshold, double prescreeningIncrementStart, double prescreeningIncrementEnd,
+                    unsigned int incrementSteps, bool clear4CenterCache = true, bool transitionDensity = false);
   /**
    * @brief Destructor. Clears the 4-center integral cache.
    */
@@ -66,12 +67,20 @@ class ExchangePotential : public Potential<SCFMode>,
   virtual FockMatrix<SCFMode>& getMatrix() override final;
 
   /**
-   * @brief Getter for an incremental potential.
+   * @brief Calculates an incremental potential.
    *
    * @param F      A reference to the potential to be added to.
    * @param deltaP An increment of the density matrix.
    */
   void addToMatrix(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP);
+
+  /**
+   * @brief Calculates an incremental potential for a non-symmetric transition density.
+   *
+   * @param F      A reference to the potential to be added to.
+   * @param deltaP An increment of the density matrix.
+   */
+  void addToMatrixForTransitionDensity(FockMatrix<SCFMode>& F, const DensityMatrix<SCFMode>& deltaP);
 
   /**
    * @brief Getter for the energy associated with this potential.
@@ -114,6 +123,7 @@ class ExchangePotential : public Potential<SCFMode>,
   std::shared_ptr<IncrementalFockMatrix<SCFMode>> _incrementHelper;
   /// @brief If true, the 4-center integral cache of the system is deleted upon potential destruction.
   bool _clear4CenterCache;
+  bool _transitionDensity;
 };
 
 } /* namespace Serenity */

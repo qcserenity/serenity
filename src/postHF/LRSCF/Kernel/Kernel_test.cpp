@@ -24,7 +24,6 @@
 #include "tasks/LRSCFTask.h"
 #include "testsupply/GridController__TEST_SUPPLY.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 
@@ -47,7 +46,7 @@ class KernelTest : public ::testing::Test {
   }
 };
 
-TEST(KernelTest, KERNEL) {
+TEST_F(KernelTest, KERNEL) {
   // Actual values are checked in KernelSigmaVector_test.cpp.
 
   // Setup test systems
@@ -65,9 +64,6 @@ TEST(KernelTest, KERNEL) {
   EXPECT_NO_FATAL_FAILURE(auto pp = kernel->getPP(0, 1, systems[0]->getSettings().grid.blocksize, 0);
                           auto pg = kernel->getPG(0, 1, systems[0]->getSettings().grid.blocksize, 0);
                           auto gg = kernel->getGG(0, 1, systems[0]->getSettings().grid.blocksize, 0););
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systems[0]);
-  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(systems[1]);
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } // namespace Serenity

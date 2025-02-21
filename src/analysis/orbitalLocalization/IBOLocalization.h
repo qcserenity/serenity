@@ -23,12 +23,13 @@
 
 /* Include Serenity Internal Headers */
 #include "analysis/orbitalLocalization/Localization.h"
+#include "data/matrices/CoefficientMatrix.h"
 /* Include Std and External Headers */
 #include <memory>
 
 namespace Serenity {
 /* Forward declarations */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class OrbitalController;
 class SystemController;
 
@@ -47,8 +48,12 @@ class IBOLocalization : public Localization<SCFMode> {
    * @brief Constructor
    * @param systemController The system to of which the orbitals are to be localized.
    * @param IAOsOnly Switch to stop after the generation of IAOs.
+   * @param replaceVirtuals If true, the virtual valence orbitals are reconstructed to match the IAO orbital space.
+   * @param enforceRestrictedOrbitals If true, restricted orbitals are enforced for alpha and beta. This only makes
+   * sense if the original orbital set was already quasi restricted.
    */
-  IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly = false, bool replaceVirtuals = false);
+  IBOLocalization(std::shared_ptr<SystemController> systemController, bool IAOsOnly = false,
+                  bool replaceVirtuals = false, bool enforceRestrictedOrbitals = false);
   /**
    * @brief Destructor
    */
@@ -67,6 +72,11 @@ class IBOLocalization : public Localization<SCFMode> {
   std::shared_ptr<SystemController> _system;
   const bool _IAOsOnly;
   const bool _replaceVirtuals;
+  const bool _enforceRestrictedOrbitals;
+  bool _virtualOrbitalsReplaced = false;
+
+  void restrictOrbitals(CoefficientMatrix<SCFMode>& coefficientMatrix);
+  SpinPolarizedData<SCFMode, unsigned int> restrictedOccupations();
 };
 
 } /* namespace Serenity */

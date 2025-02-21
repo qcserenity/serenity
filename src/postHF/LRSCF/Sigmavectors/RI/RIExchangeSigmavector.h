@@ -33,6 +33,11 @@ namespace Serenity {
  * @brief Performs the calculation of the exchange sigma vectors:
  *
  *          \f$ \tilde{F}_{ij} = \sum_{k l} \tilde{P}_{kl} (il|kj) \f$
+ *
+ * AR: The RIExchangeSigmavector inherits from the ExchangeSigmavector because both short- and long-range exchange are
+ * handled by these classes and can be separately approximated using density fitting, which necessitates both classes to
+ * know the same parameters such as the amount of HF exchange or the range-separation parameter. The
+ * RIExchangeSigmavector mainly gets the setParameters() member function from the ExchangeSigmavector.
  */
 template<Options::SCF_MODES SCFMode>
 class RIExchangeSigmavector : public ExchangeSigmavector<SCFMode> {
@@ -51,6 +56,19 @@ class RIExchangeSigmavector : public ExchangeSigmavector<SCFMode> {
    */
   RIExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, std::vector<Eigen::MatrixXd> b,
                         const std::vector<int> pm, bool densFitK, bool densFitLRK);
+
+  /**
+   * @brief Default like constructor to be used if only the AO representation is required.
+   * @param lrscf The lrscf controller.
+   * @param pm Signs for the exchange evaluation. In the case <pm> is set to 0, only the term
+   *              \f$ \tilde{F}_{\mu\nu} = \sum_{\kappa\lambda} \tilde{P}_{\kappa\lambda} (\mu\kappa|\nu\lambda) \f$ is
+   * calculated. <pm> = {1} results in \f$ \tilde{F}_{\mu\nu} = \sum_{\kappa\lambda} \tilde{P}_{\kappa\lambda}
+   * \left((\mu\kappa|\nu\lambda) + (\mu\lambda|\nu\kappa) \right)\f$
+   * @param densFitK Use density fitting for HF exchange?
+   * @param densFitLRK Use density fitting for LR exchange?
+   */
+  RIExchangeSigmavector(std::vector<std::shared_ptr<LRSCFController<SCFMode>>> lrscf, const std::vector<int> pm,
+                        bool densFitK, bool densFitLRK);
 
   /** @brief Calculates the exchange pseudo-Fock Matrix contribution of the response matrix with respect to a set of
    * guess vectors. The following calculation is performed: \f$ \tilde{F}_{ij} = \sum_{k l} \tilde{P}_{kl} (il|kj)

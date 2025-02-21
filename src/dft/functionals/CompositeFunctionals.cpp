@@ -5,7 +5,7 @@
  * @author Jan P. Unsleber
  *
  * IMPORTANT:\n
- * This file was automatically generated please do not alter it.
+ * This file was automatically generated, please do not alter it.
  * Any required changes should be made to the generating Python script
  * which should be located close by.
  *
@@ -28,7 +28,13 @@
 /* Include Serenity Internal Headers */
 #include "dft/Functional.h"
 #include "dft/functionals/BasicFunctionals.h"
+#include "misc/SerenityError.h"
 #include "settings/Options.h"
+/* Include Std and External Headers */
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace Serenity {
 namespace CompositeFunctionals {
@@ -89,13 +95,13 @@ Functional resolveLibXC(FUNCTIONALS functional) {
     case FUNCTIONALS::HARTREE:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::NONE}, {0.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BP86:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_P86}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_P86}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::KT1:
       return Functional(IMPLEMENTATIONS::LIBXC,
@@ -111,24 +117,17 @@ Functional resolveLibXC(FUNCTIONALS functional) {
           {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_KT1, BASIC_FUNCTIONALS::C_OPTC, BASIC_FUNCTIONALS::C_LYP},
           {1.092, -0.004, -0.925452, 0.864409}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BHLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC,
-                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP},
-                        {0.50, 0.50, 1.0}, 0.50, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.50, 1.0}, 0.50,
+                        0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE0:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {0.75, 1.0}, 0.25,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3LYP:
-      return Functional(
-          IMPLEMENTATIONS::LIBXC,
-          {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP, BASIC_FUNCTIONALS::C_VWN},
-          {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_B3LYP5}, {1.0}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3LYP_G:
-      return Functional(
-          IMPLEMENTATIONS::LIBXC,
-          {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP, BASIC_FUNCTIONALS::C_VWN_3},
-          {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_B3LYP3}, {1.0}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BPW91:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_PW91}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_PW91}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B97:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::XC_B97}, {1.0}, 0.1943, 0.0, 0.0, 0.0, 1.0, 1.0);
@@ -173,34 +172,34 @@ Functional resolveLibXC(FUNCTIONALS functional) {
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::C_PW91, BASIC_FUNCTIONALS::X_PW91}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.47, 0.73},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.47, 0.73},
                         0.53, 0.27, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2KPLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.28, 0.58},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.28, 0.58},
                         0.72, 0.42, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2TPLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.40, 0.69},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.40, 0.69},
                         0.60, 0.31, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2GPPLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.35, 0.64},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.35, 0.64},
                         0.65, 0.36, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::ROB2PLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.41, 0.72},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.41, 0.72},
                         0.59, 0.28, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PIPLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.398, 0.727},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.398, 0.727},
                         0.602, 0.273, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PPW91:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_PW91}, {0.8, 0.9}, 0.2,
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_PW91}, {0.8, 0.9}, 0.2,
                         0.1, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::DSDBLYP:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.31, 0.54},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.31, 0.54},
                         0.69, 1.0, 0.0, 0.0, 0.37, 0.46);
     case FUNCTIONALS::DUT:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.30, 0.59},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.30, 0.59},
                         0.70, 1.0, 0.0, 0.0, 0.36, 0.47);
     case FUNCTIONALS::PUT:
-      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.32, 0.63},
+      return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.32, 0.63},
                         0.68, 1.0, 0.0, 0.0, 0.27, 0.46);
     case FUNCTIONALS::DSDPBEP86:
       return Functional(IMPLEMENTATIONS::LIBXC, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_P86}, {0.30, 0.43},
@@ -237,13 +236,13 @@ Functional resolveXCFun(FUNCTIONALS functional) {
     case FUNCTIONALS::HARTREE:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::NONE}, {0.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BP86:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_P86}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_P86}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::KT1:
       return Functional(IMPLEMENTATIONS::XCFUN,
@@ -265,34 +264,33 @@ Functional resolveXCFun(FUNCTIONALS functional) {
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_LDA_ERF, BASIC_FUNCTIONALS::C_LDA_ERF_JT},
                         {1.0, 1.0}, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BHLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN,
-                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP},
-                        {0.50, 0.50, 1.0}, 0.50, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.50, 1.0}, 0.50,
+                        0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::PBE0:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_PBE}, {0.75, 1.0}, 0.25,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3LYP:
-      return Functional(
-          IMPLEMENTATIONS::XCFUN,
-          {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP, BASIC_FUNCTIONALS::C_VWN},
-          {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::XCFUN,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88_CORR, BASIC_FUNCTIONALS::C_LYP,
+                         BASIC_FUNCTIONALS::C_VWN},
+                        {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3LYP_G:
-      return Functional(
-          IMPLEMENTATIONS::XCFUN,
-          {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP, BASIC_FUNCTIONALS::C_VWN_3},
-          {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
+      return Functional(IMPLEMENTATIONS::XCFUN,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88_CORR, BASIC_FUNCTIONALS::C_LYP,
+                         BASIC_FUNCTIONALS::C_VWN_3},
+                        {0.80, 0.72, 0.81, 0.19}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3P86:
       return Functional(IMPLEMENTATIONS::XCFUN,
-                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_P86CORRC,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88_CORR, BASIC_FUNCTIONALS::C_P86CORRC,
                          BASIC_FUNCTIONALS::C_VWN},
                         {0.80, 0.72, 0.81, 1.0}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B3P86_G:
       return Functional(IMPLEMENTATIONS::XCFUN,
-                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_P86CORRC,
+                        {BASIC_FUNCTIONALS::X_SLATER, BASIC_FUNCTIONALS::X_B88_CORR, BASIC_FUNCTIONALS::C_P86CORRC,
                          BASIC_FUNCTIONALS::C_VWN_3},
                         {0.80, 0.72, 0.81, 1.0}, 0.20, 0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::BPW91:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_PW91}, {1.0, 1.0}, 0.0,
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_PW91}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B97:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B97, BASIC_FUNCTIONALS::C_B97}, {1.0, 1.0},
@@ -333,34 +331,34 @@ Functional resolveXCFun(FUNCTIONALS functional) {
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::C_PW91, BASIC_FUNCTIONALS::X_PW91}, {1.0, 1.0}, 0.0,
                         0.0, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.47, 0.73},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.47, 0.73},
                         0.53, 0.27, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2KPLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.28, 0.58},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.28, 0.58},
                         0.72, 0.42, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2TPLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.40, 0.69},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.40, 0.69},
                         0.60, 0.31, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2GPPLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.35, 0.64},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.35, 0.64},
                         0.65, 0.36, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::ROB2PLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.41, 0.72},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.41, 0.72},
                         0.59, 0.28, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PIPLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.398, 0.727},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.398, 0.727},
                         0.602, 0.273, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::B2PPW91:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_PW91}, {0.8, 0.9}, 0.2,
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_PW91}, {0.8, 0.9}, 0.2,
                         0.1, 0.0, 0.0, 1.0, 1.0);
     case FUNCTIONALS::DSDBLYP:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.31, 0.54},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.31, 0.54},
                         0.69, 1.0, 0.0, 0.0, 0.37, 0.46);
     case FUNCTIONALS::DUT:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.30, 0.59},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.30, 0.59},
                         0.70, 1.0, 0.0, 0.0, 0.36, 0.47);
     case FUNCTIONALS::PUT:
-      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B86, BASIC_FUNCTIONALS::C_LYP}, {0.32, 0.63},
+      return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_B88, BASIC_FUNCTIONALS::C_LYP}, {0.32, 0.63},
                         0.68, 1.0, 0.0, 0.0, 0.27, 0.46);
     case FUNCTIONALS::DSDPBEP86:
       return Functional(IMPLEMENTATIONS::XCFUN, {BASIC_FUNCTIONALS::X_PBE, BASIC_FUNCTIONALS::C_P86}, {0.30, 0.43},

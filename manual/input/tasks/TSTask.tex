@@ -1,0 +1,23 @@
+\subsection{Task: Transition-State Geometry Optimization}
+This task performs transition-state geometry optimizations. Has to be provided with one guess structure for the transition state (act) and can additionally be given structures of both minima on the potential-energy surface (env).
+\subsubsection{Example Input}
+\begin{lstlisting}
++task TS
+  act water
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{TSTask}, \ttt{TSOpt} and \ttt{TS}.
+  \item [\texttt{activeSystem}]\hfill \\
+    Transition state to be optimized.
+  \item [\texttt{environmentSystems}]\hfill \\
+    Structures of minima on the potential energy surface.
+  \item [\texttt{lst}]\hfill \\
+    Specifies if LST is performed before QST. Default is \ttt{false}.
+  \item [\texttt{lstqstonly}]\hfill \\
+    Specifies that only LST/QST should be done and NO Bofill TS-search afterwards. Default is \ttt{false}.
+  \item [\texttt{normalmode}]\hfill \\
+    Specifies the reaction coordinate along which the TS is searched. Default is \ttt{1}.
+\end{description}

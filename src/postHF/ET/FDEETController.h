@@ -32,8 +32,8 @@ class SystemController;
 
 /**
  * @class  FDEETController FDEETController.h
- * @brief  Stores and calculates all necessary dimensions and information needed in the FDEETTask. Is basically the
- * "information class"
+ * @brief  Stores and calculates all necessary dimensions and information needed in the ElectronTransferTask. Is
+ * basically the "information class"
  */
 class FDEETController {
  public:

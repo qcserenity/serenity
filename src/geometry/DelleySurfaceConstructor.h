@@ -58,14 +58,15 @@ struct UnitSphere {
 
 /**
  * @class
- * @brief A class that handels the construction of a molecular surface according to
+ * @brief A class that handles the construction of a molecular surface according to
  *        B. Delley:\n
  *          Molecular Simulation, Vol. 32, No. 2, 15 February 2006, 117–123
+ *          https://doi.org/10.1080/08927020600589684
  *
- *        The molecular surface is defined as a continuose, analytic function that
+ *        The molecular surface is defined as a continuous, analytic function that
  *        varies with the atom positions. The resulting surface has no discontinuities
  *        at the atom-sphere intersections. The Grid points are obtained by atom-wise
- *        projection of spherical grid points used for DFT-grids to the molecular surace.
+ *        projection of spherical grid points used for DFT-grids to the molecular surface.
  *        See the SerenityUserManual.tex/pdf for a detailed description.
  */
 class DelleySurfaceConstructor {

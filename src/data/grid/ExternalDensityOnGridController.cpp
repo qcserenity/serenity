@@ -26,16 +26,16 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid)
-  : DensityOnGridController<T>(densityOnGrid->getGridController(), 0) {
+template<Options::SCF_MODES SCFMode>
+ExternalDensityOnGridController<SCFMode>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid)
+  : DensityOnGridController<SCFMode>(densityOnGrid->getGridController(), 0) {
   this->_densityOnGrid = std::move(densityOnGrid);
 }
 
-template<Options::SCF_MODES T>
-ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
-                                                                    std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid)
-  : DensityOnGridController<T>(densityOnGrid->getGridController(), 1) {
+template<Options::SCF_MODES SCFMode>
+ExternalDensityOnGridController<SCFMode>::ExternalDensityOnGridController(
+    std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid, std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid)
+  : DensityOnGridController<SCFMode>(densityOnGrid->getGridController(), 1) {
   this->_densityOnGrid = std::move(densityOnGrid);
   this->_densityGradientOnGrid = std::move(densityGradientOnGrid);
   for (const auto& component : *this->_densityGradientOnGrid) {
@@ -44,11 +44,12 @@ ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_
   }
 }
 
-template<Options::SCF_MODES T>
-ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_ptr<DensityOnGrid<T>>& densityOnGrid,
-                                                                    std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid,
-                                                                    std::unique_ptr<Hessian<DensityOnGrid<T>>>& densityHessianOnGrid)
-  : DensityOnGridController<T>(densityOnGrid->getGridController(), 2) {
+template<Options::SCF_MODES SCFMode>
+ExternalDensityOnGridController<SCFMode>::ExternalDensityOnGridController(
+    std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid,
+    std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid,
+    std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>>& densityHessianOnGrid)
+  : DensityOnGridController<SCFMode>(densityOnGrid->getGridController(), 2) {
   this->_densityOnGrid = std::move(densityOnGrid);
   this->_densityGradientOnGrid = std::move(densityGradientOnGrid);
   this->_densityHessianOnGrid = std::move(densityHessianOnGrid);
@@ -62,32 +63,33 @@ ExternalDensityOnGridController<T>::ExternalDensityOnGridController(std::unique_
   }
 }
 
-template<Options::SCF_MODES T>
-ExternalDensityOnGridController<T>::ExternalDensityOnGridController(
-    std::unique_ptr<DensityOnGrid<T>>& densityOnGrid, std::unique_ptr<Gradient<DensityOnGrid<T>>>& densityGradientOnGrid,
-    std::unique_ptr<Hessian<DensityOnGrid<T>>>& densityHessianOnGrid,
-    std::function<void(DensityOnGrid<T>& densityOnGrid, Gradient<DensityOnGrid<T>>& densityGradientOnGrid,
-                       Hessian<DensityOnGrid<T>>& densityHessianOnGrid)>
+template<Options::SCF_MODES SCFMode>
+ExternalDensityOnGridController<SCFMode>::ExternalDensityOnGridController(
+    std::unique_ptr<DensityOnGrid<SCFMode>>& densityOnGrid,
+    std::unique_ptr<Gradient<DensityOnGrid<SCFMode>>>& densityGradientOnGrid,
+    std::unique_ptr<Hessian<DensityOnGrid<SCFMode>>>& densityHessianOnGrid,
+    std::function<void(DensityOnGrid<SCFMode>& densityOnGrid, Gradient<DensityOnGrid<SCFMode>>& densityGradientOnGrid,
+                       Hessian<DensityOnGrid<SCFMode>>& densityHessianOnGrid)>
         externalUpdateFunction)
-  : ExternalDensityOnGridController<T>(densityOnGrid, densityGradientOnGrid, densityHessianOnGrid) {
+  : ExternalDensityOnGridController<SCFMode>(densityOnGrid, densityGradientOnGrid, densityHessianOnGrid) {
   // The constructor delegation somehow makes initializing _externalUpdateFunction directly impossible...
   _externalUpdateFunction = externalUpdateFunction;
 }
 
-template<Options::SCF_MODES T>
-ExternalDensityOnGridController<T>::~ExternalDensityOnGridController() {
+template<Options::SCF_MODES SCFMode>
+ExternalDensityOnGridController<SCFMode>::~ExternalDensityOnGridController() {
 }
 
-template<Options::SCF_MODES T>
-const DensityOnGrid<T>& ExternalDensityOnGridController<T>::getDensityOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const DensityOnGrid<SCFMode>& ExternalDensityOnGridController<SCFMode>::getDensityOnGrid() {
   if (!this->_densityOnGrid->isValid()) {
     throw SerenityError("A component of the density stored on the grid is invalid.");
   }
   return *this->_densityOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Gradient<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensityGradientOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const Gradient<DensityOnGrid<SCFMode>>& ExternalDensityOnGridController<SCFMode>::getDensityGradientOnGrid() {
   for (const auto& component : *this->_densityGradientOnGrid) {
     if (!component.isValid())
       throw SerenityError("A component of the density gradient stored on the grid is invalid.");
@@ -95,8 +97,8 @@ const Gradient<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensity
   return *this->_densityGradientOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Hessian<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensityHessianOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const Hessian<DensityOnGrid<SCFMode>>& ExternalDensityOnGridController<SCFMode>::getDensityHessianOnGrid() {
   for (const auto& component : *this->_densityHessianOnGrid) {
     if (!component.isValid())
       throw SerenityError("A component of the density hessian stored on the grid is invalid.");
@@ -104,8 +106,8 @@ const Hessian<DensityOnGrid<T>>& ExternalDensityOnGridController<T>::getDensityH
   return *this->_densityHessianOnGrid;
 }
 
-template<Options::SCF_MODES T>
-void ExternalDensityOnGridController<T>::notify() {
+template<Options::SCF_MODES SCFMode>
+void ExternalDensityOnGridController<SCFMode>::notify() {
   if (_externalUpdateFunction) {
     _externalUpdateFunction(*this->_densityOnGrid, *this->_densityGradientOnGrid, *this->_densityHessianOnGrid);
     this->notifyObjects();

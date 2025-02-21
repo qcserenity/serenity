@@ -19,6 +19,7 @@
  */
 
 /* Include Serenity Internal Headers */
+#include "dft/functionals/CompositeFunctionals.h"
 #include "settings/BasisOptions.h"
 #include "settings/CorrelatedMethodsOptions.h"
 #include "settings/DFTOptions.h"
@@ -28,6 +29,7 @@
 #include "settings/GridOptions.h"
 #include "settings/LRSCFOptions.h"
 #include "settings/LocalizationOptions.h"
+#include "settings/MBPTOptions.h"
 #include "settings/MiscOptions.h"
 #include "settings/SCFOptions.h"
 /* Include Std and External Headers */
@@ -122,7 +124,7 @@ void export_Options(py::module& spy) {
       .value("PLOT", GRID_PURPOSES::PLOT)
       .export_values();
   py::enum_<OPTIMIZATION_ALGORITHMS>(spy, "OPTIMIZATION_ALGORITHMS")
-      .value("SD", OPTIMIZATION_ALGORITHMS::SD)
+      .value("SQNM", OPTIMIZATION_ALGORITHMS::SQNM)
       .value("BFGS", OPTIMIZATION_ALGORITHMS::BFGS)
       .export_values();
   py::enum_<GRADIENT_TYPES>(spy, "GRADIENT_TYPES")
@@ -172,6 +174,8 @@ void export_Options(py::module& spy) {
       .value("RECONSTRUCTION", KIN_EMBEDDING_MODES::RECONSTRUCTION)
       .value("FERMI_SHIFTED_HUZINAGA", KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA)
       .value("FERMI", KIN_EMBEDDING_MODES::FERMI_SHIFTED_HUZINAGA)
+      .value("LOEWDIN", KIN_EMBEDDING_MODES::LOEWDIN)
+      .value("ALMO", KIN_EMBEDDING_MODES::ALMO)
       .export_values();
   py::enum_<EMBEDDING_SCHEME>(spy, "EMBEDDING_SCHEME")
       .value("NONE", EMBEDDING_SCHEME::NONE)
@@ -263,5 +267,15 @@ void export_Options(py::module& spy) {
       .value("REAL", STABILITY_ANALYSIS::REAL)
       .value("NONREAL", STABILITY_ANALYSIS::NONREAL)
       .value("SPINFLIP", STABILITY_ANALYSIS::SPINFLIP)
+      .export_values();
+  py::enum_<Serenity::CompositeFunctionals::IMPLEMENTATIONS>(spy, "XC_IMPLEMENTATIONS")
+      .value("XCFUN", Serenity::CompositeFunctionals::IMPLEMENTATIONS::XCFUN)
+      .value("LIBXC", Serenity::CompositeFunctionals::IMPLEMENTATIONS::LIBXC)
+      .export_values();
+  py::enum_<MBPT>(spy, "MBPT").value("GW", MBPT::GW).value("RPA", MBPT::RPA).export_values();
+  py::enum_<GWALGORITHM>(spy, "GWALGORITHM")
+      .value("CD", GWALGORITHM::CD)
+      .value("AC", GWALGORITHM::AC)
+      .value("ANALYTIC", GWALGORITHM::ANALYTIC)
       .export_values();
 }

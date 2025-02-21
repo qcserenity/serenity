@@ -169,6 +169,8 @@ class IAOPopulationCalculator {
    * @param nOccOrbs The number of occupied orbitals.
    * @param B1 The basis controller of the system.
    * @param B2 The basis controller used for the IAO analysis.
+   * @param removeSOMO If true, it is assumed that the orbitals are (quasi) restricted. The SOMO will then be separated
+   * from the other occupied orbitals.
    */
   void static reconstructVirtualValenceOrbitalsInplace(CoefficientMatrix<SCFMode>& C,
                                                        const MatrixInBasis<Options::SCF_MODES::RESTRICTED>& S1,

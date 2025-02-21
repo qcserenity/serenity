@@ -1,0 +1,25 @@
+\subsection{Task: Write Integrals}
+This task can write HCore integrals to disk in either HDF5 or ASCII file format.
+\subsubsection{Example Input}
+\begin{lstlisting}
++task INTEGRALS
+  system water
+  fileFormat HDF5
+-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+    \item [\texttt{name}]\hfill \\
+    Aliases for this task are \ttt{WriteIntegralsTask}, \ttt{WriteInts}, \ttt{Integrals} and \ttt{Int}.
+    \item [\texttt{activeSystems}]\hfill \\
+    This task accepts a single active system for which the integrals will be written to disk.
+    \item [\texttt{fileFormat}]\hfill \\
+    File format used to write the orbitals to disk. Options are \ttt{HDF5} and \ttt{ASCII}. By default \ttt{HDF5}.
+\end{description}
+    
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{hCoreIntegrals}]\hfill \\
+    If \ttt{true}, the core hamiltonian integrals are written. By default \ttt{false}.
+\end{description}

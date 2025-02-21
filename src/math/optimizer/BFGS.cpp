@@ -34,7 +34,9 @@ BFGS::BFGS(Eigen::VectorXd& parameters, double initialStepLength, bool lineSearc
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter" // value is ignored -> not needed
 void BFGS::optimize(
-    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
+    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+    std::shared_ptr<unsigned int> nRejected) {
+  (void)nRejected;
   /*
    * Get first set of parameters, gradients
    */
@@ -71,7 +73,7 @@ void BFGS::optimize(
   double c1 = 0.0001;
   double c2 = 0.9;
 
-  converged = updateFunction(this->_parameters, value, gradients, nullptr, false);
+  converged = updateFunction(this->_parameters, value, gradients, nullptr, true);
   /*
    * Check gradients whether their lengths match.
    */
@@ -192,6 +194,7 @@ void BFGS::optimize(
     }
   }
 }
+
 #pragma GCC diagnostic pop // "-Wunused-parameter"
 
 } /* namespace Serenity */

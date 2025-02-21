@@ -19,11 +19,13 @@
  */
 /* Include Class Header*/
 #include "grid/GaussLegendre.h"
+/* Include Serenity Internal Headers */
 #include "misc/SerenityError.h"
 #include "parameters/Constants.h"
 /* Include Std and External Headers */
 #include <cmath>
 #include <iostream>
+
 namespace Serenity {
 
 GaussLegendre::GaussLegendre(unsigned int numberOfPoints) : _numberOfPoints(numberOfPoints) {

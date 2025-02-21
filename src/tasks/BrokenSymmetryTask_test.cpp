@@ -18,7 +18,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 /* Include Serenity Internal Headers */
-#include "tasks/BrokenSymmetryTask.h"                 //To be tested.
+#include "tasks/BrokenSymmetryTask.h" //To be tested.
+#include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h" //Access to test systems.
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
@@ -39,7 +40,8 @@ TEST_F(BrokenSymmetryTaskTest, BSDFT) {
   auto h2 = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_6_311G_3A, true);
   BrokenSymmetryTask bsTask({h2});
   bsTask.run();
-  SystemController__TEST_SUPPLY::cleanUp();
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(h2->getSystemPath() + "BrokenSymmetrySystem/",
+                                                        "BrokenSymmetrySystem");
 }
 
 // ToDo: These tests give only NaN.

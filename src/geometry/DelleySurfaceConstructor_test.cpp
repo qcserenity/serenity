@@ -28,13 +28,18 @@
 
 namespace Serenity {
 
-class DelleySurfaceConstructorTest : public ::testing::Test {};
+class DelleySurfaceConstructorTest : public ::testing::Test {
+ protected:
+  static void TearDownTestCase() {
+    SystemController__TEST_SUPPLY::cleanUp();
+  }
+};
 
 /**
  * @test
  * @brief Tests DelleySurfaceConstructor.h: surface construction for a single atom.
  */
-TEST(DelleySurfaceConstructorTest, SurfaceConstruction_F) {
+TEST_F(DelleySurfaceConstructorTest, SurfaceConstruction_F) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::F_MINUS_6_31Gs);
   PCMSettings pcmSettings;
   pcmSettings.use = true;
@@ -61,14 +66,13 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_F) {
   // All points have to be on the sphere.
   for (unsigned int i = 0; i < nPoints; ++i)
     EXPECT_NEAR(points.col(i).norm(), sphereRadius, 5e-5);
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
  * @test
  * @brief Tests DelleySurfaceConstructor.h: surface construction for a di-atomic molecule.
  */
-TEST(DelleySurfaceConstructorTest, SurfaceConstruction_Ar2) {
+TEST_F(DelleySurfaceConstructorTest, SurfaceConstruction_Ar2) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Ar2_6_31Gs);
   PCMSettings pcmSettings;
   pcmSettings.use = true;
@@ -100,14 +104,13 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_Ar2) {
     for (unsigned int i = 0; i < 5; ++i)
       EXPECT_NEAR(points.col(i).norm(), sphereRadius, 5e-5);
   }
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
  * @test
  * @brief Tests DelleySurfaceConstructor.h: surface construction for a di-atomic molecule.
  */
-TEST(DelleySurfaceConstructorTest, SurfaceConstruction_water) {
+TEST_F(DelleySurfaceConstructorTest, SurfaceConstruction_water) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs);
   Settings settings = system->getSettings();
   PCMSettings pcmSettings;
@@ -131,15 +134,13 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_water) {
   surfaceController = std::make_shared<MolecularSurfaceController>(system->getGeometry(), pcmSettings);
   const double weightGEPOL = surfaceController->getWeights().sum();
   EXPECT_NEAR(weightDELLEY, weightGEPOL, 15); // allow for roughly 10% deviation.
-
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
  * @test
  * @brief Tests DelleySurfaceConstructor.h: surface construction for a di-atomic molecule.
  */
-TEST(DelleySurfaceConstructorTest, SurfaceConstruction_C60) {
+TEST_F(DelleySurfaceConstructorTest, SurfaceConstruction_C60) {
   auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS);
   Settings settings = system->getSettings();
   PCMSettings pcmSettings;
@@ -157,8 +158,6 @@ TEST(DelleySurfaceConstructorTest, SurfaceConstruction_C60) {
 
   EXPECT_NEAR(weightDELLEY, 1190.23, 5e-2);
   EXPECT_EQ(nPoints, 1176);
-
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } /* namespace Serenity */

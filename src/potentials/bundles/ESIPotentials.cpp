@@ -22,6 +22,7 @@
 /* Include Serenity Internal Headers */
 #include "energies/EnergyContributions.h"
 #include "integrals/wrappers/Libint.h"
+#include "potentials/ChargeElectronInteractionPotential.h"
 #include "potentials/CoulombInteractionPotential.h"
 #include "potentials/NEInteractionPotential.h"
 #include "system/SystemController.h"
@@ -34,7 +35,8 @@ ESIPotentials<SCFMode>::ESIPotentials(std::shared_ptr<SystemController> actSyste
                                       std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat,
                                       std::shared_ptr<const Geometry> activeGeom,
                                       std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
-                                      std::vector<std::shared_ptr<const Geometry>> envGeoms, unsigned int firstPassiveSystemIndex)
+                                      std::vector<std::shared_ptr<const Geometry>> envGeoms, unsigned int firstPassiveSystemIndex,
+                                      bool useCharges, Options::POPULATION_ANALYSIS_ALGORITHMS chargeModel)
   : _actSystem(actSystem),
     _envSystems(envSystems),
     _activeDMat(activeDMat),
@@ -42,12 +44,15 @@ ESIPotentials<SCFMode>::ESIPotentials(std::shared_ptr<SystemController> actSyste
     _envDMats(envDMats),
     _envGeoms(envGeoms),
     _nePot(nullptr),
+    _cePot(nullptr),
     _coulPot(nullptr),
     _enAttr(nullptr),
     _nnRep(nullptr) {
   Timings::takeTime("FDE -            ESI Pot.");
   _nePot.reset(new NEInteractionPotential<SCFMode>(_actSystem, _envSystems,
                                                    _activeDMat->getDensityMatrix().getBasisController(), _envGeoms));
+  _cePot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+      _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
   if (firstPassiveSystemIndex < envSystems.size()) {
     std::vector<std::shared_ptr<SystemController>> passiveSystems;
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> passiveDensityMatrices;
@@ -63,14 +68,28 @@ ESIPotentials<SCFMode>::ESIPotentials(std::shared_ptr<SystemController> actSyste
         passiveDensityMatrices.push_back(_envDMats[envIndex]);
       }
     }
-    _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
-        _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), environmentDensityMatrices));
-    _passiveCoulPot.reset(new CoulombInteractionPotential<SCFMode>(
-        _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), passiveDensityMatrices, true));
+    if (useCharges) {
+      _coulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+      _passiveCoulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+    }
+    else {
+      _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), environmentDensityMatrices));
+      _passiveCoulPot.reset(new CoulombInteractionPotential<SCFMode>(
+          _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), passiveDensityMatrices, true));
+    }
   }
   else {
-    _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
-        _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), _envDMats));
+    if (useCharges) {
+      _coulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+    }
+    else {
+      _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), _envDMats));
+    }
   }
   for (auto& atom : _activeGeom->getAtoms()) {
     atom->addSensitiveObject(ObjectSensitiveClass<Atom>::_self);
@@ -92,7 +111,8 @@ ESIPotentials<SCFMode>::ESIPotentials(
     std::shared_ptr<DensityMatrixController<SCFMode>> activeDMat, std::shared_ptr<const Geometry> activeGeom,
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> envDMats,
     std::vector<std::shared_ptr<const Geometry>> envGeoms, const std::shared_ptr<BasisController> actAuxBasis,
-    std::vector<std::shared_ptr<BasisController>> envAuxBasis, unsigned int firstPassiveSystemIndex)
+    std::vector<std::shared_ptr<BasisController>> envAuxBasis, unsigned int firstPassiveSystemIndex, bool useCharges,
+    Options::POPULATION_ANALYSIS_ALGORITHMS chargeModel)
   : _actSystem(actSystem),
     _envSystems(envSystems),
     _activeDMat(activeDMat),
@@ -100,12 +120,16 @@ ESIPotentials<SCFMode>::ESIPotentials(
     _envDMats(envDMats),
     _envGeoms(envGeoms),
     _nePot(nullptr),
+    _cePot(nullptr),
     _coulPot(nullptr),
     _enAttr(nullptr),
     _nnRep(nullptr) {
   Timings::takeTime("FDE -            ESI Pot.");
   _nePot.reset(new NEInteractionPotential<SCFMode>(_actSystem, _envSystems,
                                                    _activeDMat->getDensityMatrix().getBasisController(), _envGeoms));
+  _cePot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+      _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+
   if (firstPassiveSystemIndex < envSystems.size()) {
     std::vector<std::shared_ptr<SystemController>> passiveSystems;
     std::vector<std::shared_ptr<DensityMatrixController<SCFMode>>> passiveDensityMatrices;
@@ -125,16 +149,32 @@ ESIPotentials<SCFMode>::ESIPotentials(
         passiveAuxBasisController.push_back(envAuxBasis[envIndex]);
       }
     }
-    _coulPot.reset(new CoulombInteractionPotential<SCFMode>(_actSystem, _envSystems,
-                                                            _activeDMat->getDensityMatrix().getBasisController(),
-                                                            environmentDensityMatrices, actAuxBasis, envAuxBasisController));
-    _passiveCoulPot.reset(new CoulombInteractionPotential<SCFMode>(
-        _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), passiveDensityMatrices,
-        actAuxBasis, passiveAuxBasisController, true));
+
+    if (useCharges) {
+      _coulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+      _passiveCoulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+    }
+    else {
+      _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), environmentDensityMatrices,
+          actAuxBasis, envAuxBasisController));
+      _passiveCoulPot.reset(new CoulombInteractionPotential<SCFMode>(
+          _actSystem, passiveSystems, _activeDMat->getDensityMatrix().getBasisController(), passiveDensityMatrices,
+          actAuxBasis, passiveAuxBasisController, true));
+    }
   }
   else {
-    _coulPot.reset(new CoulombInteractionPotential<SCFMode>(
-        _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), _envDMats, actAuxBasis, envAuxBasis));
+    if (useCharges) {
+      _coulPot.reset(new ChargeElectronInteractionPotential<SCFMode>(
+          _actSystem, _envSystems, _activeDMat->getDensityMatrix().getBasisController(), chargeModel));
+    }
+    else {
+      _coulPot.reset(new CoulombInteractionPotential<SCFMode>(_actSystem, _envSystems,
+                                                              _activeDMat->getDensityMatrix().getBasisController(),
+                                                              _envDMats, actAuxBasis, envAuxBasis));
+    }
   }
   for (auto& atom : _activeGeom->getAtoms()) {
     atom->addSensitiveObject(ObjectSensitiveClass<Atom>::_self);

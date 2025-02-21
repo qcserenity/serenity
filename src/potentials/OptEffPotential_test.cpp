@@ -65,7 +65,7 @@ TEST_F(OptEffPotentialTest, oep) {
   auto basisController = system->getBasisController();
   auto basisFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(system->getSettings(), basisController, gridController);
-  auto oneEIntController = OneIntControllerFactory::getInstance().produce(basisController, system->getGeometry());
+  auto oneEIntController = system->getOneElectronIntegralController();
   auto basisFunctionOnGridController =
       BasisFunctionOnGridControllerFactory::produce(system->getSettings(), basisController, gridController);
   auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::RESTRICTED>>(
@@ -129,7 +129,7 @@ TEST_F(OptEffPotentialTest, oepUnres) {
   auto basisController = system->getBasisController();
   auto basisFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(system->getSettings(), basisController, gridController);
-  auto oneEIntController = OneIntControllerFactory::getInstance().produce(basisController, system->getGeometry());
+  auto oneEIntController = system->getOneElectronIntegralController();
   auto basisFunctionOnGridController =
       BasisFunctionOnGridControllerFactory::produce(system->getSettings(), basisController, gridController);
   auto densOnGridCalculator = std::make_shared<DensityOnGridCalculator<Options::SCF_MODES::UNRESTRICTED>>(

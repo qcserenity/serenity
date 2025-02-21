@@ -1,9 +1,20 @@
-cmake_minimum_required(VERSION 3.9)
+# version 3.15 is the minium cmake version supported by scikit-build-core
+cmake_minimum_required(VERSION 3.15)
 
 project(serenity
-        VERSION 1.6.1
-        DESCRIPTION "Serenity: A subsystem quantum chemistry program.")
+        VERSION 1.6.2
+        DESCRIPTION "Serenity: A subsystem quantum chemistry program."
+	LANGUAGES CXX)
 
+### Require out-of-source builds
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+if(EXISTS "${LOC_PATH}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a "
+                        "CMakeLists.txt file). Please make a build subdirectory. Feel free to "
+                        "remove CMakeCache.txt and CMakeFiles.")
+endif()
+
+# the cmake folder contains CMake files to locate some modules
 set(CMAKE_MODULE_PATH  ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 #########################
@@ -52,8 +63,10 @@ endif()
 if(NOT EXISTS ${PROJECT_SOURCE_DIR}/src/tasks/DummyTask.cpp)
   file(COPY ${PROJECT_SOURCE_DIR}/dev/templates/DummyTask.cpp DESTINATION ${PROJECT_SOURCE_DIR}/src/tasks/)
 endif()
-if(NOT EXISTS ${PROJECT_SOURCE_DIR}/test.input)
-  file(COPY ${PROJECT_SOURCE_DIR}/dev/templates/test.input DESTINATION ${PROJECT_SOURCE_DIR}/)
+if (NOT DEFINED SKBUILD)
+  if(NOT EXISTS ${PROJECT_SOURCE_DIR}/test.input)
+    file(COPY ${PROJECT_SOURCE_DIR}/dev/templates/test.input DESTINATION ${PROJECT_SOURCE_DIR}/)
+  endif()
 endif()
 
 # Set up lists of files
@@ -65,7 +78,9 @@ include(src/Files.cmake)
 
 add_library(serenity ${SERENITY_CPPS} ${SERENITY_HEADERS})
 set_property(TARGET serenity PROPERTY POSITION_INDEPENDENT_CODE ON)
-add_executable(serenity_exe ${PROJECT_SOURCE_DIR}/src/serenity.cpp)
+if (NOT DEFINED SKBUILD)
+  add_executable(serenity_exe ${PROJECT_SOURCE_DIR}/src/serenity.cpp)
+endif()
 
 ##################
 ## Dependencies ##
@@ -89,7 +104,7 @@ find_package(OpenMP REQUIRED)
 if (SERENITY_USE_LAPLACE_MINIMAX)
   message("-----Checking Laplace_Minimax-----")
   if (NOT SERENITY_DOWNLOAD_DEPENDENCIES)
-    message("Laplace-Minimax cannot be detected via CMake, it will be downloaded anyway")
+    message("Laplace-Minimax cannot be detected by CMake, it will be downloaded despite SERENITY_DOWNLOAD_DEPENDENCIES being OFF.")
   endif()
   include(ImportLaplaceMinimax)
   import_laplace_minimax()
@@ -100,11 +115,11 @@ message("-----Checking Libint2-----")
 if (SERENITY_DOWNLOAD_DEPENDENCIES)
   include(ImportLibint)
   import_libint()
-else()
-  find_package(Libint2 CONFIG REQUIRED)
+  else()
+    find_package(Libint2 CONFIG REQUIRED)
   add_library(libint2-static INTERFACE IMPORTED)
   target_link_libraries(libint2-static INTERFACE Libint2::libint2)
-endif()
+  endif()
 
 if (SERENITY_USE_XCFUN)
   # xcfun
@@ -235,20 +250,53 @@ set_target_properties(serenity PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   CXX_STANDARD 14
 )
-target_link_libraries(serenity
-  PUBLIC
-    Boost::boost
-    OpenMP::OpenMP_CXX
-    $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
-    $<$<BOOL:${GCC_PROFILE}>:-pg>
-    libint2-static
-  PRIVATE
-    xc
-    xcfun
-    ecpint
-    $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:laplace-minimax>
-    ${HDF5_TARGET}
-)
+if(SERENITY_USE_XCFUN)
+  if(SERENITY_USE_LIBXC)
+  target_link_libraries(serenity
+    PUBLIC
+      Boost::boost
+      OpenMP::OpenMP_CXX
+      $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+      $<$<BOOL:${GCC_PROFILE}>:-pg>
+      libint2-static
+    PRIVATE
+      xc
+      xcfun
+      ecpint
+      $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:laplace-minimax>
+      ${HDF5_TARGET}
+  )
+  else()
+    target_link_libraries(serenity
+    PUBLIC
+      Boost::boost
+      OpenMP::OpenMP_CXX
+      $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+      $<$<BOOL:${GCC_PROFILE}>:-pg>
+      libint2-static
+    PRIVATE
+      xcfun
+      ecpint
+      $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:laplace-minimax>
+      ${HDF5_TARGET}
+  )
+  endif()
+else()
+  target_link_libraries(serenity
+    PUBLIC
+      Boost::boost
+      OpenMP::OpenMP_CXX
+      $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+      $<$<BOOL:${GCC_PROFILE}>:-pg>
+      libint2-static
+    PRIVATE
+      xc
+      ecpint
+      $<$<BOOL:${SERENITY_USE_LAPLACE_MINIMAX}>:laplace-minimax>
+      ${HDF5_TARGET}
+  )
+endif()
+
 target_compile_definitions(serenity PUBLIC
   $<$<BOOL:${SERENITY_PREFER_XCFUN}>:SERENITY_PREFER_XCFUN>
   $<$<BOOL:${SERENITY_USE_XCFUN}>:SERENITY_USE_XCFUN>
@@ -272,29 +320,31 @@ endif()
 
 
 # Executable
-set_target_properties(serenity_exe PROPERTIES OUTPUT_NAME serenity)
-target_link_libraries(serenity_exe
-  PUBLIC
-    $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
-    $<$<BOOL:${GCC_PROFILE}>:-pg>
-  PRIVATE
-    serenity
-)
-set_target_properties(serenity_exe PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-  CXX_STANDARD 14
-)
-target_compile_options(serenity_exe
-  PUBLIC
-    -Wall
-    -Wextra
-    -Wno-comment
-    $<$<BOOL:${WERROR}>:-Werror>
-    $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
-    $<$<BOOL:${GCC_PROFILE}>:-pg>
-)
-if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
-  target_compile_options(serenity_exe PUBLIC -march=${SERENITY_MARCH})
+if (NOT DEFINED SKBUILD)
+  set_target_properties(serenity_exe PROPERTIES OUTPUT_NAME serenity)
+  target_link_libraries(serenity_exe
+    PUBLIC
+      $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+      $<$<BOOL:${GCC_PROFILE}>:-pg>
+    PRIVATE
+      serenity
+  )
+  set_target_properties(serenity_exe PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    CXX_STANDARD 14
+  )
+  target_compile_options(serenity_exe
+    PUBLIC
+      -Wall
+      -Wextra
+      -Wno-comment
+      $<$<BOOL:${WERROR}>:-Werror>
+      $<$<BOOL:${GCC_COVERAGE}>:-fprofile-arcs -ftest-coverage>
+      $<$<BOOL:${GCC_PROFILE}>:-pg>
+  )
+  if(NOT "${SERENITY_MARCH}" STREQUAL "" AND NOT MSVC)
+    target_compile_options(serenity_exe PUBLIC -march=${SERENITY_MARCH})
+  endif()
 endif()
 
 #############
@@ -302,7 +352,14 @@ endif()
 #############
 
 # Targets
-install(TARGETS serenity serenity_exe
+install(TARGETS serenity
+        EXPORT serenityTargets
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+if (NOT DEFINED SKBUILD)
+install(TARGETS serenity_exe
         EXPORT serenityTargets
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
@@ -313,10 +370,15 @@ install(
   DESTINATION include/serenity
   FILES_MATCHING PATTERN "*.h"
 )
+endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data/basis
-        ${CMAKE_CURRENT_SOURCE_DIR}/data/initialGuess
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/initialGuess ${CMAKE_CURRENT_SOURCE_DIR}/data/xyzfiles
         DESTINATION share/serenity/data
 )
+if (DEFINED SKBUILD AND SERENITY_USE_LAPLACE_MINIMAX)
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/data
+   DESTINATION share/laplace-minimax)
+endif()
 
 
 
@@ -341,18 +403,28 @@ if(SERENITY_ENABLE_TESTS)
   message("-----Adding Test Executable-----")
   # Test exe
   add_executable(serenity_tests ${SERENITY_TEST_FILES})
-  target_link_libraries(serenity_tests
-    PUBLIC
-      $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
-      $<$<BOOL:${GCC_PROFILE}>:-pg>
-    PRIVATE
-      GTest::Main
-      GMock::GMock
-      serenity
-      xcfun
-      ecpint
-      ${HDF5_TARGET}
-  )
+  if(SERENITY_USE_XCFUN)
+    target_link_libraries(serenity_tests
+      PUBLIC
+        $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+        $<$<BOOL:${GCC_PROFILE}>:-pg>
+      PRIVATE
+        GTest::Main
+        serenity
+        xcfun
+        ecpint
+	${HDF5_TARGET})
+  else()
+    target_link_libraries(serenity_tests
+      PUBLIC
+        $<$<BOOL:${GCC_COVERAGE}>:-lgcov>
+        $<$<BOOL:${GCC_PROFILE}>:-pg>
+      PRIVATE
+        GTest::Main
+	serenity
+	ecpint
+	${HDF5_TARGET})
+  endif()
   set_target_properties(serenity_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     CXX_STANDARD 14
@@ -398,6 +470,7 @@ if (SERENITY_PYTHON_BINDINGS)
     PROPERTIES
       SUFFIX ".so"
       CXX_STANDARD 14
+      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   )
   target_link_libraries(serenipy
     PUBLIC
@@ -406,9 +479,11 @@ if (SERENITY_PYTHON_BINDINGS)
     PRIVATE
       serenity
   )
-  set_target_properties(serenipy PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-  )
+  if(SERENITY_USAGE_FROM_SOURCE)
+      add_custom_command(TARGET serenipy POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+      ${CMAKE_BINARY_DIR}/lib/serenipy.so ${CMAKE_SOURCE_DIR}/qcserenity/serenipy.so)
+  endif()
   target_compile_options(serenipy
     PUBLIC
       $<$<BOOL:${WERROR}>:-Werror>
@@ -422,7 +497,7 @@ if (SERENITY_PYTHON_BINDINGS)
   # Install
   install(TARGETS serenipy
     EXPORT serenityTargets
-    LIBRARY DESTINATION lib
+    LIBRARY DESTINATION qcserenity
     )
 endif(SERENITY_PYTHON_BINDINGS)
 
@@ -431,20 +506,22 @@ endif(SERENITY_PYTHON_BINDINGS)
 ## Define 'make doc' command ##
 ###############################
 
-message("#============================#")
-message("| Documentation Dependencies |")
-message("#============================#")
-message("-----Doxygen-----")
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  add_custom_target(doc
-  ${DOXYGEN_EXECUTABLE} ${PROJECT_SOURCE_DIR}/doc/serenity.doxyfile
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/doc
-  COMMENT "Generating API documentation with Doxygen" VERBATIM)
-else (DOXYGEN_FOUND)
-  add_custom_target(doc
-  COMMENT "Doxygen needed in order to create documentation" VERBATIM)
-endif(DOXYGEN_FOUND)
+if (NOT DEFINED SKBUILD)
+  message("#============================#")
+  message("| Documentation Dependencies |")
+  message("#============================#")
+  message("-----Doxygen-----")
+  find_package(Doxygen)
+  if(DOXYGEN_FOUND)
+    add_custom_target(doc
+    ${DOXYGEN_EXECUTABLE} ${PROJECT_SOURCE_DIR}/doc/serenity.doxyfile
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/doc
+    COMMENT "Generating API documentation with Doxygen" VERBATIM)
+  else (DOXYGEN_FOUND)
+    add_custom_target(doc
+    COMMENT "Doxygen needed in order to create documentation" VERBATIM)
+  endif(DOXYGEN_FOUND)
+endif()
 
 
 #################################
@@ -458,57 +535,73 @@ if(SERENITY_USAGE_FROM_SOURCE)
   endif()
   # Create links to bin, lib and include
   add_custom_command(TARGET serenity POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/lib" "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/lib" "${CMAKE_CURRENT_SOURCE_DIR}/lib")
   add_custom_command(TARGET serenity POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/bin" "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/bin" "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 endif(SERENITY_USAGE_FROM_SOURCE)
-
 
 ###########################
 ## CMake files for users ##
 ###########################
 
-include(CMakePackageConfigHelpers)
-# Config Version file
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY AnyNewerVersion
-)
-
-# Config file
-configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
-  INSTALL_DESTINATION "lib/cmake/serenity"
-)
-
-# Install serenity-config.cmake and serenity-config-version.cmake
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
-  DESTINATION lib/cmake/serenity
-)
-
-# Add all targets to the build-tree export set
-if(SERENITY_DOWNLOAD_DEPENDENCIES)
-  export(
-    TARGETS
-      xc
-      xcfun
-      libint2-static
-      serenity
-      serenity_exe
-    FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+if (NOT DEFINED SKBUILD)
+  include(CMakePackageConfigHelpers)
+  # Config Version file
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
   )
-else()
-  export(
-    TARGETS
-      serenity
-      serenity_exe
-    FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+
+  # Config file
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
+    INSTALL_DESTINATION "lib/cmake/serenity"
   )
-endif()
+
+  # Install serenity-config.cmake and serenity-config-version.cmake
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
+    DESTINATION lib/cmake/serenity
+  )
+
+  # Add all targets to the build-tree export set
+  if(SERENITY_DOWNLOAD_DEPENDENCIES)
+    if(SERENITY_USE_XCFUN)
+      if(SERENITY_USE_LIBXC)
+        export(
+        TARGETS
+        xc
+        xcfun
+        libint2-static
+        serenity
+        serenity_exe
+          FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+        )
+      else()
+        export(
+          TARGETS
+          xcfun
+          libint2-static
+          serenity
+          serenity_exe
+            FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+      )
+      endif() # SERENITY_USE_LIBXC
+    else()
+        export(
+          TARGETS
+    xc
+    libint2-static
+    serenity
+    serenity_exe
+      FILE "${PROJECT_BINARY_DIR}/serenity-targets.cmake"
+      )
+    endif() # SERENITY_USE_XCFUN
+  endif() # SERENITY_DOWNLOAD_DEPENDENCIES
+endif() # SKBUILD
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)

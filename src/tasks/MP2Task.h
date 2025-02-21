@@ -2,7 +2,7 @@
  * @file   MP2Task.h
  *
  * @date   Jul 14, 2014
- * @author Jan Unselber
+ * @author Jan Unsleber
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -85,10 +85,12 @@ class MP2Task : public Task {
   void visit(MP2TaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.lcSettings.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
-    }
+    if (c.lcSettings.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown settings block in CoupledClusterTaskSettings: " + blockname);
   }
 
   /**

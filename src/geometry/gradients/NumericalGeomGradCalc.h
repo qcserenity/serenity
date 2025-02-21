@@ -25,14 +25,11 @@
 #include "settings/DFTOptions.h"
 
 namespace Serenity {
-/* Forward declarations */
-template<Options::SCF_MODES T>
-class ElectronicStructureCalculatorFactory;
 /**
  * @class NumericalGeomGradCalc NumericalGeomGradCalc.h
  * @brief A GeometryGradientCalculator that calculates the gradients numerically.
  */
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class NumericalGeomGradCalc : public GeometryGradientCalculator {
  public:
   /**

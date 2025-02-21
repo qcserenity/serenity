@@ -19,7 +19,7 @@
  */
 
 /* Include Serenity Internal Headers */
-#include "CDStorageController.h"
+#include "integrals/CDStorageController.h"
 #include "integrals/CDIntegralController.h"
 #include "system/SystemController.h"
 #include "testsupply/SystemController__TEST_SUPPLY.h"

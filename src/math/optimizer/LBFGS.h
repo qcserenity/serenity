@@ -39,8 +39,9 @@ class LBFGS : public Optimizer {
    * @brief See documentation of base class Optimizer.
    *        Note that no Hessian matrix is required and a nullptr is passed to the optimize function.
    */
-  void optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
-                    updateFunction) override final;
+  void
+  optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+           std::shared_ptr<unsigned int> nRejected = nullptr) override final;
 };
 } /* namespace Serenity */
 

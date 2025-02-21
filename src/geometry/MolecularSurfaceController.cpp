@@ -44,9 +44,9 @@ const MolecularSurface& MolecularSurfaceController::getMolecularSurface() {
   /*
    * This cast looks rather ugly and I have not added any error-handling for
    * a potential failure. However, the _grid which is accessed and casted can/
-   * should only be constructed in this class as a MolecularSurace. Thus, this
+   * should only be constructed in this class as a MolecularSurface. Thus, this
    * cast should always work. I have implemented it like this, since the
-   * MolecularSurfaceController is an AtomCenteredBasisController which makes it
+   * MolecularSurfaceController is a GridController which makes it
    * necessary to hold _grid as a unique_ptr.
    */
   return dynamic_cast<MolecularSurface&>(*this->_grid);
@@ -181,6 +181,10 @@ const std::vector<std::pair<unsigned int, unsigned int>>& MolecularSurfaceContro
 }
 
 void MolecularSurfaceController::notify() {
+  if (this->isLoaded()) // if pcm loaded, give warning
+    WarningTracker::printWarning("Warning: A molecular surface for solvation was loaded, but now the molecular surface "
+                                 "is being reset! The loaded surface may not be used as intended and may now change!",
+                                 true);
   _grid = nullptr;
   _S = nullptr;
   _invS = nullptr;
@@ -216,6 +220,18 @@ double MolecularSurfaceController::getCavityEnergy() {
   if (!_cavityEnergy)
     calculateCavityEnergy();
   return *_cavityEnergy;
+}
+
+void MolecularSurfaceController::setSurface(std::unique_ptr<MolecularSurface>&& surface) {
+  this->_grid = std::move(surface);
+}
+
+bool MolecularSurfaceController::isLoaded() {
+  return this->_pcmSettings.loadedPCM;
+}
+
+std::string MolecularSurfaceController::getChargesPath() {
+  return this->_pcmSettings.cavityPath;
 }
 
 void MolecularSurfaceController::calculateCavityEnergy() {

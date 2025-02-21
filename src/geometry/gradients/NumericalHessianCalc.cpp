@@ -42,13 +42,13 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-NumericalHessianCalc<T>::NumericalHessianCalc(double stepsizeGrad, double stepsizeHess, bool printToFile)
+template<Options::SCF_MODES SCFMode>
+NumericalHessianCalc<SCFMode>::NumericalHessianCalc(double stepsizeGrad, double stepsizeHess, bool printToFile)
   : _deltaGrad(stepsizeGrad), _deltaHess(stepsizeHess), _printToFile(printToFile) {
 }
 
-template<Options::SCF_MODES T>
-Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemController> systemController) {
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd NumericalHessianCalc<SCFMode>::calcHessian(std::shared_ptr<SystemController> systemController) {
   auto gradtype = Options::GRADIENT_TYPES::ANALYTICAL;
 
   if (_deltaGrad > 0.0) {
@@ -77,10 +77,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
 
   for (unsigned int i = 0; i != nAtoms; ++i) {
     geometry->getAtoms()[i]->addToX(delta);
-    auto scf = ScfTask<T>(systemController);
+    auto scf = ScfTask<SCFMode>(systemController);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -95,7 +95,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     geometry->getAtoms()[i]->addToX(-2.0 * delta);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -115,10 +115,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
 
   for (unsigned int i = 0; i != nAtoms; ++i) {
     geometry->getAtoms()[i]->addToY(delta);
-    auto scf = ScfTask<T>(systemController);
+    auto scf = ScfTask<SCFMode>(systemController);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -133,7 +133,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     geometry->getAtoms()[i]->addToY(-2.0 * delta);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -153,10 +153,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
 
   for (unsigned int i = 0; i != nAtoms; ++i) {
     geometry->getAtoms()[i]->addToZ(delta);
-    auto scf = ScfTask<T>(systemController);
+    auto scf = ScfTask<SCFMode>(systemController);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -171,7 +171,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
     geometry->getAtoms()[i]->addToZ(-2.0 * delta);
     scf.run();
     {
-      GradientTask<T> task({systemController});
+      GradientTask<SCFMode> task({systemController});
       task.settings.gradType = gradtype;
       task.settings.numGradStepSize = _deltaGrad;
       task.settings.print = false;
@@ -190,7 +190,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
   }
   // reset electronic structure.
   {
-    GradientTask<T> task({systemController});
+    GradientTask<SCFMode> task({systemController});
     task.settings.gradType = gradtype;
     task.settings.numGradStepSize = _deltaGrad;
     task.settings.print = false;
@@ -220,11 +220,11 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcHessian(std::shared_ptr<SystemContr
   return std::move(hessian);
 }
 
-template<Options::SCF_MODES T>
-Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_ptr<SystemController>> activeSystems,
-                                                        std::vector<std::shared_ptr<SystemController>> passiveSystems,
-                                                        EmbeddingSettings embedding, int FatmaxCycles,
-                                                        double FaTenergyConvThresh, double FaTgridCutOff) {
+template<Options::SCF_MODES SCFMode>
+Eigen::MatrixXd NumericalHessianCalc<SCFMode>::calcFaTHessian(std::vector<std::shared_ptr<SystemController>> activeSystems,
+                                                              std::vector<std::shared_ptr<SystemController>> passiveSystems,
+                                                              EmbeddingSettings embedding, int FatmaxCycles,
+                                                              double FaTenergyConvThresh, double FaTgridCutOff) {
   double delta = _deltaHess;
   unsigned int nAtoms;
   std::shared_ptr<Geometry> systemGeometry;
@@ -244,7 +244,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -263,7 +263,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -289,7 +289,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -308,7 +308,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -334,7 +334,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -353,7 +353,7 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
 
     // Active system cycles
     {
-      GradientTask<T> task(activeSystems, passiveSystems);
+      GradientTask<SCFMode> task(activeSystems, passiveSystems);
       task.settings.embedding = embedding;
       task.settings.FaTmaxCycles = FatmaxCycles;
       task.settings.FaTenergyConvThresh = FaTenergyConvThresh;
@@ -395,9 +395,10 @@ Eigen::MatrixXd NumericalHessianCalc<T>::calcFaTHessian(std::vector<std::shared_
   return std::move(hessian);
 }
 
-template<Options::SCF_MODES T>
-void NumericalHessianCalc<T>::frequencyCalculation(Eigen::MatrixXd hessian, std::shared_ptr<Geometry> geometry,
-                                                   const std::vector<Settings> settings) {
+template<Options::SCF_MODES SCFMode>
+void NumericalHessianCalc<SCFMode>::frequencyCalculation(Eigen::MatrixXd hessian, std::shared_ptr<Geometry> geometry,
+                                                         const std::vector<Settings> settings) {
+  Eigen::MatrixXd rawHessian = hessian;
   unsigned int nAtoms = geometry->getNAtoms();
   // Mass weighting
   auto atoms = geometry->getAtoms();
@@ -559,6 +560,7 @@ void NumericalHessianCalc<T>::frequencyCalculation(Eigen::MatrixXd hessian, std:
   // write Hessian to HDF5
 
   HDF5::save(file, "hessian", hessian);
+  HDF5::save(file, "rawHessian", rawHessian);
   file.close();
 
   // write molden input

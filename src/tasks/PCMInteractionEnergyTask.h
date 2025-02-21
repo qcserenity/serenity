@@ -2,7 +2,7 @@
  * @file   PCMInteractionEnergyTask.h
  *
  * @date   Nov 12, 2020
- * @author Moitz Bensberg
+ * @author Moritz Bensberg
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ struct PCMInteractionEnergyTaskSettings {
 /**
  * @class  PCMInteractionEnergyTask PCMInteractionEnergyTask.h
  * @brief A class that allows the calculation of the dielectric energy correction from
- *        PCM for a given system (wit associated density). Note that the apparent surface
+ *        PCM for a given system (with associated density). Note that the apparent surface
  *        charges are not updated self-consistently!
  *
  *        The PCMSettings used may be specified via the task input.
@@ -76,10 +76,12 @@ class PCMInteractionEnergyTask : public Task {
   void visit(PCMInteractionEnergyTaskSettings& c, set_visitor v, std::string blockname) {
     if (!blockname.compare("")) {
       visit_each(c, v);
+      return;
     }
-    else if (!c.pcm.visitSettings(v, blockname)) {
-      throw SerenityError((std::string) "Unknown block in PCMInteractionEnergyTaskSettings: " + blockname);
-    }
+    if (c.pcm.visitAsBlockSettings(v, blockname))
+      return;
+    // If reached, the blockname is unknown.
+    throw SerenityError((std::string) "Unknown block in PCMInteractionEnergyTaskSettings: " + blockname);
   }
 
  private:

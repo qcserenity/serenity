@@ -65,12 +65,6 @@ class NEInteractionPotential : public Potential<SCFMode>, public ObjectSensitive
   double getEnergy(const DensityMatrix<SCFMode>& P) override final;
 
   /**
-   * @brief Potential is linked to the grid and density.
-   *        This is used for lazy evaluation.
-   *        (see ObjectSensitiveClass and NotifyingClass)
-   */
-
-  /**
    * @brief Geometry gradient contribution from this Potential.
    * @return The geometry gradient contribution resulting from this Potential.
    */
@@ -87,6 +81,11 @@ class NEInteractionPotential : public Potential<SCFMode>, public ObjectSensitive
   createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
                                 unsigned int nBasisFunctionsRed);
 
+  /**
+   * @brief Potential is linked to the grid and density.
+   *        This is used for lazy evaluation.
+   *        (see ObjectSensitiveClass and NotifyingClass)
+   */
   void notify() override final {
     _potential = nullptr;
   };

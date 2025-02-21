@@ -24,7 +24,7 @@
 #include "data/grid/BasisFunctionOnGridControllerFactory.h"
 #include "data/grid/DensityOnGridCalculator.h"
 #include "data/grid/ExternalDensityOnGridController.h"
-#include "dft/functionals/wrappers/XCFun.h"
+#include "dft/functionals/FunctionalLibrary.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 
@@ -89,10 +89,10 @@ SPMatrix<SCFMode>& ABFuncPotential<SCFMode>::getMatrix() {
       densOnGridController = std::make_shared<ExternalDensityOnGridController<SCFMode>>(densityOnGrid, totDensityGradOnGrid);
     }
 
-    // initialize XCFun
-    XCFun<SCFMode> xcFun(128);
+    // initialize functional library
+    FunctionalLibrary<SCFMode> flib(128);
     // Calculate data
-    auto funcData = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, _functional, densOnGridController);
+    auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, _functional, densOnGridController);
     // initialize fock matrix
     unsigned int nBasisA = this->_basisA->getNBasisFunctions();
     unsigned int nBasisB = this->_basisB->getNBasisFunctions();

@@ -38,13 +38,13 @@ std::shared_ptr<Geometry> createGeometryPtr(std::string path) {
 void export_Geometry(py::module& spy) {
   py::class_<Geometry, std::shared_ptr<Geometry>>(
       spy, "Geometry",
-      "A geometry consistiong of a a list of atoms.\n"
+      "A geometry consisting of a list of atoms.\n"
       "This class holds several routines that access the data of multiple Atoms at once.")
       .def(py::init<std::vector<std::string>, Eigen::MatrixXd>())
       .def(py::init(&createGeometryPtr),
-           "@brief The basic constructor using a python list of libserenipy.Atom(s) or a .xyz file.\n"
+           "@brief The basic constructor using a python list of serenipy.Atom(s) or a .xyz file.\n"
            "Option 1: \n"
-           "@param list of libserenipy.Atom (internally std::shared_ptr<Atom>)\n"
+           "@param list of serenipy.Atom (internally std::shared_ptr<Atom>)\n"
            "Option2: \n"
            "@param string Path to an .xyz file.")
       .def("getCoordinates", &Geometry::getCoordinates,

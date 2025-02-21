@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/GrimmeSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "geometry/Geometry.h"
 #include "postHF/LRSCF/LRSCFController.h"

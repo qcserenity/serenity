@@ -1,0 +1,80 @@
+\subsection{Task: Electron Transfer}
+
+This task calculates adiabatic wave functions from the linear combination of any number of quasi-diabatic states.
+Those wave functions are used to calculate several charge-transfer properties. Within a two-state approach, the
+analytical electronic coupling and  excitation energy are calculated. For multiple quasi-diabatic states, the Hamilton
+matrix in the quasi-diabatic basis as well as the energy levels of the adiabatic wave functions are calculated.
+Additionally, spin-density distributions can be calculated and printed to cube files. Moreover, atom-wise spin
+populations via a Becke-Population analysis can be obtained. Basically, this task combines the FDE-ET, FDE-diab,
+and ALMO multi-state DFT formalisms. This task is only implemented for the \ttt{UNRESTRICTED} case, therefore,
+prior FaT calculations must also be carried out in spin-unrestricted mode.
+\subsubsection{Example Input}
+\textbf{FDE-ET:}
+\begin{lstlisting}
++task fdeet
+  #quasi-diabatic state 1
+  act sys1-state1
+  act sys2-state1
+  #quasi-diabatic state 2
+  act sys1-state2
+  act sys2-state2
+  states {2 2}
+  couple {1 2}
+  spindensity true
+-task
+\end{lstlisting}
+\textbf{ALMO multi-state DFT:}
+{\color{red}IMPORTANT:} The states were calculated with the \ttt{FreezeAndThawTask} and \ttt{embeddingMode ALMO}. If the 
+resulting subsystems are added to one system with the \ttt{SystemAdditionTask}, the input simplifies to:
+\begin{lstlisting}
++task et
+  act state1
+  act state2
+-task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{ELECTRONTRANSFERTASK}, \ttt{ET} and \ttt{FDEET}.
+  \item [\texttt{activeSystems}]\hfill \\
+  The systems that construct the quasi-diabatic states (they are usually obtained from separate FaT calculations).
+  \item [\texttt{states}]\hfill \\
+  This vector input defines the quasi-diabatic states. Herein, the number of elements in the vector defines how many
+  quasi-diabatic states are used, while each index specifies the number of subsystems contained in this state. All states must have the same number 
+  of systems. Here, the ordering of the \ttt{activeSystems} is important! As an example, \ttt{states\{2 2\}} specifies a linear combination of 2 quasi-diabatic states, where the first state is composed of the first two \ttt{activeSystems} and the second state is composed of the next two \ttt{activeSystems}.
+  By default, if no vector is given, each system specifies one quasi-diabatic state.
+  \item [\texttt{couple}]\hfill \\
+  This vector input specifies which of the specified \ttt{states} shall be used in the linear combination.
+  Therefore, \ttt{couple\{1 2\}} can be understood as using states 1 and 2. Additionally, \ttt{couple\{1 2 ; 1 3\}}
+  can be understood as two separate FDE-ET runs for which in the first run states 1 and 2 are used, whereas in the
+  second run states 1 and 3 are used. Using 3 or 4 quasi-diabatic states can be accomplished by specifying
+  \ttt{couple\{1 2 3\}} or \ttt{couple\{1 2 3 4\}}, respectively.
+  By default, if no vector is given, all states are coupled.
+  \item [\texttt{spindensity}]\hfill \\
+  Specifies if the spin density of the adiabatic states shall be calculated and printed to cube file. By default \ttt{false}.
+  \item [\texttt{spinpopulation}]\hfill \\
+  Specifies if atom-wise spin populations are calculated. If \ttt{true}, the spin-density is calculated and subsequently
+  used in a Becke population analysis. See also the keyword \ttt{population}. By default \ttt{false}.
+  \item [\texttt{population}]\hfill \\
+  This vector input specifies which adiabatic states are used for the population analysis if \ttt{spinpopulation true}. By default \ttt{\{0\}}. This corresponds to the calculation of the spin populations for the first adiabatic state.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{disjoint}]\hfill \\
+  This vector input specifies the usage of the disjoint approximation for FDE-ET/Diab. Therefore, \ttt{disjoint \{1 2\}} corresponds to joining
+  the systems 1 and 2 in each state while all other systems are not coupled. By default \ttt{\{\}}.
+  \item [\texttt{printContributions}]\hfill \\
+  Specifies whether the real-space representations of the diabatic transition-density matrices shall be printed to cube
+  files or not. By default \ttt{false}.
+  \item [\texttt{diskMode}]\hfill \\
+  Specifies whether the transition-density matrices are written to HDF5 file or kept in memory. This is recommended for FDE-ET/diab calculations in which the available memory is insufficient.
+  This is often the case when many quasi-diabatic states are coupled of which each state holds a very large transition-density matrix. By default \ttt{false}.
+  \item [\texttt{useHFCoupling}]\hfill \\
+  Specifies whether the off-diagonal elements of the Hamilton matrix are calculated alternatively using HF exchange contributions. By default \ttt{false}.
+  \item [\texttt{coupleAdiabaticStates}]\hfill \\
+  Specifies whether the adiabatic states of different runs (see keyword \ttt{couple}) should be coupled again. By default \ttt{false}.
+  \item [\texttt{configurationWeights}]\hfill \\
+  Specifies weights of the adiabatic states that are coupled. Must have the same dimensions as \ttt{couple}. Requires \ttt{coupleAdiabaticStates}.
+
+\end{description}

@@ -106,4 +106,24 @@ TEST_F(OrbitalControllerTest, coreOrbitalsFromGuess) {
   SystemController__TEST_SUPPLY::cleanUp();
 }
 
+/**
+ * @test
+ * @brief Test get all valence orbitals.
+ */
+TEST_F(OrbitalControllerTest, getAllValenceOrbitals) {
+  auto system = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::I2_Def2_SVP_PBE, true);
+  auto orbitalController = system->getActiveOrbitalController<RESTRICTED>();
+  orbitalController->setCoreOrbitalsByNumber(system->getNCoreElectrons() / 2);
+  orbitalController->setRydbergOrbitalsByNumber(
+      system->getBasisController()->getNBasisFunctions() -
+      system->getBasisController(Options::BASIS_PURPOSES::IAO_LOCALIZATION)->getNBasisFunctions());
+  auto valenceOrbitals = orbitalController->getAllValenceOrbitalIndices();
+  for (const auto& iOrb : valenceOrbitals) {
+    EXPECT_GT(iOrb, 7);
+    EXPECT_LT(iOrb, 26);
+  }
+  SystemController__TEST_SUPPLY::cleanUpSystemDirectory(system->getSystemPath() + "I_FREE/", "I_FREE");
+  SystemController__TEST_SUPPLY::cleanUp();
+}
+
 } /*namespace Serenity*/

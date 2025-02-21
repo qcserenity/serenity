@@ -21,8 +21,8 @@
 /* Include Serenity Internal Headers */
 #include "dft/dispersionCorrection/DispersionRawData.h"
 #include "parameters/Constants.h"
-#include "settings/DFTOptions.h"
 /* Include Std and External Headers */
+#include <array>
 #include <cassert>
 #include <cmath>
 
@@ -30,6 +30,13 @@
 #define DISPERSIONDATA_H_
 
 namespace Serenity {
+/* Forward Declarations */
+namespace CompositeFunctionals {
+enum class XCFUNCTIONALS;
+}
+namespace Options {
+enum class DFT_DISPERSION_CORRECTIONS;
+}
 
 /**
  * @class DispersionData DispersionData.h

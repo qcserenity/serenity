@@ -1,0 +1,127 @@
+\subsection{Task: Top-Down Embedding\label{sec:topDownTask}}
+The Top-Down Embedding Task (also named the Projection-Based Embedding Task in prior versions),
+is one of the two major embedding Tasks in \textsc{Serenity}. It only works with two subsystems, one being the active system (containing all atoms to be in the active region), the second one being the environment system (containing all other atoms). The 'top-down' labeling references the fact that at first a supersystem calculation is carried out. Subsequently, the two actual subsystems are identified by distribution of the orbital space into an active and an environment part. The active system is then relaxed using the specified active system method, while the environment system is kept frozen.\\
+The initial supersystem calculation is carried out using the settings of the environment system, expecting these settings to result in a setup that is computationally cheaper, in general. Note that the basis set requested in the environment system is used for all atoms of the supersystem in this calculation. This ensures the evenly tempered distribution of the electron density across the entire supersystem, which is beneficial for a reasonable distribution of orbitals into active and environment regions. This distribution usually happens after a localization procedure. All of the settings for both, orbital localization and distribution into subsystems are given below. Furthermore, it is possible to truncate the basis of the active system in several different ways, which are also given below. This feature allows for the embedded active system calculation to be faster than a supersystem calculation with the same settings. \\
+Note that the Top-Down Embedding Task is identical to calling the following input, with exception for
+potential-reconstruction techniques:
+\begin{lstlisting}
++system
+name supersystem
+...
+-system
+
++system
+name active
+...
+-system
+
++system
+name environment
+...
+-system
+
++task ADD
+act supersystem
+env active
+env environment
+addOccupiedOrbitals false
+#May be set to true to produce an initial guess for the 
+#supersystem from subsystem densities.
+-task
+
++task SCF
+system supersystem
+-task
+
++task LOC
+system supersystem
+locType <locType>
+-task
+
++task SPLIT
+act supersystem
+env active
+env environment
+systemPartitioning <systemPartitioning>
+orbitalThreshold <orbitalThreshold>
+-task
+
++task BASISSETTASK
+#May be skipped if no basis-set truncation is desired. Or a basis-set truncation
+#for the environment could be done in addition.
+system active
+truncAlgorithm <truncAlgorithm>
+netThreshold <netThreshold>
+truncationFactor <truncationFactor>
+-task
+
++task FDE
+#A FATTask could be used here, too.
+act active
+env environment
++EMB
+...
+-EMB
+-task
+\end{lstlisting}
+Thus, the Top-Down Embedding Task task can be restarted after or during any of the tasks above as described for the respective task. Note that in the input above, the settings of the supersystem are used for the supersystem
+SCF.
+
+\subsubsection{Example Input}
+\begin{lstlisting}
++task TDEmbeddingTask
+  act Active
+  env Env
+  +emb
+    naddXcFunc PW91
+    embeddingmode NADDFUNC
+  -emb
+-task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+	\item[\texttt{name}]\hfill \\
+	Aliases for this task are \ttt{TDEmbeddingTask}, \ttt{PBE}, \ttt{ProjectionBasedEmbTask} and \ttt{TD}.
+	\item[\texttt{activeSystems}]\hfill \\
+	Will use this system as the active part of the supersystem.
+	\item[\texttt{environmentSystems}]\hfill \\
+	Will use the first environment system as the environment part of the supersystem.
+	The initial supersystem calculation will be carried out implying the options
+	of this system, including the application of the given basis label to all atoms,
+	even those of the active system.
+	\item[\texttt{sub-blocks}]\hfill \\
+	Possible sub-blocks are the embedding (\ttt{emb} with \ttt{naddXCFunc=BP86} and \ttt{embeddingMode=LEVELSHIFT}), the local correlation (\ttt{lc} with \ttt{pnoSettings=TIGHT}) and the PCM (\ttt{pcm}) settings.
+	\item[\texttt{locType}]\hfill \\
+	The orbital localization method. The default is \ttt{IBO}. For other valid options see localization options in Section~\ref{task:localization}.
+	\item[\texttt{orbitalThreshold}]\hfill \\
+	Threshold for orbital populations on the active region to be considered active. By defalt \ttt{0.6}.
+	\item[\texttt{systemPartitioning}]\hfill \\
+	The algorithm used for the system partitioning. The default algorithm is \ttt{POPULATION\_THRESHOLD}.
+	\item[\texttt{mp2Type}]\hfill \\
+	The MP2-type used for the evaluation of the correlation energy of double-hybrid functionals. By the default \ttt{DF} is chosen. Other options are \ttt{AO} to evaluate the full two-electron four-center integrals and \ttt{local} to use local MP2.
+	\item[\texttt{splitValenceAndCore}]\hfill \\
+	Localize valence and core orbitals independently. By default \ttt{false}.
+\end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+	\item[\texttt{truncAlgorithm}]\hfill \\
+	The truncation algorithm for the active system basis. By default no truncation is performed (\ttt{NONE}). For further information see Section~\ref{task:truncation}.
+	\item[\texttt{truncationFactor}]\hfill \\
+	The truncation factor used in the "primitive" truncation schemes. Needs \ttt{truncAlgorithm=PRIMITIVENETPOP} and has a default value of \ttt{0.0}. For further information see Section~\ref{task:truncation}.
+	\item[\texttt{netThreshold}]\hfill \\
+	The Mulliken net population threshold for the Mulliken net population truncation. Needs \ttt{truncAlgorithm=NETPOPULATION} and has a default value of \ttt{1.0e-4}.  For further information see Section~\ref{task:truncation}.
+	\item[\texttt{noSupRec}]\hfill \\
+	Boolean (default \ttt{true}) to switch off/on double reconstruction. Needs \ttt{embeddingMode=RECONSTRUCTION}.
+	\item[\texttt{useFermiLevel}]\hfill \\
+	Boolean (default \ttt{true}) to switch off/on using the supersystem-Fermi level for the Fermi-shifted Huzinaga equation. Needs \ttt{embeddingMode=FERMI}.	
+  \item[\texttt{load}]\hfill \\
+  The path to load HDF5 files for the supersystem from. If this path and a name for the supersystem is given, that system is used for the calculation. Atoms of the supersystem have to be the union of active and environment atoms. No sorting required.  
+  \item[\texttt{name}]\hfill \\
+  The name of the supersystem calculation. If this and a load path is given, the given supersystem is used for the calculation.
+  \item[\texttt{maxResidual}]\hfill \\
+  Convergence threshold for the local MP2 calculation. By default \ttt{1.0e-5}.
+  \item[\texttt{maxCycles}]\hfill \\
+  Maximum number of iterations before cancelling the amplitude optimization in local MP2. The default number of cycles is \ttt{100}.   
+  \item[\texttt{addOrbitals}]\hfill \\
+  Add the orbitals of the subsystems up to form the supersystem and skip the supersystem SCF. By default \ttt{false}.
+\end{description}

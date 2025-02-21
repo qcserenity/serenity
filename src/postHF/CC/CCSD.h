@@ -2,7 +2,7 @@
  * @file CCSD.h
  *
  * @date Mar 31, 2016
- * @author Jan Unslsber
+ * @author Jan Unsleber
  * @copyright \n
  *  This file is part of the program Serenity.\n\n
  *  Serenity is free software: you can redistribute it and/or modify

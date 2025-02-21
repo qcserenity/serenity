@@ -1,0 +1,117 @@
+\subsection{Task: Plot}
+A task to export properties on 3D (cube) or 2D (planar) grid files. The .dat file containing the property on
+a 2D grid contains the values as \ttt{x, y, z, value} of the property.
+
+\subsubsection{Example Input (3D)}
+\begin{lstlisting}
+  +task Plot
+    act water
+    orbitals {3 4 5}
+  -task
+\end{lstlisting}
+
+\subsubsection{Example Input (2D)}
+\begin{lstlisting}
+  +task Plot
+    act water
+    orbitals {3 4 5}
+    atom1 1
+    atom2 2
+    atom3 3
+  -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+   \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{PlotTask}, \ttt{Plot}, \ttt{CubeFileTask}, \ttt{CubeFile} and \ttt{Cube}.
+   \item [\texttt{activeSystems}]\hfill \\
+    Combines all active systems into one supersystem and plots its properties
+    if available.
+   \item [\texttt{environmentSystems}]\hfill \\
+    Any environment system will extend the geometry and grid size
+    only, thus subsystem properties can be displayed on a supersystem grid.
+    \item [\texttt{gridSpacing}]\hfill \\
+    The grid spacing in \AA{} along the unitvectors. Note that for a 2D plot the third entry is
+    ignored. By default \ttt{\{$0.12, 0.12, 0.12$\}} (3D) or \ttt{\{$0.08, 0.08, 0.0$\}} (2D).
+    \item [\texttt{borderWidth}]\hfill \\
+    The border width in \AA{} around the geometry for which the grid is created. By default \ttt{2.0}.
+\end{description}
+
+\paragraph{Grid and plot settings for 3D plot}
+\begin{description}
+    \item [\texttt{xUnitVector}]\hfill \\
+    The first unitvector defining the orientation of the cube grid. By default \ttt{\{$1.0, 0.0, 0.0$\}}.
+    \item [\texttt{yUnitVector}]\hfill \\
+    The second unitvector defining the orientation of the cube grid. By default \ttt{\{$0.0, 1.0, 0.0$\}}.
+    \item [\texttt{zUnitVector}]\hfill \\
+    The third unitvector defining the orientation of the cube grid. By default \ttt{\{$0.0, 0.0, 1.0$\}}.
+    \item [\texttt{cavity}]\hfill \\
+    Plot values on the molecular cavity. By default \ttt{False}.
+    \item [\texttt{gridCoordinates}]\hfill \\
+    Write grid coordinates to file. By default \ttt{False}.
+\end{description}
+\paragraph{Grid and plot settings for 2D plot}
+\begin{description}
+    \item [\texttt{p1}]\hfill \\
+    First point which defines the plane in a 2D plot, this is also the origin of the plane.
+    \item [\texttt{p2}]\hfill \\
+    Second point which defines the plane in a 2D plot.
+    \item [\texttt{p3}]\hfill \\
+    Third point which defines the plane in a 2D plot.
+    \item [\texttt{atom1}]\hfill \\
+    The atom which coordinates should be used as p1. The counting starts at 1.
+    \item [\texttt{atom2}]\hfill \\
+    The atom which coordinates should be used as p2. The counting starts at 1.
+    \item [\texttt{atom3}]\hfill \\
+    The atom which coordinates should be used as p3. The counting starts at 1.
+    \item [\texttt{projectCutOffRadius}]\hfill \\
+    The maximal distance in \AA{} an atom in a 2D plot is allowed to have to be projected on the plane for the generation of the grid. By default \ttt{3.0}.
+    \item [\texttt{xyHeatmap}]\hfill \\
+    Plots the heatmap which is rotated to the xy plane and saves it as \_XYPLANE.dat. The geometry rotated with the same matrix is saved as \_MOLECULE\_ROTATED\_TO\_XYPLANE.
+    This heatmap can be plotted with the \texttt{2DheatMap.py} script in the \texttt{tools} folder. By default \ttt{False}.
+\end{description}
+
+\paragraph{Properties which can be plotted}
+\begin{description}
+    \item [\texttt{density}]\hfill \\
+    Plots the electron density. By default \ttt{False}.
+    \item [\texttt{signedDensity}]\hfill \\
+    Plots the 'signed density' defined as: $\mathrm{sign}(\nabla^2\rho(r))\rho(r)$ . By default \ttt{False}.
+    \item [\texttt{orbitals}]\hfill \\
+    Plots the orbitals from the list.
+    \item [\texttt{allOrbitals}]\hfill \\
+    Plots all orbitals. By default \ttt{False}.
+    \item [\texttt{occOrbitals}]\hfill \\
+    Plots all occupied orbitals. By default \ttt{False}.
+    \item [\texttt{electrostaticPot}]\hfill \\
+    Plots the electrostatic potential. By default \ttt{False}.
+    \item [\texttt{sedd}]\hfill \\
+    Plots the Single Exponential Decay Detector (SEDD). By default \ttt{False}.
+    \item [\texttt{dori}]\hfill \\
+    Plots the Density Overlap Regions Indicator (DORI). By default \ttt{False}.
+    \item [\texttt{elf}]\hfill \\
+    Plots the Electron Localization Function (ELF). By default \ttt{False}.
+    \item [\texttt{elfts}]\hfill \\
+    Plots the approximate ELF (ELF$_\text{TS}$). By default \ttt{False}.
+    \item [\texttt{ntos}]\hfill \\
+    Plots the natural transition orbitals, the transition density, the particle density and the hole density for the excitations given in \texttt{excitations}. Can only be done if an \texttt{LRSCFTask} was carried out before manually. By default \ttt{False}.
+    \item [\texttt{nros}]\hfill \\
+    Plots the natural response orbitals, which can only be done if an \texttt{LRSCFTask} with a \texttt{frequencies} entry has been carried out before manually. Thus far only available for an isolated system. By default \ttt{False}.
+    \item [\texttt{cctrdens}]\hfill \\
+    Plots the CC2 transition densities (left and right) for those excitations given in \texttt{excitations}. An appropriate \ttt{LRSCFTask} (with \ttt{cctrdens True} and the same active and environment systems) needs to be run before. By default \ttt{False}.
+    \item [\texttt{ccexdens}]\hfill \\
+    Plots the CC2 state densities (ground and excited states) for those excitations given in \texttt{excitations}. An appropriate \ttt{LRSCFTask} (with \ttt{ccexdens True} and the same active and environment systems) needs to be run before. By default \ttt{False}.
+\end{description}
+
+\subsubsection{Advanced Keywords}
+\begin{description}
+    \item [\texttt{maxGridPoints}]\hfill \\
+Maximum number of grid points before stopping the cube file generation (1.6 GB). By default \ttt{1e+8}.
+    \item [\texttt{ntoPlotThreshold}]\hfill \\
+    Only the NTOs with a contribution to an investigated excitation higher than this threshold are plotted. By default \ttt{0.1}.
+\item [\texttt{excitations}]\hfill \\
+A vector that defines the excitations of interest. Necessary in order to plot NTOs, transition densities or hole and particle densities. Note that counting starts at 1 and refers to ascending transition energies as calculated by the \texttt{LRSCTask}. By default an empty vector. Example input: \ttt{excitations \{1 2 4\}}
+\item [\texttt{nrominimum}]\hfill \\
+A value between 0 and 1 which defines the accumulated singular values of natural response orbials that are plotted. NROs are plotted starting from the pair with the highest singular value until the accumulated singular values reach \texttt{nrominimum}. By default \ttt{0.75}.
+\end{description}

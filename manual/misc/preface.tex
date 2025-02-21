@@ -1,0 +1,25 @@
+\chapter{Preface}
+Subsystem and quantum embedding approaches are currently among the most quickly developing
+methods in quantum chemistry. This is mostly due to their computational efficiency
+and their easy interpretability in terms of intuitive, well-defined chemical subunits.
+While the general idea of combining electronic-structure methods of different or the same
+types for separate fragments is maybe straightforward, the practical execution of such
+calculations can be a frustrating experience. The background is that such a combination
+may require interfacing of different codes with limited interoperability through text files.
+This strategy can be very successful, but usually also causes an overhead of work for the specific
+interfaces needed. Moreover, it is vulnerable to (even slight) changes in the input/output
+structure or working principles of the original programs. Even if all technical challenges
+are dealt with, inexperienced users may find it hard to choose the optimum embedding approach
+for a problem at hand, since comparison of different schemes can be very difficult.\\
+\\
+This was our motivation for developing a new quantum chemistry code that should give access
+to a wide variety of quantum embedding approaches. This should allow for easy comparisons
+of embedding schemes, as \serenity is written with a subsystem structure in mind right from
+the beginning. Hence, it includes several possibilities for embedding calculations with
+different ingredients. Its modular structure should make it easily extensible to upcoming
+embedding features. As an open-source project, it may be tailored to user-specific requirements
+whenever desired.\\
+\\
+The following manual shows how to use \serenity as a standalone program and via the Python wrapper. Its usage as a
+library is best explained through the source code (detailed manual
+information may follow at a later point).

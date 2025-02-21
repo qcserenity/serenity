@@ -21,6 +21,7 @@
 /* Include Serenity Internal Headers */
 #include "potentials/ExchangeInteractionPotential.h"
 #include "basis/AtomCenteredBasisController.h"
+#include "basis/BasisController.h"
 #include "data/ElectronicStructure.h"
 #include "data/matrices/FockMatrix.h"
 #include "potentials/CoulombInteractionPotential.h"

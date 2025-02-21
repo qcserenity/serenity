@@ -40,7 +40,7 @@ using H5File = H5::H5File;
 } // namespace HDF5
 
 class GridController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
 class Geometry;
 class BasisController;

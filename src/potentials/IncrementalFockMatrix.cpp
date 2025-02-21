@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/IncrementalFockMatrix.h"
+/* Include Serenity Internal Headers */
 #include "data/matrices/DensityMatrixController.h"
 #include "io/FormattedOutputStream.h"
 #include "misc/WarningTracker.h"
@@ -102,6 +104,12 @@ bool IncrementalFockMatrix<SCFMode>::updateDensityAndThreshold(DensityMatrix<SCF
     if (largestElement > _prescreeningIncrementEnd * 0.1)
       zeroChange = false;
   };
+  // do a full build
+  //  - every _incrementSteps iterations
+  //  - if the change is not zero
+  //  - if the final threshold is not reached
+  //  - if the alwaysFullBuild flag is set
+  //  - if the basis set has changed
   bool fullBuild = (_counter % _incrementSteps == 0 && not zeroChange && not _reachedFinalThreshold) ||
                    _alwaysFullBuild || _basisChanged;
   double newThreshold = getCurrentThreshold();

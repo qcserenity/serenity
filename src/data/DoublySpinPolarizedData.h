@@ -34,7 +34,7 @@ class GridController;
  * @class DoublySpinPolarizedData DoublySpinPolarizedData.h
  * @brief Analog of SpinPolarizedData for a double spin polarization
  *
- * Especially when dealing with higher derivatives of data which may be spin-polrized additional
+ * Especially when dealing with higher derivatives of data which may be spin-polarized, additional
  * combinations of spin polarizations arise. Let's take as an example a function f of the electron
  * density rho. In the spin-unpolarized (restricted) case f is only dependent on one variable, so
  * for each derivative level one only gets one new function: f'(rho), f''(rho) and so on. With spin-
@@ -44,7 +44,7 @@ class GridController;
  * d^2f/drho_alpha^2, d^2f/drho_beta^2, d^2f/(drho_alpha drho_beta) = d^2f/(drho_beta drho_alpha).
  * Objects of this class gather e.g. all these three derivatives together.
  */
-template<Options::SCF_MODES T, class U, typename E = void>
+template<Options::SCF_MODES SCFMode, class U, typename E = void>
 class DoublySpinPolarizedData;
 /**
  * Restricted, non-primitives

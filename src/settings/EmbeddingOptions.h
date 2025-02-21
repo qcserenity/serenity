@@ -35,7 +35,9 @@ namespace Options {
  *  HUZINAGA:               Solve the Huzinaga equation.
  *  HOFFMANN:               Solve Hoffmann's equation.
  *  RECONSTRUCTION:         Reconstruct the effective potential.
- *  FERMI_SHIFTED_HUZINAGA  Solve a shifted Huzinaga equation.
+ *  FERMI_SHIFTED_HUZINAGA: Solve a shifted Huzinaga equation.
+ *  LOEWDIN                 Evaluate contributions arising from an expanded overlap matrix.
+ *  ALMO:                   Absolutely localized molecular orbitals.
  */
 enum class KIN_EMBEDDING_MODES {
   NONE = 0,
@@ -44,7 +46,9 @@ enum class KIN_EMBEDDING_MODES {
   HUZINAGA = 3,
   HOFFMANN = 4,
   RECONSTRUCTION = 5,
-  FERMI_SHIFTED_HUZINAGA = 6
+  FERMI_SHIFTED_HUZINAGA = 6,
+  LOEWDIN = 7,
+  ALMO = 8
 };
 template<>
 void resolve<KIN_EMBEDDING_MODES>(std::string& value, KIN_EMBEDDING_MODES& field);

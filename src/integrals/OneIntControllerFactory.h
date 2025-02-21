@@ -36,7 +36,8 @@ namespace Serenity {
  * This class is a singleton
  */
 class OneIntControllerFactory
-  : public RememberingFactory<OneElectronIntegralController, const std::shared_ptr<BasisController>, const std::shared_ptr<const Geometry>> {
+  : public RememberingFactory<OneElectronIntegralController, const std::shared_ptr<BasisController>,
+                              const std::shared_ptr<const Geometry>, const std::shared_ptr<ExternalChargeController>> {
  public:
   /**
    * @brief One of two singleton 'Constructors'
@@ -72,13 +73,15 @@ class OneIntControllerFactory
    * , i.e. only with a new basis an actually new controller is produced. In any case the garbage
    * collector is already notified that the calling class uses the returned instance.
    *
-   * @param   basis    will be tightly connected to the controller by reference.
-   * @param   geometry necessary for nuclei-electron attraction integrals
+   * @param basisController    The basis controller defining the AO basis.
+   * @param geometry           The molecular geometry, necessary for nuclei-electron attraction integrals.
+   * @param externalCharges    The controller holding the external charges (if any).
    * @returns a new instance or the pointer to an old instance if it already exists.
    */
   std::shared_ptr<OneElectronIntegralController> produce(std::shared_ptr<BasisController> basisController,
-                                                         std::shared_ptr<const Geometry> geometry) {
-    return getOrProduce(basisController, geometry);
+                                                         std::shared_ptr<const Geometry> geometry,
+                                                         std::shared_ptr<ExternalChargeController> externalCharges) {
+    return getOrProduce(basisController, geometry, externalCharges);
   }
 
  private:
@@ -87,9 +90,11 @@ class OneIntControllerFactory
    */
   OneIntControllerFactory() = default;
 
-  std::unique_ptr<OneElectronIntegralController> produceNew(const std::shared_ptr<BasisController> basisController,
-                                                            const std::shared_ptr<const Geometry> geometry) override final {
-    return std::unique_ptr<OneElectronIntegralController>(new OneElectronIntegralController(basisController, geometry));
+  std::unique_ptr<OneElectronIntegralController>
+  produceNew(const std::shared_ptr<BasisController> basisController, const std::shared_ptr<const Geometry> geometry,
+             const std::shared_ptr<ExternalChargeController> externalCharges) override final {
+    return std::unique_ptr<OneElectronIntegralController>(
+        new OneElectronIntegralController(basisController, geometry, externalCharges));
   }
 };
 

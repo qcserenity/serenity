@@ -19,13 +19,12 @@
  */
 
 /* Include Serenity Internal Headers */
+#include "tasks/FiniteFieldTask.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-#include "testsupply/SystemController__TEST_SUPPLY.h"
-// Tasks
-#include "tasks/FiniteFieldTask.h"
 #include "tasks/LRSCFTask.h"
 #include "tasks/ScfTask.h"
+#include "testsupply/SystemController__TEST_SUPPLY.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 
@@ -56,7 +55,7 @@ TEST_F(FiniteFieldTaskTest, numerStatPolyFFvsLRSCF) {
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
   sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
 
-  FiniteFieldTask ff(sysDummy);
+  FiniteFieldTask<RESTRICTED> ff(sysDummy);
   ff.settings.frequency = 0;
   ff.run();
   LRSCFTask<RESTRICTED> lrscf({sysDummy});
@@ -79,7 +78,7 @@ TEST_F(FiniteFieldTaskTest, analyDynPolyFFvsLRSCF) {
   Settings settings = sysDummy->getSettings();
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
   sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
-  FiniteFieldTask ff(sysDummy);
+  FiniteFieldTask<RESTRICTED> ff(sysDummy);
   ff.settings.frequency = 1.0;
   ff.run();
   LRSCFTask<RESTRICTED> lrscf({sysDummy});
@@ -102,7 +101,7 @@ TEST_F(FiniteFieldTaskTest, analyStatPolyFFvsLRSCF) {
   Settings settings = sysDummy->getSettings();
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
   sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
-  FiniteFieldTask ff(sysDummy);
+  FiniteFieldTask<RESTRICTED> ff(sysDummy);
   ff.settings.frequency = 0;
   ff.run();
   LRSCFTask<RESTRICTED> lrscf({sysDummy});
@@ -126,7 +125,7 @@ TEST_F(FiniteFieldTaskTest, staticstatic) {
   Settings settings = sysDummy->getSettings();
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
   sysDummy = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::Water_Dimer_def2_SVP_HF, settings);
-  FiniteFieldTask ff(sysDummy);
+  FiniteFieldTask<RESTRICTED> ff(sysDummy);
   ff.settings.frequency = 0;
   ff.settings.hyperPolarizability = true;
   ff.settings.finiteFieldStrength = 1e-3;

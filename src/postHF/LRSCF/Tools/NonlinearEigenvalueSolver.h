@@ -120,7 +120,7 @@ class NonlinearEigenvalueSolver {
   ///@brief Tells the eigenvalue solver to follow in the initial eigenvectors or not.
   bool _rootFollowing;
 
-  ///@brief The underlying excited state method.
+  ///@brief The underlying excited-state method.
   Options::LR_METHOD _method;
 
   ///@brief Contains _nSets matrices containing the current approximate eigenvectors.

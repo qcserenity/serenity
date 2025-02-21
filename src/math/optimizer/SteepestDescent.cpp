@@ -26,7 +26,9 @@ SteepestDescent::SteepestDescent(Eigen::VectorXd& parameters, double stepWidth)
   : Optimizer(parameters), _stepWidth(stepWidth) {
 }
 void SteepestDescent::optimize(
-    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction) {
+    std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+    std::shared_ptr<unsigned int> nRejected) {
+  (void)nRejected;
   double value = std::numeric_limits<double>::infinity();
   Eigen::VectorXd gradients(this->_parameters.size());
   gradients.setZero();

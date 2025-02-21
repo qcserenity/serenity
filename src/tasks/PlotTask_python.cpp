@@ -63,12 +63,11 @@ void export_PlotTask(py::module& spy) {
       .def_readwrite("gridCoordinates", &PlotTaskSettings::gridCoordinates)
       .def_readwrite("ntos", &PlotTaskSettings::ntos)
       .def_readwrite("ntoPlotThreshold", &PlotTaskSettings::ntoPlotThreshold)
-      .def_readwrite("transitionDensity", &PlotTaskSettings::transitionDensity)
-      .def_readwrite("holeparticleDensity", &PlotTaskSettings::holeparticleDensity)
       .def_readwrite("excitations", &PlotTaskSettings::excitations)
       .def_readwrite("nros", &PlotTaskSettings::nros)
       .def_readwrite("nrominimum", &PlotTaskSettings::nrominimum)
-      .def_readwrite("fragments", &PlotTaskSettings::fragments);
+      .def_readwrite("cctrdens", &PlotTaskSettings::cctrdens)
+      .def_readwrite("ccexdens", &PlotTaskSettings::ccexdens);
 
   py::class_<PlotTask<RESTRICTED>>(spy, "PlotTask_R")
       .def(py::init<const std::vector<std::shared_ptr<SystemController>>&, const std::vector<std::shared_ptr<SystemController>>&>())

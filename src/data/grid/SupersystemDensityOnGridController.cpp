@@ -26,62 +26,62 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-SupersystemDensityOnGridController<T>::SupersystemDensityOnGridController(
-    const std::vector<std::shared_ptr<DensityOnGridController<T>>>& subsystemDensOnGridControllers)
-  : DensityOnGridController<T>(
-        subsystemDensOnGridControllers[0]->getGridController(),
-        min_element(subsystemDensOnGridControllers.begin(), subsystemDensOnGridControllers.end(),
-                    [](std::shared_ptr<DensityOnGridController<T>> i, std::shared_ptr<DensityOnGridController<T>> j) {
-                      return (i->getHighestDerivative() < j->getHighestDerivative());
-                    })
-            ->get()
-            ->getHighestDerivative()),
+template<Options::SCF_MODES SCFMode>
+SupersystemDensityOnGridController<SCFMode>::SupersystemDensityOnGridController(
+    const std::vector<std::shared_ptr<DensityOnGridController<SCFMode>>>& subsystemDensOnGridControllers)
+  : DensityOnGridController<SCFMode>(subsystemDensOnGridControllers[0]->getGridController(),
+                                     min_element(subsystemDensOnGridControllers.begin(), subsystemDensOnGridControllers.end(),
+                                                 [](std::shared_ptr<DensityOnGridController<SCFMode>> i,
+                                                    std::shared_ptr<DensityOnGridController<SCFMode>> j) {
+                                                   return (i->getHighestDerivative() < j->getHighestDerivative());
+                                                 })
+                                         ->get()
+                                         ->getHighestDerivative()),
     _subsystemDensOnGridControllers(subsystemDensOnGridControllers),
     _upToDate(false) {
-  this->_densityOnGrid.reset(new DensityOnGrid<T>(this->getGridController()));
+  this->_densityOnGrid.reset(new DensityOnGrid<SCFMode>(this->getGridController()));
   if (this->_highestDerivative >= 1)
-    this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<T>>(this->getGridController());
+    this->_densityGradientOnGrid = makeGradientPtr<DensityOnGrid<SCFMode>>(this->getGridController());
   if (this->_highestDerivative >= 2)
-    this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<T>>(this->getGridController());
+    this->_densityHessianOnGrid = makeHessianPtr<DensityOnGrid<SCFMode>>(this->getGridController());
   for (const auto& subsystemController : subsystemDensOnGridControllers) {
-    subsystemController->addSensitiveObject(this->ObjectSensitiveClass<DensityOnGrid<T>>::_self);
+    subsystemController->addSensitiveObject(this->ObjectSensitiveClass<DensityOnGrid<SCFMode>>::_self);
     assert(isDefinedOnSameGrid(*subsystemController, *this));
   }
 }
 
-template<Options::SCF_MODES T>
-SupersystemDensityOnGridController<T>::~SupersystemDensityOnGridController() = default;
+template<Options::SCF_MODES SCFMode>
+SupersystemDensityOnGridController<SCFMode>::~SupersystemDensityOnGridController() = default;
 
-template<Options::SCF_MODES T>
-const DensityOnGrid<T>& SupersystemDensityOnGridController<T>::getDensityOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const DensityOnGrid<SCFMode>& SupersystemDensityOnGridController<SCFMode>::getDensityOnGrid() {
   if (!_upToDate)
     updateData();
   return *this->_densityOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Gradient<DensityOnGrid<T>>& SupersystemDensityOnGridController<T>::getDensityGradientOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const Gradient<DensityOnGrid<SCFMode>>& SupersystemDensityOnGridController<SCFMode>::getDensityGradientOnGrid() {
   if (!_upToDate)
     updateData();
   return *this->_densityGradientOnGrid;
 }
 
-template<Options::SCF_MODES T>
-const Hessian<DensityOnGrid<T>>& SupersystemDensityOnGridController<T>::getDensityHessianOnGrid() {
+template<Options::SCF_MODES SCFMode>
+const Hessian<DensityOnGrid<SCFMode>>& SupersystemDensityOnGridController<SCFMode>::getDensityHessianOnGrid() {
   if (!_upToDate)
     updateData();
   return *this->_densityHessianOnGrid;
 }
 
-template<Options::SCF_MODES T>
-void SupersystemDensityOnGridController<T>::notify() {
+template<Options::SCF_MODES SCFMode>
+void SupersystemDensityOnGridController<SCFMode>::notify() {
   _upToDate = false;
   this->notifyObjects();
 }
 
-template<Options::SCF_MODES T>
-void SupersystemDensityOnGridController<T>::setHighestDerivative(unsigned int newHighestDerivative) {
+template<Options::SCF_MODES SCFMode>
+void SupersystemDensityOnGridController<SCFMode>::setHighestDerivative(unsigned int newHighestDerivative) {
   for (auto& subsystemController : _subsystemDensOnGridControllers) {
     if (subsystemController->getHighestDerivative() < newHighestDerivative)
       subsystemController->setHighestDerivative(newHighestDerivative);

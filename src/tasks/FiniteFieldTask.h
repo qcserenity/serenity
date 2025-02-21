@@ -51,6 +51,7 @@ struct FiniteFieldTaskSettings {
  * @brief  A Task that can perform finite field calculations on molecules to obtain dipole moments, polarizabilities and
  * hyperpolarizabilities
  */
+template<Options::SCF_MODES SCFMode>
 class FiniteFieldTask : public Task {
  public:
   /**
@@ -68,11 +69,6 @@ class FiniteFieldTask : public Task {
    * @brief see Task.h
    */
   void run();
-  /**
-   *  @brief Function that actually performs the rask run
-   */
-  template<Options::SCF_MODES SCFMode>
-  void runImpl();
 
   /**
    * @brief The settings for this task.
@@ -109,7 +105,6 @@ class FiniteFieldTask : public Task {
 
  private:
   ///@brief performs a scf under the influence of the electric field and returns the desired property as a matrix
-  template<Options::SCF_MODES SCFMode>
   Eigen::MatrixXd perturbedSCF(unsigned direction, double fStrength, BASE_PROPERTY propertyType, double frequency);
   ///@brief The active system.
   std::shared_ptr<SystemController> _activeSystem;

@@ -48,11 +48,11 @@ class FDEDiabController {
    */
   FDEDiabController(const std::vector<std::vector<DensityMatrix<Options::SCF_MODES::UNRESTRICTED>>>& transDensMats,
                     const Eigen::MatrixXd& linCoeffs, const Eigen::MatrixXd& determinants,
-                    std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple);
+                    std::shared_ptr<SystemController> superSystem, unsigned nStatesCouple, unsigned nStatesAdiab);
 
   FDEDiabController(std::shared_ptr<std::vector<std::string>> densityMatrixFiles, const Eigen::MatrixXd& linCoeffs,
                     const Eigen::MatrixXd& determinants, std::shared_ptr<SystemController> superSystem,
-                    unsigned nStatesCouple);
+                    unsigned nStatesCouple, unsigned nStatesAdiab);
   /**
    * @brief Default destructor
    */
@@ -115,6 +115,8 @@ class FDEDiabController {
   std::shared_ptr<SystemController> _superSystem;
   /// @brief Number of diabatic states
   unsigned _nStates;
+  /// @brief Number of adiabatic states
+  unsigned _nAdiab;
   /// @brief Vector of atomic spin populations for each adiabatic state
   std::vector<Eigen::VectorXd> _sortedAtomPopulations;
   ///@brief densitymatrix files when disk mode is used

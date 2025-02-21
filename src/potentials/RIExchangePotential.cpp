@@ -18,7 +18,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Class Header*/
 #include "potentials/RIExchangePotential.h"
+/* Include Serenity Internal Headers */
 #include "basis/AtomCenteredBasisController.h"
 #include "data/OrbitalController.h"
 #include "data/matrices/FockMatrix.h"
@@ -148,6 +150,8 @@ void RIExchangePotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(
 
   // Initialization
   F.setZero();
+  // AR: I guess this is necesssary so that InverseMSqrt is already calculated and can be accessed in a parallel region
+  // which would otherwise cause problems
   _ri_j_IntController->getInverseMSqrt();
   unsigned nThreads = omp_get_max_threads();
   auto auxBas = auxBasisController->getBasis();
@@ -207,7 +211,7 @@ void RIExchangePotential<Options::SCF_MODES::RESTRICTED>::addToMatrix(
         auto integrals = intCalculator.calculateIntegrals(pIndex, omp_get_thread_num());
         auto firstP = auxBasisController->extendedIndex(pIndex);
         for (unsigned int p = 0; p < integrals.cols(); p++) {
-          // Map to vector
+          // Map column to matrix
           Eigen::Map<Eigen::MatrixXd> pIntegrals(integrals.col(p).data(), nbfs, nbfs);
           // Half transform
           Eigen::MatrixXd pHalfTransformed = pIntegrals * occCoeff.middleCols(iocc, occBlockSize);

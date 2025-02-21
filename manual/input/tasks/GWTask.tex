@@ -1,0 +1,76 @@
+\subsection{Task: GW}
+This task performs Many-Body-Perturbtaion Theory (MBPT) calculations. Either for the total energy via the direct Random-Phase-Approximation (dRPA) or for quasi-particle energies via the GW method. 
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task GW
+   act water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+  \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{GWTask} and \ttt{GW}.
+  \item [\texttt{activeSystem}]\hfill \\
+  The system for which the calculation should be performed.
+  \item [\texttt{environmentSystems}]\hfill \\
+  Environment systems are included in a subsystem MBPT calculation via their screning contribution to the screened Coulomb interaction of the active subsystem. This is only valid for \ttt{gwtype: AC, CD} and for \ttt{mbpttype: RPA}.  
+  \item [\texttt{mbpttype}]\hfill \\
+  The type of MBPT calculation. Options are \ttt{GW} or \ttt{RPA}. The default is \ttt{GW}.
+  \item [\texttt{gwtype}]\hfill \\
+  The GW algorithm used in the GW calculation. The options are \ttt{Analytic}, \ttt{CD} (Contour-Deformation) or \ttt{AC} (Analytic-Continuation). The default is \ttt{CD}. Note: In case of \ttt{Analytic} a previous calculation of excitation energies is required (for exact results: All RPA excitation energies for the system need to be calculated via a previous LRSCFTask). In case of RPA screening this means the LRSCFTask needs to be used with \ttt{func HARTREE}.
+  \item [\texttt{linearized}]\hfill \\
+  Whether the quasi-particle energies are linearized. The default is \ttt{false}.
+  \item [\texttt{qpIterations}]\hfill \\
+  The number of quasi-particle iterations for a G0W0 calculation. The default is \ttt{0}.
+  \item [\texttt{eta}]\hfill \\
+  Imaginary shift parameter. The default is \ttt{0.001}.
+  \item [\texttt{nVirt}]\hfill \\
+  The number of virtual orbitals included in GW calculation (starting from the LUMO). The default is \ttt{10}.
+  \item [\texttt{nOcc}]\hfill \\
+  The number of occupied orbitals included in GW calculation (starting from the HOMO). The default is \ttt{10}.
+  \item [\texttt{evGW}]\hfill \\
+  Whether an evGW calculation is performed. The default is \ttt{false}.
+  \item [\texttt{evGWcycles}]\hfill \\
+  The number of evGW cycles. The default is \ttt{5}.
+  \item [\texttt{ConvergenceThreshold}]\hfill \\
+  The HOMO-LUMO gap convergence threshold for qpiterations/evGW cycles. The default is \ttt{1e-6} a.u..
+  \item [\texttt{densFitCache}]\hfill \\
+  The type of density fitting used for the four center integrals (\ttt{RI},\ttt{ACD},\ttt{ACCD}). The default is \ttt{RI}.
+  \item [\texttt{ltconv}]\hfill \\
+  Convergence parameter for the Laplace transformation if LT-(AC)-GW is used. By default \ttt{0}, which implies that the LT is not used.
+  \item [\texttt{frozenCore}]\hfill \\
+  Removes core orbitals from the reference orbitals (tabulated number for each atom type). The default is \ttt{false}.
+  \end{description}
+\subsubsection{Advanced Keywords}
+\begin{description}
+  \item [\texttt{gridCutOff}]\hfill \\
+  A distance cutoff for the integration grid used to calculate the energy functional and potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+  \item [\texttt{integrationPoints}]\hfill \\
+  The number of integration points used for CD-GW and dRPA. The default is \ttt{128}.
+  \item [\texttt{padePoints}]\hfill \\
+  The number of points used in the pade approximation for analytic continuation. The default is \ttt{16}.
+  \item [\texttt{fermiShift}]\hfill \\
+  The initial Fermi shift of the HOMO/LUMO for analytic continuation. The default is \ttt{0.0} eV.  
+  \item [\texttt{derivativeShift}]\hfill \\
+  The shift for the evaluation of the numerical derviation of the self-energy (for linearization). The default is \ttt{0.002} Ha.
+  \item [\texttt{imagShift}]\hfill \\
+  Additional imaginary shift for numerical derivative if the derivative is larger than one. The default is \ttt{0.001} Ha.
+  \item [\texttt{diis}]\hfill \\
+  Whether a DIIS is used for convergence acceleration in qpIterations or evGW cycles. The default is \ttt{true}.
+  \item [\texttt{diisMaxStore}]\hfill \\
+  The numbers of DIIS vectors to be stored. The default is \ttt{10}.
+  \item [\texttt{nafThresh}]\hfill \\
+  The threshold for the naf functions. The default is \ttt{0}. NAFs are used if this threshold is != 0.
+  \item [\texttt{subsystemAuxillaryBasisOnly}]\hfill \\
+  Whether subsystem screening contributions should be calculated with subsystem auxiliary basis only. The default is \ttt{false}.
+  \item [\texttt{damping}]\hfill \\
+  Damping factor for convergence acceleration. The default is \ttt{0.2}.
+  \item [\texttt{freq}]\hfill \\
+  Start, end, stepsize for real axes frequency of the self-energy (only working for GW-Analytic). The structure is \ttt{start end stepsize}. The default is \ttt{$\{\}$}.
+  \item [\texttt{gap}]\hfill \\
+  Whether to shift occupied and virtual orbitals not included in the GW caclulation by the gap of change of the highest/lowest included occupied/virtual orbital. The default is \ttt{false}.
+  \item [\texttt{environmentScreening}]\hfill \\
+  Whether environmental screening is included in an embedded calculation if environmental subsystems are set. The default ist \ttt{true}.
+  \item [\texttt{coreOnly}]\hfill \\
+  Removes all but core orbitals from the reference orbitals. The default is \ttt{false}.
+\end{description}

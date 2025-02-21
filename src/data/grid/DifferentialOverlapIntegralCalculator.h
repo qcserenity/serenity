@@ -28,6 +28,7 @@
 namespace Serenity {
 /* Forward Declarations */
 class BasisFunctionOnGridController;
+class ShellPairData;
 /**
  * @class DifferentialOverlapIntegralCalculator DifferentialOverlapIntegralCalculator.h
  * @brief Calculates the differential overlap between two sets of functions \f$ \{X\},\{Y\} \f$ expressed
@@ -62,6 +63,22 @@ class DifferentialOverlapIntegralCalculator {
                            const Eigen::SparseMatrix<int>& basisFunctionToXMap,
                            const Eigen::SparseMatrix<int>& basisFunctionToYMap,
                            std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController, Eigen::MatrixXd& dois);
+
+  /**
+   * @brief Calculates the differential overlap integrals (DOIs) between basis functions on a grid.
+   * @param basisFuncOnGridController The basis function on grid controller.
+   * @param dois Results are written into this object. DOIs are sorted as X-->row and Y-->column.
+   */
+  static void calculateDOI(std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController, Eigen::MatrixXd& dois);
+
+  /**
+   * @brief Generate the shell pair data object for integral prescreening based on DOI values.
+   * @param basisFuncOnGridController The basis function on grid controller.
+   * @param cutOff The integral cut off. By default, 1e-12.
+   * @return The shell pair data objects.
+   */
+  static std::vector<ShellPairData>
+  calculateDOIShellPairData(std::shared_ptr<BasisFunctionOnGridController> basisFuncOnGridController, double cutOff = 1e-12);
 };
 
 } /* namespace Serenity */

@@ -18,6 +18,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.\n
  */
 
+/* Include Serenity Internal Headers */
 #include "geometry/Ellipse.h" //To be tested.
 #include "geometry/Line.h"    //Line construction for intersection.
 #include "geometry/Plane.h"   //Return value of getPlane().
@@ -26,8 +27,6 @@
 #include <cmath>         //sqrt().
 
 namespace Serenity {
-
-class EllipseTest : public ::testing::Test {};
 
 /**
  * @test

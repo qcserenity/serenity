@@ -35,21 +35,21 @@
 
 namespace Serenity {
 
-template<Options::SCF_MODES T>
-NumericalGeomGradCalc<T>::NumericalGeomGradCalc(double stepsize) : _delta(stepsize) {
+template<Options::SCF_MODES SCFMode>
+NumericalGeomGradCalc<SCFMode>::NumericalGeomGradCalc(double stepsize) : _delta(stepsize) {
 }
 
-template<Options::SCF_MODES T>
-void NumericalGeomGradCalc<T>::calcFDEGradients(std::vector<std::shared_ptr<SystemController>> activeSystems,
-                                                std::vector<std::shared_ptr<SystemController>> environmentSystems,
-                                                CompositeFunctionals::KINFUNCTIONALS naddKinFunc,
-                                                CompositeFunctionals::XCFUNCTIONALS naddXCFunc, double FDEgridCutOff,
-                                                int FaTmaxCycles, double FaTenergyConvThresh,
-                                                Options::DFT_DISPERSION_CORRECTIONS dispersion) {
+template<Options::SCF_MODES SCFMode>
+void NumericalGeomGradCalc<SCFMode>::calcFDEGradients(std::vector<std::shared_ptr<SystemController>> activeSystems,
+                                                      std::vector<std::shared_ptr<SystemController>> environmentSystems,
+                                                      CompositeFunctionals::KINFUNCTIONALS naddKinFunc,
+                                                      CompositeFunctionals::XCFUNCTIONALS naddXCFunc,
+                                                      double FDEgridCutOff, int FaTmaxCycles, double FaTenergyConvThresh,
+                                                      Options::DFT_DISPERSION_CORRECTIONS dispersion) {
   iOOptions.printGridInfo = false;
   const auto oldPrintLevel = GLOBAL_PRINT_LEVEL;
   GLOBAL_PRINT_LEVEL = Options::GLOBAL_PRINT_LEVELS::MINIMUM;
-  FreezeAndThawTask<T> task(activeSystems, environmentSystems);
+  FreezeAndThawTask<SCFMode> task(activeSystems, environmentSystems);
   task.settings.embedding.naddKinFunc = naddKinFunc;
   task.settings.embedding.naddXCFunc = naddXCFunc;
   task.settings.gridCutOff = FDEgridCutOff;
@@ -62,7 +62,7 @@ void NumericalGeomGradCalc<T>::calcFDEGradients(std::vector<std::shared_ptr<Syst
   for (unsigned int i = 0; i < activeSystems.size(); i++) {
     Matrix<double> gradients(activeSystems[i]->getGeometry()->getNAtoms(), 3);
     gradients.setZero();
-    auto electronicStructure = activeSystems[i]->getElectronicStructure<T>();
+    auto electronicStructure = activeSystems[i]->getElectronicStructure<SCFMode>();
 
     unsigned int count = 0;
     for (auto atom : activeSystems[i]->getGeometry()->getAtoms()) {
@@ -126,12 +126,12 @@ void NumericalGeomGradCalc<T>::calcFDEGradients(std::vector<std::shared_ptr<Syst
   }
 }
 
-template<Options::SCF_MODES T>
-void NumericalGeomGradCalc<T>::calcGradients(std::shared_ptr<SystemController> systemController) {
+template<Options::SCF_MODES SCFMode>
+void NumericalGeomGradCalc<SCFMode>::calcGradients(std::shared_ptr<SystemController> systemController) {
   iOOptions.printGridInfo = false;
-  ScfTask<T> scf(systemController);
+  ScfTask<SCFMode> scf(systemController);
   scf.settings.restart = false;
-  auto electronicStructure = systemController->getElectronicStructure<T>();
+  auto electronicStructure = systemController->getElectronicStructure<SCFMode>();
   Matrix<double> gradients(systemController->getGeometry()->getNAtoms(), 3);
   gradients.setZero();
 

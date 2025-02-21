@@ -47,6 +47,9 @@ void Settings::printSettings() {
   ofs << "+dft" << std::endl;
   visit_each((*this).dft, visitor);
   ofs << "-dft" << std::endl;
+  ofs << "+customfunc" << std::endl;
+  visit_each((*this).customFunc, visitor);
+  ofs << "-customfunc" << std::endl;
   ofs << "+scf" << std::endl;
   visit_each((*this).scf, visitor);
   ofs << "-scf" << std::endl;
@@ -171,35 +174,36 @@ void Settings::set(std::string blockname, std::string name, std::string value) {
    * Parsing
    * (Add new blocks here aswell)
    */
+
+  set_visitor visitor(name, value, check);
   if (!blockname.compare("")) {
-    set_visitor visitor(name, value, check);
     visit_each(*this, visitor);
   }
   else if (!blockname.compare("DFT")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).dft, visitor);
   }
+  else if (!blockname.compare("CUSTOMFUNC")) {
+    visit_each(this->customFunc, visitor);
+  }
   else if (!blockname.compare("SCF")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).scf, visitor);
   }
   else if (!blockname.compare("BASIS")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).basis, visitor);
   }
   else if (!blockname.compare("GRID")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).grid, visitor);
   }
   else if (!blockname.compare("EFIELD")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).efield, visitor);
   }
   else if (!blockname.compare("EXTCHARGES")) {
-    set_visitor visitor(name, value, check);
     visit_each((*this).extCharges, visitor);
   }
-  else if (!this->pcm.visitSettings(set_visitor(name, value, check), blockname)) {
+  else if (!blockname.compare("PCM")) {
+    visit_each(this->pcm, visitor);
+  }
+  else {
     throw SerenityError("ERROR: No block '" + blockname + "' known.");
   }
   if (!check) {

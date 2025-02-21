@@ -115,13 +115,14 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
   void setCoefficients(CoefficientMatrix<SCFMode> coeff);
 
   /**
-   * @brief Returns the grid controller.
+   * @brief Returns the grid controller (with the system's grid settings, not the LRSCFTask grid settings!).
    * @return Grid Controller.
    */
   std::shared_ptr<GridController> getGridController();
 
   /**
    * @brief Returns the corresponding eigenvalues to the reference orbitals (can be modified in the LRSCFController).
+   * anton: what if the reference orbitals are not canonical? then they don't have an energy
    * @return Corresponding eigenvalues to the reference orbitals.
    */
   SpinPolarizedData<SCFMode, Eigen::VectorXd> getEigenvalues();
@@ -318,6 +319,14 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
    */
   void rotateOrbitalsSCFInstability();
 
+  std::shared_ptr<std::vector<MatrixInBasis<SCFMode>>> getUnrelaxedDiffDensities() const {
+    return _unrelaxedDiffDensities;
+  }
+
+  std::shared_ptr<std::vector<MatrixInBasis<SCFMode>>> getRelaxedDiffDensities() {
+    return _relaxedDiffDensities;
+  }
+
  private:
   // The system controller
   std::shared_ptr<SystemController> _system;
@@ -345,6 +354,11 @@ class LRSCFController : public std::enable_shared_from_this<LRSCFController<SCFM
   SpinPolarizedData<SCFMode, Eigen::VectorXd> _orbitalEnergies;
   // X (_excitationVectors[0]) and Y (_excitationVectors[1]) excitation vectors.
   std::shared_ptr<std::vector<Eigen::MatrixXd>> _excitationVectors;
+
+  std::shared_ptr<std::vector<MatrixInBasis<SCFMode>>> _unrelaxedDiffDensities =
+      std::make_shared<std::vector<MatrixInBasis<SCFMode>>>();
+  std::shared_ptr<std::vector<MatrixInBasis<SCFMode>>> _relaxedDiffDensities =
+      std::make_shared<std::vector<MatrixInBasis<SCFMode>>>();
   // Type of _excitationVectors (isolated,uncoupled,coupled)
   Options::LRSCF_TYPE _type;
   // Corresponding excitation energies

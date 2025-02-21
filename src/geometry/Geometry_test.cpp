@@ -29,7 +29,7 @@
 
 namespace Serenity {
 
-class GeomtryTest : public ::testing::Test {
+class GeometryTest : public ::testing::Test {
  protected:
   static void TearDownTestCase() {
     SystemController__TEST_SUPPLY::cleanUp();
@@ -38,9 +38,9 @@ class GeomtryTest : public ::testing::Test {
 
 /**
  * @test
- * @brief Tests Geometry.h: contructors.
+ * @brief Tests Geometry.h: constructors.
  */
-TEST(GeometryTest, Contructors) {
+TEST_F(GeometryTest, Constructors) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto& orig = *systemController->getGeometry();
@@ -68,40 +68,36 @@ TEST(GeometryTest, Contructors) {
   EXPECT_NEAR(0.7, copycoords2(1, 2), 1e-6);
   EXPECT_EQ("H", copy2.getAtomSymbols()[0]);
   EXPECT_EQ("H", copy2.getAtomSymbols()[1]);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: atom symbols.
  */
-TEST(GeometryTest, AtomSymbols) {
+TEST_F(GeometryTest, AtomSymbols) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto& orig = *systemController->getGeometry();
   auto symb = orig.getAtomSymbols();
   EXPECT_EQ("H", symb[0]);
   EXPECT_EQ("H", symb[1]);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: core core repulsion.
  */
-TEST(GeometryTest, CoreCoreRepulsion) {
+TEST_F(GeometryTest, CoreCoreRepulsion) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
-  EXPECT_NEAR(8575.7872410985365, systemController->getGeometry()->getCoreCoreRepulsion(), 1e-6);
-
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
+  EXPECT_NEAR(8575.78723528, systemController->getGeometry()->getCoreCoreRepulsion(), 1e-6);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: boundaries.
  */
-TEST(GeometryTest, Boundaries) {
+TEST_F(GeometryTest, Boundaries) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
   auto& orig = *systemController->getGeometry();
@@ -111,14 +107,13 @@ TEST(GeometryTest, Boundaries) {
   EXPECT_NEAR(-5.9900813974518581, orig.getMinY(), 1e-6);
   EXPECT_NEAR(8.0335852419249072, orig.getMaxZ(), 1e-6);
   EXPECT_NEAR(-8.2060858546196123, orig.getMinZ(), 1e-6);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: atoms.
  */
-TEST(GeometryTest, Atoms) {
+TEST_F(GeometryTest, Atoms) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
   EXPECT_EQ((unsigned int)111, systemController->getGeometry()->getNAtoms());
@@ -126,15 +121,13 @@ TEST(GeometryTest, Atoms) {
   for (unsigned int i = 0; i < 111; i++) {
     EXPECT_NE(nullptr, atoms[i]);
   }
-
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::JACOBSEN_MINBAS);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: gradients.
  */
-TEST(GeometryTest, Gradients) {
+TEST_F(GeometryTest, Gradients) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto& orig = *systemController->getGeometry();
@@ -153,14 +146,13 @@ TEST(GeometryTest, Gradients) {
   EXPECT_NEAR(grads(1, 1), copygrads(1, 1), 1e-6);
   EXPECT_NEAR(grads(0, 2), copygrads(0, 2), 1e-6);
   EXPECT_NEAR(grads(1, 2), copygrads(1, 2), 1e-6);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: coordinates.
  */
-TEST(GeometryTest, Coordinates) {
+TEST_F(GeometryTest, Coordinates) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto& orig = *systemController->getGeometry();
@@ -192,7 +184,7 @@ TEST(GeometryTest, Coordinates) {
  * @test
  * @brief Tests Geometry.h: addition.
  */
-TEST(GeometryTest, Addition) {
+TEST_F(GeometryTest, Addition) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
   auto& orig = *systemController->getGeometry();
@@ -222,7 +214,7 @@ TEST(GeometryTest, Addition) {
  * @test
  * @brief Tests Geometry.h: notification.
  */
-TEST(GeometryTest, Notification) {
+TEST_F(GeometryTest, Notification) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
 
@@ -248,7 +240,7 @@ TEST(GeometryTest, Notification) {
  * @test
  * @brief Tests Geometry.h: aligned coordinates.
  */
-TEST(GeometryTest, AlignedCoords) {
+TEST_F(GeometryTest, AlignedCoords) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs);
 
@@ -264,14 +256,13 @@ TEST(GeometryTest, AlignedCoords) {
   EXPECT_NEAR(coords(0, 2), 1.8361467206227224, 1e-6);
   EXPECT_NEAR(coords(1, 2), -0.47699144050518677, 1e-6);
   EXPECT_NEAR(coords(2, 2), 0.0, 1e-6);
-  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs);
 }
 
 /**
  * @test
  * @brief Tests Geometry.h: add and remove ghost/dummy atoms.
  */
-TEST(GeometryTest, AddAndDeleteGhosts) {
+TEST_F(GeometryTest, AddAndDeleteGhosts) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonOne_6_31Gs);
   auto ghosts = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::WaterMonTwo_6_31Gs);
@@ -285,19 +276,16 @@ TEST(GeometryTest, AddAndDeleteGhosts) {
   unsigned int nFinalAtoms = geometry->getNAtoms();
   EXPECT_EQ(nInitialAtoms, nFinalAtoms);
   EXPECT_EQ(6, nAtomsWithGhosts);
-
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 /**
  * @test
- * @brief Tests Geometry.h: add and remove ghost/dummy atoms.
+ * @brief Tests Geometry.h: get correct number of core electrons.
  */
-TEST(GeometryTest, CoreElectrons) {
+TEST_F(GeometryTest, CoreElectrons) {
   Settings settings;
   auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::C60_MINBAS);
   EXPECT_EQ(60 * 2, systemController->getNCoreElectrons());
-  SystemController__TEST_SUPPLY::cleanUp();
 }
 
 } // namespace Serenity

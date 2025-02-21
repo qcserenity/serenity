@@ -31,8 +31,8 @@
 #include "geometry/Geometry.h"
 #include "grid/AtomCenteredGrid.h"
 #include "grid/AtomCenteredGridController.h"
+#include "grid/AtomCenteredGridControllerFactory.h"
 #include "grid/GridController.h"
-#include "grid/GridControllerFactory.h"
 #include "settings/Options.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
@@ -55,7 +55,7 @@ void BeckePopulationCalculator<SCFMode>::calculateBeckeAtomPopulations() {
   beckeSettings.grid.accuracy = 7;
   beckeSettings.grid.smallGridAccuracy = 7;
   beckeSettings.grid.gridPointSorting = false;
-  auto atomGridController = GridControllerFactory::produce(_system->getGeometry(), beckeSettings.grid);
+  auto atomGridController = AtomCenteredGridControllerFactory::produce(_system->getGeometry(), beckeSettings.grid);
   auto basFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(beckeSettings.grid.blocksize, beckeSettings.grid.basFuncRadialThreshold,
                                                     0, _system->getBasisController(), atomGridController);
@@ -90,7 +90,7 @@ void BeckePopulationCalculator<SCFMode>::calculateBeckeSpinPopulations() {
   beckeSettings.grid.accuracy = 7;
   beckeSettings.grid.smallGridAccuracy = 7;
   beckeSettings.grid.gridPointSorting = false;
-  auto atomGridController = GridControllerFactory::produce(_system->getGeometry(), beckeSettings.grid);
+  auto atomGridController = AtomCenteredGridControllerFactory::produce(_system->getGeometry(), beckeSettings.grid);
   auto basFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(beckeSettings.grid.blocksize, beckeSettings.grid.basFuncRadialThreshold,
                                                     0, _system->getBasisController(), atomGridController);

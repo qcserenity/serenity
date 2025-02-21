@@ -39,7 +39,7 @@ class NAddFuncPotential;
  * The potential bundle implies one active subsystem, embedded into
  * (possibly) multiple other subsystems.
  * This class is restricted to FDE calculations employing non-additive
- * functionals for both, kinetic and exchange-correlation interaction energies.
+ * functionals for both kinetic and exchange-correlation interaction energies.
  * For other frozen density type embedding schemes using projectors or optimized
  * effective potentials, see the other bundles.
  */
@@ -56,7 +56,7 @@ class FDEPotentials : public PotentialBundle<SCFMode> {
    *                         for future implementations of i.e. potentials read
    *                         from disk.
    * @param naddXC          The non-additive exchange-correlation potential.
-   *                         This potentials is fixed to be a NAddFuncPotential
+   *                         This potential is fixed to be a NAddFuncPotential
    *                         as this is part of what defines this particular
    *                         bundle.
    * @param naddKin         The non-additive kinetic energy potential.
@@ -79,8 +79,8 @@ class FDEPotentials : public PotentialBundle<SCFMode> {
    * @brief A function to get the entire Fock matrix.
    * @param P The density matrix.
    * @param energies The controller to add all the energy contributions to.
-   * @return The current Fock matrix (rebuild on every call).
-   *         (Note that this does not imply that each Potential is rebuild, they
+   * @return The current Fock matrix (rebuilt on every call).
+   *         (Note that this does not imply that each Potential is rebuilt, they
    *          may very well be cached. But all potentials contributing are added
    *          together in every call)
    */
@@ -96,6 +96,13 @@ class FDEPotentials : public PotentialBundle<SCFMode> {
    * @return Returns the geometric gradients.
    */
   Eigen::MatrixXd getGradients() override final;
+
+  std::shared_ptr<PotentialBundle<SCFMode>> getActiveSystemPotentials();
+  std::shared_ptr<PotentialBundle<SCFMode>> getESIPotentials();
+  std::vector<std::shared_ptr<NAddFuncPotential<SCFMode>>> getNaddXCPotentials();
+  std::vector<std::shared_ptr<Potential<SCFMode>>> getNaddKinPotentials();
+  std::shared_ptr<Potential<SCFMode>> getECPInteractionPotential();
+  std::shared_ptr<Potential<SCFMode>> getPCMPotential();
 
   /**
    * @brief Getter for the gradients of external point charges.

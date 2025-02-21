@@ -57,7 +57,7 @@ template<>
 void resolve<GAUGE>(std::string& value, GAUGE& field);
 
 /**
- * Excited state wavefunction model.
+ * Excited-state wavefunction model.
  */
 enum class LR_METHOD { TDA = 0, TDDFT = 1, CC2 = 2, CISDINF = 3, CISD = 4, ADC2 = 5 };
 template<>

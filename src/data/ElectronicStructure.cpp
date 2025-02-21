@@ -52,11 +52,12 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<OneElectronInt
 template<Options::SCF_MODES SCFMode>
 ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<BasisController> basisController,
                                                   std::shared_ptr<const Geometry> geometry,
+                                                  std::shared_ptr<ExternalChargeController> externalCharges,
                                                   const SpinPolarizedData<SCFMode, unsigned int>& nOccupiedOrbitals,
                                                   const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons)
   : state(ES_STATE::INITIAL),
     _diskmode(false),
-    _oneEIntController(OneIntControllerFactory::getInstance().produce(basisController, geometry)),
+    _oneEIntController(OneIntControllerFactory::getInstance().produce(basisController, geometry, externalCharges)),
     _nOccupiedOrbitals(nOccupiedOrbitals),
     _molecularOrbitals(new OrbitalController<SCFMode>(basisController, nCoreElectrons)),
     _densityMatrixController(nullptr),
@@ -82,10 +83,11 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::shared_ptr<OrbitalControl
 
 template<Options::SCF_MODES SCFMode>
 ElectronicStructure<SCFMode>::ElectronicStructure(std::string fBaseName, std::shared_ptr<BasisController> basis,
-                                                  std::shared_ptr<const Geometry> geometry, std::string id)
+                                                  std::shared_ptr<const Geometry> geometry,
+                                                  std::shared_ptr<ExternalChargeController> externalCharges, std::string id)
   : state(ES_STATE::GUESS),
     _diskmode(false),
-    _oneEIntController(OneIntControllerFactory::getInstance().produce(basis, geometry)),
+    _oneEIntController(OneIntControllerFactory::getInstance().produce(basis, geometry, externalCharges)),
     _molecularOrbitals(new OrbitalController<SCFMode>(fBaseName, basis, id)),
     _densityMatrixController(new DensityMatrixController<SCFMode>(fBaseName, basis, id)),
     _energyComponentController(new EnergyComponentController),
@@ -111,7 +113,7 @@ ElectronicStructure<SCFMode>::ElectronicStructure(std::string fBaseName, std::sh
   };
   _energyComponentController->fromFile(fBaseName, id);
   auto& factory = OneIntControllerFactory::getInstance();
-  _oneEIntController = factory.produce(_molecularOrbitals->getBasisController(), geometry);
+  _oneEIntController = factory.produce(_molecularOrbitals->getBasisController(), geometry, externalCharges);
 };
 
 /* ==============================
@@ -143,16 +145,20 @@ void ElectronicStructure<SCFMode>::setDiskMode(bool diskmode, std::string fBaseN
   _fBaseName = fBaseName;
   _id = id;
   if (diskmode) {
-    assert(!_fBaseName.empty() && "Need to set file path before settings orbital controller to disk mode.");
-    assert(!_id.empty() && "Need to set file ID before settings orbital controller to disk mode.");
-  }
-  else {
-    _oneEIntController->clearOneInts();
+    if (_fBaseName.empty()) {
+      throw SerenityError("Need to set file path before settings orbital controller to disk mode.");
+    }
+    if (_id.empty()) {
+      throw SerenityError("Need to set file ID before settings orbital controller to disk mode.");
+    }
   }
   _potentials = nullptr;
   _molecularOrbitals->setDiskMode(diskmode, fBaseName, id);
   _densityMatrixController->setDiskMode(diskmode, fBaseName, id);
   _diskmode = diskmode;
+  if (diskmode) {
+    _oneEIntController->clearOneInts();
+  }
 }
 
 template<Options::SCF_MODES SCFMode>
@@ -324,6 +330,51 @@ void ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>::printMOEnergies() co
     printf("%4s %5d   %4.2f %+15.10f %+19.10f\n", "", (i + 1), occ.beta[i], eigenvalues.beta[i],
            eigenvalues.beta[i] * HARTREE_TO_EV);
   }
+}
+
+template<>
+ElectronicStructure<Options::SCF_MODES::RESTRICTED>::ElectronicStructure(std::shared_ptr<ElectronicStructure<RESTRICTED>> other)
+  : _diskmode(other->getDiskMode()),
+    _oneEIntController(other->getOneElectronIntegralController()),
+    _nOccupiedOrbitals(other->getNOccupiedOrbitals()),
+    _molecularOrbitals(other->getMolecularOrbitals()),
+    _densityMatrixController(other->getDensityMatrixController()),
+    _energyComponentController(other->getEnergyComponentController()) {
+}
+
+template<>
+ElectronicStructure<Options::SCF_MODES::RESTRICTED>::ElectronicStructure(std::shared_ptr<ElectronicStructure<UNRESTRICTED>> other) {
+  (void)other;
+  throw SerenityError("ERROR: Forbidden conversion from UNRESTRICTED to RESTRICTED\n"
+                      "       ElectronicStructure!");
+}
+
+template<>
+ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>::ElectronicStructure(std::shared_ptr<ElectronicStructure<UNRESTRICTED>> other)
+  : _diskmode(other->getDiskMode()),
+    _oneEIntController(other->getOneElectronIntegralController()),
+    _nOccupiedOrbitals(other->getNOccupiedOrbitals()),
+    _molecularOrbitals(other->getMolecularOrbitals()),
+    _densityMatrixController(other->getDensityMatrixController()),
+    _energyComponentController(other->getEnergyComponentController()) {
+}
+
+template<>
+ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>::ElectronicStructure(std::shared_ptr<ElectronicStructure<RESTRICTED>> other)
+  : _diskmode(other->getDiskMode()),
+    _oneEIntController(other->getOneElectronIntegralController()),
+    _nOccupiedOrbitals(other->getNOccupiedOrbitals()),
+    _energyComponentController(other->getEnergyComponentController()) {
+  auto basisController = other->getMolecularOrbitals()->getBasisController();
+  auto coefficients = std::make_unique<CoefficientMatrix<UNRESTRICTED>>(other->getMolecularOrbitals()->getCoefficients());
+  auto eigenvalues =
+      std::make_unique<SpinPolarizedData<UNRESTRICTED, Eigen::VectorXd>>(other->getMolecularOrbitals()->getEigenvalues());
+  _molecularOrbitals = std::make_shared<OrbitalController<UNRESTRICTED>>(
+      std::move(coefficients), basisController, *eigenvalues, other->getMolecularOrbitals()->getNCoreOrbitals());
+  // Else, use the coefficients.
+  _densityMatrixController = std::make_shared<DensityMatrixController<UNRESTRICTED>>(_molecularOrbitals, _nOccupiedOrbitals);
+  if (other->checkFock())
+    _fockMatrix = std::make_shared<FockMatrix<UNRESTRICTED>>(other->getFockMatrix());
 }
 
 template class ElectronicStructure<Options::SCF_MODES::RESTRICTED>;

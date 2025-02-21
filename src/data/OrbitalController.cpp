@@ -121,6 +121,51 @@ unsigned int OrbitalController<SCFMode>::getNOrbitals() const {
 }
 
 template<Options::SCF_MODES SCFMode>
+void OrbitalController<SCFMode>::calculateCustomTransformationX() {
+  const auto& S = *_customS;
+  _customX = std::make_shared<MatrixInBasis<SCFMode>>(_basisController);
+  _customXinv = std::make_shared<MatrixInBasis<SCFMode>>(_basisController);
+  auto& X = *_customX;
+  auto& Xinv = *_customXinv;
+  for_spin(S, X, Xinv) {
+    // Calculate canonical orthogonalization matrix
+    // Note symmetrization is already done in the oneElectronIntegralController
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(S_spin);
+    auto U = es.eigenvectors();
+    auto s = es.eigenvalues();
+    int n = s.rows();
+    _nZero = 0;
+    Eigen::VectorXd sigma(n);
+    Eigen::VectorXd sigmaInvers(n);
+    sigma.setZero();
+    sigmaInvers.setZero();
+    for (int i = n - 1; i >= 0; --i) {
+      if (s(i) > _canOrthTh) {
+        sigma[i] = s[i];
+        sigmaInvers[i] = 1 / s[i];
+        ++_nZero;
+      }
+      else {
+        i = 0;
+      }
+    }
+    X_spin = Eigen::MatrixXd(U * sigmaInvers.array().sqrt().matrix().asDiagonal()).eval();
+    X_spin = X_spin.rightCols(_nZero).eval();
+    Xinv_spin = Eigen::MatrixXd(U * sigma.array().sqrt().matrix().asDiagonal()).eval();
+    Xinv_spin = Xinv_spin.rightCols(_nZero).eval();
+    _nZero = n - _nZero;
+    _linearDependent = _nZero > 0;
+    if (_linearDependent) {
+      WarningTracker::printWarning(
+          (std::string) "Warning: Basis-Set (near) linear dependent. Will try to use canonical "
+                        "orthogonalization. Removed " +
+              _nZero + " columns from transformation matrix.",
+          true);
+    }
+  };
+}
+
+template<Options::SCF_MODES SCFMode>
 void OrbitalController<SCFMode>::calculateTransformationX(std::shared_ptr<OneElectronIntegralController> oneIntController) {
   if (_X.cols() > 0)
     return;
@@ -197,6 +242,47 @@ void OrbitalController<SCFMode>::updateOrbitals(const std::pair<Eigen::VectorXd,
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(fockMatrix_spin);
       c_spin = es.eigenvectors();
       eps_spin = es.eigenvalues();
+    };
+  }
+  else if (_customX) {
+    auto& X = *_customX;
+    auto& Xinv = *_customXinv;
+    for_spin(fockMatrix, eps, c, occupation, X, Xinv) {
+      // transform F into orthonormal basis
+      Eigen::MatrixXd tmpFockMatrix(X_spin.transpose() * fockMatrix_spin * X_spin);
+
+      // Level-shift
+      if (levelshift.first[0] > 0.0 and !_firstIteration) {
+        auto C_ortho = Xinv_spin.transpose() * c_spin;
+        // transform into old MO space
+        tmpFockMatrix = C_ortho.transpose() * tmpFockMatrix * C_ortho;
+        const double diagonalShift = levelshift.first[0];
+        for (unsigned int i = 0; i < occupation_spin.size(); i++) {
+          if (occupation_spin[i] < 1e-9) {
+            tmpFockMatrix(i, i) += diagonalShift;
+            for (unsigned int j = 0; j < occupation_spin.size(); j++) {
+              if (occupation_spin[j] > 1e-9) {
+                tmpFockMatrix(i, j) *= levelshift.first[1];
+                tmpFockMatrix(j, i) *= levelshift.first[1];
+              }
+            }
+          }
+        }
+        // transform back from old MO space
+        tmpFockMatrix = C_ortho * tmpFockMatrix * C_ortho.transpose();
+      }
+
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(tmpFockMatrix);
+      c_spin.setZero();
+      Eigen::MatrixXd newCoeffs = X_spin * es.eigenvectors();
+      for (unsigned int i = 0; i < newCoeffs.cols(); ++i) {
+        if (newCoeffs(0, i) < 0.0)
+          newCoeffs.col(i) *= -1.0;
+      }
+      c_spin.leftCols(newCoeffs.cols()) = newCoeffs;
+      eps_spin = Eigen::VectorXd::Constant(_basisController->getNBasisFunctions(), std::numeric_limits<double>::infinity());
+      Eigen::VectorXd newEigenvalues = es.eigenvalues();
+      eps_spin.segment(0, newEigenvalues.size()) = newEigenvalues;
     };
   }
   else {
@@ -688,6 +774,20 @@ OrbitalController<SCFMode>::getValenceOrbitalIndices(SpinPolarizedData<SCFMode, 
     } // for iOcc
   };  // for spin
   return std::make_pair(valenceRange, coreRange);
+}
+
+template<Options::SCF_MODES SCFMode>
+SpinPolarizedData<SCFMode, std::vector<unsigned int>> OrbitalController<SCFMode>::getAllValenceOrbitalIndices() {
+  SpinPolarizedData<SCFMode, std::vector<unsigned int>> valenceRange;
+  const auto& orbitalFlags = this->getOrbitalFlags();
+  for_spin(valenceRange, orbitalFlags) {
+    for (unsigned int iOrb = 0; iOrb < orbitalFlags_spin.size(); ++iOrb) {
+      if (!orbitalFlags_spin[iOrb]) {
+        valenceRange_spin.push_back(iOrb);
+      }
+    } // for iOcc
+  };  // for spin
+  return valenceRange;
 }
 
 template class OrbitalController<Options::SCF_MODES::RESTRICTED>;

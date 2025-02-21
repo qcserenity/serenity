@@ -20,6 +20,7 @@
 #ifndef SYSTEMCONTROLLER__TEST_SUPPLY_H
 #define SYSTEMCONTROLLER__TEST_SUPPLY_H
 /* Include Std and External Headers */
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -36,7 +37,9 @@ class SystemController;
 enum class TEST_SYSTEM_CONTROLLERS {
   H2_MINBAS = 0,
   H2_MINBAS_ACTIVE,
+  H2_MINBAS_ACTIVE_LRSCF,
   H2_MINBAS_ENVIRONMENT,
+  H2_MINBAS_ENVIRONMENT_LRSCF,
   H2_MINBAS_LARGE_DISTANCE,
   H2_DEF2_TZVP,
   WATER_DISTORTED_MINBAS,
@@ -59,6 +62,12 @@ enum class TEST_SYSTEM_CONTROLLERS {
   H2_6_31Gs_ENVIRONMENT_FDE,
   O2_MINBAS_SING,
   O2_MINBAS_TRIP,
+  O2_MINBAS_TRIP_CIS,
+  O2_TRIP_DEF2_SVP_TDA,
+  O2_TRIP_DEF2_SVP_TDHF,
+  O2_TRIP_DEF2_SVP_TDDFT,
+  O2_TRIP_6_31G_PBE_TDA,
+  O2_TRIP_6_31G_PBE_TDDFT,
   F_MINUS_6_31Gs,
   H2_DEF2_TZVP_PBE,
   H2_DEF2_SV_P_PBE,
@@ -128,7 +137,13 @@ enum class TEST_SYSTEM_CONTROLLERS {
   Water_Dimer_def2_SVP_HF,
   Water_Def2_TZVP_DFT,
   He_Def2_TZVP_DFT,
-  ETHANOL_def2_SVP_HF
+  ETHANOL_def2_SVP_HF,
+  Water_Hexamer_Monomer_A,
+  Water_Hexamer_Monomer_B,
+  Water_Hexamer_Monomer_C,
+  Water_Hexamer_Monomer_D,
+  Water_Hexamer_Monomer_E,
+  Water_Hexamer_Monomer_F
 };
 
 /**
@@ -142,7 +157,9 @@ class SystemController__TEST_SUPPLY {
   /**
    * @brief Getter for the various test system controllers.
    * @param kind The enum flag defining the system controller.
-   * @param fromScratch If true, the system is build from scratch. Otherwise the system will be loaded from disk.
+   * @param fromScratch If true, the system is built from scratch (using the settings encoded in this .cp). Otherwise
+   * the system will be loaded from disk. Note that there are many cases where the two modes don't produce the same
+   * settings!
    * @return The system controller.
    */
   static std::shared_ptr<SystemController> getSystemController(TEST_SYSTEM_CONTROLLERS kind, bool fromScratch = false) {
@@ -192,11 +209,14 @@ class SystemController__TEST_SUPPLY {
   static void cleanUpSystemDirectory(std::shared_ptr<SystemController> systemController);
 
  private:
-  // Sets up the system controller.
+  // Sets up the SystemControllers and can be called in two different modes: with fromScratch==true where the settings
+  // defined in this .cpp are taken, and with fromScratch==false, where the settings and possibly some system results
+  // like Fock- and Density matrix are read in from disk..
   static void prepare(TEST_SYSTEM_CONTROLLERS kind, bool fromScratch);
   // Map that stores all system controllers.
   static std::map<TEST_SYSTEM_CONTROLLERS, std::shared_ptr<SystemController>> _testSystemControllers;
-  // Constructs the geometry for the given test system.
+  // Constructs the geometry for the given test system (with the coordinate information encoded in
+  // SystemController__TEST_SUPPLY.cpp - the geometry is not read from file).
   static void prepareGeometry(TEST_SYSTEM_CONTROLLERS kind);
   // Map that stores the geometries of the test systems.
   static std::map<TEST_SYSTEM_CONTROLLERS, std::shared_ptr<Geometry>> _testGeometries;

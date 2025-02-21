@@ -20,6 +20,8 @@
 
 /* Include Serenity Internal Headers */
 #include "settings/Settings.h"
+#include "dft/functionals/BasicFunctionals.h"
+#include "dft/functionals/CompositeFunctionals.h"
 /* Include Std and External Headers */
 #include <gtest/gtest.h>
 #include <istream>
@@ -44,6 +46,7 @@ TEST(SettingsTests, ReadFromFile) {
   Settings settings(newSettingsFile);
   EXPECT_EQ("TestSystem_H2_6_31Gs_BP86", settings.name);
   EXPECT_TRUE(settings.dft.functional == CompositeFunctionals::XCFUNCTIONALS::BP86);
+  EXPECT_EQ(settings.customFunc.basicFunctionals.size(), 0);
 }
 
 /**
@@ -53,7 +56,7 @@ TEST(SettingsTests, ReadFromFile) {
 TEST(SettingsTests, Print) {
   Settings settings;
   settings.printSettings();
-  std::remove("default.settings");
+  EXPECT_EQ(std::remove("default.settings"), 0);
 }
 /**
  * @test
@@ -63,6 +66,42 @@ TEST(SettingsTests, Set) {
   Settings settings;
   settings.set("DFT", "functional", "pbe0");
   EXPECT_TRUE(settings.dft.functional == CompositeFunctionals::XCFUNCTIONALS::PBE0);
+}
+
+/**
+ * @test
+ * @brief Tests print and load function.
+ */
+TEST(SettingsTests, PrintAndLoad) {
+  Settings settings;
+  settings.grid.accuracy = 1;
+  settings.printSettings();
+  std::ifstream settingsFile;
+  settingsFile.open("default.settings", std::ifstream::in);
+  Settings loadedSettings(settingsFile);
+  EXPECT_EQ(loadedSettings.grid.accuracy, 1);
+  EXPECT_EQ(loadedSettings.customFunc.basicFunctionals.size(), 0);
+  EXPECT_EQ(std::remove("default.settings"), 0);
+}
+
+/**
+ * @test
+ * @brief Tests print and load function with an active custom functional.
+ */
+TEST(SettingsTests, PrintAndLoadCustomFunctional) {
+  Settings settings;
+  settings.grid.accuracy = 1;
+  settings.customFunc.mu = 3.14;
+  settings.customFunc.basicFunctionals.push_back(BasicFunctionals::BASIC_FUNCTIONALS::X_PBE);
+  settings.printSettings();
+  std::ifstream settingsFile;
+  settingsFile.open("default.settings", std::ifstream::in);
+  Settings loadedSettings(settingsFile);
+  EXPECT_EQ(loadedSettings.grid.accuracy, 1);
+  EXPECT_EQ(loadedSettings.customFunc.basicFunctionals.size(), 1);
+  EXPECT_TRUE(loadedSettings.customFunc.basicFunctionals[0] == BasicFunctionals::BASIC_FUNCTIONALS::X_PBE);
+  EXPECT_EQ(loadedSettings.customFunc.mu, 3.14);
+  EXPECT_EQ(std::remove("default.settings"), 0);
 }
 
 } /*namespace Serenity*/

@@ -5,7 +5,7 @@
  * @author Jan P. Unsleber
  *
  * IMPORTANT:\n
- * This file was automatically generated please do not alter it.
+ * This file was automatically generated, please do not alter it.
  * Any required changes should be made to the generating Python script
  * which should be located close by.
  *
@@ -25,6 +25,7 @@
  */
 #ifndef COMPOSITEFUNCTIONALS_H_
 #define COMPOSITEFUNCTIONALS_H_
+/* Include Std and External Headers */
 #include <array>
 
 namespace Serenity {

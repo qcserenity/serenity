@@ -20,16 +20,17 @@
 
 /* Include Class Header*/
 #include "tasks/VirtualOrbitalSpaceSelectionTask.h"
+/* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "geometry/Geometry.h"
 #include "io/FormattedOutputStream.h"
 #include "io/HDF5.h"
 #include "misc/VirtualOrbitalSelectionAlgorithms.h"
+#include "parameters/Constants.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/ElectronicStructureCopyTask.h"
-
 /* Include Std and External Headers */
 #include <iomanip>
 #include <numeric>
@@ -45,6 +46,7 @@ VirtualOrbitalSpaceSelectionTask<SCFMode>::VirtualOrbitalSpaceSelectionTask(
 
 template<Options::SCF_MODES SCFMode>
 void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _act, _env);
   printSectionTitle("VirtualOrbitalSpaceSelectionTask");
   checkInput();
   if (settings.excludeProjection) {

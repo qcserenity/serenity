@@ -40,7 +40,6 @@ struct TSTaskSettings {
 class TSTask : public Task {
  public:
   /**
-   *
    * @param ts a shared pointer on the SystemController, which provides you with all needed information about the system
    * to be optimized
    * @param env a constant vector of shared pointers onto the SystemController, which provides you with all needed
@@ -50,7 +49,6 @@ class TSTask : public Task {
   virtual ~TSTask() = default;
 
   /**
-   *
    * @brief the function that actually runs the TSTask
    */
   void run();
@@ -63,7 +61,6 @@ class TSTask : public Task {
    *        - lst: specifies if LST is performed before QST
    *        - lstqstonly: specifies that only LST/QST should be done and NO Bofill TS-search afterwards
    *        - normalmode: specifies the reaction coordinate along which the TS is searched
-   *
    */
 
   TSTaskSettings settings;

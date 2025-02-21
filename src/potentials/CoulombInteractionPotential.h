@@ -30,7 +30,7 @@ namespace Serenity {
 /* Forward Declarations */
 class AtomCenteredBasisController;
 class SystemController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
 class Libint;
 namespace Options {
@@ -40,8 +40,7 @@ enum class DENS_FITS;
 /**
  * @class CoulombInteractionPotential CoulombInteractionPotential.h
  *
- * A class for a two System Coulomb interaction potential.
- * The potential is calculated using the RI approximation.
+ * A class for the Coulomb interaction potential of an active system with several environment systems.
  *
  *
  * Implementation according to:
@@ -57,7 +56,9 @@ class CoulombInteractionPotential : public Potential<SCFMode>,
                                     public ObjectSensitiveClass<DensityMatrix<SCFMode>> {
  public:
   /**
-   * @brief Constructor.
+   * @brief Constructor employing the RI approximation.
+   * @param actSystem The active system.
+   * @param envSystems The environment systems.
    * @param actBasis The basis controller of the active system.
    * @param envDensityMatrixController The density matrix controllers of the environment systems.
    * @param actAuxBasis The auxiliary basis sets of the active systems.
@@ -72,9 +73,13 @@ class CoulombInteractionPotential : public Potential<SCFMode>,
                               const std::shared_ptr<BasisController> actAuxBasis,
                               std::vector<std::shared_ptr<BasisController>> envAuxBasis, bool isPassive = false);
   /**
-   * @brief Constructor.
+   * @brief Constructor without density fitting.
+   * @param actSystem The active system.
+   * @param envSystems The environment systems.
    * @param actBasis The basis controller of the active system.
    * @param envDensityMatrixController The density matrix controllers of the environment systems.
+   * @param isPassive If true the Fock matrix block is written to disk in order
+   *                  to avoid recalculating it in future freeze-and-thaw iterations.
    */
   CoulombInteractionPotential(std::shared_ptr<SystemController> actSystem,
                               std::vector<std::shared_ptr<SystemController>> envSystems,
@@ -88,16 +93,13 @@ class CoulombInteractionPotential : public Potential<SCFMode>,
 
   /**
    * @brief Getter for the actual potential.
-   *
-   * This function makes use of the RI approximation.
-   *
-   * @return Returns the active Systems potential in matrix form.
+   * @return Returns the active system's potential in matrix form.
    */
   FockMatrix<SCFMode>& getMatrix() override final;
 
   /**
    * @brief Getter for the energy associated with this potential.
-   * @param P The active density Matrix.
+   * @param P The active density matrix.
    * @return The energy of the potential when acting on this density.
    */
   double getEnergy(const DensityMatrix<SCFMode>& P) override final;

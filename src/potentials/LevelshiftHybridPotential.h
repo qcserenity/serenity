@@ -42,13 +42,13 @@ class Atom;
 class GridController;
 class Functional;
 class EnergyComponentController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class DensityMatrixController;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class SPMatrix;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class LevelshiftPotential;
-template<Options::SCF_MODES T>
+template<Options::SCF_MODES SCFMode>
 class NAddFuncPotential;
 
 /**

@@ -21,7 +21,9 @@
 #ifndef GEOMETRY_TRIANGLE_H_
 #define GEOMETRY_TRIANGLE_H_
 
+/* Include Serenity Internal Headers */
 #include "geometry/Point.h"
+/* Include Std and External Headers */
 #include <Eigen/Dense>
 #include <memory>
 #include <vector>

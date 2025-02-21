@@ -66,12 +66,12 @@ class PopAnalysisTask : public Task {
    *          -Becke : Perform Becke population analysis
    *          -IAO : Perform IAO population analysis.
    *          -IAOShell : Perform Shell-wise IAO population analysis.
+   *          -CM5 : Perform CM5 population analysis.
+   *          -CHELPG: Perform a CHELPG population analysis.
    */
   PopAnalysisTaskSettings settings;
 
  private:
-  void runMode();
-
   void print(std::string type, const SpinPolarizedData<SCFMode, Eigen::VectorXd>& populations);
 
   const std::shared_ptr<SystemController> _systemController;

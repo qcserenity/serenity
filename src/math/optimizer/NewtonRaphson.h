@@ -48,8 +48,9 @@ class NewtonRaphson : public Optimizer {
   /**
    * @brief See documentation of base class Optimizer.
    */
-  void optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)>
-                    updateFunction) override final;
+  void
+  optimize(std::function<bool(const Eigen::VectorXd&, double&, Eigen::VectorXd&, std::shared_ptr<Eigen::MatrixXd> hessian, bool print)> updateFunction,
+           std::shared_ptr<unsigned int> nRejected = nullptr) override final;
   /**
    * @brief Minimize a simple function f(x).
    * @param updateFunction The function f(x).

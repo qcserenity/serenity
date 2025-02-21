@@ -31,7 +31,6 @@
 #include "tasks/LocalizationTask.h"                             //Orbital localization.
 #include "tasks/ScfTask.h"                                      //Clean electronic structures.
 #include "testsupply/SystemController__TEST_SUPPLY.h"           //Test systems.
-
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework.
 #include <iomanip>       //std::setprecision

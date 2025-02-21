@@ -21,28 +21,23 @@
 #include "tasks/GeometryOptimizationTask.h"
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
-#include "data/OrbitalController.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
-#include "geometry/gradients/GeometryGradientCalculator.h"
-#include "geometry/gradients/NumericalGeomGradCalc.h"
 #include "io/FormattedOutput.h"
+#include "io/FormattedOutputStream.h"
 #include "io/IOOptions.h"
 #include "math/optimizer/BFGS.h"
-#include "math/optimizer/LBFGS.h"
 #include "math/optimizer/Optimizer.h"
-#include "misc/Timing.h"
+#include "math/optimizer/SQNM.h"
 #include "misc/WarningTracker.h"
-#include "scf/initialGuess/InitialGuessCalculator.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
 #include "tasks/FreezeAndThawTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */
-#include <cmath>
-#include <iostream>
+#include <ctime>
 
 namespace Serenity {
 
@@ -50,11 +45,11 @@ template<Options::SCF_MODES SCFMode>
 GeometryOptimizationTask<SCFMode>::GeometryOptimizationTask(const std::vector<std::shared_ptr<SystemController>>& activeSystems,
                                                             const std::vector<std::shared_ptr<SystemController>>& passiveSystems)
   : _activeSystems(activeSystems), _passiveSystems(passiveSystems) {
-  assert(_activeSystems[0]);
 }
 
 template<Options::SCF_MODES SCFMode>
 void GeometryOptimizationTask<SCFMode>::run() {
+  this->avoidMixedSCFModes(SCFMode, _activeSystems);
   /*
    * Output Options
    */
@@ -66,6 +61,7 @@ void GeometryOptimizationTask<SCFMode>::run() {
       iOOptions.printSCFCycleInfo = false;
       iOOptions.printSCFResults = false;
       iOOptions.printGridInfo = false;
+      _minimumPrint = true;
       break;
     default:
       iOOptions.printSCFCycleInfo = true;
@@ -81,18 +77,39 @@ void GeometryOptimizationTask<SCFMode>::run() {
     /*
      * Get the optimizer
      */
-    std::shared_ptr<Optimizer> optimizer = std::make_shared<BFGS>(coords, 1.0, true);
+    std::shared_ptr<Optimizer> optimizer;
+    switch (settings.optAlgorithm) {
+      case Options::OPTIMIZATION_ALGORITHMS::BFGS:
+        optimizer = std::make_shared<BFGS>(coords, 1.0, true);
+        break;
+      case Options::OPTIMIZATION_ALGORITHMS::SQNM:
+        optimizer = std::make_shared<SQNM>(coords, settings.sqnm.historyLength, settings.sqnm.epsilon,
+                                           settings.sqnm.alpha, settings.sqnm.energyThreshold, settings.sqnm.trustRadius);
+        break;
+    }
     /*
      * Optimization Cycle
      */
     unsigned int cycle = 1;
     Eigen::VectorXd oldParams = coords;
-    double oldEnergy = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy();
+    double oldEnergy = std::numeric_limits<double>::infinity();
     /*
      * Lambda Function for the Optimizer
      */
     auto const updateFunction = [&](const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
                                     std::shared_ptr<Eigen::MatrixXd> hessian, bool printInfo) {
+      // Print header before the first cycle if minimal output is requested
+      if (_minimumPrint && cycle == 1) {
+        printf("%7s%17s%17s%17s%17s%17s%17s%17s%17s\n", "cycle", "Total Energy", "Energy Change", "Gradient Norm",
+               "RMS Gradient", "Max Gradient", "RMS Step", "Max step", "s/cycle");
+      }
+      // get timings for minimal output
+      if (_minimumPrint) {
+        clock_gettime(CLOCK_REALTIME, &_time);
+      }
+      if (printInfo && !_minimumPrint) {
+        printSubSectionTitle("Cycle: " + std::to_string(cycle));
+      }
       (void)hessian;
       // Atom Coordinates (the parameters to optimize)
       Matrix<double> coordinates = Eigen::Map<const Eigen::MatrixXd>(parameters.data(), nAtoms, 3);
@@ -105,13 +122,11 @@ void GeometryOptimizationTask<SCFMode>::run() {
       value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy();
 
       // Calc/Print Gradients
-
-      if (printInfo)
-        printSubSectionTitle("Cycle: " + std::to_string(cycle));
       GradientTask<SCFMode> task(_activeSystems);
       task.settings.transInvar = settings.transInvar;
       task.settings.gradType = settings.gradType;
       task.settings.numGradStepSize = settings.numGradStepSize;
+      task.settings.print = !_minimumPrint;
       task.run();
 
       gradients = Eigen::Map<const Eigen::VectorXd>(_activeSystems[0]->getGeometry()->getGradients().data(), nAtoms * 3);
@@ -123,20 +138,30 @@ void GeometryOptimizationTask<SCFMode>::run() {
       /*
        * Output and increment
        */
-      if (printInfo)
+      if (printInfo && !_minimumPrint) {
         printSmallCaption("Geometry Relaxation");
-      printf("%4s Total Energy  %15.10f\n", "", value);
-      printf("%4s Energy Change %15.10f\n", "", value - oldEnergy);
-      printf("%4s Gradient Norm %15.10f\n", "", gradNorm);
-      printf("%4s RMS Gradient  %15.10f\n", "", RMSgrad);
-      printf("%4s Max Gradient  %15.10f\n", "", gradients.array().abs().maxCoeff());
-      printf("%4s RMS Step      %15.10f\n", "", std::sqrt(step.squaredNorm() / step.size()));
-      printf("%4s Max Step      %15.10f\n\n", "", step.array().abs().maxCoeff());
-      _activeSystems[0]->getGeometry()->print();
+        OutputControl::n.printf("%4s Total Energy  %15.10f\n", "", value);
+        OutputControl::n.printf("%4s Energy Change %15.10f\n", "", value - oldEnergy);
+        OutputControl::n.printf("%4s Gradient Norm %15.10f\n", "", gradNorm);
+        OutputControl::n.printf("%4s RMS Gradient  %15.10f\n", "", RMSgrad);
+        OutputControl::n.printf("%4s Max Gradient  %15.10f\n", "", gradients.array().abs().maxCoeff());
+        OutputControl::n.printf("%4s RMS Step      %15.10f\n", "", std::sqrt(step.squaredNorm() / step.size()));
+        OutputControl::n.printf("%4s Max Step      %15.10f\n\n", "", step.array().abs().maxCoeff());
+        _activeSystems[0]->getGeometry()->print();
+      }
+
+      if (_minimumPrint) {
+        timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        double sec = (double)(now.tv_sec - _time.tv_sec) + (now.tv_nsec - _time.tv_nsec) * 0.000000001;
+        printf("%7d%17f%17f%17f%17f%17f%17f%17f%17f\n", cycle, value, value - oldEnergy, gradNorm, RMSgrad,
+               gradients.array().abs().maxCoeff(), std::sqrt(step.squaredNorm() / step.size()),
+               step.array().abs().maxCoeff(), sec);
+      }
+
       _activeSystems[0]->getGeometry()->printToFile(_activeSystems[0]->getHDF5BaseName(),
                                                     _activeSystems[0]->getSystemIdentifier());
       _activeSystems[0]->getGeometry()->updateTrajFile(_activeSystems[0]->getHDF5BaseName(), value, gradNorm);
-
       /*
        * Convergence check
        */
@@ -153,7 +178,6 @@ void GeometryOptimizationTask<SCFMode>::run() {
       if (step.array().abs().maxCoeff() < settings.maxStepThresh)
         convCriteriaMet++;
       if (convCriteriaMet >= 3 and cycle > 1) {
-        print("Convergence reached. Exiting...");
         converged = true;
       }
       if (cycle == settings.maxCycles) {
@@ -165,101 +189,140 @@ void GeometryOptimizationTask<SCFMode>::run() {
       oldEnergy = value;
       oldParams = parameters;
 
+      if (converged) {
+        OutputControl::m.printf("Convergence reached after %3u cycles.\n", cycle);
+      }
+
       ++cycle;
 
       return converged;
     };
+    std::shared_ptr<unsigned int> nRejected = std::make_shared<unsigned int>(0);
+    optimizer->optimize(updateFunction, nRejected);
 
-    optimizer->optimize(updateFunction);
-  }
-  else {
     /*
-     * Initial FaT
+     * Print Final Results
      */
-    FreezeAndThawTask<SCFMode> task(_activeSystems, _passiveSystems);
-    task.settings.embedding = settings.embedding;
-    if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
-      throw SerenityError("Only non-additive kinetic embedding is supported for embedded Gradients!");
+    printSubSectionTitle("Final Results");
+    _activeSystems[0]->getGeometry()->print();
+    OutputControl::m.printf("%4s Final Energy: %15.10f\n\n\n", "",
+                            _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy());
+    OutputControl::m.printf("Convergence reached after %3u cycles.\n", cycle - 1);
+    if (settings.optAlgorithm == Options::OPTIMIZATION_ALGORITHMS::SQNM) {
+      OutputControl::m.printf("A total of %3u cycles have been rejected.\n", *(nRejected));
     }
-    task.settings.gridCutOff = settings.FaTgridCutOff;
-    task.run();
+  }
 
-    Geometry SupersystemGeometry;
+  else {
+    Geometry supersystemGeometry;
 
     for (auto sys : _activeSystems) {
-      SupersystemGeometry += *(sys->getGeometry());
+      supersystemGeometry += *(sys->getGeometry());
     }
     for (auto sys : _passiveSystems) {
-      SupersystemGeometry += *(sys->getGeometry());
+      supersystemGeometry += *(sys->getGeometry());
     }
-
-    const unsigned int nAtoms = SupersystemGeometry.getNAtoms();
-    Eigen::VectorXd tmpCoords = Eigen::Map<const Eigen::VectorXd>(SupersystemGeometry.getCoordinates().data(), nAtoms * 3);
+    const unsigned int nAtoms = supersystemGeometry.getNAtoms();
+    Eigen::VectorXd tmpCoords = Eigen::Map<const Eigen::VectorXd>(supersystemGeometry.getCoordinates().data(), nAtoms * 3);
     /*
      * Get the optimizer
      */
-    std::shared_ptr<Optimizer> optimizer = std::make_shared<BFGS>(tmpCoords, 1.0, true);
-
-    auto oldParams = tmpCoords;
-    assert(_activeSystems[0]->getSettings().method == Options::ELECTRONIC_STRUCTURE_THEORIES::DFT &&
-           "Check logic in this task for its compatible with HF.");
-    double oldEnergy = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
-        ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
+    std::shared_ptr<Optimizer> optimizer;
+    switch (settings.optAlgorithm) {
+      case Options::OPTIMIZATION_ALGORITHMS::BFGS:
+        optimizer = std::make_shared<BFGS>(tmpCoords, 1.0, true);
+        break;
+      case Options::OPTIMIZATION_ALGORITHMS::SQNM:
+        optimizer = std::make_shared<SQNM>(tmpCoords, settings.sqnm.historyLength, settings.sqnm.epsilon,
+                                           settings.sqnm.alpha, settings.sqnm.energyThreshold, settings.sqnm.trustRadius);
+        break;
+    }
+    /*
+     * Optimization cycle
+     */
     unsigned int optCycle = 1;
-
+    Eigen::VectorXd oldParams = tmpCoords;
+    double oldEnergy = std::numeric_limits<double>::infinity();
+    /*
+     * Lambda Function for the Optimizer
+     */
     auto const updateFunction = [&](const Eigen::VectorXd& parameters, double& value, Eigen::VectorXd& gradients,
                                     std::shared_ptr<Eigen::MatrixXd> hessian, bool printInfo) {
-      (void)hessian;
-      if (printInfo)
-        printSubSectionTitle("Cycle: " + std::to_string(optCycle));
-
-      Matrix<double> coordinates = Eigen::Map<const Eigen::MatrixXd>(parameters.data(), nAtoms, 3);
-      SupersystemGeometry.setCoordinates(coordinates);
-
-      // Calc/Print Gradients
-
-      GradientTask<SCFMode> task(_activeSystems, _passiveSystems);
-      task.settings.gradType = settings.gradType;
-      task.settings.embedding = settings.embedding;
-      if (settings.embedding.embeddingMode != Options::KIN_EMBEDDING_MODES::NADD_FUNC) {
-        throw SerenityError("Only non-additive kinetic embedding is supported for embedded Gradients!");
+      // Print header before the first cycle if minimal output is requested
+      if (_minimumPrint && optCycle == 1) {
+        printf("%7s%17s%17s%17s%17s%17s%17s%17s%17s\n", "cycle", "Total Energy", "Energy Change", "Gradient Norm",
+               "RMS Gradient", "Max Gradient", "RMS Step", "Max step", "s/cycle");
       }
-      task.settings.FDEgridCutOff = settings.FaTgridCutOff;
-      task.settings.transInvar = settings.transInvar;
-      task.settings.numGradStepSize = settings.numGradStepSize;
-      task.run();
+      // get timings for minimal output
+      if (_minimumPrint) {
+        clock_gettime(CLOCK_REALTIME, &_time);
+      }
+      if (printInfo && !_minimumPrint) {
+        printSubSectionTitle("Cycle: " + std::to_string(optCycle));
+      }
+      (void)hessian;
+      // Atom Coordinates (the parameters to optimize)
+      Matrix<double> coordinates = Eigen::Map<const Eigen::MatrixXd>(parameters.data(), nAtoms, 3);
+      // Set coordinates of all atoms to new parameter data from previous optimization cycle
+      supersystemGeometry.setCoordinates(coordinates);
 
-      /* Variables for optimization. */
-      value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
-          ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
+      // Calc/Print Gradients - in a subsystem case the gradienttask also always performes a FaTTask, thus the energy
+      // calculation is outsourced
+
+      GradientTask<SCFMode> gradientTask(_activeSystems, _passiveSystems);
+      gradientTask.settings.gradType = settings.gradType;
+      gradientTask.settings.embedding = settings.embedding;
+      gradientTask.settings.FDEgridCutOff = settings.FaTgridCutOff;
+      gradientTask.settings.transInvar = settings.transInvar;
+      gradientTask.settings.numGradStepSize = settings.numGradStepSize;
+      gradientTask.settings.print = !_minimumPrint;
+      gradientTask.run();
 
       gradients =
-          Eigen::Map<const Eigen::VectorXd>(SupersystemGeometry.getGradients().data(), SupersystemGeometry.getNAtoms() * 3);
+          Eigen::Map<const Eigen::VectorXd>(supersystemGeometry.getGradients().data(), supersystemGeometry.getNAtoms() * 3);
 
+      switch (_activeSystems[0]->getSettings().method) {
+        case Options::ELECTRONIC_STRUCTURE_THEORIES::DFT:
+          value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+              ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT);
+          break;
+        case Options::ELECTRONIC_STRUCTURE_THEORIES::HF:
+          value = _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+              ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_WF_DFT);
+          break;
+      }
+
+      // Calculate convergence parameters
       double gradNorm = gradients.norm();
-
       double RMSgrad = std::sqrt(gradients.squaredNorm() / gradients.size());
-
       auto step = parameters - oldParams;
-
       /*
        * Output and increment
        */
-      printSmallCaption("Geometry Relaxation");
-      printf("%4s Total Energy  %15.10f\n", "", value);
-      printf("%4s Energy Change %15.10f\n", "", value - oldEnergy);
-      printf("%4s Gradient Norm %15.10f\n", "", gradNorm);
-      printf("%4s RMS Gradient  %15.10f\n", "", RMSgrad);
-      printf("%4s Max Gradient  %15.10f\n", "", gradients.array().abs().maxCoeff());
-      printf("%4s RMS Step      %15.10f\n", "", std::sqrt(step.squaredNorm() / step.size()));
-      printf("%4s Max Step      %15.10f\n\n", "", step.array().abs().maxCoeff());
-      SupersystemGeometry.print();
-      SupersystemGeometry.printToFile("./opt", "");
-      SupersystemGeometry.updateTrajFile("./opt", value, gradNorm);
+      if (printInfo && !_minimumPrint) {
+        printSmallCaption("Geometry Relaxation");
+        OutputControl::n.printf("%4s Total Energy  %15.10f\n", "", value);
+        OutputControl::n.printf("%4s Energy Change %15.10f\n", "", value - oldEnergy);
+        OutputControl::n.printf("%4s Gradient Norm %15.10f\n", "", gradNorm);
+        OutputControl::n.printf("%4s RMS Gradient  %15.10f\n", "", RMSgrad);
+        OutputControl::n.printf("%4s Max Gradient  %15.10f\n", "", gradients.array().abs().maxCoeff());
+        OutputControl::n.printf("%4s RMS Step      %15.10f\n", "", std::sqrt(step.squaredNorm() / step.size()));
+        OutputControl::n.printf("%4s Max Step      %15.10f\n\n", "", step.array().abs().maxCoeff());
+        supersystemGeometry.print();
+      }
+      if (_minimumPrint) {
+        timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        double sec = (double)(now.tv_sec - _time.tv_sec) + (now.tv_nsec - _time.tv_nsec) * 0.000000001;
+        printf("%7d%17f%17f%17f%17f%17f%17f%17f%17f\n", optCycle, value, value - oldEnergy, gradNorm, RMSgrad,
+               gradients.array().abs().maxCoeff(), std::sqrt(step.squaredNorm() / step.size()),
+               step.array().abs().maxCoeff(), sec);
+      }
+      supersystemGeometry.printToFile("./opt", "");
+      supersystemGeometry.updateTrajFile("./opt", value, gradNorm);
       for (auto sys : _activeSystems) {
         sys->getGeometry()->printToFile(sys->getHDF5BaseName(), sys->getSystemIdentifier());
       }
-
       /*
        * Convergence check
        */
@@ -276,23 +339,46 @@ void GeometryOptimizationTask<SCFMode>::run() {
       if (step.array().abs().maxCoeff() < settings.maxStepThresh)
         convCriteriaMet++;
       if (convCriteriaMet >= 3 and optCycle > 1) {
-        print("Convergence reached. Exiting...");
         converged = true;
       }
       if (optCycle == settings.maxCycles) {
-        printSubSectionTitle("WARNING: Geometry Optimization not yet converged!");
+        WarningTracker::printWarning("WARNING: Geometry Optimization not yet converged!", true);
         converged = true;
       }
 
       oldEnergy = value;
       oldParams = parameters;
 
+      if (converged) {
+        printf("Convergence reached after %3u cycles.\n", optCycle);
+      }
+
       ++optCycle;
 
       return converged;
     };
 
-    optimizer->optimize(updateFunction);
+    std::shared_ptr<unsigned int> nRejected = std::make_shared<unsigned int>(0);
+    optimizer->optimize(updateFunction, nRejected);
+
+    printSubSectionTitle("Final Results");
+    supersystemGeometry.print();
+    switch (_activeSystems[0]->getSettings().method) {
+      case Options::ELECTRONIC_STRUCTURE_THEORIES::DFT:
+        OutputControl::m.printf("%4s Final Energy: %15.10f\n\n\n", "",
+                                _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+                                    ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_DFT_DFT));
+        break;
+      case Options::ELECTRONIC_STRUCTURE_THEORIES::HF:
+        OutputControl::m.printf("%4s Final Energy: %15.10f\n\n\n", "",
+                                _activeSystems[0]->template getElectronicStructure<SCFMode>()->getEnergy(
+                                    ENERGY_CONTRIBUTIONS::FDE_SUPERSYSTEM_ENERGY_WF_DFT));
+        break;
+    }
+    OutputControl::m.printf("Convergence reached after %3u cycles.\n", optCycle - 1);
+    if (settings.optAlgorithm == Options::OPTIMIZATION_ALGORITHMS::SQNM) {
+      OutputControl::m.printf("A total of %3u cycles have been rejected.\n", *(nRejected));
+    }
   }
 
   iOOptions.printSCFCycleInfo = info;

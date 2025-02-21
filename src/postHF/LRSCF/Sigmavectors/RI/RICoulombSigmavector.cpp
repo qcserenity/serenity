@@ -20,7 +20,6 @@
 
 /* Include Class Header*/
 #include "postHF/LRSCF/Sigmavectors/RI/RICoulombSigmavector.h"
-
 /* Include Serenity Internal Headers */
 #include "basis/BasisFunctionMapper.h" //Construct joined fitting basis.
 #include "geometry/Geometry.h"

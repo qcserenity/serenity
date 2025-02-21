@@ -1,0 +1,100 @@
+\section{Pseudo-natural Orbital Construction}
+The purpose of this section is to explain the pair natural orbital (PNO), triple-natural orbital (TNO) and
+quasi canonical projected atomic orbital (QC-PAO) construction. We will refer to PNOs and TNOs as pseudo-natural
+orbitals in the following section. We will always assume restricted Hartree--Fock orbitals as our reference orbitals.
+This section is based on the following references~\cite{Pulay1983,Neese2009b,Riplinger2013a}.
+
+\subsection{Redundant Projected-Atomic Orbital Construction}
+In every local correlation method, some sort of local representation of the virtual orbitals is necessary.
+Since \textsc{Serenity} mainly implements Domain-based Local Pair Natural Orbital (DLPNO)-based correlation
+methods, the virtual space is constructed from projected atomic orbitals (PAOs).
+These PAOs $\{|\tilde{\mu}\rangle\}$ are given by
+\begin{align}
+  |\tilde{\mu}\rangle = \left(1-\sum_{i} |i\rangle\langle i|\right)|\mu\rangle,
+  \label{eq:pao}
+\end{align}
+where the sum runs over all occupied orbitals $|i\rangle$.
+
+These PAOs represent a virtual orbital set that fully spans the virtual orbital space, is linear dependent
+and the functions are not necessarily normalized.
+The coefficients $\pmb{C}^{\mathrm{PAO}}$ of the redundant, unnormalized PAOs are given in matrix
+notation by
+\begin{align}
+  \pmb{C}^{\mathrm{PAO}} = \pmb{1}-\frac{1}{2} \pmb{D}\pmb{S}^\mathrm{AO},
+\end{align}
+where $\pmb{1}$ is the identity matrix, $\pmb{D}$ the density matrix in atomic orbital (AO) basis and
+$\pmb{S}^\mathrm{AO}$ the overlap matrix in AO basis.
+
+These PAOs are refined further by omitting functions which have a negligible norm
+[e.g. $1$s basis functions may be fully removed by the projection in Eq.~(\ref{eq:pao})]
+and normalizing all remaining functions.
+We will refer to the resulting PAOs as redundant PAOs, since the linear dependencies within the function
+sets are still present.
+
+\subsection{Redundant Projected-Atomic Orbital Selection}
+In order to motivate the truncation of the PAO space for a specific orbital, orbital pair or orbital triple,
+we consider the M{\o}ller--Plesset perturbation theory (MP2) pair energy $\epsilon_{ij}^\mathrm{MP2}$ for
+a given pair $ij$. This energy is given by~\cite{Pulay1983}
+\begin{align}
+  \epsilon_{ij}^\mathrm{MP2} = \frac{1}{1+\delta_{ij}}\sum_{ab}{(ia|jb)}(4t^{ij}_{ab}-2t^{ij}_{ba}),
+  \label{eq:MP2PairEnergy}
+\end{align}
+where the two-electron-exchange integral $(ia|jb)$ is given in $(11|22)$ notation, referring to the integration
+variables. The $t^{ij}_{ab}$ are the MP2 amplitudes. The virtual functions are denoted by $a$ and $b$.
+The only restriction for the choice in virtual functions is that they are orthogonal to the occupied orbital set.
+It is obvious from Eq.~(\ref{eq:MP2PairEnergy}) that terms in the sum can only contribute, if $i$ and $a$ as well as $j$
+and $b$ have non-zero differential overlap. Thus, PAOs are assigned to occupied orbitals $i\rightarrow [i]$.
+We call $[i]$ the PAO domain of $i$. The PAO domains of an orbital pair $[ij]$ are constructed
+as the union of the PAO domains of the individual orbitals $[ij]=[i]\cup [j]$. The same is done for orbital
+triples ($[ijk]=[i]\cup [j]\cup [k]$).
+
+\subsection{Quasi-Canonical Projected-Atomic Orbital Construction}
+Within the truncated, redundant PAO sets, the PAOs are orthogonalized by constructing the PAO--PAO overlap matrix
+in the PAO domain and diagonalizing it. The resulting eigenvectors of the PAO--PAO overlap matrix are
+truncated by eigenvalue in order to remove (nearly) linear dependent vectors.
+
+Then, the Fock matrix is transformed into the basis of these non-redundant PAOs and diagonalized. The resulting functions
+are now called quasi-canonical PAOs (QC-PAOs). This quasi-canonicalization is extremely convenient for local
+second order M{\o}ller--Plesset perturbation theory (MP2), since the iterative amplitude optimization
+converge exceptionally well. Furthermore, the QC-PAOs are needed to calculate semi-canonical MP2 (SC-MP2)
+amplitudes, which will become important in the next step.
+
+\subsection{Pseudo Natural Orbital Construction}
+
+The QC-PAO sets which are necessary to get reasonable, accurate results are often very large. Thus, the size of the
+virtual orbital space is reduced further by constructing pseudo natural orbitals. For orbital pairs, we can easily
+motivate this by reconsidering Eq.~(\ref{eq:MP2PairEnergy}), which we already used in order to reduce the size of
+the initial redundant PAO sets. The idea is to find a reasonable approximation to the MP2 amplitudes $\pmb{t}_{ij}$
+and then use this information to find a basis in which the sum in Eq.~(\ref{eq:MP2PairEnergy}) becomes very
+compact~\cite{Neese2009b}.
+
+As an approximation to the MP2 amplitudes SC-MP2 amplitudes are used. The latter are given by
+\begin{align}
+  t^{ij}_{\tilde{\mu},\tilde{\nu}} &= -\frac{(i\tilde{\mu}|j\tilde{\nu})}{{\epsilon_{\tilde{\mu}}}+{\epsilon_{\tilde{\nu}}}-F_{ii}-F_{jj}},
+\end{align}
+where $\epsilon_{\tilde{\mu}}$ and $\epsilon_{\tilde{\nu}}$ are the eigenvalues of the QC-PAOs and $F_{ii}$ and $F_{jj}$
+are diagonal Fock matrix elements.
+From these amplitudes, natural orbitals are constructed by diagonalizing the pair density matrix $\pmb{D}^{ij}$ given
+by
+\begin{align}
+  \mathbf{D}^{ij} &= \tilde{\mathbf{t}}^{ij}\mathbf{t}^{ij\dagger} + \tilde{\mathbf{t}}^{ij\dagger}\mathbf{t}^{ij},
+\end{align}
+where $\tilde{t}^{ij}_{\tilde{\mu},\tilde{\nu}}$ is given by
+\begin{align}
+  \tilde{t}^{ij}_{\tilde{\mu},\tilde{\nu}}  &= \frac{1}{1+\delta_{ij}}(4t^{ij}_{\tilde{\mu}\tilde{\nu}}-2t^{ij}_{\tilde{\nu}\tilde{\mu}}).
+\end{align}
+
+The eigenvectors of $\mathbf{D}^{ij}$ are truncated by their eigenvalues and the remaining functions are
+rotated such that they diagonalize the Fock matrix.
+
+The pseudo-natural orbitals for singles of orbital $i$ are constructed from the PNOs of the
+diagonal pair $ii$ by adjusting the truncation threshold for the PNOs.
+
+For orbital triples, a triple-density matrix $\mathbf{D}^{ijk}$ is constructed from the pair density matrices
+of the orbital pairs~\cite{Riplinger2013a} $ij$, $ik$ and $jk$ as
+\begin{align}
+  \mathbf{D}^{ijk} = \frac{1}{3} \left( \mathbf{D}^{ij} + \mathbf{D}^{ik} +\mathbf{D}^{jk} \right).
+\end{align}
+The remaining procedure for the Triple-natural Orbital (TNO) construction is the same as for the PNOs.
+However, in case of a triples correction to the correlation energy, the converged amplitudes of the orbital
+pairs are usually used for the TNO construction instead of the SC-MP2 guess.

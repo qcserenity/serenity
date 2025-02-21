@@ -23,6 +23,7 @@
 #include "data/SpinPolarizedData.h"
 #include "data/grid/BasisFunctionOnGridController.h"
 #include "data/grid/GridPotential.h"
+#include "data/matrices/DensityMatrix.h"
 #include "data/matrices/FockMatrix.h"
 #include "math/Derivatives.h"
 #include "settings/Options.h"
@@ -90,6 +91,35 @@ class ScalarOperatorToMatrixAdder {
    */
   void addScalarOperatorToMatrix(SPMatrix<SCFMode>& matrix, const GridPotential<SCFMode>& scalarOperator,
                                  const Gradient<GridPotential<SCFMode>>& gradientOperator);
+
+  /**
+   * @brief Adds contributions from a scalar operator which is represented on a grid to a gradient matrix.
+   *
+   * @param matrix The (natoms, 3) matrix to add the gradient to.
+   * @param atomBasisProjection A (natoms, nbasis) matrix indicating on which atom each basisfunction is located.
+   * @param scalarOperator A value for each gridpoint. This will contribute with
+   * \f$ matrix(iAtom, iDirection) += \sum_\sigma \sum_{\mu\in iAtom}^{n_\mathrm{basis}} \sum_\nu^{n_\mathrm{basis}}
+   * d_{\mu\nu\sigma} \left<\frac{\mathrm{d}\chi_\mu}{\mathrm{d}iDirection}(r) | s_\sigma(r) | \chi_\nu(r) \right> \f$
+   */
+  void addScalarOperatorToGradient(Eigen::MatrixXd& matrix, const Eigen::MatrixXd& atomBasisProjection,
+                                   const DensityMatrix<SCFMode>& D, const GridPotential<SCFMode>& scalarOperator);
+
+  /**
+   * @brief Adds contributions from a scalar operator which is represented on a grid to a gradient matrix.
+   *
+   * @param matrix The (natoms, 3) matrix to add the gradient to.
+   * @param atomBasisProjection A (natoms, nbasis) matrix indicating on which atom each basisfunction is located.
+   * @param scalarOperator A value s for each gridpoint.
+   * @param gradientOperator A three-component vector g for each gridpoint. s and g will contribute with
+   * \f$ matrix(iAtom, iDirection) += \sum_\sigma \sum_{\mu\in iAtom}^{n_\mathrm{basis}} \sum_\nu^{n_\mathrm{basis}}
+   * d_{\mu\nu\sigma} \left( \left<\frac{\mathrm{d}\chi_\mu}{\mathrm{d}iDirection}(r) | s_\sigma(r) | \chi_\nu(r)
+   * \right> + \left<\frac{\mathrm{d}\chi_\mu}{\mathrm{d}iDirection}(r) | g_\sigma(r) | \nabla\chi_\nu(r) \right> +
+   * \left<\frac{\mathrm{d}\nabla\chi_\mu}{\mathrm{d}iDirection}(r) | g_\sigma(r) | \chi_\nu(r) \right> \right) \f$
+   */
+  void addScalarOperatorToGradient(Eigen::MatrixXd& matrix, const Eigen::MatrixXd& atomBasisProjection,
+                                   const DensityMatrix<SCFMode>& D, const GridPotential<SCFMode>& scalarOperator,
+                                   const Gradient<GridPotential<SCFMode>>& gradientOperator);
+
   /**
    * @returns the used BasisFunctionOnGridController; Determines Grid and Basis.
    */
@@ -130,6 +160,39 @@ class ScalarOperatorToMatrixAdder {
                 std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
                 SPMatrix<SCFMode>& m_AB, const GridPotential<SCFMode>& scalarPart,
                 const Gradient<GridPotential<SCFMode>>& gradientPart);
+
+  /**
+   * @brief Integrates the gradient of an LDA-type functional over one block.
+   * @param iBlock The index of the block.
+   * @param blockDataA The basis function values of block A.
+   * @param blockDataB The basis function values of block B.
+   * @param m_AB The matrix where the result is added to (size: nAtoms rows, 3 columns).
+   * @param atomBasisProjection A (natoms, nBasis) matrix containing a 1 where the basis function is located on the atom
+   * and a 0 otherwise.
+   * @param scalarPart The scalar potential for this block.
+   */
+  void addGradientBlock(unsigned int iBlock,
+                        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
+                        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
+                        Eigen::MatrixXd& m_AB, const Eigen::MatrixXd& atomBasisProjection,
+                        const DensityMatrix<SCFMode>& D, const GridPotential<SCFMode>& scalarPart);
+
+  /**
+   * @brief Integrates the gradient of a GGA-type functional over one block.
+   * @param iBlock The index of the block.
+   * @param blockDataA The basis function values of block A.
+   * @param blockDataB The basis function values of block B.
+   * @param m_AB The matrix where the result is added to (size: nAtoms rows, 3 columns).
+   * @param atomBasisProjection A (natoms, nBasis) matrix containing a 1 where the basis function is located on the atom
+   * and a 0 otherwise.
+   * @param scalarPart The scalar potential for this block.
+   * @param gradientPart The gradient part of the potential for this block.
+   */
+  void addGradientBlock(unsigned int iBlock,
+                        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataA,
+                        std::shared_ptr<BasisFunctionOnGridController::BasisFunctionBlockOnGridData> blockDataB,
+                        Eigen::MatrixXd& m_AB, const Eigen::MatrixXd& atomBasisProjection, const DensityMatrix<SCFMode>& D,
+                        const GridPotential<SCFMode>& scalarPart, const Gradient<GridPotential<SCFMode>>& gradientPart);
 };
 
 } /* namespace Serenity */

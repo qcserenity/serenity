@@ -1,0 +1,37 @@
+\subsection{Task: Hessian}
+This task performs a Hessian calculation for a given structure. In case of a subsystem gradient calculation, this task will use all active systems for the gradient calculation. Furthermore, all active systems will be included in the Freeze-and-Thaw procedure. When additional environment systems are given, Frozen-Density Embedding Hessians are calculated for the active subsystems.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task HESS
+   system water
+ -task
+\end{lstlisting}
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+ Aliases for this task are \ttt{HessianTask}, \ttt{Hessian} and \ttt{Hess}.
+\item [\texttt{activeSystems}]\hfill \\
+ Optimizes all active systems. If more than one system is given, they are coupled via Freeze-and-Thaw calculations.
+\item [\texttt{environmentSystems}]\hfill \\
+ Environment systems are added to Freeze-and-Thaw or Frozen-Density Embedding calculations of the active system(s) but remain electronically frozen and are not optimized.
+\item [\texttt{sub-blocks}]\hfill \\
+ Embedding (\ttt{emb}) settings are added via sub-blocks in the task settings.
+ Prominent settings in the embedding block that are relevant for this task, and their defaults are:
+ \ttt{naddXCFunc=PW91}, \ttt{embeddingMode=naddfunc}, \ttt{naddkinfunc=PW91K}.
+\item{hessType}\hfill \\
+ The type of the Hessian. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} (not implemented yet) or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{NUMERICAL}. Note that full numerical Hessians (gradient and Hessian) are numerically unstable. 
+\item [\texttt{gradType}]\hfill \\
+ The type of the gradient. Possible options are analytic evaluation with the keyword \ttt{ANALYTICAL} or numerically (3 pt. scheme) with the keyword \ttt{NUMERICAL}. The default is \ttt{ANALYTICAL}. 
+\item [\texttt{numGradStepSize}]\hfill \\
+ Step size for numerical gradients. The default is \ttt{1.0e-3}. 
+\item [\texttt{numHessStepSize}]\hfill \\
+ Step size for numerical Hessian. The default is \ttt{1.0e-3}. 
+\item [\texttt{FaTgridCutOff}]\hfill \\
+  A distance cutoff for the integration grid used to calculate the non-additive energy functional potentials. Negative values correspond to no cutoff used. The default is \ttt{-1.0}.
+\item [\texttt{FaTmaxCycles}]\hfill \\
+  The maximum number of FaT iterations. The default is \ttt{50}.
+\item [\texttt{FaTenergyConvThresh}]\hfill \\
+  Convergence criterion for the density w.r.t. Freeze-and-Thaw. The default is \ttt{1.0e-6}.
+\item [\texttt{printToFile}]\hfill \\
+  Prints the Hessian to HDF5. The default is \ttt{true}.
+\end{description}

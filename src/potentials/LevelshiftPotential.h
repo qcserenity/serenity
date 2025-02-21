@@ -55,7 +55,7 @@ class LevelshiftPotential : public Potential<SCFMode>,
   virtual ~LevelshiftPotential() = default;
 
   /**
-   * @brief Getter for the actual potential.
+   * @brief Getter for the matrix representation of the level-shifted potential.
    *
    * This function makes use of the RI approximation.
    *
@@ -66,7 +66,7 @@ class LevelshiftPotential : public Potential<SCFMode>,
   /**
    * @brief Geometry gradient contribution from this Potential.
    *
-   * @return The geometry gradient contribution resulting from this Potential.
+   * @return Throws a SerenityError, should never be called.
    */
 
   Eigen::MatrixXd getGeomGradients() override final;

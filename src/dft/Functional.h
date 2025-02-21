@@ -19,14 +19,22 @@
  */
 #ifndef FUNCTIONAL_H
 #define FUNCTIONAL_H
-/* Include Serenity Internal Headers */
-#include "dft/functionals/BasicFunctionals.h"
-#include "dft/functionals/CompositeFunctionals.h"
 /* Include Std and External Headers */
-#include <cassert>
 #include <vector>
 
 namespace Serenity {
+/* Forward Declarations */
+namespace BasicFunctionals {
+enum class BASIC_FUNCTIONALS;
+}
+namespace CompositeFunctionals {
+enum class CLASSES;
+}
+namespace CompositeFunctionals {
+enum class IMPLEMENTATIONS;
+}
+struct CUSTOMFUNCTIONAL;
+
 /**
  * @class Functional Functional.h
  * @brief A DFT functional in the way we typically think of it. Typically composed of BASIC_FUNCTIONALS.
@@ -40,7 +48,7 @@ class Functional {
    * @param hfExchangeRatio   The amount exact HF exchange to be added (1.0 = full HF exchange). In case of a
    *                          CAM style functional this parameter is often called alpha. Values other than 0.0
    *                          will mark the functional as a hybrid. Default 0.0.
-   * @param mp2CorrelRatio    The amount of MP2 correlation to be added. Values other than 0.0 will mark the
+   * @param hfCorrelRatio    The amount of MP2 correlation to be added. Values other than 0.0 will mark the
    *                          functional as a double-hybrid. Default 0.0.
    * @param lrExchangeRatio   The amount of long-range exchange (HF like) to be added into the evaluation of
    *                          the functional. In CAM type functionals this value is often called beta.
@@ -52,9 +60,15 @@ class Functional {
    * @param osScaling         The opposite spin scaling factor employed in double hybrid functionals. Default 1.0.
    */
   Functional(CompositeFunctionals::IMPLEMENTATIONS impl, const std::vector<BasicFunctionals::BASIC_FUNCTIONALS>& basicFunctionals,
-             const std::vector<double>& mixingFactors, double hfExchangeRatio = 0.0, double mp2CorrelRatio = 0.0,
+             const std::vector<double>& mixingFactors, double hfExchangeRatio = 0.0, double hfCorrelRatio = 0.0,
              double lrExchangeRatio = 0.0, double mu = 0.0, double ssScaling = 1.0, double osScaling = 1.0);
+  /// Copy constructor.
   Functional(const Functional&) = default;
+  /**
+   * @brief Constructor using a CUSTOMFUNCTIONAL object which contains all settings necessary to define a composite
+   * functional.
+   */
+  Functional(CUSTOMFUNCTIONAL customfunc);
   virtual ~Functional() = default;
   /**
    * @returns the underlying basic functionals which are used e.g. in calls to libraries.
@@ -147,6 +161,8 @@ class Functional {
   inline CompositeFunctionals::IMPLEMENTATIONS implementation() const {
     return _impl;
   }
+
+  void print();
 
  private:
   // Which wrappers can calculate this functional

@@ -80,7 +80,9 @@ DensityInitialGuessCalculator::calculateInitialGuess(std::shared_ptr<SystemContr
     std::shared_ptr<HCorePotential<Options::SCF_MODES::RESTRICTED>> hcore(
         new HCorePotential<Options::SCF_MODES::RESTRICTED>(systemController->getSharedPtr()));
     // XC Func
-    auto functional = resolveFunctional(systemController->getSettings().dft.functional);
+    auto functional = systemController->getSettings().customFunc.basicFunctionals.size()
+                          ? Functional(systemController->getSettings().customFunc)
+                          : resolveFunctional(systemController->getSettings().dft.functional);
     std::shared_ptr<FuncPotential<Options::SCF_MODES::RESTRICTED>> Vxc(new FuncPotential<Options::SCF_MODES::RESTRICTED>(
         systemController, dMatController, systemController->getGridController(), functional));
     // J

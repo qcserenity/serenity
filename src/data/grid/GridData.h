@@ -129,7 +129,7 @@ class GridData<Options::SCF_MODES::RESTRICTED> : public Eigen::VectorXd, public 
   }
   /**
    * @brief Difference between alpha and beta.
-   * @return Returns the difference of between alpha and beta (alpha-beta).
+   * @return Returns the difference between alpha and beta (alpha-beta).
    */
   inline GridData<RESTRICTED> difference() const {
     GridData<RESTRICTED> ret(*this);
@@ -162,14 +162,14 @@ class GridData<Options::SCF_MODES::RESTRICTED> : public Eigen::VectorXd, public 
    */
  public:
   // Operator overloads for other GridData objects
-  /// @brief Assignement operator.
+  /// @brief Assignment operator.
   inline GridData<RESTRICTED>& operator=(const GridData<RESTRICTED>& other) {
     if (other.getGridController())
       assert(other.getGridController() == _gridController);
     this->Base::operator=(other);
     return *this;
   }
-  /// @brief Move assignement operator.
+  /// @brief Move assignment operator.
   inline GridData<RESTRICTED>& operator=(GridData<RESTRICTED>&& other) {
     if (other.getGridController())
       assert(other.getGridController() == _gridController);
@@ -250,13 +250,13 @@ class GridData<Options::SCF_MODES::RESTRICTED> : public Eigen::VectorXd, public 
   }
 
   // Operator overloads for other Eigen3 objects
-  /// @brief Assignement operator for Eigen3 objects.
+  /// @brief Assignment operator for Eigen3 objects.
   template<typename OtherDerived>
   __attribute__((always_inline)) inline GridData<RESTRICTED>& operator=(const Eigen::MatrixBase<OtherDerived>& other) {
     this->Base::operator=(other);
     return *this;
   }
-  /// @brief Move assignement operator for Eigen3 objects.
+  /// @brief Move assignment operator for Eigen3 objects.
   template<typename OtherDerived>
   __attribute__((always_inline)) inline GridData<RESTRICTED>& operator=(Eigen::MatrixBase<OtherDerived>&& other) {
     this->Base::operator=(other);
@@ -273,7 +273,7 @@ class GridData<Options::SCF_MODES::RESTRICTED> : public Eigen::VectorXd, public 
     stream << Eigen::VectorXd(vector);
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::RESTRICTED;
   /// @brief The type
   typedef Eigen::VectorXd type;
@@ -339,7 +339,7 @@ class GridData<Options::SCF_MODES::UNRESTRICTED> : public ObjectSensitiveClass<G
     assert(orig.getGridController());
     assert(_gridController);
   }
-  /// @brief assignement operator
+  /// @brief assignment operator
   inline GridData<UNRESTRICTED>& operator=(const GridData<UNRESTRICTED>& orig) {
     this->alpha = orig.alpha;
     this->beta = orig.beta;
@@ -347,7 +347,7 @@ class GridData<Options::SCF_MODES::UNRESTRICTED> : public ObjectSensitiveClass<G
     this->_valid = orig.isValid();
     return *this;
   };
-  /// @brief move assignement operator
+  /// @brief move assignment operator
   inline GridData<UNRESTRICTED>& operator=(GridData<UNRESTRICTED>&& orig) {
     this->alpha = std::move(orig.alpha);
     this->beta = std::move(orig.beta);
@@ -509,7 +509,7 @@ class GridData<Options::SCF_MODES::UNRESTRICTED> : public ObjectSensitiveClass<G
     stream << matrix.alpha << "\n \n" << matrix.beta;
     return stream;
   }
-  /// @brief The SCF_MOODE of this matrix
+  /// @brief The SCF_MODE of this matrix
   static constexpr Options::SCF_MODES scf_mode = Options::SCF_MODES::UNRESTRICTED;
   /// @brief The type
   typedef GridData<Options::SCF_MODES::UNRESTRICTED> type;

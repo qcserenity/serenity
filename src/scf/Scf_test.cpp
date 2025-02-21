@@ -28,6 +28,13 @@
 #include <gtest/gtest.h>
 
 namespace Serenity {
+
+class ScfTest : public ::testing::Test {
+ protected:
+  static void TearDownTestCase() {
+    SystemController__TEST_SUPPLY::cleanUp();
+  }
+};
 //===================================
 //          RHF
 //===================================
@@ -35,7 +42,7 @@ namespace Serenity {
  * @test
  * @brief Restricted Hartree--Fock of H2 in a minimal basis using default settings
  */
-TEST(BasicSCFTests, H2_MinimalBasis_RHF) {
+TEST_F(ScfTest, H2_MinimalBasis_RHF) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
@@ -57,7 +64,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RHF) {
  * @test
  * @brief Restricted Hartree--Fock of H2 in a minimal basis using ADIIS.
  */
-TEST(BasicSCFTests, H2_MinimalBasis_RHF_ADIIS) {
+TEST_F(ScfTest, H2_MinimalBasis_RHF_ADIIS) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
@@ -81,7 +88,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RHF_ADIIS) {
  * @test
  * @brief Restricted Hartree--Fock of H2 in a minimal basis using ADIIS.
  */
-TEST(BasicSCFTests, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
+TEST_F(ScfTest, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.scf.useADIIS = true;
@@ -108,7 +115,7 @@ TEST(BasicSCFTests, H2O_WaterMonOne_MINBASIS_RHF_ADIIS) {
  * @test
  * @brief Unrestricted Hartree--Fock of H2 in a minimal basis using default settings
  */
-TEST(BasicSCFTests, H2_MinimalBasis_UHF) {
+TEST_F(ScfTest, H2_MinimalBasis_UHF) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.basis.densFitJ = Options::DENS_FITS::NONE;
@@ -134,7 +141,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UHF) {
  * @test
  * @brief H2 in a minimal basis, DFT, LDA functional (restricted) with RI
  */
-TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_RI) {
+TEST_F(ScfTest, H2_MinimalBasis_RKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
@@ -158,7 +165,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_RI) {
  * @test
  * @brief H2 in a minimal basis, DFT, LDA functional (restricted) without RI
  */
-TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_noRI) {
+TEST_F(ScfTest, H2_MinimalBasis_RKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
@@ -185,7 +192,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_RKS_LDA_noRI) {
  * @test
  * @brief H2 in a minimal basis, DFT, LDA functional (unrestricted) with RI
  */
-TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_RI) {
+TEST_F(ScfTest, H2_MinimalBasis_UKS_LDA_RI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
@@ -209,7 +216,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_RI) {
  * @test
  * @brief H2 in a minimal basis, DFT, LDA functional (unrestricted) without RI
  */
-TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_noRI) {
+TEST_F(ScfTest, H2_MinimalBasis_UKS_LDA_noRI) {
   Settings settings;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
   settings.dft.functional = CompositeFunctionals::XCFUNCTIONALS::LDA;
@@ -233,7 +240,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_UKS_LDA_noRI) {
  * @test
  * @brief H2 triplet in a minimal basis, DFT, LDA functional (unrestricted)
  */
-TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
+TEST_F(ScfTest, H2_MinimalBasis_LDA_Triplet) {
   Settings settings;
   settings.spin = 2;
   settings.method = Options::ELECTRONIC_STRUCTURE_THEORIES::DFT;
@@ -259,7 +266,7 @@ TEST(BasicSCFTests, H2_MinimalBasis_LDA_Triplet) {
  * @test
  * @brief Restricted Hartree--Fock of H2 in a minimal basis using 2e-4c integral caching.
  */
-TEST(BasicSCFTests, IntegralCaching) {
+TEST_F(ScfTest, IntegralCaching) {
   Settings settings;
   settings.basis.label = "STO-6G";
   settings.basis.intCondition = 1;

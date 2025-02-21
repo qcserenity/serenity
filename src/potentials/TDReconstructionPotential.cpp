@@ -33,7 +33,7 @@
 #include "data/grid/ScalarOperatorToMatrixAdder.h"
 #include "data/matrices/DensityMatrixController.h"
 #include "dft/functionals/CompositeFunctionals.h"
-#include "dft/functionals/wrappers/XCFun.h"
+#include "dft/functionals/FunctionalLibrary.h"
 #include "energies/EnergyContributions.h"
 #include "geometry/MolecularSurfaceController.h" //Enums
 #include "integrals/OneElectronIntegralController.h"
@@ -104,7 +104,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
   auto actSysGeom = activeSystem->getGeometry();
   auto actBasFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(128, 0.0, 2, actSysBasisController, superSystemGrid);
-  auto actOneEIntController = OneIntControllerFactory::getInstance().produce(activeSystem->getBasisController(), actSysGeom);
+  auto actOneEIntController = activeSystem->getOneElectronIntegralController();
   auto actDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(actBasFuncOnGridController, 0.0);
   const auto& actSysDensMat = activeSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix();
   auto actDensOnGrid = actDensOnGridCalc->calcDensityOnGrid(actSysDensMat);
@@ -119,7 +119,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
   auto supSysGeom = superSystem->getGeometry();
   auto supBasFuncOnGridController =
       BasisFunctionOnGridControllerFactory::produce(128, 0.0, 2, supSysBasisController, superSystemGrid);
-  auto supOneEIntController = OneIntControllerFactory::getInstance().produce(superSystem->getBasisController(), supSysGeom);
+  auto supOneEIntController = superSystem->getOneElectronIntegralController();
   auto supDensOnGridCalc = std::make_shared<DensityOnGridCalculator<SCFMode>>(supBasFuncOnGridController, 0.0);
   const auto& supSysDensMat = superSystem->template getElectronicStructure<SCFMode>()->getDensityMatrix();
   auto supDensOnGrid = supDensOnGridCalc->calcDensityOnGrid(supSysDensMat);
@@ -127,7 +127,9 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
   /*
    * Hybrid functional?
    */
-  auto functional = resolveFunctional(superSystem->getSettings().dft.functional);
+  auto functional = superSystem->getSettings().customFunc.basicFunctionals.size()
+                        ? Functional(superSystem->getSettings().customFunc)
+                        : resolveFunctional(superSystem->getSettings().dft.functional);
   double exc = _carterCycles != 0 ? -1.0 : functional.isHybrid() ? functional.getHfExchangeRatio() : -1.0;
 
   /*
@@ -282,9 +284,9 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
       auto densOnGridController = std::make_shared<DensityMatrixDensityOnGridController<SCFMode>>(
           supDensOnGridCalc, superSystem->template getElectronicStructure<SCFMode>()->getDensityMatrixController());
 
-      XCFun<SCFMode> xcFun(128);
+      FunctionalLibrary<SCFMode> flib(128);
       MatrixInBasis<SCFMode> tmp(this->_basis);
-      auto funcData = xcFun.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, densOnGridController);
+      auto funcData = flib.calcData(FUNCTIONAL_DATA_TYPE::GRADIENTS, functional, densOnGridController);
 
       if (functional.getFunctionalClass() == CompositeFunctionals::CLASSES::LDA) {
         scalarOpToMat.addScalarOperatorToMatrix(tmp, *funcData.dFdRho);
@@ -324,8 +326,7 @@ void TDReconstructionPotential<SCFMode>::calculatePotential() {
           Options::GRID_PURPOSES::DEFAULT);
     }
     else {
-      std::cout << "ERROR: None existing electronicStructureTheory requested." << std::endl;
-      assert(false);
+      throw SerenityError("Nonexistent electronicStructureTheory requested. Options are HF and DFT.");
     }
 
     auto envSystemZero = _envSystems[0].lock();

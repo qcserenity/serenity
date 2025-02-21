@@ -29,13 +29,13 @@
 #include "geometry/Atom.h"
 #include "geometry/Geometry.h"
 #include "integrals/OneElectronIntegralController.h" //Overlap integrals.
-#include "io/HDF5.h"                                 //Load from HDF5.
-#include "math/linearAlgebra/MatrixFunctions.h"      //Cholesky orthogonalization.
-#include "misc/SerenityError.h"                      //Errors.
-#include "misc/WarningTracker.h"                     //Warnings.
-#include "system/SystemController.h"                 //Access to system properties.
-/* Include Std and External Headers */
 #include "io/Eigen3HDF5.h"
+#include "io/HDF5.h"                            //Load from HDF5.
+#include "math/linearAlgebra/MatrixFunctions.h" //Cholesky orthogonalization.
+#include "misc/SerenityError.h"                 //Errors.
+#include "misc/WarningTracker.h"                //Warnings.
+#include "system/SystemController.h"            //Access to system properties.
+/* Include Std and External Headers */
 #include <algorithm> //Replace within a string.
 #include <fstream>   //input/output streams.
 
@@ -114,7 +114,8 @@ void OrbitalsIOTask<SCFMode>::run() {
     if (settings.fileFormat == Options::ORBITAL_FILE_TYPES::SERENITY) {
       std::string systemId = getSerenityIDFromFile();
       auto targetElectronicStructure = std::make_shared<ElectronicStructure<SCFMode>>(
-          settings.path + "/" + _system->getSystemName(), _system->getBasisController(), _system->getGeometry(), systemId);
+          settings.path + "/" + _system->getSystemName(), _system->getBasisController(), _system->getGeometry(),
+          _system->getExternalChargeController(), systemId);
       _system->template setElectronicStructure<SCFMode>(targetElectronicStructure);
       if (settings.resetCoreOrbitals)
         _system->template getActiveOrbitalController<SCFMode>()->setCoreOrbitalsByNumber(_system->getNCoreElectrons() / 2);
@@ -307,6 +308,9 @@ void OrbitalsIOTask<SCFMode>::writeMoldenOrbitals() {
   for_spin(coefficients, eigenvalues, nocc) {
     auto C = resortCoefficients(coefficients_spin);
     for (unsigned int i = 0; i < C.cols(); i++) {
+      if (eigenvalues_spin(i) == std::numeric_limits<double>::infinity()) {
+        continue;
+      }
       file << "Sym=  " << i + 1 << "a" << std::endl;
       file << "Ene= " << reformatNumber(eigenvalues_spin(i), "E") << std::endl;
       if (isAlpha) {

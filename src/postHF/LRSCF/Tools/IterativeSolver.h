@@ -173,12 +173,14 @@ class IterativeSolver {
     // Orthogonalization against all guess vectors
     for (unsigned iNew = 0; iNew < _correctionVectors[0].cols(); ++iNew) {
       for (unsigned iSet = 0; iSet < _nSets; ++iSet) {
+        // oldNorm is the norm of the correction vector before orthogonalization
         double oldNorm = _correctionVectors[iSet].col(iNew).norm();
         for (unsigned j = 0; j < _guessVectors[0].cols(); ++j) {
           double ij = _correctionVectors[iSet].col(iNew).dot(_guessVectors[iSet].col(j));
           double jj = _guessVectors[iSet].col(j).dot(_guessVectors[iSet].col(j));
           _correctionVectors[iSet].col(iNew) -= ij / jj * _guessVectors[iSet].col(j);
         }
+        // newNorm is the norm of the part of the correction vector that is orthogonal to all current guess vectors
         double newNorm = _correctionVectors[iSet].col(iNew).norm();
         norm(iSet) = _correctionVectors[iSet].col(iNew).norm() / oldNorm;
 

@@ -1,0 +1,26 @@
+\subsection{Task: Import Cavity}\label{sec:tasks:ImportCavityTask}
+This task loads a molecular surface of a given system with all necessary quantities in .h5 files.
+This will load the CavityData.h5 and a PCMChargesData.h5 file of a previous calculation, and in case \ttt{cavityFormation} in the PCM block is set to \ttt{true}, a VDWCavityData.h5 file will also need to be loaded.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task IMPORTCAVITYTASK
+  act water
+  cavityPath ..
+  vdwcavityPath ..
+  fdecavity false
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+\item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{IMPORTCAVITYTASK} and \ttt{IMPORTCAVITY}.
+\item [\texttt{activeSystems}]\hfill \\
+  The system to be equipped with a molecular surface.
+\item [\texttt{cavityPath}]\hfill \\
+  The file path of the CavityData.h5 file to be imported.
+\item [\texttt{vdwcavityPath}]\hfill \\
+  The file path of the vdwcavityData.h5 file to be imported. Needed in case you have \ttt{cavityFormation} set to \ttt{true} in the PCM block.
+\item [\texttt{fdecavity}]\hfill \\
+  Manual switch to toggle between importing a cavity for one system or a supersystem cavity for several subsystems. A supersystem cavity can be loaded for one system within this task, but will be applied to all systems as a supersystem cavityin subsequent relevant tasks such as Freeze-And-Thaw. \ttt{false} by default.
+\end{description}

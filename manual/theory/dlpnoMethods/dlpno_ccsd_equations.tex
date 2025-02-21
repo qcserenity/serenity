@@ -1,0 +1,156 @@
+\section{Domain-Based Local Pair Natural Orbital Coupled Cluster Equations}
+This text should document the implementation of Domain Localized Pair Natural Orbital (DLPNO) Coupled Cluster
+containing single and double substitutions (DLPNO-CCSD) with semi-canonical triple correction [DLPNO-CCSD(T$_0$)]
+in \textsc{Serenity}. This implementation was first presented in Ref.~(\cite{Bensberg2020}).
+
+DLPNO-CCSD is an approximation to the full canonical CCSD. However, since the PNOs used as a local virtual
+space will constitute the full set of canonical virtual orbitals, if all truncation thresholds approach zero,
+DLPNO-CCSD has to approach the canonical coupled cluster results in this limit (Note that approximations to
+the two electron integrals may influence the results on a different level).
+The same is only given for DLPNO-CCSD(T$_0$) if canonical occupied orbitals are used.
+If the orbitals are localized the triples correction may deviate.
+
+\subsection{DLPNO-CCSD Equations}
+The main task of the CCSD and the DLPNO-CCSD procedure is to calculate the coupled cluster amplitudes.
+This is done in an iterative procedure since the equations for the amplitudes are coupled.
+
+In the following, $i,j,k...$ will refer to internal orbitals, $a,b,c...$ to external orbitals, $\pmb{t}^i$
+are the single amplitudes of orbital $i$, and $\pmb{t}^{ij}$ the double amplitudes of pair $ij$. As usual,
+the Fock matrix is denoted by $\pmb{F}$, the exchange operator in matrix representation by
+${K}^{ij}_{ab}=(ia|jb)$, and the coulomb matrix by $J^{ij}_{ab}=(ij|ab)$. All integrals are given in $(11|22)$
+notation, where the indices $1$ and $2$ refer to the integration variables.
+
+The singles residual $R_{a}^{i}$ equations for substitution of the internal orbital $i$ with the external orbital
+$a$ are given by
+\begin{align}
+  \begin{split}
+    R_{a}^{i}  &= F_{ia}+\left(\pmb{\tilde{F}}^\dagger \pmb{t}^i\right)_a+G(\pmb{t_1})_{ia}-\sum_j \tilde{F}_{ij}t^j_a\\
+               & +\sum_{j} \left[(2\pmb{t}^{ij}-\pmb{t}^{ij\dagger})\pmb{\tilde{F}}_{j}\right]_a-\sum_{kjb} \tau_{ab}^{kj} \left(2(ik|jb)-(ij|kb)\right)\\
+               & +{\sum_{jbc}(jc|ab)(2\pmb{\tau}^{ij}-\pmb{\tau}^{ji})_{bc}}\\
+               & +\sum_{jb}\left(\tilde{F}_{jb}-2F_{jb}\right)t^i_bt^j_a,
+  \end{split}
+\end{align}
+and the equations for the doubles residuals $R^{ij}_{ab}$ are given by
+\begin{align}
+  \begin{split}
+    R^{ij}_{ab} &= K_{ab}^{ij} + K(\pmb{\tau}_{ij})_{ab}
+                + (\pmb{\tilde{\tilde{F}}}^\dagger{\pmb{t}^{ij}}+{\pmb{t}^{ij}}\pmb{\tilde{\tilde{F}}})_{ab}
+                -\sum_k (\tilde{\tilde{F}}_{jk}\pmb{t}^{ki\dagger}+\tilde{\tilde{F}}_{ik}\pmb{t}^{kj})_{ab}
+                \\&+\sum_{kl}\widetilde{(ik|jl)}\tau_{ab}^{kl}\\
+                &+{\sum_k \left[ (2\pmb{t}^{ki\dagger}-\pmb{t}^{ki}) \pmb{\tilde{K}}^{kj}+\pmb{\tilde{K}}^{ki\dagger}(2\pmb{t}^{kj}-\pmb{t}^{kj\dagger})\right]_{ab}}\\
+                &{-\sum_k \left(\frac{1}{2}\left[\pmb{t}^{ki}\pmb{J}^{kj}+\pmb{J}^{ki\dagger}\pmb{t}^{kj\dagger}\right]
+                +\pmb{t}^{kj} \pmb{J}^{ki} + \pmb{J}^{kj\dagger}\pmb{t}^{ki\dagger}\right)_{ab}}\\
+                &{ - \sum_k \left((jk|ia)t_b^k + (ik|jb)t_a^k \right) + {\sum_c (jb|ac)t_c^i + (ia|bc)t_c^j}}\\
+                &- \sum_k \left( \left(\pmb{K}^{ik}\pmb{t}^j\right)_at_b^k + \left(\pmb{K}^{jk}\pmb{t}^i\right)_b t_a^k
+                + \left(\pmb{J}^{ik}\pmb{t}^j\right)_b t_a^k + \left(\pmb{J}^{jk}\pmb{t}^i\right)_a t_b^k \right).
+  \end{split}
+\end{align}
+
+The ``dressed'' integrals and intermediates are given by
+\begin{align}
+  \pmb{\tau}^{ij} = \pmb{t}^{ij}+\pmb{t}^i\pmb{t}^{j\dagger},
+\end{align}
+\begin{align}
+  \tilde{F}_{ij} = F_{ij} + \sum_k \left\langle {(2\pmb{K}^{jk\dagger}-\pmb{K}^{jk})}\pmb{\tau}^{ik}\right\rangle,
+\end{align}
+\begin{align}
+  \pmb{\tilde{F}} = \pmb{F} - {\sum_{kl}\left(2\pmb{K}^{kl}-\pmb{K}^{kl\dagger}\right)\pmb{\tau}^{lk}},
+\end{align}
+\begin{align}
+  \pmb{\tilde{F}}_i = \pmb{F}_i + \sum_k\left(2\pmb{K}^{ik}-\pmb{K}^{ik\dagger}\right)\pmb{t}^k,
+\end{align}
+\begin{align}
+  \tilde{\tilde{F}}_{ij} = \tilde{F}_{ij} + G(\pmb{t_1})_{ij} + {\pmb{F}_j^\dagger \pmb{t}^i},
+\end{align}
+\begin{align}
+  \pmb{\tilde{\tilde{F}}} = \pmb{\tilde{F}} + \pmb{G(t_1)}-\sum_i{\pmb{F}_i \pmb{t}^{i\dagger}},
+\end{align}
+\begin{align}
+  G(\pmb{t_1})_{pq} = \sum_{jb} t_b^j \left[2(pq|jb)-(pj|qb)\right],
+\end{align}
+\begin{align}
+  K(\pmb{\tau^{ij}})_{ab} = \sum_{cd} \left((ac|bd) - \sum_k (kd|ac)t_b^k+(kc|bd)t^k_a \right)\tau^{ij}_{cd},
+\end{align}
+\begin{align}
+  \widetilde{(ik|jl)} = (ik|jl) + \left\langle \pmb{\tau}^{ij}\pmb{K}^{lk}\right\rangle+\sum_a (ki|la)t_a^j+(lj|ka)t_a^i,
+\end{align}
+\begin{align}
+  \begin{split}
+    \tilde{K}^{ij}_{ab} &=
+                         K^{ij}_{ab} + \sum_c (ia|bc)t_c^j-\frac{1}{2}\left(J^{ij}_{ab}+\sum_c(ab|ic)t_c^j\right)\\
+                        &+\sum_k \frac{1}{4}\left[(2\pmb{K}^{ik}-\pmb{K}^{ik\dagger})(2\pmb{t}^{kj}-\pmb{t}^{kj\dagger})\right]_{ab}\\
+                        &-\frac{1}{2}\left[ 2(ia|kj)-(ak|ij) \right]t^k_b+\left[ (2\pmb{K}^{ik}-\pmb{K}^{ik\dagger})\pmb{t}^j\pmb{t}^{k\dagger} \right]_{ab}
+  \end{split}
+\end{align}
+and
+\begin{align}
+  \tilde{J}^{ij}_{ab}=J^{ij}_{ab}+\sum_c (ab|ic)t^j_c-\sum_k \frac{1}{2}\left( \pmb{K}^{ki}\pmb{t}^{jk}\right)_{ab}+(ak|ij)t^k_b+\left(\pmb{K}^{ki}\pmb{t}^j\pmb{t}^{k\dagger}\right)_{ab}.
+\end{align}
+The operator $\langle~\rangle$ is evaluated as
+\begin{align}
+  \langle\pmb{AB}\rangle = \sum_{ab} A_{ab} B_{ba}.
+\end{align}
+
+Note that the sigma vector $G(\pmb{t_1})_{pq}$ can be written in atomic orbital basis in a Fock-matrix-like fashion
+as
+\begin{align}
+  \begin{split}
+    G(\pmb{t_1})_{pq} &= \sum_{jb} t_b^j \left[2(pq|jb)-(pj|qb)\right]\\
+                      &= \sum_{jb} t_b^j \sum_{\mu\nu} c_{\mu j} c_{\nu b} \left[ 2(pq|\mu\nu)-(p\mu|q\nu) \right]\\
+                      &= \sum_{\mu\nu} \underbrace{\sum_{jb} t_b^j c_{\mu j} c_{\nu b}}_{d_{\mu\nu}}
+                         \left[ 2(pq|\mu\nu)-(p\mu|q\nu) \right]\\
+                      &= \sum_{\mu\nu} d_{\mu\nu} \left[ 2(pq|\mu\nu)-(p\mu|q\nu) \right].
+  \end{split}
+  \label{eq:SigmaVectorAO}
+\end{align}
+Thus, it can be evaluated in the same way as sigma vectors in response calculations before transforming them to
+the molecular orbital basis. The sigma vector $G(\pmb{t_1})_{pq}$ is constructed as a matrix and transformed on
+the fly to the necessary basis ($G(\pmb{t_1})_{ij}$, $G(\pmb{t_1})_{ia}$ and $G(\pmb{t_1})_{ab}$).
+
+\subsection{Semi-Canonical Triples Correction}
+In the DLPNO-CCSD(T$_0$)~\cite{Riplinger2013a} approach, the contribution of the triples
+to the correlation energy is approximated in a semi-canonical fashion. This means that the same equations
+are used which would be valid for canonical orbitals. Note that this is, of course, not necessarily correct for
+local-coupled cluster. The triples correction is given by the equation of Rendell
+\emph{et al.}~\cite{Rendell1991}\ as
+\begin{align}
+  \begin{split}
+    \Delta E^{(T)} = \sum_{i\leq j\leq k} P_{ijk} \sum_{a\leq b\leq c }&
+      \left[ (Y_{abc}^{ijk}-2Z_{abc}^{ijk})(W_{abc}^{ijk}+W_{bca}^{ijk}+W_{cab}^{ijk}) \right. \\
+     &+ (Z_{abc}^{ijk}-2Y_{abc}^{ijk})({W_{acb}^{ijk}}+W_{bac}^{ijk}+W_{cba}^{ijk}) \\
+     &+ \left. 3X_{abc}^{ijk}\right]
+     /(\varepsilon_i+\varepsilon_j+\varepsilon_k-\varepsilon_a-\varepsilon_b-\varepsilon_c).
+  \end{split}
+\end{align}
+
+The intermediates $V$, $W$, $X$, $Y$, and $Z$ are given by
+\begin{align}
+  \begin{split}
+    W_{abc}^{ijk} &= \hat{P}^{abc}_{ijk} \left[ \sum_d t^{kj}_{cd}(ia|bd) -\sum_l t_{ab}^{il}(kc|jl) \right],\\
+    V_{abc}^{ijk} &= \left(W_{abc}^{ijk}+t_a^i K^{jk}_{bc} + t_b^j K_{ac}^{ik}+t_c^k K_{ab}^{ij} \right)/P_{abc}\\
+    X_{abc}^{ijk} &= W_{abc}^{ijk}V_{abc}^{ijk}+W_{acb}^{ijk}V_{acb}^{ijk}+W_{bac}^{ijk}V_{bac}^{ijk}
+                   +W_{bca}^{ijk}V_{bca}^{ijk}\\
+                  &+W_{cab}^{ijk}V_{cab}^{ijk}+W_{cba}^{ijk}V_{cba}^{ijk} \\
+    Y_{abc}^{ijk} &= V_{abc}^{ijk}+V_{bca}^{ijk}+V_{cab}^{ijk}\\
+    Z_{abc}^{ijk} &= V_{acb}^{ijk}+V_{bac}^{ijk}+V_{cba}^{ijk},
+  \end{split}
+\end{align}
+and the permutation operators/factors by
+\begin{align}
+  \begin{split}
+    P_{abc} &= 1+\delta_{ab}+\delta_{bc}\\
+    P_{ijk} &= 2-\delta_{ij}-\delta_{jk}\\
+    \hat{P}^{abc}_{ijk} {abc\choose ijk} &= {abc\choose ijk}+{acb\choose ikj}+{cab\choose kij}+{cba\choose kji}\\
+                                         &+ {bca\choose jki}+{bac\choose jik}.
+  \end{split}
+\end{align}
+The operator $\hat{P}^{abc}_{ijk}$ has to be understood as acting on a rank-six tensor with distinct indices $abc$
+and $ijk$ and producing the sum of the permutations within these index sets, as shown above.
+
+In local coupled cluster, the eigenvalues $\varepsilon_a$, which correspond to virtual functions, are substituted
+by the (pseudo) eigenvalues of the triple-natural orbitals of the triple $ijk$, and the eigenvalues
+corresponding to occupied orbitals $\varepsilon_i$ are substituted by the diagonal Fock-matrix elements
+$F_{ii}$ (and $F_{jj}$ and $F_{kk}$).
+
+The energy-correction increment for each triple $ijk$ can be calculated independently of all other triples, thus
+allowing for easy and efficient parallelization of the calculation.

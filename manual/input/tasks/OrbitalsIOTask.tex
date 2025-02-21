@@ -1,0 +1,46 @@
+\subsection{Task: Read/Write Orbitals to/from Disk}
+
+This task allows to read and write orbitals from and to (non)-Serenity output files.\newline
+Reading orbitals:
+\begin{itemize}
+  \item The ASCII-format for Turbomole is supported up to g functions.
+  \item The xml format for Molpro is supported up to g functions.
+  \item Molcas orbitals may be read up to arbitrary angular momentum.
+  \item Furthermore, the task may read orbital files from Serenity.
+\end{itemize}
+Writing orbitals:
+\begin{itemize}
+  \item The ASCII-format for Turbomole is supported up to g functions. If a non-standard energy convergence threshold is used in Turbomole, this has to be changed in the written files afterwards.
+  \item Molden files are supported up to g functions. Supports both spherical and cartesian harmonics.
+\end{itemize}
+Note that Serenity does not account for symmetry. Hence, the orbitals must be defined without any symmetry.
+\subsubsection{Example Input}
+\begin{lstlisting}
+ +task READ
+  act water
+  fileformat turbomole
+  path path/to/a/directory/containing/a/turbomole/ascii-mo-file
+ -task
+\end{lstlisting}
+
+\subsubsection{Basic Keywords}
+\begin{description}
+ \item [\texttt{name}]\hfill \\
+  Aliases for this task are \ttt{OrbitalsIOTask}, \ttt{ReadOrbs}, \ttt{Read}, \ttt{WriteOrbs}, \ttt{Write} and \ttt{IO}.
+ \item [\texttt{activeSystems}]\hfill \\
+  The system to which the orbitals should be read.
+ \item [\texttt{fileFormat}]\hfill \\
+  The file format to be expected by the task. Currently supported are the Turbomole ASCII-MO file format (\ttt{TURBOMOLE})
+  Molpro's xml format (\ttt{MOLPRO}), the native \textsc{Serenity} HDF5 file format (\ttt{Serenity}), the Molcas-HDF5 file
+  format (\ttt{Molcas}) and the \ttt{MOLDEN} file format. By default \ttt{TURBOMOLE}.
+ \item [\texttt{resetCoreOrbitals}]\hfill \\
+  If \texttt{fileFormat = SERENITY} and \ttt{true}, the core orbitals are reset to the core orbitals tabulated for the geometry. Otherwise, the core orbital
+  definition on disk is used. Note that this is always done for \texttt{fileFormat = TURBOMOLE}.
+ \item [\texttt{path}]\hfill \\
+  The path to the orbital files. Default is \ttt{"."}.
+ \item [\texttt{replaceInFile}]\hfill \\
+  If true, copies the original orbital file and replaces the coefficients in this file by Serenity's coefficients. (Only implemented for Molcas HDF5 files).
+  By default \ttt{false}.
+ \item [\texttt{write}]\hfill \\
+  If true, a file will be written instead of being read. By default \ttt{false}.
+\end{description}
