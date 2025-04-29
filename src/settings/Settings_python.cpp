@@ -70,7 +70,8 @@ void export_Settings(py::module& spy) {
       .def_readwrite("allowNotConverged", &SCF::allowNotConverged)
       .def_readwrite("rohf", &SCF::rohf)
       .def_readwrite("suhfLambda", &SCF::suhfLambda)
-      .def_readwrite("degeneracyThreshold", &SCF::degeneracyThreshold);
+      .def_readwrite("degeneracyThreshold", &SCF::degeneracyThreshold)
+      .def_readwrite("breakUnrestrictedSymmetry", &SCF::breakUnrestrictedSymmetry);
 
   py::class_<BASIS>(spy, "BasisSettings", "Basis settings, all set to their default values.")
       .def_readwrite("label", &BASIS::label)

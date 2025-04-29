@@ -110,17 +110,18 @@ struct SCF {
       allowNotConverged(false),
       rohf(Options::ROHF_TYPES::NONE),
       suhfLambda(0.01),
-      degeneracyThreshold(0.0) {
+      degeneracyThreshold(0.0),
+      breakUnrestrictedSymmetry(true) {
   }
 
  public:
   REFLECTABLE((Options::INITIAL_GUESSES)initialguess, (unsigned int)maxCycles, (unsigned int)writeRestart,
-              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping,
-              (double)seriesDampingStart, (double)seriesDampingEnd, (double)seriesDampingStep,
-              (double)seriesDampingInitialSteps, (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift,
-              (bool)useOffDiagLevelshift, (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError,
-              (unsigned int)diisMaxStore, (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS,
-              (bool)allowNotConverged, (Options::ROHF_TYPES)rohf, (double)suhfLambda, (double)degeneracyThreshold)
+              (double)energyThreshold, (double)rmsdThreshold, (Options::DAMPING_ALGORITHMS)damping, (double)seriesDampingStart,
+              (double)seriesDampingEnd, (double)seriesDampingStep, (double)seriesDampingInitialSteps,
+              (double)staticDampingFactor, (double)endDampErr, (bool)useLevelshift, (bool)useOffDiagLevelshift,
+              (double)minimumLevelshift, (unsigned int)diisFlush, (double)diisStartError, (unsigned int)diisMaxStore,
+              (double)diisThreshold, (double)canOrthThreshold, (bool)useADIIS, (bool)allowNotConverged,
+              (Options::ROHF_TYPES)rohf, (double)suhfLambda, (double)degeneracyThreshold, (bool)breakUnrestrictedSymmetry)
 };
 struct BASIS {
   BASIS()

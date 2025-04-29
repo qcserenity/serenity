@@ -70,6 +70,23 @@ TEST_F(GeometryTest, Constructors) {
   EXPECT_EQ("H", copy2.getAtomSymbols()[1]);
 }
 
+TEST_F(GeometryTest, notify) {
+  auto systemController = SystemController__TEST_SUPPLY::getSystemController(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+  auto originalGeometry = systemController->getGeometry();
+  auto atoms = originalGeometry->getAtoms();
+  {
+    Geometry newGeometry(atoms);
+    auto newAtoms = newGeometry.getAtoms();
+    for (unsigned int i = 0; i < atoms.size(); i++) {
+      EXPECT_EQ(newAtoms[i], atoms[i]);
+    }
+    atoms[0]->setX(1.0);
+  }
+  // Change a coordinate to trigger the notification cascade.
+  EXPECT_NO_THROW(atoms[0]->setX(1.0));
+  SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_MINBAS);
+}
+
 /**
  * @test
  * @brief Tests Geometry.h: atom symbols.

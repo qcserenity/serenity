@@ -98,7 +98,7 @@ void printRunStartInfo() {
    * FIXME works only for Linux
    */
   printSmallCaption("Program Info");
-  std::cout << "    Version           :   1.6.2" << std::endl;
+  std::cout << "    Version           :   1.6.3" << std::endl;
 
 #ifndef GIT_BRANCH
 #define GIT_BRANCH "UNKNOWN"
@@ -132,6 +132,11 @@ void printRunStartInfo() {
   std::cout << "    Libecpint (1.0.7) :\n  R. A. Shaw, J. G. Hill, J. Chem. Phys. 147, 074108 (2017); doi: "
                "10.1063/1.4986887\n"
             << std::endl;
+#ifdef SERENITY_USE_LAPLACE_MINIMAX
+  std::cout << "    Laplace-Minimax   :\n  B. Helmich-Paris, L. Visscher, J. Comput. Phys. 321 (2016) 927 - 931\n"
+               "  doi: 10.1016/j.jcp.2016.06.011\n"
+            << std::endl;
+#endif
 
   printSmallCaption("Program started");
   std::cout << "    Time              :   " << dateAndTime << std::endl;

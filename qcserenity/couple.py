@@ -25,10 +25,10 @@
 ##                                                                                          ##
 ## Usage:                                                                                   ##
 ## -------                                                                                  ##
-## python couple.py <N_subsystems> <sys1> <sys2> .. <sysN>                                  ##
-##                  <N_FDEcCouplings> <sys1#sys2> <sys2#sys3> ..                            ##
-##                  <N_TCCouplings> <sys1#sys3> <sys2#sys4> ..                              ##
-##                  <N_DDCouplings> <sys1#sys3> <sys2#sys4> ..                              ##
+## python couple.py -sys <sys1> <sys2> .. <sysN>                                            ##
+##                  -fdec <sys1#sys2> <sys2#sys3> ..                                        ##
+##                  -tc <sys1#sys3> <sys2#sys4> ..                                          ##
+##                  -dd <sys1#sys3> <sys2#sys4> ..                                          ##
 ##                                                                                          ##
 ## This script must be executed in the same folder all system folders are located in.       ##
 ##                                                                                          ##
@@ -58,12 +58,83 @@ def distance(atom1, atom2):
   x2, y2, z2 = atom2[0], atom2[1], atom2[2]
   return np.sqrt((x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2)
 
-def couple_excitations(args):
+# To parallelize, must define function to return coupling for one exciton pair.
+def getTCCoupling(ij: int) -> float:
+  # Coupling variable.
+  V = 0
+  # Identify subsystem indices and transition indices
+  i = ij // nEigen.sum()
+  j = ij % nEigen.sum()
+  I, J = 0, 0
+  iEigen, jEigen = 0, 0
+  n = 0
+  for sys in range(nSubsystems):
+    for exc in range(nEigen[sys]):
+      if (n == i):
+        I = sys
+        iEigen = exc
+      if (n == j):
+        J = sys
+        jEigen = exc
+      n += 1
+
+  # Evaluate sum for this exciton pair.
+  V = 0.0
+  for iAtom in range(nAtoms[I]):
+    for jAtom in range(nAtoms[J]):
+      V += charges[I][iAtom][3+iEigen] * charges[J][jAtom][3+jEigen] / distance(charges[I][iAtom], charges[J][jAtom])
+  return V
+
+# To parallelize, must define function to return coupling for one exciton pair.
+def getDDCoupling(ij):
+  # Coupling variable.
+  V = 0
+  # Identify subsystem indices and transition indices
+  i = ij // nEigen.sum()
+  j = ij % nEigen.sum()
+  I, J = 0, 0
+  iEigen, jEigen = 0, 0
+  n = 0
+  for sys in range(nSubsystems):
+    for exc in range(nEigen[sys]):
+      if (n == i):
+        I = sys
+        iEigen = exc
+      if (n == j):
+        J = sys
+        jEigen = exc
+      n += 1
+
+  # Get centers of both monomers.
+  R_I = np.array([0.0,0.0,0.0])
+  for iAtom in range(nAtoms[I]):
+    R_I += np.array(charges[I][iAtom][0:3])
+
+  R_J = np.array([0.0,0.0,0.0])
+  for jAtom in range(nAtoms[J]):
+    R_J += np.array(charges[J][jAtom][0:3])
+
+  R_I /= nAtoms[I]
+  R_J /= nAtoms[J]
+
+  # Get distance between monomers.
+  R = R_J - R_I
+
+  mu_i = np.array(spectra[I][1:4,iEigen])
+  mu_j = np.array(spectra[J][1:4,jEigen])
+
+  # Evaluate dipole-dipole coupling for this exciton pair.
+  V = np.dot(mu_i,mu_j) / np.linalg.norm(R)**3 - 3 * np.dot(mu_i,R) * np.dot(mu_j,R) / np.linalg.norm(R)**5
+  return V
+
+def couple_excitations(args: argparse.Namespace):
+  global nSubsystems, nEigen, nAtoms, charges, spectra
   start_time = time.time()
   all_time = time.time()
-  nSubsystems = args.n_subsystems
-  nFDECouplings = 0
-  nTCCouplings = 0
+  nSubsystems = len(args.systems)
+  nFDECouplings = len(args.FDEcCouplings)
+  nTCCouplings = len(args.TCCouplings)
+  nDDCouplings = len(args.DDCouplings)
   names = args.systems
   name_to_index = {}
   print("\n Number of systems      : ", nSubsystems)
@@ -78,7 +149,7 @@ def couple_excitations(args):
     name_to_index[nameI] = I
     pathI = nameI + "/"
     charges.append(np.loadtxt(pathI + nameI + ".transitioncharges.txt", dtype = float))
-    spectra.append(np.loadtxt(pathI + nameI + ".exspectrum.txt", dtype = float))
+    spectra.append(np.loadtxt(pathI + nameI + ".exspectrum.txt", dtype = float, skiprows=1))
     if (len(charges[I].shape) == 1):
       # Only one atom.
       nEigen[I] = charges[I].shape[0] - 3
@@ -117,8 +188,7 @@ def couple_excitations(args):
 
   # 2. Insert requested blocks with loaded sTDA couplings.
   couplings = []
-  if args.n_fdecouplings > 0:
-    nFDECouplings = args.n_fdecouplings
+  if nFDECouplings > 0:
     print("\n Including %5i TDA couplings from Serenity :"%(nFDECouplings))
     print(" ------------------------------------------------")
     for iCoupling in range(nFDECouplings):
@@ -155,42 +225,13 @@ def couple_excitations(args):
 
   start_time = time.time()
 
-  # To parallelize, must define function to return coupling for one exciton pair.
-  def getTCCoupling(ij):
-    # Coupling variable.
-    V = 0
-    # Identify subsystem indices and transition indices
-    i = ij // nEigen.sum()
-    j = ij % nEigen.sum()
-    I, J = 0, 0
-    iEigen, jEigen = 0, 0
-    n = 0
-    for sys in range(nSubsystems):
-      for exc in range(nEigen[sys]):
-        if (n == i):
-          I = sys
-          iEigen = exc
-        if (n == j):
-          J = sys
-          jEigen = exc
-        n += 1
-
-    # Evaluate sum for this exciton pair.
-    V = 0.0
-    for iAtom in range(nAtoms[I]):
-      for jAtom in range(nAtoms[J]):
-        V += charges[I][iAtom][3+iEigen] * charges[J][jAtom][3+jEigen] / distance(charges[I][iAtom], charges[J][jAtom])
-    
-    return V
-
   # Determine composite index of coupling to be calculated.
-  TC_coupling_incides = []
-  if args.n_tccouplings > 0:
-    nTCCouplings = args.n_tccouplings
+  TC_coupling_indices = []
+  if nTCCouplings > 0:
     print("\n Including %5i transition-charge couplings :"%(nTCCouplings))
     print(" ------------------------------------------------")
     for iCoupling in range(nTCCouplings):
-      coupling = args.tccouplings[iCoupling].split("#")
+      coupling = args.TCCouplings[iCoupling].split("#")
       I = name_to_index[coupling[0]]
       J = name_to_index[coupling[1]]
       
@@ -203,21 +244,21 @@ def couple_excitations(args):
         for jEigen in range(nEigen[J]):
           i = nEigen[0:I].sum() + iEigen
           j = nEigen[0:J].sum() + jEigen
-          TC_coupling_incides.append(i * nEigen.sum() + j)
+          TC_coupling_indices.append(i * nEigen.sum() + j)
   else:
     print(" No transition-charge couplings will be included.")
 
-  print("\n Number of TC couplings to be calculated : ", len(TC_coupling_incides))
+  print("\n Number of TC couplings to be calculated : ", len(TC_coupling_indices))
 
   # Calculate couplings.
   TC_coupling_values = []
   with Pool(processes=n_threads) as pool:
-      TC_coupling_values = pool.map(getTCCoupling, TC_coupling_incides)
+      TC_coupling_values = pool.map(getTCCoupling, TC_coupling_indices)
 
   # Distribute couplings.
-  for iCoupl in range(len(TC_coupling_incides)):
+  for iCoupl in range(len(TC_coupling_indices)):
     V = TC_coupling_values[iCoupl]
-    ij = TC_coupling_incides[iCoupl]
+    ij = TC_coupling_indices[iCoupl]
     i = ij // nEigen.sum()
     j = ij % nEigen.sum()
     
@@ -231,57 +272,13 @@ def couple_excitations(args):
   #########################
   start_time = time.time()
 
-  # To parallelize, must define function to return coupling for one exciton pair.
-  def getDDCoupling(ij):
-    # Coupling variable.
-    V = 0
-    # Identify subsystem indices and transition indices
-    i = ij // nEigen.sum()
-    j = ij % nEigen.sum()
-    I, J = 0, 0
-    iEigen, jEigen = 0, 0
-    n = 0
-    for sys in range(nSubsystems):
-      for exc in range(nEigen[sys]):
-        if (n == i):
-          I = sys
-          iEigen = exc
-        if (n == j):
-          J = sys
-          jEigen = exc
-        n += 1
-    
-    # Get centers of both monomers.
-    R_I = np.array([0.0,0.0,0.0])
-    for iAtom in range(nAtoms[I]):
-      R_I += np.array(charges[I][iAtom][0:3])
-
-    R_J = np.array([0.0,0.0,0.0])
-    for jAtom in range(nAtoms[J]):
-      R_J += np.array(charges[J][jAtom][0:3])
-
-    R_I /= nAtoms[I]
-    R_J /= nAtoms[J]
-
-    # Get distance between monomers.
-    R = R_J - R_I
-
-    mu_i = np.array(spectra[I][1:4,iEigen])
-    mu_j = np.array(spectra[J][1:4,jEigen])
-
-    # Evaluate dipole-dipole coupling for this exciton pair.
-    V = np.dot(mu_i,mu_j) / np.linalg.norm(R)**3 - 3 * np.dot(mu_i,R) * np.dot(mu_j,R) / np.linalg.norm(R)**5
-    
-    return V
-
   # Determine composite index of coupling to be calculated.
-  DD_coupling_incides = []
-  if args.n_ddcouplings > 0:
-    nDDCouplings = args.n_ddcouplings
+  DD_coupling_indices = []
+  if nDDCouplings > 0:
     print("\n Including %5i dipole-dipole couplings :"%(nDDCouplings))
     print(" ------------------------------------------------")
     for iCoupling in range(nDDCouplings):
-      coupling = args.ddcouplings[iCoupling].split("#")
+      coupling = args.DDCouplings[iCoupling].split("#")
       I = name_to_index[coupling[0]]
       J = name_to_index[coupling[1]]
       
@@ -294,21 +291,21 @@ def couple_excitations(args):
         for jEigen in range(nEigen[J]):
           i = nEigen[0:I].sum() + iEigen
           j = nEigen[0:J].sum() + jEigen
-          DD_coupling_incides.append(i * nEigen.sum() + j)
+          DD_coupling_indices.append(i * nEigen.sum() + j)
   else:
     print(" No dipole-dipole couplings will be included.")
 
-  print("\n Number of dipole-dipole couplings to be calculated : ", len(DD_coupling_incides))
+  print("\n Number of dipole-dipole couplings to be calculated : ", len(DD_coupling_indices))
 
   # Calculate couplings.
   DD_coupling_values = []
   with Pool(processes=n_threads) as pool:
-      DD_coupling_values = pool.map(getDDCoupling, DD_coupling_incides)
+      DD_coupling_values = pool.map(getDDCoupling, DD_coupling_indices)
 
   # Distribute couplings.
-  for iCoupl in range(len(DD_coupling_incides)):
+  for iCoupl in range(len(DD_coupling_indices)):
     V = DD_coupling_values[iCoupl]
-    ij = DD_coupling_incides[iCoupl]
+    ij = DD_coupling_indices[iCoupl]
     i = ij // nEigen.sum()
     j = ij % nEigen.sum()
     
@@ -333,14 +330,14 @@ def couple_excitations(args):
 
   print(" Calculating transition moments ...")
   # Calculate coupled transition moments.
-  len = np.zeros((3, nEigen.sum()))
+  lenGauge = np.zeros((3, nEigen.sum()))
   vel = np.zeros((3, nEigen.sum()))
   mag = np.zeros((3, nEigen.sum()))
 
   iStart = 0
   for I in range(nSubsystems):
     nEigenI = spectra[I].shape[1]
-    len += spectra[I][1: 4] @ eigenvectors[iStart:iStart + nEigenI]
+    lenGauge += spectra[I][1: 4] @ eigenvectors[iStart:iStart + nEigenI]
     vel += spectra[I][4: 7] @ eigenvectors[iStart:iStart + nEigenI]
     mag += spectra[I][7:10] @ eigenvectors[iStart:iStart + nEigenI]
     iStart += nEigenI
@@ -353,10 +350,10 @@ def couple_excitations(args):
   for iEigen in range(nEigen.sum()):
     # Here we do not take care of complex algebra so a -1 needs to be included 
     # where only one operator is imaginary.
-    S_ll.append(np.outer(len[:, iEigen], len[:, iEigen]))
-    S_lv.append(np.outer(-1.0 * len[:, iEigen], vel[:, iEigen]))
+    S_ll.append(np.outer(lenGauge[:, iEigen], lenGauge[:, iEigen]))
+    S_lv.append(np.outer(-1.0 * lenGauge[:, iEigen], vel[:, iEigen]))
     S_vv.append(np.outer(vel[:, iEigen], vel[:, iEigen]))
-    S_lm.append(np.outer(-1.0 * AU_TO_CGS * len[:, iEigen], mag[:, iEigen]))
+    S_lm.append(np.outer(-1.0 * AU_TO_CGS * lenGauge[:, iEigen], mag[:, iEigen]))
     S_vm.append(np.outer(AU_TO_CGS * vel[:, iEigen], mag[:, iEigen]))
 
     U, S, Vt = np.linalg.svd(S_lv[iEigen])
@@ -459,25 +456,29 @@ def couple_excitations(args):
   print(" All done. Have a nice day!")
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Couple excitations based on transition charges.")
-    parser.add_argument("N_subsystems", type=int, help="Number of subsystems")
-    parser.add_argument("subsystems", nargs='+', help="List of subsystem names")
-    parser.add_argument("N_FDEcCouplings", type=int, help="Number of FDEc couplings")
-    parser.add_argument("FDEcCouplings", nargs='+', help="List of FDEc couplings in the format sys1#sys2")
-    parser.add_argument("N_TCCouplings", type=int, help="Number of TC couplings")
-    parser.add_argument("TCCouplings", nargs='+', help="List of TC couplings in the format sys1#sys3")
-    parser.add_argument("N_DDCouplings", type=int, help="Number of DD couplings")
-    parser.add_argument("DDCouplings", nargs='+', help="List of DD couplings in the format sys1#sys3")
+    parser = argparse.ArgumentParser(description=f'''
+This script accepts Löwdin transition charges of an arbitrary number of subsystems and excitations computed beforehand and couples those excitations based on the transition charges.
+Analytical couplings (FDEc) and simple dipole--dipole couplings based on the transition dipole moments can also be included.
+This script must be executed in the same folder all system folders are located in.
+
+    IMPORTANT:
+    In all (FDEu) tasks, set the transitionCharges keyword to true.
+    in all (FDEc) tasks for FDEc couplings, set partialresponseConstruction keyword to true.
+    Otherwise, this script will fail because it won't be able to find everything it needs.''', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("-sys", "--systems", dest="systems", nargs='+', help="List of subsystem names", type=str, required=True)
+    parser.add_argument("-fdec", "--FDEcCouplings", dest="FDEcCouplings", nargs='+', help="List of FDEc couplings in the format sys1#sys2", default=[])
+    parser.add_argument("-tc", "--TCCouplings", dest="TCCouplings", nargs='+', help="List of transition charge (TC) couplings in the format sys1#sys3", default=[])
+    parser.add_argument("-dd", "--DDCouplings", dest="DDCouplings", nargs='+', help="List of dipole-dipole (DD) couplings in the format sys1#sys3", default=[])
     return parser.parse_args()
 
 def main():
     args = parse_arguments()
 
     # Print parsed arguments for debugging
-    print(f"N_subsystems: {args.N_subsystems}")
-    print(f"N_FDEcCouplings: {args.N_FDEcCouplings}")
-    print(f"N_TCCouplings: {args.N_TCCouplings}")
-    print(f"N_DDCouplings: {args.N_DDCouplings}")
+    print(f"N_subsystems: {len(args.systems)}")
+    print(f"N_FDEcCouplings: {len(args.FDEcCouplings)}")
+    print(f"N_TCCouplings: {len(args.TCCouplings)}")
+    print(f"N_DDCouplings: {len(args.DDCouplings)}")
     
     couple_excitations(args)
 

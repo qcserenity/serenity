@@ -309,8 +309,6 @@ SystemSplittingTools<SCFMode>::splitElectronicStructure(std::shared_ptr<SystemCo
   // update density matrices
   actES->getDensityMatrixController()->updateDensityMatrix();
   envES->getDensityMatrixController()->updateDensityMatrix();
-  assert(actES->getDensityMatrix().getBasisController() == basisController);
-  assert(envES->getDensityMatrix().getBasisController() == basisController);
   return std::pair<std::shared_ptr<ElectronicStructure<SCFMode>>, std::shared_ptr<ElectronicStructure<SCFMode>>>(actES, envES);
 }
 

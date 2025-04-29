@@ -20,9 +20,9 @@ manual/SerenityUserManual.log
 manual/SerenityUserManual.bcf
 manual/tmp
 manual/*xdv
-manual/*synctex.gz
-manual/*fls
-manual/*fdb_latexmk
+manual/**/*synctex.gz
+manual/**/*fls
+manual/**/*fdb_latexmk
 manual/*blg
 manual/*bbl
 manual/*blx.bib

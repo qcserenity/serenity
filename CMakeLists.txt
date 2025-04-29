@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 project(serenity
-        VERSION 1.6.2
+        VERSION 1.6.3
         DESCRIPTION "Serenity: A subsystem quantum chemistry program."
 	LANGUAGES CXX)
 

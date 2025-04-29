@@ -21,8 +21,13 @@
 /* Include Class Header*/
 #include "postHF/LRSCF/Tools/NonlinearEigenvalueSolver.h"
 /* Include Serenity Internal Headers */
+#include "io/Filesystem.h"
+#include "math/linearAlgebra/MatrixFunctions.h"
 #include "misc/WarningTracker.h"
 #include "parameters/Constants.h"
+/* Include Std and External Headers */
+#include <fstream>
+#include <iomanip>
 
 namespace Serenity {
 
@@ -246,6 +251,23 @@ void NonlinearEigenvalueSolver::iteratePreopt() {
       printf("\n");
     }
     printf("\n");
+
+    Eigen::MatrixXd metricInverseSqrt = pseudoInversSqrt_Sym(metricMatrix);
+    Eigen::MatrixXd couplingMatrix = metricInverseSqrt * subspaceMatrix * metricInverseSqrt;
+    printSmallCaption("Coupling Matrix / eV");
+    for (unsigned iEigen = 0; iEigen < _nEigen; ++iEigen) {
+      printf(" ");
+      for (unsigned jEigen = 0; jEigen < _nEigen; ++jEigen) {
+        printf("%12.3e", couplingMatrix(iEigen, jEigen) * HARTREE_TO_EV);
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    makePath("tmp");
+    std::ofstream file("tmp/CC2CouplingMatrix.txt");
+    file << std::scientific << std::setprecision(16) << couplingMatrix;
+    file.close();
 
     _eigenvectors.colwise().normalize();
     _eigenvalues = _newEigenvalues;

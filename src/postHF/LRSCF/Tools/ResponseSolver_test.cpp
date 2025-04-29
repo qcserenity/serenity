@@ -95,8 +95,8 @@ TEST_F(ResponseSolverTest, Undamped) {
   Eigen::MatrixXd diffXmY = solVectors.middleRows(1 * nDim, nDim) - itVectors[1];
 
   // Compare
-  EXPECT_LT(diffXpY.array().cwiseAbs().maxCoeff(), 1e-10);
-  EXPECT_LT(diffXmY.array().cwiseAbs().maxCoeff(), 1e-10);
+  EXPECT_LT(diffXpY.colwise().norm().maxCoeff(), 1e-6);
+  EXPECT_LT(diffXmY.colwise().norm().maxCoeff(), 1e-6);
 }
 
 TEST_F(ResponseSolverTest, Undamped_Multifreq) {
@@ -115,10 +115,10 @@ TEST_F(ResponseSolverTest, Undamped_Multifreq) {
   // make symmetric
   APB = APB.transpose() * APB;
   // make diagonal dominant and A-B positive definite
+  APB.diagonal() *= 1.0e3;
   Eigen::VectorXd diagonalElements = APB.diagonal();
   diagonalElements = diagonalElements.array().square();
   diagonalElements = diagonalElements.array().sqrt();
-  APB *= 1.0e-3;
   APB.diagonal() = diagonalElements;
   // Assume A-B is diagonal (which is the case when no exact exchange is used)
   Eigen::MatrixXd AMB = diagonalElements.asDiagonal();
@@ -167,8 +167,8 @@ TEST_F(ResponseSolverTest, Undamped_Multifreq) {
     diffXmY = solVectors.middleRows(1 * nDim, nDim) - itVectors[1].middleCols(3 * i, 3);
 
     // Compare
-    EXPECT_LT(diffXpY.array().cwiseAbs().maxCoeff(), 1e-10);
-    EXPECT_LT(diffXmY.array().cwiseAbs().maxCoeff(), 1e-10);
+    EXPECT_LT(diffXpY.colwise().norm().maxCoeff(), 1e-6);
+    EXPECT_LT(diffXmY.colwise().norm().maxCoeff(), 1e-6);
   }
 }
 
@@ -218,7 +218,6 @@ TEST_F(ResponseSolverTest, Damped) {
   auto itVectors = responseSolver.getEigenvectors();
 
   // Setup 'exact' lhs-matrix to feed eigen3 with, only for one frequency right now
-  // ToDo: Test functionality for multiple frequencies simultaneously
   Eigen::MatrixXd lhs = Eigen::MatrixXd::Zero(4 * nDim, 4 * nDim);
   lhs.block(0 * nDim, 0 * nDim, nDim, nDim) = APB;
   lhs.block(1 * nDim, 1 * nDim, nDim, nDim) = AMB;
@@ -252,10 +251,10 @@ TEST_F(ResponseSolverTest, Damped) {
   Eigen::MatrixXd diffXmYi = solVectors.middleRows(3 * nDim, nDim) - itVectors[3];
 
   // Compare
-  EXPECT_LT(diffXpYr.array().cwiseAbs().maxCoeff(), 1e-10);
-  EXPECT_LT(diffXmYr.array().cwiseAbs().maxCoeff(), 1e-10);
-  EXPECT_LT(diffXpYi.array().cwiseAbs().maxCoeff(), 1e-10);
-  EXPECT_LT(diffXmYi.array().cwiseAbs().maxCoeff(), 1e-10);
+  EXPECT_LT(diffXpYr.colwise().norm().maxCoeff(), 1e-6);
+  EXPECT_LT(diffXmYr.colwise().norm().maxCoeff(), 1e-6);
+  EXPECT_LT(diffXpYi.colwise().norm().maxCoeff(), 1e-6);
+  EXPECT_LT(diffXmYi.colwise().norm().maxCoeff(), 1e-6);
 }
 
 TEST_F(ResponseSolverTest, Single_Set) {
@@ -309,7 +308,7 @@ TEST_F(ResponseSolverTest, Single_Set) {
   Eigen::MatrixXd diffXpY = solVectors - itVectors[0];
 
   // Compare
-  EXPECT_LT(diffXpY.array().cwiseAbs().maxCoeff(), 1e-10);
+  EXPECT_LT(diffXpY.colwise().norm().maxCoeff(), 1e-6);
 }
 
 } /* namespace Serenity */

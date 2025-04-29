@@ -139,7 +139,9 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91) {
 
   std::remove((act->getSystemName() + "_" + env->getSystemName() + "_FDEcMatrix.txt").c_str());
   std::remove((act->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
+  std::remove((act->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
   std::remove((env->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
+  std::remove((env->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env);
   SystemController__TEST_SUPPLY::cleanUp();
@@ -247,8 +249,10 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_LLP91_customFunctional) {
   EXPECT_LE(maxDiffPartialConstructionVSregular, 1e-8);
 
   std::remove((act->getSystemName() + "_" + env->getSystemName() + "_FDEcMatrix.txt").c_str());
+  std::remove((act->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
   std::remove((act->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
   std::remove((env->getSystemName() + "/" + act->getSystemName() + ".TDACoupling.txt").c_str());
+  std::remove((env->getSystemName() + "/" + env->getSystemName() + ".TDACoupling.txt").c_str());
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ACTIVE_FDE_BP86);
   SystemController__TEST_SUPPLY::forget(TEST_SYSTEM_CONTROLLERS::H2_def2_SVP_ENVIRONMENT_FDE_BP86);
   SystemController__TEST_SUPPLY::cleanUp();
@@ -899,25 +903,25 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Huzinaga_OrbitalSelection) {
 
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossALE({act, act_LE}, {env});
   vossALE.settings.excludeProjection = true;
-  vossALE.settings.localizedVirtualorbitals = true;
+  vossALE.settings.localizedVirtualOrbitals = true;
   vossALE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossALE.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   vossALE.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossACT({act, act_CT}, {env});
   vossACT.settings.excludeProjection = true;
-  vossACT.settings.localizedEnvVirtualorbitals = true;
+  vossACT.settings.localizedEnvVirtualOrbitals = true;
   vossACT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossACT.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   vossACT.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossBLE({env, env_LE}, {act});
   vossBLE.settings.excludeProjection = true;
-  vossBLE.settings.localizedVirtualorbitals = true;
+  vossBLE.settings.localizedVirtualOrbitals = true;
   vossBLE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossBLE.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   vossBLE.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossBCT({env, env_CT}, {act});
   vossBCT.settings.excludeProjection = true;
-  vossBCT.settings.localizedEnvVirtualorbitals = true;
+  vossBCT.settings.localizedEnvVirtualOrbitals = true;
   vossBCT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossBCT.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::HUZINAGA;
   vossBCT.run();
@@ -1032,25 +1036,25 @@ TEST_F(LRSCFTaskSubTDDFTTest, sTDA_Level_OrbitalSelection) {
 
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossALE({act, act_LE}, {env});
   vossALE.settings.excludeProjection = true;
-  vossALE.settings.localizedVirtualorbitals = true;
+  vossALE.settings.localizedVirtualOrbitals = true;
   vossALE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossALE.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossALE.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossACT({act, act_CT}, {env});
   vossACT.settings.excludeProjection = true;
-  vossACT.settings.localizedEnvVirtualorbitals = true;
+  vossACT.settings.localizedEnvVirtualOrbitals = true;
   vossACT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossACT.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossACT.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossBLE({env, env_LE}, {act});
   vossBLE.settings.excludeProjection = true;
-  vossBLE.settings.localizedVirtualorbitals = true;
+  vossBLE.settings.localizedVirtualOrbitals = true;
   vossBLE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossBLE.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossBLE.run();
   VirtualOrbitalSpaceSelectionTask<Options::SCF_MODES::RESTRICTED> vossBCT({env, env_CT}, {act});
   vossBCT.settings.excludeProjection = true;
-  vossBCT.settings.localizedEnvVirtualorbitals = true;
+  vossBCT.settings.localizedEnvVirtualOrbitals = true;
   vossBCT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossBCT.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossBCT.run();
@@ -1386,7 +1390,7 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding_VirtualOrbLocalizati
   lrscfA.run();
 
   VirtualOrbitalSpaceSelectionTask<SPIN> vossALE({act1, act1_LE}, {act2, env3});
-  vossALE.settings.localizedVirtualorbitals = true;
+  vossALE.settings.localizedVirtualOrbitals = true;
   vossALE.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossALE.settings.embedding.embeddingModeList = {Options::KIN_EMBEDDING_MODES::LEVELSHIFT,
                                                   Options::KIN_EMBEDDING_MODES::LEVELSHIFT,
@@ -1397,7 +1401,7 @@ TEST_F(LRSCFTaskSubTDDFTTest, uTDDFT_Exact_Approx_Embedding_VirtualOrbLocalizati
   vossALE.run();
 
   VirtualOrbitalSpaceSelectionTask<SPIN> vossACT({act1, act1_CT}, {act2, env3});
-  vossACT.settings.localizedEnvVirtualorbitals = true;
+  vossACT.settings.localizedEnvVirtualOrbitals = true;
   vossACT.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossACT.settings.embedding.embeddingModeList = {Options::KIN_EMBEDDING_MODES::LEVELSHIFT,
                                                   Options::KIN_EMBEDDING_MODES::LEVELSHIFT,

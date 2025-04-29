@@ -90,13 +90,19 @@ class FXDTask : public Task {
   std::vector<Eigen::MatrixXd> _fed_matrix;
   Eigen::MatrixXd _fxd_matrix;
 
+  ///@brief The excitation energies and couplings that result from a multistate FED-FCD calculation
+  Eigen::MatrixXd _ctAD, _ctDA, _leA, _leD, _ctADxctDA, _leAxleD, _ctADxleA, _ctDAxleA, _ctADxleD, _ctDAxleD;
+
+  std::map<std::pair<unsigned int, unsigned int>, Eigen::Vector4d> _fedResults;
+  std::map<std::pair<unsigned int, unsigned int>, Eigen::Vector4d> _fcdResults;
+
   /**
    * @brief The settings/keywords for the FXDTask:
    *       - loadType:           Loading type of the excitation vectors (isolated,uncoupled,coupled)
    *       - donoratoms:         Atom indices defining the donor fragment(starting from 0!)
-   *       - acceptoratoms:      Atom indices defininf the acceptor atoms (starting from donoratoms+1)
-   *       - FED:                Decides if a FED calculation should be performed
-   *       - FCD:                Decides if a FCD calculation should be performed
+   *       - acceptoratoms:      Atom indices defining the acceptor atoms (starting from donoratoms+1)
+   *       - FED:                Decides if an FED calculation should be performed
+   *       - FCD:                Decides if an FCD calculation should be performed
    *       - multistateFXD:      Decides if a multistate FED-FCD calculation should be performed
    *       - states:             The number of states used for the multistate FED-FCD calculation
    *       - loewdinpopulation:  The population analyis used to construct the FED and FCD matrices (Loewdin/Mulliken)

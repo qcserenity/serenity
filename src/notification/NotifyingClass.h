@@ -90,6 +90,22 @@ class NotifyingClass {
     _sensitiveObjects.push_back(newSensitiveObject);
   }
 
+  /**
+   * @brief Manually remove an element from the sensitive objects list.
+   * @param newSensitiveObject The pointer to the element to be removed.
+   */
+  void removeSensitiveObject(std::weak_ptr<ObjectSensitiveClass<T>> newSensitiveObject) const {
+    unsigned int index = 0;
+    for (index = 0; index < _sensitiveObjects.size(); index++) {
+      if (!_sensitiveObjects[index].expired() && _sensitiveObjects[index].lock() == newSensitiveObject.lock()) {
+        break;
+      }
+    }
+    if (index < _sensitiveObjects.size()) {
+      _sensitiveObjects.erase(_sensitiveObjects.begin() + index);
+    }
+  }
+
  protected:
   /**
    * @brief Informs all attached objects about changes in this object.
@@ -97,9 +113,11 @@ class NotifyingClass {
    * This method must be called whenever a (critical) change happens inside your class.
    */
   void notifyObjects() const {
-    for (const auto& object : _sensitiveObjects)
-      if (!object.expired())
+    for (const auto& object : _sensitiveObjects) {
+      if (!object.expired()) {
         object.lock()->notify();
+      }
+    }
   }
 
  private:

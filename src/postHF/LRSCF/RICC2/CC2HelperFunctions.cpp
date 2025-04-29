@@ -472,6 +472,67 @@ void CC2HelperFunctions<SCFMode>::calculatePerturbedDensities(
   }
 }
 
+template<Options::SCF_MODES SCFMode>
+void CC2HelperFunctions<SCFMode>::storeCouplingMatrix(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
+                                                      const std::vector<Options::LRSCF_TYPE> referenceLoadingType) {
+  Eigen::VectorXi nEigenSub = Eigen::VectorXi::Zero(lrscf.size());
+  const auto& settings = lrscf[0]->getLRSCFSettings();
+  int uncoupledSubspaceCounter = 0;
+  for (unsigned I = 0; I < lrscf.size(); I++) {
+    if (settings.uncoupledSubspace.empty())
+      nEigenSub[I] = (*lrscf[I]->getExcitationVectors(referenceLoadingType[I]))[0].cols();
+    else {
+      nEigenSub[I] = settings.uncoupledSubspace[uncoupledSubspaceCounter];
+      uncoupledSubspaceCounter += settings.uncoupledSubspace[uncoupledSubspaceCounter] + 1;
+    }
+  }
+
+  // read in tmp file
+  Eigen::MatrixXd couplingMatrix(nEigenSub.sum(), nEigenSub.sum());
+  std::ifstream file("tmp/CC2CouplingMatrix.txt");
+  if (file.is_open()) {
+    int iRow = 0;
+    std::string line;
+    while (std::getline(file, line)) {
+      std::istringstream iss(line);
+      for (unsigned iCol = 0; iCol < couplingMatrix.cols(); iCol++) {
+        iss >> couplingMatrix(iRow, iCol);
+      }
+      iRow++;
+    }
+  }
+  else {
+    throw SerenityError("Could not open file tmp/CC2CouplingMatrix.txt");
+  }
+  file.close();
+  std::remove("tmp/CC2CouplingMatrix.txt");
+  std::remove("tmp");
+
+  for (unsigned I = 0; I < lrscf.size(); I++) {
+    unsigned offI = nEigenSub.segment(0, I).sum();
+    unsigned nEigenI = nEigenSub[I];
+    std::string pathI = lrscf[I]->getSys()->getSystemPath();
+    std::string nameI = lrscf[I]->getSys()->getSystemName();
+    // include the J = I case to get the diagonal blocks as well
+    for (unsigned J = I; J < lrscf.size(); ++J) {
+      unsigned offJ = nEigenSub.segment(0, J).sum();
+      unsigned nEigenJ = nEigenSub[J];
+      std::string pathJ = lrscf[J]->getSys()->getSystemPath();
+      std::string nameJ = lrscf[J]->getSys()->getSystemName();
+
+      std::ofstream fileI(pathI + nameJ + ".CC2Coupling.txt");
+      std::ofstream fileJ(pathJ + nameI + ".CC2Coupling.txt");
+      Eigen::MatrixXd IJ_block = couplingMatrix.block(offI, offJ, nEigenI, nEigenJ);
+      Eigen::MatrixXd JI_block = IJ_block.transpose();
+
+      fileI << std::scientific << std::setprecision(16) << IJ_block;
+      fileJ << std::scientific << std::setprecision(16) << JI_block;
+      fileI.close();
+      fileJ.close();
+    }
+  }
+}
+
 template class CC2HelperFunctions<Options::SCF_MODES::RESTRICTED>;
 template class CC2HelperFunctions<Options::SCF_MODES::UNRESTRICTED>;
 } /* namespace Serenity */

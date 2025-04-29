@@ -457,7 +457,12 @@ SpinPolarizedData<SCFMode, unsigned int> OrbitalController<SCFMode>::getNCoreOrb
   const auto& orbitalFlags = this->getOrbitalFlags();
   SpinPolarizedData<SCFMode, unsigned int> nCoreOrbitals(0);
   for_spin(orbitalFlags, nCoreOrbitals) {
-    nCoreOrbitals_spin = orbitalFlags_spin.sum();
+    nCoreOrbitals_spin = 0;
+    for (unsigned int i = 0; i < orbitalFlags_spin.size(); ++i) {
+      if (orbitalFlags_spin[i] == 1) {
+        nCoreOrbitals_spin += 1;
+      }
+    }
   };
   return nCoreOrbitals;
 }
@@ -765,11 +770,11 @@ OrbitalController<SCFMode>::getValenceOrbitalIndices(SpinPolarizedData<SCFMode, 
   const auto& coreOrbitals = this->getOrbitalFlags();
   for_spin(nOcc, valenceRange, coreRange, coreOrbitals) {
     for (unsigned int iOcc = 0; iOcc < nOcc_spin; ++iOcc) {
-      if (!coreOrbitals_spin[iOcc]) {
-        valenceRange_spin.push_back(iOcc);
+      if (coreOrbitals_spin[iOcc]) {
+        coreRange_spin.push_back(iOcc);
       }
       else {
-        coreRange_spin.push_back(iOcc);
+        valenceRange_spin.push_back(iOcc);
       }
     } // for iOcc
   };  // for spin

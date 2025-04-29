@@ -43,7 +43,7 @@ using H5File = H5::H5File;
  * @brief A controller which controls a vector which can partially be stored
  *        on disk or memory. The vector is divided into fragments which can be
  *        identified via their label. The fragments can be altered in length of
- *        content if one desires. Additional segments can be added ad any time.
+ *        content if one desires. Additional segments can be added at any time.
  */
 class VectorOnDiskStorageController {
  public:

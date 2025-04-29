@@ -242,10 +242,12 @@ void TopDownStaticEmbeddingTask<SCFMode>::setUpSubsystems(
     quasiRestrictedOrbitalsTask.run();
   }
   // Localization
-  LocalizationTask localizationTask(supersystem);
-  localizationTask.settings = loc;
-  localizationTask.settings.separateSOMOs = useQuasiRestrictedOrbitals || loc.separateSOMOs;
-  localizationTask.run();
+  if (split.systemPartitioning != Options::SYSTEM_SPLITTING_ALGORITHM::SPADE) {
+    LocalizationTask localizationTask(supersystem);
+    localizationTask.settings = loc;
+    localizationTask.settings.separateSOMOs = useQuasiRestrictedOrbitals || loc.separateSOMOs;
+    localizationTask.run();
+  }
 
   // Splitting
   SystemSplittingTask<SCFMode> splittingTask(supersystem, allSystems);

@@ -278,6 +278,10 @@ threshold, the third derivatives of the xc functional (sometimes called the hype
    */
   const std::vector<std::tuple<double, Eigen::Matrix3d, Eigen::Matrix3d, Eigen::Matrix3d, Eigen::Matrix3d>>& getProperties();
 
+  const std::vector<Options::LRSCF_TYPE>& getReferenceLoadingType() const {
+    return _referenceLoadingType;
+  }
+
  private:
   // Active systems.
   std::vector<std::shared_ptr<SystemController>> _act;

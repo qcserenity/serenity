@@ -14,7 +14,7 @@ function(import_laplace_minimax)
     message(STATUS "Using ifort for laplace-minimax.")
     set(LAPLACE_COMPILER "ifort")
   else ()
-    message(STATUS "Compiler family used is not support for laplace-minimax. Will try to compile and link with gfortran.")
+    message(STATUS "Compiler family used is not supported for laplace-minimax. Will try to compile and link with gfortran.")
     set(LAPLACE_COMPILER "gfortran")
   endif()
 

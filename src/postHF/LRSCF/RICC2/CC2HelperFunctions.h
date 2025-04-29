@@ -219,6 +219,16 @@ class CC2HelperFunctions {
                                           std::shared_ptr<std::vector<Eigen::MatrixXd>>& perturbeddensities,
                                           const std::vector<double>& frequencies, Eigen::MatrixXd& dipoles,
                                           std::vector<Eigen::Matrix3d>& Fdipdip, std::vector<Eigen::Matrix3d>& Fdipmag);
+
+  /**
+   * @brief Stores the coupling blocks in the system folders.
+   *
+   * @param lrscf The LRSCF controllers.
+   * @param referenceLoadingType Denotes for each LRSCF controller whether isolated, uncoupled or coupled excitation
+   * vectors were used.
+   */
+  static void storeCouplingMatrix(const std::vector<std::shared_ptr<LRSCFController<SCFMode>>>& lrscf,
+                                  const std::vector<Options::LRSCF_TYPE> referenceLoadingType);
 };
 
 } /* namespace Serenity */

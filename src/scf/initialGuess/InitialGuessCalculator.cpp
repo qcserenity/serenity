@@ -23,6 +23,7 @@
 #include "data/ElectronicStructure.h"
 #include "data/OrbitalController.h"
 #include "data/matrices/CoefficientMatrix.h"
+#include "settings/Settings.h"
 #include "system/SystemController.h"
 /* Include Std and External Headers */
 #include <cmath>
@@ -92,7 +93,8 @@ UnrestrictedFromRestrictedGuess::calculateInitialGuess(std::shared_ptr<SystemCon
   unrestrictedEigenvalues.beta = restrictedEigenvalues;
   unrestrictedOrbs->updateOrbitals(unrestrictedCoefficients, unrestrictedEigenvalues);
   // Scramble orbitals
-  this->scrambleOrbitals(*unrestrictedOrbs, systemController->getNElectrons<Options::SCF_MODES::UNRESTRICTED>());
+  if (systemController->getSettings().scf.breakUnrestrictedSymmetry)
+    this->scrambleOrbitals(*unrestrictedOrbs, systemController->getNElectrons<Options::SCF_MODES::UNRESTRICTED>());
   std::unique_ptr<ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>> urES(
       new ElectronicStructure<Options::SCF_MODES::UNRESTRICTED>(
           unrestrictedOrbs, restrictedESguess->getOneElectronIntegralController(),

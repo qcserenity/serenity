@@ -37,6 +37,15 @@
 
 namespace Serenity {
 
+Geometry::~Geometry() {
+  // Remove the geometry from the atom's sensitive objects to ensure that the list remains nice and short.
+  // Furthermore, the `expired()` function of std::weak_ptr appears to have trouble detecting that the underlying
+  // object was destroyed in some cases, leading to a segmentation fault.
+  for (const auto& atom : _atoms) {
+    atom->removeSensitiveObject(this->_self);
+  }
+}
+
 Geometry::Geometry(std::vector<std::shared_ptr<Atom>> atoms)
   : _atoms(atoms),
     _minX(std::numeric_limits<double>::max()),

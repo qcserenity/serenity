@@ -8,7 +8,7 @@ Selects, manipulates or localizes a specific virtual orbital space for a subsyst
   act ALE
   env B
   excludeprojection true
-  localizedVirtualorbitals true
+  localizedVirtualOrbitals true
 -task
 \end{lstlisting}
 \subsubsection{Basic Keywords}
@@ -25,9 +25,9 @@ Selects, manipulates or localizes a specific virtual orbital space for a subsyst
   Select canonical virtual orbitals located on the active subsystem based on a modified overlap criterion. The default is \ttt{0.0}. This requires two active systems. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
   \item[\texttt{envCanonicalVirtuals}]\hfill\\
   Select canonical virtual orbitals located on the environment subsystems based on a modified overlap criterion. The default is \ttt{0.0}. This requires two active systems. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
-  \item[\texttt{localizedVirtualorbitals}]\hfill\\
+  \item[\texttt{localizedVirtualOrbitals}]\hfill\\
   Performs a localization of the virtual orbitals and selects the virtual orbitals located on the subsystem. The default is \ttt{false}. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
-  \item[\texttt{localizedEnvVirtualorbitals}]\hfill\\
+  \item[\texttt{localizedEnvVirtualOrbitals}]\hfill\\
   Performs a localization of the virtual orbitals and selects the virtual orbitals located on the subsystem. The default is \ttt{false}. The first active system is the system with the initial virtual orbital space and the second system is the system to which the new virtual orbitals are written to. This keyword should be used for projection-based embedding calculations.
 \end{description}
 \subsubsection{Advanced Keywords}

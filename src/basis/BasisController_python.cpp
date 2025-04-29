@@ -28,5 +28,10 @@ namespace py = pybind11;
 using namespace Serenity;
 
 void export_BasisController(py::module& spy) {
-  py::class_<BasisController, std::shared_ptr<BasisController>>(spy, "BasisController");
+  py::class_<BasisController, std::shared_ptr<BasisController>>(spy, "BasisController")
+      .def("getBasisString", &BasisController::getBasisString)
+      .def("getNBasisFunctions", &BasisController::getNBasisFunctions)
+      .def("getNBasisFunctionsCartesian", &BasisController::getNBasisFunctionsCartesian)
+      .def("getNBasisFunctionsSpherical", &BasisController::getNBasisFunctionsSpherical)
+      .def("getReducedNBasisFunctions", &BasisController::getReducedNBasisFunctions);
 }

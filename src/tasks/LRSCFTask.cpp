@@ -492,6 +492,9 @@ void LRSCFTask<SCFMode>::run() {
 
   if (eigenvectors) {
     restart.storeConvergedSolution(eigenvectors, eigenvalues);
+    if (type == Options::LRSCF_TYPE::COUPLED && !isNotCC2 && !settings.fullFDEc) {
+      CC2HelperFunctions<SCFMode>::storeCouplingMatrix(_lrscf, _referenceLoadingType);
+    }
   }
   if (solutionvectors && isNotCC2) {
     restart.storeConvergedResponse(solutionvectors,

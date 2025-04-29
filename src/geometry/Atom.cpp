@@ -120,9 +120,11 @@ AtomGrid* Atom::getGrid(const std::string label) {
 
 void Atom::setX(const double x) {
   this->at(0) = x;
-  for (auto& basis : _associatedBasis)
-    for (auto& basisFunction : basis.second)
+  for (auto& basis : _associatedBasis) {
+    for (auto& basisFunction : basis.second) {
       basisFunction->setX(x);
+    }
+  }
   _gradientsUpToDate = false;
   if (_corePotential) {
     _corePotential->setPos(this->getX(), this->getY(), this->getZ());
@@ -132,9 +134,11 @@ void Atom::setX(const double x) {
 
 void Atom::setY(const double y) {
   this->at(1) = y;
-  for (auto& basis : _associatedBasis)
-    for (auto& basisFunction : basis.second)
+  for (auto& basis : _associatedBasis) {
+    for (auto& basisFunction : basis.second) {
       basisFunction->setY(y);
+    }
+  }
   _gradientsUpToDate = false;
   if (_corePotential) {
     _corePotential->setPos(this->getX(), this->getY(), this->getZ());
@@ -144,9 +148,11 @@ void Atom::setY(const double y) {
 
 void Atom::setZ(const double z) {
   this->at(2) = z;
-  for (auto& basis : _associatedBasis)
-    for (auto& basisFunction : basis.second)
+  for (auto& basis : _associatedBasis) {
+    for (auto& basisFunction : basis.second) {
       basisFunction->setZ(z);
+    }
+  }
   _gradientsUpToDate = false;
   if (_corePotential) {
     _corePotential->setPos(this->getX(), this->getY(), this->getZ());
@@ -155,15 +161,15 @@ void Atom::setZ(const double z) {
 }
 
 void Atom::addToX(double add_to_x) {
-  setX(this->at(0) + add_to_x);
+  setX(this->getX() + add_to_x);
 }
 
 void Atom::addToY(double add_to_y) {
-  setY(this->at(1) + add_to_y);
+  setY(this->getY() + add_to_y);
 }
 
 void Atom::addToZ(double add_to_z) {
-  setZ(this->at(2) + add_to_z);
+  setZ(this->getZ() + add_to_z);
 }
 
 std::shared_ptr<libecpint::ECP> Atom::getCorePotential() const {
@@ -190,7 +196,7 @@ void Atom::addBasis(std::pair<std::string, std::vector<std::shared_ptr<Shell>>> 
   // TODO it may look logical to execute the notifyObjects() here, however,
   // this is currently not possible, since this would happen during basis
   // construction. At the current moment Serenity expects that the basis
-  // set is built in one go without any notifys deleting it mid construction.
+  // set is built in one go without any notifies deleting it mid construction.
   // notifyObjects();
 }
 

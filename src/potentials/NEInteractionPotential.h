@@ -34,7 +34,7 @@ class SystemController;
 /**
  * @class NEInteractionPotential NEInteractionPotential.h
  * @brief The attraction potential between electrons in a given
- *        basis and sets of nucleii.
+ *        basis and sets of nuclei.
  */
 template<Options::SCF_MODES SCFMode>
 class NEInteractionPotential : public Potential<SCFMode>, public ObjectSensitiveClass<Atom> {
@@ -86,9 +86,7 @@ class NEInteractionPotential : public Potential<SCFMode>, public ObjectSensitive
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final {
-    _potential = nullptr;
-  };
+  void notify() final;
 
  private:
   ///@brief The active systems controller.

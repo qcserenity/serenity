@@ -147,7 +147,7 @@ TEST_F(VirtualOrbitalSpaceSelectionTaskTest, rVirtualOrbitalLocalization) {
 
   VirtualOrbitalSpaceSelectionTask<MODE> vossA({act, act2}, {env});
   vossA.settings.excludeProjection = true;
-  vossA.settings.localizedVirtualorbitals = true;
+  vossA.settings.localizedVirtualOrbitals = true;
   vossA.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossA.run();
@@ -196,7 +196,7 @@ TEST_F(VirtualOrbitalSpaceSelectionTaskTest, uVirtualOrbitalLocalization) {
 
   VirtualOrbitalSpaceSelectionTask<MODE> vossA({act, act2}, {env});
   vossA.settings.excludeProjection = true;
-  vossA.settings.localizedVirtualorbitals = true;
+  vossA.settings.localizedVirtualOrbitals = true;
   vossA.settings.embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::LEVELSHIFT;
   vossA.settings.embedding.naddXCFunc = CompositeFunctionals::XCFUNCTIONALS::BP86;
   vossA.run();

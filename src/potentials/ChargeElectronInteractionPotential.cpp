@@ -166,6 +166,11 @@ Eigen::MatrixXd ChargeElectronInteractionPotential<SCFMode>::getGeomGradients() 
       "Gradients for Charge Electron Interaction not implemented yet. Use full CoulombInteractionPotential");
 }
 
+template<Options::SCF_MODES SCFMode>
+void ChargeElectronInteractionPotential<SCFMode>::notify() {
+  _potential = nullptr;
+};
+
 template class ChargeElectronInteractionPotential<Options::SCF_MODES::RESTRICTED>;
 template class ChargeElectronInteractionPotential<Options::SCF_MODES::UNRESTRICTED>;
 

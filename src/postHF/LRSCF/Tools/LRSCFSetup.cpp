@@ -325,17 +325,21 @@ LRSCFSetup<SCFMode>::setupFDEcTransformation(Eigen::VectorXd& eigenvalues, const
 
       (*eigenvectors)[0].block(iCountRows - R_I.rows(), iCountCols - R_I.cols(), R_I.rows(), R_I.cols()) = R_I;
       (*eigenvectors)[1].block(iCountRows - L_I.rows(), iCountCols - L_I.cols(), L_I.rows(), L_I.cols()) = L_I;
-      // Todo: Add this for the uncoupled subspace.
       eigenvalues.segment(iCountCols - R_I.cols(), eigenvalues_I.size()) = eigenvalues_I;
     }
     else {
       iCountRows += R_I.rows();
       unsigned nStates = settings.uncoupledSubspace[iStart];
+      // this skips the entry giving the number of states
       iStart += 1;
+      // nStates is subsystem-specific
       for (unsigned iState = 0; iState < nStates; ++iState) {
+        // list in the input is 1-based, while the internal index is 0-based
         unsigned index = settings.uncoupledSubspace[iStart + iState] - 1;
         (*eigenvectors)[0].block(iCountRows - R_I.rows(), iCountCols, R_I.rows(), 1) = R_I.col(index);
         (*eigenvectors)[1].block(iCountRows - L_I.rows(), iCountCols, L_I.rows(), 1) = L_I.col(index);
+        // iCountCols goes from 0 to nExcPrev, while index can be anything lower than nEigen of the previous LRSCFTasks
+        eigenvalues(iCountCols) = eigenvalues_I(index);
         iCountCols += 1;
       }
       iStart += nStates;

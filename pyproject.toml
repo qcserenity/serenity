@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qcserenity"
-version = "1.6.2"
+version = "1.6.3"
 authors = [
   { name="University of Muenster, Neugebauer Group", email="serenity@uni-muenster.de" }
 ]
@@ -28,12 +28,19 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Development Status :: 5 - Production/Stable"
 ]
-dependencies = ["numpy"]
+dependencies = ["numpy", "mkl"]
 
 [project.optional-dependencies]
 plotting = ["matplotlib"]
 heatmap = ["ase", "scipy"]
 visualization = ["py3Dmol", "ipywidgets"]
+all = [
+  "matplotlib",
+  "ase",
+  "scipy",
+  "py3Dmol",
+  "ipywidgets"
+]
 
 [project.urls]
 Homepage = "https://github.com/qcserenity/serenity"
@@ -47,9 +54,10 @@ messages.after-failure = """
 """
 build.verbose = true
 logging.level = "INFO"
-build-dir = "/project/build"
+build-dir = "serenity-wheel/build"
 sdist.include = ["dev/templates/*"]
 wheel.exclude = ["bin/**", "include/**", "lib/**", "lib64/*", "share/cmake/**", "share/libecpint/**", "share/libint/**"]
+wheel.license-files = ["LICENSE", "mkl/*", "eigen/COPYING.MPL2", "eigen/COPYING.LGPL", "libxc/*", "xcfun/*", "ecpint/*", "libint/*", "gtest/*", "laplace-minimax/*"]
 
 [tool.scikit-build.cmake.define]
 SERENITY_PYTHON_BINDINGS = true
@@ -58,17 +66,21 @@ SERENITY_USAGE_FROM_SOURCE = false
 SERENITY_USE_LAPLACE_MINIMAX = true
 HDF5_ROOT="/usr/local/h5"
 BUILD_SHARED_LIBS = true
+MKL_ROOT = "/opt/intel/oneapi/mkl/2024.2"
 
 [tool.cibuildwheel]
 build-verbosity = 1
 # 3.7 is the minimum python version supported by scikit-build-core
 build = ["cp37-*", "cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+# build = ["cp312-*"]
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.linux]
-# install eigen3, blas, lapack, boost and hdf5 
+# install boost, hdf5, eigen and mkl, and get license files from dependencies
+# that are automatically downloaded during the cmake process
+# (tool.scikit-build.wheel.license-files seem to be evaluated before the build)
 before-all = """
-  yum install -y eigen3-devel wget tar bzip2 lapack-devel
+  yum install -y wget tar bzip2
   wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2
   tar --bzip2 -xf boost_1_66_0.tar.bz2
   cd boost_1_66_0
@@ -82,13 +94,38 @@ before-all = """
   make -j 8
   make install -j 8
   cd ..
+  git clone https://gitlab.com/libeigen/eigen.git
+  cd eigen && git checkout 3.4.0 && cmake -S . -B build && cmake --build build --target install && cd ..
+  tee > /tmp/oneAPI.repo << EOF
+[oneAPI]
+name=Intel® oneAPI repository
+baseurl=https://yum.repos.intel.com/oneapi
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+EOF
+  mv /tmp/oneAPI.repo /etc/yum.repos.d
+  yum install -y intel-oneapi-mkl-devel-2024.2
+  mkdir -p mkl ecpint eigen gtest laplace-minimax libint libxc xcfun
+  curl -o ecpint/CITATION https://raw.githubusercontent.com/robashaw/libecpint/refs/tags/v1.0.7/CITATION
+  curl -o ecpint/LICENSE https://raw.githubusercontent.com/robashaw/libecpint/refs/tags/v1.0.7/LICENSE
+  curl -o gtest/LICENSE https://raw.githubusercontent.com/google/googletest/refs/tags/v1.13.0/LICENSE
+  curl -o laplace-minimax/LICENSE https://raw.githubusercontent.com/bhelmichparis/laplace-minimax/55414f3f28b89ffa602ecb1f12e5645a998a2206/LICENSE
+  curl -o laplace-minimax/README.md https://raw.githubusercontent.com/bhelmichparis/laplace-minimax/55414f3f28b89ffa602ecb1f12e5645a998a2206/README.md
+  curl -o libint/LICENSE https://raw.githubusercontent.com/evaleev/libint/refs/tags/v2.7.0-beta.6/LICENSE
+  curl -o libxc/COPYING https://gitlab.com/libxc/libxc/-/raw/6.1.0/COPYING?ref_type=tags&inline=false
+  curl -o libxc/CITATION https://gitlab.com/libxc/libxc/-/raw/6.1.0/CITATION?ref_type=tags&inline=false
+  cp /opt/intel/oneapi/mkl/2024.2/share/doc/mkl/licensing/license.txt mkl/
+  curl -o xcfun/LICENSE.md https://raw.githubusercontent.com/qcserenity/xcfun/refs/heads/master/LICENSE.md
 """
 archs = ["x86_64"]
-# set LD_LIBRARY_PATH for serenity, xcfun and hdf5
+# set LD_LIBRARY_PATH for serenity, xcfun, hdf5 and mkl
 repair-wheel-command = """
-ls /project/qcserenity
+ls serenity-wheel/build/lib
 echo $SERENITY_USAGE_FROM_SOURCE
-export LD_LIBRARY_PATH=/project/build/lib64:/usr/local/h5/lib:/project/lib:/project/build/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/lib64:/project/serenity-wheel/build/lib64:/usr/local/h5/lib:/project/lib:/project/serenity-wheel/build/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/intel/oneapi/mkl/2024.2/lib/intel64:$LD_LIBRARY_PATH
 auditwheel repair -w {dest_dir} {wheel}
 """
 # only build CPython and not PyPy

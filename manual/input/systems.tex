@@ -151,6 +151,8 @@ All settings available pertaining the SCF and its convergence are given in this 
     Use the A-DIIS procedure \cite{hu2010} at the beginning of the SCF. Default is \ttt{false}. This interpolation scheme
     includes an energy minimization criterion into the Fock matrix update. The A-DIIS is supposed to be stable even for a
     bad initial guess. The A-DIIS is turned off automatically when the DIIS procedure starts.
+    \item [\texttt{breakUnrestrictedSymmetry}]\hfill\\
+    Defaults to \ttt{true} and breaks the symmetry of $\alpha$ and $\beta$ orbitals in an unrestricted initial guess if their number is identical.
  \end{description}
 
 \subsection{Basis Block}\label{sec:system:basis}

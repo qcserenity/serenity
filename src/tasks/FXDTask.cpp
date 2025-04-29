@@ -106,6 +106,10 @@ void FXDTask<SCFMode>::run() {
           double denominator = sqrt(pow(delta_da_nn - delta_da_mm, 2) + 4.0 * pow(delta_da_nm, 2));
           coupling = (numerator / denominator) * HARTREE_TO_EV;
         }
+        Eigen::Vector4d temp;
+        temp << fed_matrix[0](n, m), fed_matrix[1](n, m), delta_da_nm, coupling;
+        _fedResults.insert(std::make_pair(std::make_pair(n + 1, m + 1), temp));
+        _fedResults.insert(std::make_pair(std::make_pair(m + 1, n + 1), temp));
         printf("  %3i  %3i   %10.6f  %10.6f  %10.6f    %10.6f\n", n + 1, m + 1, fed_matrix[0](n, m),
                fed_matrix[1](n, m), delta_da_nm, coupling);
       }
@@ -131,6 +135,10 @@ void FXDTask<SCFMode>::run() {
           double denominator = sqrt(pow(delta_da_nn - delta_da_mm, 2) + 4.0 * pow(delta_da_nm, 2));
           coupling = (numerator / denominator) * HARTREE_TO_EV;
         }
+        Eigen::Vector4d temp;
+        temp << fcd_matrix[0](n, m), fcd_matrix[1](n, m), delta_da_nm, coupling;
+        _fcdResults.insert(std::make_pair(std::make_pair(n + 1, m + 1), temp));
+        _fcdResults.insert(std::make_pair(std::make_pair(m + 1, n + 1), temp));
         printf("  %3i  %3i   %10.6f  %10.6f  %10.6f    %10.6f\n", n + 1, m + 1, fcd_matrix[0](n, m),
                fcd_matrix[1](n, m), delta_da_nm, coupling);
       }
@@ -279,6 +287,7 @@ void FXDTask<SCFMode>::run() {
       printf("\n ------------------ CT(A->D) --------------------- \n");
       printf("     State        energy(eV)       \n");
       printf(" --------------------------------------------------\n");
+      _ctAD = transformed.diagonal().segment(0, CT1_counter) * HARTREE_TO_EV;
       for (unsigned int i = 0; i < CT1_counter; i++) {
         printf("     %3i        %10.6f \n", i + 1, transformed(i, i) * HARTREE_TO_EV);
       }
@@ -288,6 +297,7 @@ void FXDTask<SCFMode>::run() {
       printf("\n ------------------ CT(D->A) --------------------- \n");
       printf("     State        energy(eV)       \n");
       printf(" -------------------------------------------------\n");
+      _ctDA = transformed.diagonal().segment(CT1_counter, CT2_counter) * HARTREE_TO_EV;
       for (unsigned int i = 0; i < CT2_counter; i++) {
         printf("     %3i        %10.6f \n", i + 1, transformed(CT1_counter + i, CT1_counter + i) * HARTREE_TO_EV);
       }
@@ -297,6 +307,7 @@ void FXDTask<SCFMode>::run() {
       printf("\n ------------------ LE(A*) --------------------- \n");
       printf("     State        energy(eV)       \n");
       printf(" -----------------------------------------------\n");
+      _leA = transformed.diagonal().segment(combined_CT_block, LE1_counter) * HARTREE_TO_EV;
       for (unsigned int i = 0; i < LE1_counter; i++) {
         printf("     %3i        %10.6f \n", i + 1, transformed(combined_CT_block + i, combined_CT_block + i) * HARTREE_TO_EV);
       }
@@ -306,6 +317,7 @@ void FXDTask<SCFMode>::run() {
       printf("\n ------------------ LE(D*) --------------------- \n");
       printf("     State        energy(eV)       \n");
       printf(" -----------------------------------------------\n");
+      _leD = transformed.diagonal().segment(combined_CT_block + LE1_counter, LE2_counter) * HARTREE_TO_EV;
       for (unsigned int i = 0; i < LE2_counter; i++) {
         printf("     %3i        %10.6f \n", i + 1,
                transformed(combined_CT_block + LE1_counter + i, combined_CT_block + LE1_counter + i) * HARTREE_TO_EV);
@@ -314,11 +326,15 @@ void FXDTask<SCFMode>::run() {
     }
     if (CT2_counter != 0 && CT1_counter != 0) {
       printf("\n ------------------ CT(A->D) x CT(D->A) coupling (eV) --------------------- \n");
+      _ctADxctDA = transformed.block(0, CT1_counter, CT1_counter, CT2_counter).array().abs().matrix() * HARTREE_TO_EV;
       std::cout << transformed.block(0, CT1_counter, CT1_counter, CT2_counter).array().abs().matrix() * HARTREE_TO_EV
                 << std::endl;
       printf(" --------------------------------------------------------------------------\n");
     }
     if (LE1_counter != 0 && LE2_counter != 0) {
+      _leAxleD =
+          transformed.block(combined_CT_block, combined_CT_block + LE1_counter, LE1_counter, LE2_counter).array().abs().matrix() *
+          HARTREE_TO_EV;
       printf("\n ------------------ LE(A*) x LE(D*) coupling (eV) --------------------- \n");
       std::cout << transformed.block(combined_CT_block, combined_CT_block + LE1_counter, LE1_counter, LE2_counter)
                            .array()
@@ -329,24 +345,32 @@ void FXDTask<SCFMode>::run() {
       printf(" ----------------------------------------------------------------------\n");
     }
     if (LE1_counter != 0 && CT1_counter != 0) {
+      _ctADxleA = transformed.block(0, combined_CT_block, CT1_counter, LE1_counter).array().abs().matrix() * HARTREE_TO_EV;
       printf("\n ------------------ CT(A->D) x LE(A*) coupling (eV) --------------------- \n");
       std::cout << transformed.block(0, combined_CT_block, CT1_counter, LE1_counter).array().abs().matrix() * HARTREE_TO_EV
                 << std::endl;
       printf(" ------------------------------------------------------------------------\n");
     }
     if (LE1_counter != 0 && CT2_counter != 0) {
+      _ctDAxleA = transformed.block(CT1_counter, combined_CT_block, CT2_counter, LE1_counter).array().abs().matrix() *
+                  HARTREE_TO_EV;
       printf("\n ------------------ CT(D->A) x LE(A*) coupling (eV) --------------------- \n");
       std::cout << transformed.block(CT1_counter, combined_CT_block, CT2_counter, LE1_counter).array().abs().matrix() * HARTREE_TO_EV
                 << std::endl;
       printf(" ------------------------------------------------------------------------\n");
     }
     if (LE2_counter != 0 && CT1_counter != 0) {
+      _ctADxleD = transformed.block(0, combined_CT_block + LE1_counter, CT1_counter, LE2_counter).array().abs().matrix() *
+                  HARTREE_TO_EV;
       printf("\n ------------------ CT(A->D) x LE(D*) coupling (eV) --------------------- \n");
       std::cout << transformed.block(0, combined_CT_block + LE1_counter, CT1_counter, LE2_counter).array().abs().matrix() * HARTREE_TO_EV
                 << std::endl;
       printf(" ------------------------------------------------------------------------\n");
     }
     if (LE2_counter != 0 && CT2_counter != 0) {
+      _ctDAxleD =
+          transformed.block(CT1_counter, combined_CT_block + LE1_counter, CT2_counter, LE2_counter).array().abs().matrix() *
+          HARTREE_TO_EV;
       printf("\n ------------------ CT(D->A) x LE(D*) coupling (eV) --------------------- \n");
       std::cout
           << transformed.block(CT1_counter, combined_CT_block + LE1_counter, CT2_counter, LE2_counter).array().abs().matrix() * HARTREE_TO_EV

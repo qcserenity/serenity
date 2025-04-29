@@ -1,6 +1,25 @@
 Changelog
 =========
 
+Release 1.6.3 (29.04.2025)
+--------------------------
+
+### Functionalities
+
+- Made spin symmetry breaking for unrestricted initial guesses an input switch (Anton Rikus)
+- CC2/ADC(2) transition dipole moments and FDE couplings are now written to disk (Anton Rikus)
+
+### Bug Fixes
+
+- Made `uncoupledSubspace` keyword of the LRSCFTask work with CC2/ADC(2) (Anton Rikus)
+- Fixed incorrect determination of the number of core orbitals (Moritz Bensberg)
+
+### Technical Features
+
+- Replaced Lapack as Eigen backend in Python wheels by oneAPI MKL (Anton Rikus)
+- `couple.py` script cleanup, accessible from Python submodule qcserenity.serenipy (Anton Rikus)
+- Global print levels, FXDTask results and LRSCFTask couplings Python-accessible (Anton Rikus)
+
 Release 1.6.2 (21.02.2025)
 --------------------------
 

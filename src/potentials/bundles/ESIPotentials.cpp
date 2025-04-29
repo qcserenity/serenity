@@ -252,6 +252,12 @@ Eigen::MatrixXd ESIPotentials<SCFMode>::getGradients() {
   return gradients;
 }
 
+template<Options::SCF_MODES SCFMode>
+void ESIPotentials<SCFMode>::notify() {
+  _enAttr = nullptr;
+  _nnRep = nullptr;
+}
+
 template class ESIPotentials<Options::SCF_MODES::RESTRICTED>;
 template class ESIPotentials<Options::SCF_MODES::UNRESTRICTED>;
 } /* namespace Serenity */

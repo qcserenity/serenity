@@ -92,9 +92,8 @@ class TDEmbeddingTask : public Task {
  public:
   /**
    * @brief Constructor.
-   * @param activeSystems      A vector containing all active systems (in the form of SystemControllers).
-   * @param environmentSystems A vector containing all environment systems
-   *                           (in the form of SystemControllers).
+   * @param activeSystems      The active system.
+   * @param environmentSystems The environment system (both in the form of SystemControllers).
    */
   TDEmbeddingTask(std::shared_ptr<SystemController> activeSystem, std::shared_ptr<SystemController> environmentSystem);
   /**

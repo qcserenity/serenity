@@ -108,7 +108,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     writeOrbitalsToHDF5(coeffs, eigenvals, _act[1]);
   } /* localCanonicalVirutalOrbitals */
 
-  if (settings.localizedVirtualorbitals == true || settings.localizedEnvVirtualorbitals == true) {
+  if (settings.localizedVirtualOrbitals == true || settings.localizedEnvVirtualOrbitals == true) {
     printf("\n  ------- Choose Localized Virtual Orbitals -------\n");
     _act[1]->getGeometry()->addDummy(*_act[0]->getGeometry());
     _act[1]->getGeometry()->deleteIdenticalAtoms();
@@ -137,7 +137,7 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::run() {
     _act[1]->template getElectronicStructure<SCFMode>()->toHDF5(_act[1]->getHDF5BaseName(), _act[1]->getSettings().identifier);
     // Localization
     bool localized = false;
-    if (settings.localizedVirtualorbitals)
+    if (settings.localizedVirtualOrbitals)
       localized = true;
     selectorAlgorithm->virtualOrbitalSpaceLocalization(coeffs, eigenvals, nOcc, nVirt, *fock, localized);
     // New orbitalenergies
@@ -265,8 +265,8 @@ void VirtualOrbitalSpaceSelectionTask<SCFMode>::checkInput() {
       throw SerenityError(
           "You can select environment canonical orbitals only associated with one environment subsystem!");
   }
-  if (settings.localizedVirtualorbitals == true || settings.localizedEnvVirtualorbitals == true) {
-    if (settings.localizedVirtualorbitals == true && settings.localizedEnvVirtualorbitals == true)
+  if (settings.localizedVirtualOrbitals == true || settings.localizedEnvVirtualOrbitals == true) {
+    if (settings.localizedVirtualOrbitals == true && settings.localizedEnvVirtualOrbitals == true)
       throw SerenityError("You can not select local end environment virtual orbitals at the same time!");
     if (_act.size() != 2)
       throw SerenityError("You need to specify two active subsystems, First: The original orbital space; Second: The "

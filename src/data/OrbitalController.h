@@ -44,11 +44,11 @@ class OrbitalController : public NotifyingClass<OrbitalController<SCFMode>>, pub
    * @param coefficientMatrix with data defined for the basis.
    * @param basis             for which the orbitals in coefficientMatrix are defined.
    * @param eigenvalues       the orbital energies.
-   * @param isCoreOrbital     Flag for core orbitals.
+   * @param orbitalFlags      Flag for core orbitals.
    */
   OrbitalController(std::unique_ptr<CoefficientMatrix<SCFMode>> coefficients, std::shared_ptr<BasisController> basisController,
                     std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> eigenvalues,
-                    std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXi>> isCoreOrbital);
+                    std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXi>> orbitalFlags);
   /**
    * @param isCoreOrbital     Flag for core orbitals.
    * @param coefficients      with data defined for the basis.
@@ -59,8 +59,8 @@ class OrbitalController : public NotifyingClass<OrbitalController<SCFMode>>, pub
                     std::unique_ptr<CoefficientMatrix<SCFMode>> coefficients, std::shared_ptr<BasisController> basisController,
                     std::unique_ptr<SpinPolarizedData<SCFMode, Eigen::VectorXd>> eigenvalues);
   /**
-   * @param coefficientMatrix with data defined for the basis
-   * @param basis             for which the orbitals in coefficientMatrix are defined.
+   * @param coefficients      with data defined for the basis
+   * @param basisController   for which the orbitals in coefficientMatrix are defined.
    * @param eigenvalues       the orbital energies
    * @param nCoreElectrons    The number of core electrons (Assigns the core orbitals by eigenvalue).
    */
@@ -68,11 +68,11 @@ class OrbitalController : public NotifyingClass<OrbitalController<SCFMode>>, pub
                     const SpinPolarizedData<SCFMode, Eigen::VectorXd>& eigenvalues, unsigned int nCoreElectrons);
   /**
    * @brief provides an empty set of orbitals waiting to be filled
-   * @param basis for which the orbitals in coefficientMatrix are defined.
-   * @param nCoreOrbitals The number of core orbitals (Assigns the first n/2 orbitals as core).
+   * @param basisController for which the orbitals in coefficientMatrix are defined.
+   * @param nCoreOrbitals The number of core orbitals.
    */
   explicit OrbitalController(std::shared_ptr<BasisController> basisController,
-                             const SpinPolarizedData<SCFMode, unsigned int> nCoreElectrons);
+                             const SpinPolarizedData<SCFMode, unsigned int> nCoreOrbitals);
   /**
    * @param orig Explicit copy constructor.
    *     (Is explicit to avoid unintentional copies.)

@@ -84,17 +84,17 @@ std::vector<unsigned int> BoughtonPulayAlgorithm::assignAtoms(Eigen::VectorXd mu
     mullikenGrossCharges[largestIndex] = -1000.0;
     // Check the "completeness"
     if (accuMullikenCharge >= minimumCharge || atomIndices.size() == allIndices.size()) {
-      auto s_A = SystemSplittingTools<Options::SCF_MODES::RESTRICTED>::getMatrixBlock(
+      Eigen::MatrixXd s_A = SystemSplittingTools<Options::SCF_MODES::RESTRICTED>::getMatrixBlock(
           _oneElectronIntegralController->getOverlapIntegrals(), atomIndices, atomIndices,
           _atomCenteredBasisController->getBasisIndices());
-      auto s_nu = SystemSplittingTools<Options::SCF_MODES::RESTRICTED>::getMatrixBlock(
+      Eigen::MatrixXd s_nu = SystemSplittingTools<Options::SCF_MODES::RESTRICTED>::getMatrixBlock(
           _oneElectronIntegralController->getOverlapIntegrals(), atomIndices, allIndices,
           _atomCenteredBasisController->getBasisIndices());
-      // calculate invers overlap matrix in the selected basis set.
-      auto s_Ainv = s_A.completeOrthogonalDecomposition().pseudoInverse();
+      // calculate inverse overlap matrix in the selected basis set.
+      Eigen::MatrixXd s_Ainv = s_A.completeOrthogonalDecomposition().pseudoInverse();
       // calculate new coefficients a_i
-      auto a_i = s_Ainv * s_nu * c_i;
-      completeness = 1.0 - a_i.transpose() * s_A * a_i;
+      Eigen::MatrixXd a_i = s_Ainv * s_nu * c_i;
+      completeness = 1.0 - (a_i.transpose() * s_A * a_i)(0, 0);
       if (std::fabs(completeness) <= _completeness || atomIndices.size() == allIndices.size())
         break;
     }

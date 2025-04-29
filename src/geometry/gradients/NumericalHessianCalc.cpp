@@ -21,10 +21,8 @@
 #include "geometry/gradients/NumericalHessianCalc.h"
 /* Include Serenity Internal Headers */
 #include "data/ElectronicStructure.h"
-#include "data/OrbitalController.h"
 #include "geometry/Atom.h"
 #include "geometry/AtomType.h"
-#include "geometry/gradients/NumericalGeomGradCalc.h"
 #include "integrals/wrappers/Libint.h"
 #include "io/HDF5.h"
 #include "math/Matrix.h"
@@ -33,7 +31,6 @@
 #include "settings/EmbeddingSettings.h"
 #include "settings/Settings.h"
 #include "system/SystemController.h"
-#include "tasks/FreezeAndThawTask.h"
 #include "tasks/GradientTask.h"
 #include "tasks/ScfTask.h"
 /* Include Std and External Headers */
@@ -74,7 +71,6 @@ Eigen::MatrixXd NumericalHessianCalc<SCFMode>::calcHessian(std::shared_ptr<Syste
 
   Matrix<double> hessian(3 * nAtoms, 3 * nAtoms);
   hessian.setZero();
-
   for (unsigned int i = 0; i != nAtoms; ++i) {
     geometry->getAtoms()[i]->addToX(delta);
     auto scf = ScfTask<SCFMode>(systemController);

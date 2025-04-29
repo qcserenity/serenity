@@ -82,12 +82,10 @@ class ChargeElectronInteractionPotential : public Potential<SCFMode>, public Obj
   createBasisToAtomIndexMapping(const std::vector<std::pair<unsigned int, unsigned int>>& basisIndicesRed,
                                 unsigned int nBasisFunctionsRed);
 
-  void notify() override final {
-    _potential = nullptr;
-  };
+  void notify() final;
 
  private:
-  ///@brief The active systems controller.
+  ///@brief The active system controller.
   std::weak_ptr<SystemController> _actSystem;
   ///@brief The environment systems controllers.
   std::vector<std::weak_ptr<SystemController>> _envSystems;

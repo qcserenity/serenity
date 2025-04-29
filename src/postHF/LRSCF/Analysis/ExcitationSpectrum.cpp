@@ -72,6 +72,26 @@ void ExcitationSpectrum<SCFMode>::printTransitionMoments(Options::LR_METHOD meth
     len_L = factor * densityMatrices[1].transpose() * dip_l;
     vel_L = factor * eigenvalues.cwiseInverse().asDiagonal() * densityMatrices[1].transpose() * dip_v;
     mag_L = factor / SPEEDOFLIGHT_AU * densityMatrices[1].transpose() * dip_m;
+
+    // Write transition strengths to disk.
+    if (fileName != "") {
+      Eigen::MatrixXd exspectrum = Eigen::MatrixXd::Zero(19, nEigen);
+      exspectrum.row(0) = eigenvalues;
+      exspectrum.middleRows(1, 3) = len_R.real();
+      exspectrum.middleRows(4, 3) = len_L.real().transpose();
+      exspectrum.middleRows(7, 3) = vel_R.imag();
+      exspectrum.middleRows(10, 3) = vel_L.imag().transpose();
+      exspectrum.middleRows(13, 3) = mag_R.imag();
+      exspectrum.middleRows(16, 3) = mag_L.imag().transpose();
+
+      std::ofstream file(fileName + ".CC2exspectrum.txt");
+      file << "One column per excitation, the rows contain first the energy, then the right and left electric "
+              "transition dipole moments in length gauge (x y z x y z), then in velocity gauge, then magnetic "
+              "transition moments."
+           << std::endl;
+      file << std::scientific << std::setprecision(15) << exspectrum;
+      file.close();
+    }
   }
   else {
     // <0|O|n>, O in (mu, p, m).
@@ -88,6 +108,9 @@ void ExcitationSpectrum<SCFMode>::printTransitionMoments(Options::LR_METHOD meth
       exspectrum.middleRows(7, 3) = mag_R.imag();
 
       std::ofstream file(fileName + ".exspectrum.txt");
+      file << "One column per excitation, the rows contain first the energy, then the electric transition dipole "
+              "moments in length gauge (x y z), then in velocity gauge, then magnetic transition moments."
+           << std::endl;
       file << std::scientific << std::setprecision(15) << exspectrum;
       file.close();
     }

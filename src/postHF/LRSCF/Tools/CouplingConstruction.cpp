@@ -46,8 +46,15 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
   Eigen::VectorXi nEigenSub = Eigen::VectorXi::Zero(lrscf.size());
   Eigen::VectorXi nToSubsystem = Eigen::VectorXi::Zero(nEigen);
   Eigen::VectorXi nToExcitation = Eigen::VectorXi::Zero(nEigen);
+  int uncoupledSubspaceCounter = 0;
   for (unsigned I = 0, n = 0; I < lrscf.size(); ++I) {
-    nEigenSub[I] = (*lrscf[I]->getExcitationVectors(referenceLoadingType[I]))[0].cols();
+    if (settings.uncoupledSubspace.empty()) {
+      nEigenSub[I] = (*lrscf[I]->getExcitationVectors(referenceLoadingType[I]))[0].cols();
+    }
+    else {
+      nEigenSub[I] = settings.uncoupledSubspace[uncoupledSubspaceCounter];
+      uncoupledSubspaceCounter += settings.uncoupledSubspace[uncoupledSubspaceCounter] + 1;
+    }
     for (int iEigenI = 0; iEigenI < nEigenSub[I]; ++iEigenI, ++n) {
       nToSubsystem[n] = I;
       nToExcitation[n] = iEigenI;
@@ -56,17 +63,12 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
 
   if (settings.method == Options::LR_METHOD::TDA) {
     printf("  Using subsystem TDA in coupling-matrix construction!\n\n");
+    // AR: The eigenvectors and eigenvalues are already only the uncoupledSubspace ones in case this is used (because
+    // LRSCFSetup::setupFDEcTransformation does this)
     std::vector<Eigen::MatrixXd> guessVectors = {(*eigenvectors)[0]};
     Eigen::MatrixXd partialSigmaVectors = (*sigmaCalculator(guessVectors))[0];
     Eigen::MatrixXd responseMatrix = guessVectors[0].transpose() * partialSigmaVectors;
-
-    // Fill diagonal blocks with old excitation energies.
-    unsigned iStart = 0;
-    for (unsigned I = 0; I < lrscf.size(); ++I) {
-      Eigen::VectorXd energies = *(lrscf[I]->getExcitationEnergies(referenceLoadingType[I]));
-      responseMatrix.block(iStart, iStart, energies.size(), energies.size()) = energies.asDiagonal();
-      iStart += energies.size();
-    }
+    responseMatrix.diagonal() = eigenvalues;
 
     // Copy upper triangular into lower triangular.
     responseMatrix.triangularView<Eigen::StrictlyLower>() = responseMatrix.triangularView<Eigen::StrictlyUpper>().transpose();
@@ -96,7 +98,8 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
       unsigned nEigenI = nEigenSub[I];
       std::string pathI = lrscf[I]->getSys()->getSystemPath();
       std::string nameI = lrscf[I]->getSys()->getSystemName();
-      for (unsigned J = I + 1; J < lrscf.size(); ++J) {
+      // include the J = I block to get the diagonals as well
+      for (unsigned J = I; J < lrscf.size(); ++J) {
         unsigned offJ = nEigenSub.segment(0, J).sum();
         unsigned nEigenJ = nEigenSub[J];
         std::string pathJ = lrscf[J]->getSys()->getSystemPath();
@@ -109,6 +112,8 @@ void CouplingConstruction<SCFMode>::solve(std::vector<std::shared_ptr<LRSCFContr
 
         fileI << std::scientific << std::setprecision(16) << IJ_block;
         fileJ << std::scientific << std::setprecision(16) << JI_block;
+        fileI.close();
+        fileJ.close();
       }
     }
 

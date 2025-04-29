@@ -56,9 +56,9 @@ class Geometry : public ObjectSensitiveClass<Atom>, public NotifyingClass<Geomet
    */
   Geometry();
   /**
-   * @brief Destructor.
+   * @brief Destructor. Cleans up the notification system.
    */
-  virtual ~Geometry() = default;
+  virtual ~Geometry();
   /**
    * @returns the atoms forming this Geometry
    */

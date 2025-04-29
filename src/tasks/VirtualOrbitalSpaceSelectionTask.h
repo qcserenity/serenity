@@ -37,8 +37,8 @@ struct VirtualOrbitalSpaceSelectionTaskSettings {
     : excludeProjection(false),
       localCanonicalVirtuals(0.0),
       envCanonicalVirtuals(0.0),
-      localizedVirtualorbitals(false),
-      localizedEnvVirtualorbitals(false),
+      localizedVirtualOrbitals(false),
+      localizedEnvVirtualOrbitals(false),
       recalculateFockMatrix(false),
       identifier(""),
       mixingOccAndVirtualOrbitals(false),
@@ -49,7 +49,7 @@ struct VirtualOrbitalSpaceSelectionTaskSettings {
     embedding.embeddingMode = Options::KIN_EMBEDDING_MODES::NONE;
   };
   REFLECTABLE((bool)excludeProjection, (double)localCanonicalVirtuals, (double)envCanonicalVirtuals,
-              (bool)localizedVirtualorbitals, (bool)localizedEnvVirtualorbitals, (bool)recalculateFockMatrix,
+              (bool)localizedVirtualOrbitals, (bool)localizedEnvVirtualOrbitals, (bool)recalculateFockMatrix,
               (std::string)identifier, (bool)mixingOccAndVirtualOrbitals, (bool)relaxation, (bool)onlyOne)
  public:
   EmbeddingSettings embedding;
@@ -101,9 +101,9 @@ class VirtualOrbitalSpaceSelectionTask : public Task {
    * modified overlap criterion
    *        -envCanonicalVirtuals: Select canonical virtual orbitals located on the environment
    * subsystems based on a modified overlap criterion
-   *        -localizedVirtualorbitals: Performs a localization of the virtual
+   *        -localizedVirtualOrbitals: Performs a localization of the virtual
    * orbitals and selects the virtual orbitals located on the subsystem
-   *        -localizedEnvVirtualorbitals: Performs a
+   *        -localizedEnvVirtualOrbitals: Performs a
    * localization of the virtual orbitals and selects the virtual orbitals located on the subsystem
    *        -identifier:
    * Identifier for the file in which the new orbitals and orbital energies are stored (needed if the same system has

@@ -21,5 +21,8 @@ import unittest
 class Import(unittest.TestCase):
 
     def test_import(self):
+        import qcserenity as qc
+        self.assertIsNotNone(qc)
+        print(qc.__file__)
         import qcserenity.serenipy as spy
         self.assertIsNotNone(spy)

@@ -60,7 +60,7 @@ class Shell : public libint2::Shell, public NotifyingClass<Shell> {
   /**
    * @brief Constructor.
    *
-   * Shells will be normalize automatically by libint.
+   * Shells will be normalized automatically by libint.
    *
    * @param exponents        The exponents for the primitives.
    * @param contractions     The contractions of the primitives (only one set).

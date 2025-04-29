@@ -108,7 +108,7 @@ void export_SystemController(py::module& spy) {
   py::class_<SystemController, std::shared_ptr<SystemController>>(spy, "System")
       .def(py::init(&createSystemControllerPtr1), "@brief The basic constructor for a system\n"
                                                   "\n"
-                                                  "@param libserenipy.Settings The Settings for this System.")
+                                                  "@param serenipy.Settings The Settings for this System.")
       .def(py::init<std::shared_ptr<Geometry>, Settings>())
       .def("get", &getSptr)
       .def("guess", &guess)
@@ -142,7 +142,7 @@ void export_SystemController(py::module& spy) {
       .def("getOverlap", &overlap)
       .def("getSpin", &SystemController::getSpin)
       .def("getCharge", &SystemController::getCharge)
-      .def("getNEletrons", &getNEl)
+      .def("getNElectrons", &getNEl)
       .def("getBasis", &SystemController::getBasisController, py::arg("basisPurpose") = Options::BASIS_PURPOSES::DEFAULT)
       .def("getGrid", &SystemController::getGridController, py::arg("gridPurpose") = Options::GRID_PURPOSES::DEFAULT)
       .def("getElectronicStructure_R", &SystemController::getElectronicStructure<Options::SCF_MODES::RESTRICTED>,

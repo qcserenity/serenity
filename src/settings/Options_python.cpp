@@ -278,4 +278,12 @@ void export_Options(py::module& spy) {
       .value("AC", GWALGORITHM::AC)
       .value("ANALYTIC", GWALGORITHM::ANALYTIC)
       .export_values();
+  py::enum_<GLOBAL_PRINT_LEVELS>(spy, "GLOBAL_PRINT_LEVELS")
+      .value("MINIMUM", GLOBAL_PRINT_LEVELS::MINIMUM)
+      .value("MINIMAL", GLOBAL_PRINT_LEVELS::MINIMUM)
+      .value("NORMAL", GLOBAL_PRINT_LEVELS::NORMAL)
+      .value("VERBOSE", GLOBAL_PRINT_LEVELS::VERBOSE)
+      .value("DEBUGGING", GLOBAL_PRINT_LEVELS::DEBUGGING)
+      .value("DEBUG", GLOBAL_PRINT_LEVELS::DEBUGGING)
+      .export_values();
 }

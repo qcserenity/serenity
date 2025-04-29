@@ -142,10 +142,7 @@ class ESIPotentials : public PotentialBundle<SCFMode>,
    *        This is used for lazy evaluation.
    *        (see ObjectSensitiveClass and NotifyingClass)
    */
-  void notify() override final {
-    _enAttr = nullptr;
-    _nnRep = nullptr;
-  };
+  void notify() final;
 
  private:
   std::shared_ptr<SystemController> _actSystem;

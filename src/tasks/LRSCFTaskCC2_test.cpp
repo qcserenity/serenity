@@ -865,6 +865,10 @@ TEST_F(LRSCFTaskCC2Test, FDEc_CC2) {
   EXPECT_LT((ref.col(4) - lrscfAB.getTransitions().col(4)).cwiseAbs().maxCoeff(), 1e-7);
   EXPECT_LT((ref.col(5) - lrscfAB.getTransitions().col(5)).cwiseAbs().maxCoeff(), 1e-7);
 
+  std::remove((act->getSystemPath() + act->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((act->getSystemPath() + env->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((env->getSystemPath() + act->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((env->getSystemPath() + env->getSystemName() + ".CC2Coupling.txt").c_str());
   std::string name = act->getSystemName() + "+" + env->getSystemName();
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act);
@@ -934,6 +938,10 @@ TEST_F(LRSCFTaskCC2Test, FDEc_ADC2) {
       0.462816909506, 0.474120969096;
   EXPECT_LT((ref.col(0) - lrscfAB.getTransitions().col(0)).cwiseAbs().maxCoeff(), 1e-7);
 
+  std::remove((act->getSystemPath() + act->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((act->getSystemPath() + env->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((env->getSystemPath() + act->getSystemName() + ".CC2Coupling.txt").c_str());
+  std::remove((env->getSystemPath() + env->getSystemName() + ".CC2Coupling.txt").c_str());
   std::string name = act->getSystemName() + "+" + env->getSystemName();
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(env->getSystemPath() + name + "/", name);
   SystemController__TEST_SUPPLY::cleanUpSystemDirectory(act);

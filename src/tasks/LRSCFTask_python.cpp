@@ -19,6 +19,7 @@
  */
 
 /* Include Serenity Internal Headers */
+#include "postHF/LRSCF/LRSCFController.h"
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 /* Include Std and External Headers */
@@ -28,6 +29,61 @@
 
 namespace py = pybind11;
 using namespace Serenity;
+
+template<Options::SCF_MODES SCFMode>
+const Eigen::MatrixXd getCouplings(LRSCFTask<SCFMode>& lrscfTask) {
+  auto lrscfControllers = lrscfTask.getLRSCFControllers();
+
+  const auto referenceLoadingType = lrscfTask.getReferenceLoadingType();
+  Eigen::VectorXi nEigenSub = Eigen::VectorXi::Zero(lrscfControllers.size());
+  int uncoupledSubspaceCounter = 0;
+  for (unsigned I = 0; I < lrscfControllers.size(); I++) {
+    if (lrscfTask.settings.uncoupledSubspace.empty()) {
+      nEigenSub[I] = (*lrscfControllers[I]->getExcitationVectors(referenceLoadingType[I]))[0].cols();
+    }
+    else {
+      nEigenSub[I] = lrscfTask.settings.uncoupledSubspace[uncoupledSubspaceCounter];
+      uncoupledSubspaceCounter += lrscfTask.settings.uncoupledSubspace[uncoupledSubspaceCounter] + 1;
+    }
+  }
+
+  Eigen::MatrixXd couplings(lrscfTask.settings.nEigen, lrscfTask.settings.nEigen);
+
+  bool isNotCC2 =
+      (lrscfTask.settings.method == Options::LR_METHOD::TDA || lrscfTask.settings.method == Options::LR_METHOD::TDDFT);
+  std::string fileEnding = isNotCC2 ? ".TDACoupling.txt" : ".CC2Coupling.txt";
+
+  for (unsigned I = 0; I < lrscfControllers.size(); ++I) {
+    unsigned offI = nEigenSub.segment(0, I).sum();
+    std::string pathI = lrscfControllers[I]->getSys()->getSystemPath();
+    std::string nameI = lrscfControllers[I]->getSys()->getSystemName();
+    for (unsigned J = I; J < lrscfControllers.size(); ++J) {
+      unsigned offJ = nEigenSub.segment(0, J).sum();
+      unsigned nEigenJ = nEigenSub[J];
+      std::string pathJ = lrscfControllers[J]->getSys()->getSystemPath();
+      std::string nameJ = lrscfControllers[J]->getSys()->getSystemName();
+
+      std::ifstream file(pathI + nameJ + fileEnding);
+      if (file.is_open()) {
+        int iRow = 0;
+        std::string line;
+        while (std::getline(file, line)) {
+          std::istringstream iss(line);
+          for (unsigned iCol = 0; iCol < nEigenJ; iCol++) {
+            double value;
+            iss >> value;
+            couplings(offI + iRow, offJ + iCol) = value;
+            couplings(offJ + iCol, offI + iRow) = value;
+          }
+          iRow++;
+        }
+      }
+      file.close();
+    }
+  }
+
+  return couplings;
+}
 
 void export_LRSCFTask(py::module& spy) {
   py::class_<LRSCFTaskSettings>(spy, "LRSCFTaskSettings", "@brief Default constructor for Settings all set to their default values.")
@@ -94,6 +150,7 @@ void export_LRSCFTask(py::module& spy) {
       .def("run", &LRSCFTask<RESTRICTED>::run)
       .def("getTransitions", &LRSCFTask<RESTRICTED>::getTransitions)
       .def("getProperties", &LRSCFTask<RESTRICTED>::getProperties)
+      .def("getCouplings", &getCouplings<RESTRICTED>)
       .def_readwrite("settings", &LRSCFTask<Options::SCF_MODES::RESTRICTED>::settings)
       .def_readwrite("generalSettings", &LRSCFTask<Options::SCF_MODES::RESTRICTED>::generalSettings);
 
@@ -102,6 +159,7 @@ void export_LRSCFTask(py::module& spy) {
       .def("run", &LRSCFTask<UNRESTRICTED>::run)
       .def("getTransitions", &LRSCFTask<UNRESTRICTED>::getTransitions)
       .def("getProperties", &LRSCFTask<UNRESTRICTED>::getProperties)
+      .def("getCouplings", &getCouplings<UNRESTRICTED>)
       .def_readwrite("settings", &LRSCFTask<Options::SCF_MODES::UNRESTRICTED>::settings)
       .def_readwrite("generalSettings", &LRSCFTask<Options::SCF_MODES::UNRESTRICTED>::generalSettings);
 }

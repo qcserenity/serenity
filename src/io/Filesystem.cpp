@@ -63,6 +63,7 @@ void removeSystemFiles(std::string path, std::string systemName, std::string bas
   std::remove((baseName + "_lrscf_resp.fdec.res.h5").c_str());
   std::remove((baseName + "_lrscf_resp.fdec.unres.h5").c_str());
   std::remove((baseName + ".exspectrum.txt").c_str());
+  std::remove((baseName + ".CC2exspectrum.txt").c_str());
   std::remove((baseName + ".transitioncharges.txt").c_str());
   std::remove((baseName + ".cd.h-ERF.h5").c_str());
   std::remove((baseName + ".cd.h-ERF_EXPANDED.h5").c_str());
