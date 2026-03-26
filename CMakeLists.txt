@@ -354,30 +354,30 @@ endif()
 # Targets
 install(TARGETS serenity
         EXPORT serenityTargets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 if (NOT DEFINED SKBUILD)
 install(TARGETS serenity_exe
         EXPORT serenityTargets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/
-  DESTINATION include/serenity
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/serenity
   FILES_MATCHING PATTERN "*.h"
 )
 endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data/basis
         ${CMAKE_CURRENT_SOURCE_DIR}/data/initialGuess ${CMAKE_CURRENT_SOURCE_DIR}/data/xyzfiles
-        DESTINATION share/serenity/data
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/serenity/data
 )
 if (DEFINED SKBUILD AND SERENITY_USE_LAPLACE_MINIMAX)
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/laplace-minimax/data
-   DESTINATION share/laplace-minimax)
+   DESTINATION ${CMAKE_INSTALL_DATADIR}/laplace-minimax)
 endif()
 
 
@@ -557,14 +557,14 @@ if (NOT DEFINED SKBUILD)
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
-    INSTALL_DESTINATION "lib/cmake/serenity"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/serenity"
   )
 
   # Install serenity-config.cmake and serenity-config-version.cmake
   install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/serenity-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/serenity-config-version.cmake"
-    DESTINATION lib/cmake/serenity
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/serenity
   )
 
   # Add all targets to the build-tree export set
@@ -610,5 +610,5 @@ export(PACKAGE Serenity)
 # Install the export set for use with the install-tree
 install(EXPORT serenityTargets
   FILE serenity-targets.cmake
-  DESTINATION lib/cmake/serenity
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/serenity
 )
