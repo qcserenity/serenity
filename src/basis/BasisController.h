@@ -24,6 +24,7 @@
 #include "notification/NotifyingClass.h"
 #include "notification/ObjectSensitiveClass.h"
 /* Include Std and External Headers */
+#include <cassert>
 #include <Eigen/SparseCore>
 #include <memory>
 #include <string>
