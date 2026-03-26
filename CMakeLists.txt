@@ -78,6 +78,9 @@ include(src/Files.cmake)
 
 add_library(serenity ${SERENITY_CPPS} ${SERENITY_HEADERS})
 set_property(TARGET serenity PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(serenity PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR})
 if (NOT DEFINED SKBUILD)
   add_executable(serenity_exe ${PROJECT_SOURCE_DIR}/src/serenity.cpp)
 endif()
