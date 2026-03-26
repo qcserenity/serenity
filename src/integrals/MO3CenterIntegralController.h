@@ -23,6 +23,7 @@
 /* Include Serenity Internal Headers */
 #include "data/SparseMapsController.h" //Getter for the sparse maps controller.
 /* Include Std and External Headers */
+#include <cassert>          //assert
 #include <Eigen/Dense>      //Dense matrices
 #include <Eigen/SparseCore> //Sparse matrices
 #include <memory>           //smrt_ptr

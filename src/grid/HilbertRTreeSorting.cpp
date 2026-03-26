@@ -22,6 +22,7 @@
 #include "grid/HilbertRTreeSorting.h"
 /* Include Std and External Headers */
 #include <array>
+#include <cassert>
 #include <iostream>
 
 namespace Serenity {
