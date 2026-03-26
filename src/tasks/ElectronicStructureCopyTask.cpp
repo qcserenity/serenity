@@ -37,7 +37,7 @@
 #include "settings/Settings.h"                        //Settings definition.
 #include "system/SystemController.h"                  //Access to system properties.
 /* Include Std and External Headers */
-#include <math.h> //acos
+#include <cmath> //acos
 #include <limits> //std::numeric_limits<double>::infinity()
 
 namespace Serenity {

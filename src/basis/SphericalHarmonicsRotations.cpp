@@ -20,7 +20,7 @@
 /* Include Class Header*/
 #include "basis/SphericalHarmonicsRotations.h"
 /* Include Std and External Headers */
-#include <math.h> //sin, cos, pow and sqrt
+#include <cmath> //sin, cos, pow and sqrt
 
 namespace Serenity {
 

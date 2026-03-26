@@ -21,7 +21,7 @@
 #include "basis/SphericalHarmonicsRotations.h" //To be tested.
 /* Include Std and External Headers */
 #include <gtest/gtest.h> //Testing framework
-#include <math.h>        //sqrt
+#include <cmath>         //sqrt
 
 namespace Serenity {
 

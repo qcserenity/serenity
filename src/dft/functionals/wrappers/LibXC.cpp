@@ -25,7 +25,7 @@
 #include "grid/GridController.h"
 #include "misc/Timing.h"
 /* Include Std and External Headers */
-#include <math.h>
+#include <cmath>
 #include <stdio.h>
 #include <stdlib.h>
 #include <xc.h>

@@ -37,7 +37,7 @@
 #include "system/SystemController.h"
 #include "tasks/LRSCFTask.h"
 /* Include Std and External Headers */
-#include <math.h>
+#include <cmath>
 #include <Eigen/Dense>
 #include <iomanip>
 
